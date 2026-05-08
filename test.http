@@ -1,0 +1,53 @@
+### Health check
+GET http://localhost:4000/api/health
+
+### Patient login (mobile)
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "patient1@test.com",
+  "password": "password123",
+  "platform": "mobile"
+}
+
+### Admin login (web)
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "password123",
+  "platform": "web"
+}
+
+### Patient register start (OTP will print to backend console)
+POST http://localhost:4000/api/auth/register/start
+Content-Type: application/json
+
+{
+  "email": "newpatient@test.com",
+  "name": "New Patient",
+  "password": "password123"
+}
+
+### Patient register verify (paste OTP from backend console)
+POST http://localhost:4000/api/auth/register/verify
+Content-Type: application/json
+
+{
+  "email": "newpatient@test.com",
+  "code": "059801",
+  "platform": "mobile"
+}
+
+### Test admin protected route (paste accessToken from admin login)
+GET http://localhost:4000/api/admin/ping
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODI2NzU5MywiZXhwIjoxNzc4MjY4NDkzfQ.8fApGxbBD2XmuJv24MlWTb2UFKmK7ar--qAHDHyXCZM
+
+### Test wrong-role rejection (admin token on dentist endpoint)
+GET http://localhost:4000/api/dentist/ping
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODI2NzU5MywiZXhwIjoxNzc4MjY4NDkzfQ.8fApGxbBD2XmuJv24MlWTb2UFKmK7ar--qAHDHyXCZM
+
+### Test no-auth rejection
+GET http://localhost:4000/api/admin/ping
