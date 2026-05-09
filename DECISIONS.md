@@ -39,3 +39,6 @@ Web requests carry an Origin header (http://localhost:5173). React Native reques
 2. Stale OTP rows from repeated /register/start calls during testing. Verify endpoint returned latest unconsumed OTP, but user copied an earlier OTP from terminal. Fixed by marking all prior unconsumed OTPs (same email, same purpose) as consumed before issuing a new one.
 
 3. Datetime mismatch between Node and MySQL. MySQL ran in local Manila time; mysql2 sent Node Date objects as UTC strings; MySQL stored UTC values in columns interpreted as local time. Result: every expires_at was 8 hours in the past on creation. Fixed in two layers — connection-level `SET time_zone = '+00:00'` forces every connection to UTC regardless of where the server runs (works locally and on Railway), and toMySQLDateTime() helper uses toISOString() to always emit UTC strings.
+
+### SafeAreaView migrated to react-native-safe-area-context
+React Native's built-in SafeAreaView is deprecated and slated for removal. Switched to SafeAreaView from react-native-safe-area-context (already installed as a peer of react-navigation) and wrapped the app root in SafeAreaProvider so insets are measured once and shared. Functionally identical, future-proof, and removes warning noise that would have grown across screens by day 5.
