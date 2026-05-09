@@ -42,3 +42,18 @@ Web requests carry an Origin header (http://localhost:5173). React Native reques
 
 ### SafeAreaView migrated to react-native-safe-area-context
 React Native's built-in SafeAreaView is deprecated and slated for removal. Switched to SafeAreaView from react-native-safe-area-context (already installed as a peer of react-navigation) and wrapped the app root in SafeAreaProvider so insets are measured once and shared. Functionally identical, future-proof, and removes warning noise that would have grown across screens by day 5.
+
+### Mobile screen and style file structure
+Mobile screens use `.jsx` extension for JSX-containing component files, with corresponding style files in a sibling `styles/` folder. Style files use `export default styles` (default export) and are imported as `import styles from '../styles/ScreenName'`. The folder split lets file-tree scanning group by concern: visuals in styles/, markup+logic in screens/.
+
+### Style file formatting convention
+StyleSheet objects use 4-space indentation, one property per line, blank lines between style groups. Verbose but consistent with previous mobile project; trades file length for scannability when adjusting visuals.
+
+### Layout: SafeAreaView + KeyboardAvoidingView on input screens
+Login and Register wrap content in both SafeAreaView (handles physical device cutouts: notch, home indicator) and KeyboardAvoidingView (pushes inputs above the keyboard when it appears). PatientHome only needs SafeAreaView since it has no text inputs. SafeAreaView is the outer wrapper since the safe area should be reserved before the keyboard manages anything within it. KeyboardAvoidingView's behavior prop is set to "padding" on iOS only — Android handles keyboard avoidance natively and the prop tends to break it.
+
+### Styling approach: React Native StyleSheet
+Using StyleSheet.create({...}) with style objects, separated into mobile/src/styles/ files imported by each screen. Considered alternatives:
+- NativeWind (Tailwind for RN): adds a build step and a third dependency, no benefit at this project size.
+- styled-components: CSS-in-JS template literals; pleasant for theming but adds a dependency for what we already get from StyleSheet.
+StyleSheet is the React Native default — zero dependencies, validates style keys at startup, and any RN developer can read it without context.
