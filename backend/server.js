@@ -9,8 +9,15 @@ const { authenticate, requireRole } = require('./src/middleware/auth');
 
 const app = express();
 
+const allowedOrigins = (process.env.WEB_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
 app.use(cors({
-  origin: process.env.WEB_ORIGIN,
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+      return callback(null, true);
+    }
+    callback(new Error('CORS not allowed for this origin'));
+  },
   credentials: true,
 }));
 app.use(express.json());
