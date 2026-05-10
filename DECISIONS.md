@@ -57,3 +57,18 @@ Using StyleSheet.create({...}) with style objects, separated into mobile/src/sty
 - NativeWind (Tailwind for RN): adds a build step and a third dependency, no benefit at this project size.
 - styled-components: CSS-in-JS template literals; pleasant for theming but adds a dependency for what we already get from StyleSheet.
 StyleSheet is the React Native default — zero dependencies, validates style keys at startup, and any RN developer can read it without context.
+
+### AI scheduler architecture (CSP with weighted scoring)
+
+The appointment scheduler is implemented as a Constraint Satisfaction Problem with weighted soft scoring, a recognized AI technique covered in standard AI curricula (Russell & Norvig). Chose this over machine learning for three reasons:
+1. No training data — the system is brand new, so any ML model would have to be trained on fabricated data, which is unscientific.
+2. Rules are known and stable — "a dentist can't be in two places at once" is a hard rule, not something to learn.
+3. Decisions must be explainable — healthcare-adjacent systems require auditable recommendations. Each suggestion includes a `breakdown` object showing exactly which signals contributed to its score.
+
+**Hard constraints (filter):** dentist offers the requested service; dentist works at the requested branch on that weekday; slot fits within working hours; slot doesn't overlap the lunch hour (12-1); slot doesn't conflict with existing appointments; slot is in the future.
+
+**Soft constraints (score):** preferred time-of-day from booking history (+3); same dentist as last visit (+2); soonest available day (+2 day 0, +1 day 1); early in the day (+1 before 14:00).
+
+**Diversification:** top-3 selection prefers distinct (dentist, day) combinations to give patients real choice rather than near-identical slots.
+
+**Defensibility:** unlike a neural network, every recommendation can be traced to a specific signal. The system also leaves room to add ML for specific tasks like no-show prediction in v2 once historical data exists.

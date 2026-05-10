@@ -64,13 +64,14 @@ async function seed() {
   );
 
   for (const dentistId of [2, 3]) {
-    const branchId = dentistId === 2 ? 1 : 2;
-    for (let weekday = 1; weekday <= 5; weekday++) {
-      await pool.query(
-        `INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time)
-         VALUES (?, ?, ?, '09:00:00', '17:00:00')`,
-        [dentistId, branchId, weekday]
-      );
+    for (const branchId of [1, 2]) {
+      for (let weekday = 0; weekday <= 6; weekday++) {
+        await pool.query(
+          `INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time)
+           VALUES (?, ?, ?, '10:00:00', '19:00:00')`,
+          [dentistId, branchId, weekday]
+        );
+      }
     }
   }
 

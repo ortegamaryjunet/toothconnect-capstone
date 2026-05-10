@@ -34,6 +34,9 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 
+const appointmentRoutes = require('./src/routes/appointments');
+app.use('/api/appointments', appointmentRoutes);
+
 app.get('/api/admin/ping',  authenticate, requireRole('admin'),        (req, res) => res.json({ message: 'Admin only', user: req.user }));
 app.get('/api/dentist/ping',authenticate, requireRole('dentist'),      (req, res) => res.json({ message: 'Dentist only', user: req.user }));
 app.get('/api/recep/ping',  authenticate, requireRole('receptionist'), (req, res) => res.json({ message: 'Receptionist only', user: req.user }));
