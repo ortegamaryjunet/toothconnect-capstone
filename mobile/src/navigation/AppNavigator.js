@@ -5,6 +5,9 @@ import { useAuth } from '../auth/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import PatientHomeScreen from '../screens/PatientHomeScreen';
+import BookServiceScreen from '../screens/BookServiceScreen';
+import BookSuggestionsScreen from '../screens/BookSuggestionsScreen';
+import BookConfirmScreen from '../screens/BookConfirmScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,7 +26,12 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="Home" component={PatientHomeScreen} />
+          <>
+            <Stack.Screen name="Home" component={PatientHomeScreen} />
+            <Stack.Screen name="BookService" component={BookServiceScreen} />
+            <Stack.Screen name="BookSuggestions" component={BookSuggestionsScreen} />
+            <Stack.Screen name="BookConfirm" component={BookConfirmScreen} />
+          </>
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />

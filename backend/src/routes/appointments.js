@@ -8,6 +8,21 @@ const router = express.Router();
 
 router.use(authenticate);
 
+router.get('/_meta/services-and-branches', async (req, res) => {
+  try {
+    const [services] = await pool.query(
+      `SELECT id, name, duration_min, price FROM services ORDER BY name ASC`
+    );
+    const [branches] = await pool.query(
+      `SELECT id, name, address FROM branches ORDER BY name ASC`
+    );
+    res.json({ services, branches });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.get('/', async (req, res) => {
   const { branch_id, from, to, dentist_id, status } = req.query;
   const role = req.user.role;

@@ -72,3 +72,94 @@ The appointment scheduler is implemented as a Constraint Satisfaction Problem wi
 **Diversification:** top-3 selection prefers distinct (dentist, day) combinations to give patients real choice rather than near-identical slots.
 
 **Defensibility:** unlike a neural network, every recommendation can be traced to a specific signal. The system also leaves room to add ML for specific tasks like no-show prediction in v2 once historical data exists.
+
+## Day 2 — Appointments and AI scheduling
+
+### Multi-branch dentist scheduling model
+Both dentists are scheduled at both branches all 7 days of the week, 10 AM to 7 PM. Lunch hours (12–1 PM) are NOT stored in the schedule table; they're enforced in scheduler code. Reasoning: storing lunch as start1/end1/start2/end2 columns would clutter the schema, and lunch is a constraint rather than a schedule. Treating it as code-side rule keeps `dentist_schedules` clean and lets us change the lunch policy in one place if needed. The current real clinic situation has both dentists on-call for both branches; the schema supports branch-specific dentists in the future without code changes.
+
+### Appointment endpoints with role-based filtering
+`/api/appointments` (GET) returns different data shaped by `req.user.role`:
+- patient: only their own appointments
+- dentist: only appointments where they're the dentist
+- receptionist/admin: all appointments at branches they have access to
+
+The role filter is applied at the SQL WHERE clause level, not in route handler code. This makes data leakage impossible by mistake — there's no path where a route handler "forgets" to add the filter.
+
+### Conflict detection in pure SQL
+Booking conflict check uses `start_time < ? AND DATE_ADD(start_time, INTERVAL duration_min MINUTE) > ?` to compute the overlap atomically inside MySQL. If two patients race to book the same slot, MySQL serializes the query and one will see a 409 conflict. No application-level locking needed.
+
+### Service duration denormalized onto appointments
+`appointments.duration_min` is copied from `services.duration_min` at booking time, not joined live. Reason: if the clinic later changes a service from 30 min to 45 min, existing bookings should stay 30 min — that's what was scheduled with the patient. Storing duration on the appointment locks the historical record.
+
+### AI scheduler architecture (CSP with weighted scoring)
+The appointment scheduler is implemented as a Constraint Satisfaction Problem with weighted soft scoring, a recognized AI technique covered in standard AI curricula (Russell & Norvig). Chose this over machine learning for three reasons:
+1. No training data — the system is brand new, so any ML model would have to be trained on fabricated data, which is unscientific.
+2. Rules are known and stable — "a dentist can't be in two places at once" is a hard rule, not something to learn.
+3. Decisions must be explainable — healthcare-adjacent systems require auditable recommendations. Each suggestion includes a `breakdown` object showing exactly which signals contributed to its score.
+
+**Hard constraints (filter):** dentist offers the requested service; dentist works at the requested branch on that weekday; slot fits within working hours; slot doesn't overlap the lunch hour (12–1); slot doesn't conflict with existing appointments; slot is in the future.
+
+**Soft constraints (score):** preferred time-of-day from booking history (+3); same dentist as last visit (+2); soonest available day (+2 day 0, +1 day 1); early in the day (+1 before 14:00).
+
+**Diversification:** top-3 selection prefers distinct (dentist, day) combinations to give patients real choice rather than near-identical slots.
+
+**Defensibility:** unlike a neural network, every recommendation can be traced to a specific signal. The system also leaves room to add ML for specific tasks like no-show prediction in v2 once historical data exists.
+
+### Scheduler diversification
+Pure score sorting tended to surface 3 near-identical slots (same dentist, same day, 15 minutes apart). Added a post-sort `pickDiverseTopSuggestions` step that ensures the top 3 come from distinct (dentist, day) combinations when possible, falling back to plain top-3 if that's not feasible. Better UX (real options to choose from) without changing the underlying scoring or constraint logic.
+
+### 15-minute slot stepping
+Candidate slots are generated every 15 minutes within working hours rather than aligned to service duration. A 30-min cleaning could start at 10:00, 10:15, 10:30, 10:45, etc. — not just 10:00 and 10:30. More candidates means the scheduler has more material to score, which improves matches with patient preferences. This is the standard interval used by real clinic systems.
+
+### Patient preference learning from past bookings
+The scheduler reads the patient's last 10 appointments to derive two signals:
+1. Most-frequent time-of-day bucket (morning/afternoon/evening) → boost matching slots
+2. Most recent dentist → boost slots with the same dentist (continuity of care)
+This is "learning from data" but explicitly through pattern detection in SQL, not statistical learning. The system has no patient history on day 1, so a brand-new patient gets neutral preferences — once they book, the next suggestion adapts.
+
+### Receptionist and dentist appointment views (web)
+Both views use the same /api/appointments endpoint with different default time windows (today/upcoming) and different action buttons (cancel for receptionist, mark completed/no-show for dentist). The styling/component split convention from day 1 was extended to the web: components live in `pages/`, styles live in `styles/`, both default-exported. Date display uses `toLocaleString('en-PH')` for Manila-friendly formatting; backend stores UTC, browser converts to local for display.
+
+### API datetime format consistency
+The backend's mysql2 driver auto-converts DATETIME columns to JS Date objects, which Express serializes as ISO strings with millisecond precision and `Z` suffix (e.g. `"2026-05-11T10:00:00.000Z"`). Some early mobile code assumed MySQL string format (`"2026-05-11 10:00:00"`) and tried to convert by appending `Z`, which broke when ISO was already provided. Standardized on: API always sends ISO, mobile/web parse with `new Date(str)` directly. The `normalizeToISO` helper in datetime utils handles both formats defensively but is unused in current paths.
+
+### Mobile booking flow as 3 sequential screens
+Patient booking is split across three screens: BookService (pick service + branch), BookSuggestions (display AI top 3 with breakdowns), BookConfirm (review + create). Each screen is single-purpose, navigable independently, and clears state when the flow completes via `navigation.popToTop()`. Splitting the flow this way makes each step understandable in isolation and matches what users expect from booking apps.
+
+### Score breakdown rendered as labeled rows
+Each AI suggestion displays its score breakdown as labeled rows ("Matches your preferred time of day +3", "Same dentist as last visit +2", etc.) with the total at the bottom. This is the visual demonstration of the algorithm — the panel can see exactly how the AI thinks just by looking at the screen. The labels are a separate constants object (`BREAKDOWN_LABELS`) so adding new soft constraints later only requires adding the new key + label.
+
+### useFocusEffect for patient home auto-refresh
+Patient home uses `useFocusEffect` instead of `useEffect` to refetch appointments. This means when the patient books a new appointment and navigates back to home, the list refreshes automatically without requiring pull-to-refresh. Standard React Navigation pattern.
+
+## Day 2 — Bugs encountered and fixed
+
+1. Receptionist's "Today" tab showed empty when test appointments were dated weeks in the future. Not a bug — the date filter worked correctly, the test data was simply outside the window. Created fresh test appointments dated for "today" to confirm the data flow, then expanded the dentist's "Upcoming" window to 30 days for ongoing testing.
+
+2. Patient mobile "Upcoming" section showed nothing despite scheduled future appointments existing in the database. Root cause: filter code used `a.start_time.replace(' ', 'T') + 'Z'`, which assumed MySQL format. The API actually returns ISO format already (mysql2 + Express auto-conversion), so the replace operation produced malformed strings like `"2026-05-11T10:00:00.000ZZ"` which JavaScript parsed as Invalid Date. Filter `>= now` always returned false. Fix: drop the `.replace` and pass `start_time` directly to `new Date()`. Lesson: when the backend sends ISO, don't try to "fix" it — just consume it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Ideas / future work (deferred)
+
+### Day 5 polish list
+- "See more options" button on AI suggestions screen — refetches with current top 3 excluded so patient can browse alternatives
+
+
+
+
+
+
+

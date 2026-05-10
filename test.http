@@ -281,3 +281,17 @@ Content-Type: application/json
   "service_id": 5,
   "start_time": "2026-05-11T03:00:00.000Z"
 }
+
+### Patient gets their own appointments (raw API check)
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "patient1@test.com",
+  "password": "password123",
+  "platform": "mobile"
+}
+
+### Then with the access token from the response above
+GET http://localhost:4000/api/appointments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NDE3NDMwLCJleHAiOjE3Nzg0MTgzMzB9.e7dHONHlQZG_lrsJItjjTGQnlZpwm8YByFHOLarK17I
