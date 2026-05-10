@@ -229,3 +229,55 @@ Content-Type: application/json
   "from": "2026-05-21T00:00:00.000Z",
   "to": "2026-05-21T23:59:59.000Z"
 }
+
+### Create appointment for today (UTC time)
+POST http://localhost:4000/api/appointments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NDA5OTQ1LCJleHAiOjE3Nzg0MTA4NDV9.ICWMXaaePTgQMYyoJ2flSraEA16WCgMhdIYqAtRisWA
+Content-Type: application/json
+
+{
+  "branch_id": 1,
+  "patient_id": 6,
+  "dentist_id": 2,
+  "service_id": 1,
+  "start_time": "2026-05-10T03:00:00.000Z"
+}
+
+### Create three test appointments for variety
+POST http://localhost:4000/api/appointments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NDA5OTQ1LCJleHAiOjE3Nzg0MTA4NDV9.ICWMXaaePTgQMYyoJ2flSraEA16WCgMhdIYqAtRisWA
+Content-Type: application/json
+
+{
+  "branch_id": 1,
+  "patient_id": 6,
+  "dentist_id": 2,
+  "service_id": 1,
+  "start_time": "2026-05-10T03:00:00.000Z"
+}
+
+###
+POST http://localhost:4000/api/appointments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NDA5OTQ1LCJleHAiOjE3Nzg0MTA4NDV9.ICWMXaaePTgQMYyoJ2flSraEA16WCgMhdIYqAtRisWA
+Content-Type: application/json
+
+{
+  "branch_id": 1,
+  "patient_id": 7,
+  "dentist_id": 2,
+  "service_id": 3,
+  "start_time": "2026-05-10T05:00:00.000Z"
+}
+
+###
+POST http://localhost:4000/api/appointments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NDA5OTQ1LCJleHAiOjE3Nzg0MTA4NDV9.ICWMXaaePTgQMYyoJ2flSraEA16WCgMhdIYqAtRisWA
+Content-Type: application/json
+
+{
+  "branch_id": 1,
+  "patient_id": 6,
+  "dentist_id": 2,
+  "service_id": 5,
+  "start_time": "2026-05-11T03:00:00.000Z"
+}
