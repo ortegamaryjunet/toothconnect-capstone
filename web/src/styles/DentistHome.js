@@ -4,7 +4,6 @@ const styles = {
         minHeight: '100vh',
         background: '#f4f6f8'
     },
-
     header: {
         background: '#2c7a7b',
         color: '#fff',
@@ -139,7 +138,6 @@ const styles = {
     statusRow: {
         marginTop: '4px'
     },
-
     completeBtn: {
         background: '#2f855a',
         color: '#fff',
@@ -158,7 +156,30 @@ const styles = {
         borderRadius: '6px',
         fontSize: '12px',
         cursor: 'pointer'
+    },
+    topNav: {
+        background: '#fff',
+        padding: '0 24px',
+        borderBottom: '1px solid #e2e8f0',
+        display: 'flex',
+        gap: '4px'
+    },
+    topNavTab: {
+        padding: '14px 20px',
+        background: 'transparent',
+        border: 'none',
+        borderBottom: '3px solid transparent',
+        fontSize: '14px',
+        color: '#718096',
+        cursor: 'pointer',
+        fontWeight: '500',
+        marginBottom: '-1px'
+    },
+    topNavTabActive: {
+        color: '#2c7a7b',
+        borderBottomColor: '#2c7a7b'
     }
+
 };
 
 export default styles;

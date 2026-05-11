@@ -140,6 +140,39 @@ Patient home uses `useFocusEffect` instead of `useEffect` to refetch appointment
 2. Patient mobile "Upcoming" section showed nothing despite scheduled future appointments existing in the database. Root cause: filter code used `a.start_time.replace(' ', 'T') + 'Z'`, which assumed MySQL format. The API actually returns ISO format already (mysql2 + Express auto-conversion), so the replace operation produced malformed strings like `"2026-05-11T10:00:00.000ZZ"` which JavaScript parsed as Invalid Date. Filter `>= now` always returned false. Fix: drop the `.replace` and pass `start_time` directly to `new Date()`. Lesson: when the backend sends ISO, don't try to "fix" it — just consume it.
 
 
+## Day 3 — Session 3A: Dental chart and treatments
+
+### Treatment data model: linked to appointments, never floating
+The treatments table has a NOT NULL foreign key to appointments. Every treatment record must reference a specific visit. Reasons: medical traceability (when was this observation made, by whom), billing alignment (treatments map to billable services on real appointments), and audit trail (defensible record of when a condition was diagnosed). The form forces the dentist to pick an appointment from a dropdown when adding a treatment.
+
+### Treatment access control: any treating dentist
+A dentist can view treatments for any patient they've had appointments with — not just treatments they personally created. Matches real clinic practice: dentists frequently cover for each other and continuity-of-care requires shared visibility. The middleware enforces this by joining against the appointments table at request time. Patients see only their own treatments. Receptionists and admins see anyone at their accessible branches.
+
+### Treatments: create and delete only, no edit
+A treatment record is a historical clinical observation. If a dentist later marks tooth #36 with a different condition, that's a new treatment record, not an edit of the old one. The chart shows the latest condition per tooth, but the full history is preserved. Hard delete (vs soft delete) was used for capstone simplicity; soft delete via `deleted_at` would be the production approach for medical records.
+
+### Condition metadata served from backend
+The list of valid condition types (caries, filling, crown, extraction, etc.) lives in a backend endpoint `/api/treatments/conditions` along with their display colors. The frontend reads this once and uses it for both dropdowns and chart color coding. Adding a new condition type later means adding one entry to the backend list — no frontend code change.
+
+### Custom-built SVG dental chart (not a library)
+The 32-tooth chart is implemented as raw SVG rectangles in a custom React component (~80 lines), using standard FDI notation (11-18 upper right, 21-28 upper left, 31-38 lower left, 41-48 lower right). Considered libraries like react-dental-chart and react-odontogram but chose custom build because: (1) full control over click behavior and color logic, (2) defensible as own work in the capstone, (3) no dependency risk, (4) library APIs would still need wrapping for our condition-color scheme. Chart shows the latest condition per tooth; clicking opens a side panel with full per-tooth history.
+
+### Dental chart uses patient anatomical perspective
+Chart renders "R" (patient's right side) on the viewer's left and "L" (patient's left side) on the viewer's right — standard convention in dental charting and medical imaging. FDI numbering reflects this: tooth 18 (upper right third molar) appears at the far left of the chart because it's on the patient's right side. Matches what dentists see in any clinic software or dental textbook. This is intentional and correct.
+
+### Dentist sees "My patients" filtered by appointment history
+The dentist's Patients tab queries appointments to derive the patient list (DISTINCT patient_id FROM appointments WHERE dentist_id = current_user). Each patient row also shows last_visit and total_appointments computed in the same query via MAX and COUNT. This means the patient list naturally only includes people the dentist has actually treated — no global patient directory.
+
+### Web tab navigation done with internal state, not router routes
+The dentist's web view switches between Appointments and Patients via React state in a wrapper component, not via React Router routes. Reasoning: both views are children of the same protected route (/dentist), share auth context, and don't benefit from independent URLs (a dentist visiting /dentist/patients via direct URL is unusual). Lighter than introducing nested routing for two top-level tabs.
+
+
+
+
+
+
+
+
 
 
 

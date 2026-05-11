@@ -322,4 +322,48 @@ router.post('/suggest', async (req, res) => {
   }
 });
 
+router.get('/_meta/my-patients', requireRole('dentist', 'admin'), async (req, res) => {
+  const role = req.user.role;
+  const userId = req.user.user_id;
+  const userBranches = req.user.branches || [];
+
+  try {
+    let query;
+    let params;
+
+    if (role === 'dentist') {
+      query = `
+        SELECT DISTINCT u.id, u.name, u.email, u.phone,
+               MAX(a.start_time) AS last_visit,
+               COUNT(a.id) AS total_appointments
+        FROM users u
+        JOIN appointments a ON a.patient_id = u.id
+        WHERE u.role = 'patient' AND a.dentist_id = ?
+        GROUP BY u.id, u.name, u.email, u.phone
+        ORDER BY last_visit DESC
+      `;
+      params = [userId];
+    } else {
+      if (userBranches.length === 0) return res.json({ patients: [] });
+      query = `
+        SELECT DISTINCT u.id, u.name, u.email, u.phone,
+               MAX(a.start_time) AS last_visit,
+               COUNT(a.id) AS total_appointments
+        FROM users u
+        JOIN appointments a ON a.patient_id = u.id
+        WHERE u.role = 'patient' AND a.branch_id IN (${userBranches.map(() => '?').join(',')})
+        GROUP BY u.id, u.name, u.email, u.phone
+        ORDER BY last_visit DESC
+      `;
+      params = userBranches;
+    }
+
+    const [rows] = await pool.query(query, params);
+    res.json({ patients: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
