@@ -114,11 +114,16 @@ CREATE TABLE treatments (
 CREATE TABLE risk_assessments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   patient_id INT NOT NULL,
+  assessed_by_role ENUM('patient','dentist') NOT NULL DEFAULT 'patient',
+  assessed_by_user_id INT NULL,
+  related_assessment_id INT NULL,
   score INT NOT NULL,
   risk_level ENUM('low','moderate','high') NOT NULL,
   factors JSON,
   assessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (patient_id) REFERENCES users(id)
+  FOREIGN KEY (patient_id) REFERENCES users(id),
+  FOREIGN KEY (assessed_by_user_id) REFERENCES users(id),
+  FOREIGN KEY (related_assessment_id) REFERENCES risk_assessments(id)
 );
 
 CREATE TABLE payments (
