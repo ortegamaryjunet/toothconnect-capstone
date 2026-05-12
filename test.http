@@ -353,3 +353,99 @@ Content-Type: application/json
 # Should 403 if Dr. Cruz has never seen Liza, OR succeed if she has
 GET http://localhost:4000/api/treatments/by-patient/6
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMl0sImlhdCI6MTc3ODQ4NzU0MywiZXhwIjoxNzc4NDg4NDQzfQ.SacqeHzNR_QElGT8yE4kPGbbmhDZDKidWYkuSAjCC9g
+
+###############################
+# CAMBRA risk assessments — session 3B
+###############################
+
+### Login as patient1 (Liza)
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "patient1@test.com",
+  "password": "password123",
+  "platform": "mobile"
+}
+
+### Patient gets the factor list they can self-assess
+GET http://localhost:4000/api/risk-assessments/factors
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NTU5OTIyLCJleHAiOjE3Nzg1NjA4MjJ9.BkX_F4K4e7gPw6IZlfFDn3GzCSs9ga4_Ejaflm1oKi0
+
+### Patient submits a self-assessment (low risk — mostly protective factors)
+POST http://localhost:4000/api/risk-assessments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NTU5OTIyLCJleHAiOjE3Nzg1NjA4MjJ9.BkX_F4K4e7gPw6IZlfFDn3GzCSs9ga4_Ejaflm1oKi0
+Content-Type: application/json
+
+{
+  "factor_codes": [
+    "fluoride_toothpaste_twice",
+    "fluoride_mouthwash",
+    "fluoridated_water",
+    "recent_cleaning"
+  ]
+}
+
+### Patient submits a higher-risk assessment
+POST http://localhost:4000/api/risk-assessments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NTU5OTIyLCJleHAiOjE3Nzg1NjA4MjJ9.BkX_F4K4e7gPw6IZlfFDn3GzCSs9ga4_Ejaflm1oKi0
+Content-Type: application/json
+
+{
+  "factor_codes": [
+    "recent_restorations",
+    "frequent_snacking",
+    "sugary_drinks_daily",
+    "dry_mouth",
+    "fluoride_toothpaste_twice"
+  ]
+}
+
+### Patient lists their assessments
+GET http://localhost:4000/api/risk-assessments/patient/6
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NTU5OTIyLCJleHAiOjE3Nzg1NjA4MjJ9.BkX_F4K4e7gPw6IZlfFDn3GzCSs9ga4_Ejaflm1oKi0
+
+### Patient gets their latest self-assessment
+GET http://localhost:4000/api/risk-assessments/patient/6/latest?role=patient
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NTU5OTIyLCJleHAiOjE3Nzg1NjA4MjJ9.BkX_F4K4e7gPw6IZlfFDn3GzCSs9ga4_Ejaflm1oKi0
+
+### Patient tries to view another patient's assessments (should 403)
+GET http://localhost:4000/api/risk-assessments/patient/7
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NTU5OTIyLCJleHAiOjE3Nzg1NjA4MjJ9.BkX_F4K4e7gPw6IZlfFDn3GzCSs9ga4_Ejaflm1oKi0
+
+### Login as dentist (Dr. Reyes)
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "dentist1@test.com",
+  "password": "password123",
+  "platform": "web"
+}
+
+### Dentist gets the full factor list (includes clinician-only items)
+GET http://localhost:4000/api/risk-assessments/factors?view=full
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODU2MDA2MywiZXhwIjoxNzc4NTYwOTYzfQ.rbGJtoIGbqAukOx2m0KuJ9jMpxKsn86k9cW0B478Kzk
+
+### Dentist verifies the patient's self-assessment with clinical observations
+# related_assessment_id should be the ID of the patient's latest self-assessment from earlier
+POST http://localhost:4000/api/risk-assessments
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODU2MDA2MywiZXhwIjoxNzc4NTYwOTYzfQ.rbGJtoIGbqAukOx2m0KuJ9jMpxKsn86k9cW0B478Kzk
+Content-Type: application/json
+
+{
+  "patient_id": 6,
+  "related_assessment_id": 2,
+  "factor_codes": [
+    "visible_cavities",
+    "recent_restorations",
+    "frequent_snacking",
+    "sugary_drinks_daily",
+    "visible_plaque",
+    "fluoride_toothpaste_twice"
+  ]
+}
+
+### Dentist lists Liza's assessments — should see both self-assessment + verification
+GET http://localhost:4000/api/risk-assessments/patient/6
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODU2MDA2MywiZXhwIjoxNzc4NTYwOTYzfQ.rbGJtoIGbqAukOx2m0KuJ9jMpxKsn86k9cW0B478Kzk

@@ -139,7 +139,6 @@ Patient home uses `useFocusEffect` instead of `useEffect` to refetch appointment
 
 2. Patient mobile "Upcoming" section showed nothing despite scheduled future appointments existing in the database. Root cause: filter code used `a.start_time.replace(' ', 'T') + 'Z'`, which assumed MySQL format. The API actually returns ISO format already (mysql2 + Express auto-conversion), so the replace operation produced malformed strings like `"2026-05-11T10:00:00.000ZZ"` which JavaScript parsed as Invalid Date. Filter `>= now` always returned false. Fix: drop the `.replace` and pass `start_time` directly to `new Date()`. Lesson: when the backend sends ISO, don't try to "fix" it — just consume it.
 
-
 ## Day 3 — Session 3A: Dental chart and treatments
 
 ### Treatment data model: linked to appointments, never floating
@@ -166,13 +165,33 @@ The dentist's Patients tab queries appointments to derive the patient list (DIST
 ### Web tab navigation done with internal state, not router routes
 The dentist's web view switches between Appointments and Patients via React state in a wrapper component, not via React Router routes. Reasoning: both views are children of the same protected route (/dentist), share auth context, and don't benefit from independent URLs (a dentist visiting /dentist/patients via direct URL is unusual). Lighter than introducing nested routing for two top-level tabs.
 
+## Day 3 — Session 3B: CAMBRA risk assessment and patient mobile views
 
+### CAMBRA: hybrid self-assessment plus clinical verification
+Patients self-assess on mobile (engagement and education); dentists verify on web (clinical accuracy and medical record). Both versions stored in `risk_assessments` with `assessed_by_role` to distinguish, and `related_assessment_id` to link verifications back to the original self-assessment. Patient sees their self-report and the dentist's verified version side by side on the dentist's profile view.
 
+Reasoning: CAMBRA was designed as a clinician-administered tool — patients cannot reliably self-assess clinical signs like white-spot lesions or visible plaque. But forcing the dentist to fill every form misses the patient-engagement value. Hybrid splits the work: patient inputs what they know (habits, history), dentist validates what they observe.
 
+### CAMBRA factor list derived from published literature
+The factor list and weights match standard CAMBRA scoring published by UCSF and adopted across evidence-based dental practice. Disease indicators weighted +3 each (visible cavities, white-spot lesions, recent restorations). Risk factors weighted +1 each (frequent snacking, sugary drinks, inadequate fluoride, dry mouth, irregular visits, visible plaque). Protective factors weighted -1 each (fluoride toothpaste, fluoride mouthwash, fluoridated water, xylitol gum, recent cleaning). Risk levels: score ≤1 low (6-month recall), 2-4 moderate (4-month recall), 5+ high (3-month recall).
 
+### Pure scoring module, no side effects
+The CAMBRA algorithm (`backend/src/services/cambra.js`) is a pure function module — no database access, no HTTP. `computeScore(codes)` takes an array of factor codes and returns score, risk level, category breakdown, and recommendations. This makes it trivial to test in isolation and easy to defend: given the same input it always produces the same output. The HTTP routes are thin plumbing around it.
 
+### Recompute on read
+When listing past assessments, the server recomputes breakdown and recommendations from the stored factor codes. Only the score, risk level, and raw factor codes are persisted. If recommendation text is updated later (e.g. new fluoride guidelines), old assessments display the new wording without a data migration. The score itself is also stored so historical totals never drift.
 
+### Clinician-only flag distinguishes who can answer what
+Each factor has a `clinician_only` boolean. Factors requiring visual examination (visible cavities, white-spot lesions, visible plaque) are marked clinician-only. The patient questionnaire endpoint filters these out; the dentist endpoint (`/factors?view=full`) returns the full list. The dentist's verification UI visually highlights clinician-only factors with an orange "Clinical" badge so the dentist focuses their adjustments there.
 
+### Mobile result screen renders score breakdown transparently
+Every CAMBRA result shows each contributing factor with its weight, grouped by category, before the recommendations. This is the visual evidence that scoring is rule-based and explainable. No "the AI decided" — the patient can see exactly why their score is what it is.
+
+### Treatment progress as patient-facing read-only view
+Patient mobile view of treatments uses the same `/api/treatments/by-patient/:id` endpoint as the dentist web view. Backend access control (a patient sees only their own; a dentist sees patients they've treated) means no separate endpoint needed. Treatments grouped by tooth with the current condition highlighted by the same color used on the dentist's dental chart, keeping the visual language consistent across platforms.
+
+### Modal-based dentist verification flow
+The dentist's "Verify and adjust" is a modal rather than a separate page. Reasoning: verification is part of reviewing a patient's record, not a separate task. The dentist is already on the patient profile when they verify, and keeping it inline preserves context. The modal pre-fills with the patient's selected factors so verification starts as adjustment rather than re-entry — matches the typical clinical workflow of "the patient said X, but I see Y."
 
 
 

@@ -4,6 +4,7 @@ import { listAppointments } from '../api/appointments';
 import styles from '../styles/DentistPatientProfile';
 import DentalChart from '../components/DentalChart';
 import ToothPanel from '../components/ToothPanel';
+import RiskPanel from '../components/RiskPanel';
 
 export default function DentistPatientProfile({ patient, onBack }) {
   const [treatments, setTreatments] = useState({});
@@ -65,42 +66,45 @@ export default function DentistPatientProfile({ patient, onBack }) {
       {loading && <div style={styles.loading}>Loading dental chart...</div>}
 
       {!loading && (
-        <div style={styles.layout}>
-          <div style={styles.chartCard}>
-            <h3 style={styles.sectionTitle}>Dental chart</h3>
-            <div style={styles.sectionSubtitle}>FDI notation. Click a tooth to view or add treatments.</div>
-            <DentalChart
-              treatmentsByTooth={treatments}
-              conditions={conditions}
-              selectedTooth={selectedTooth}
-              onSelectTooth={setSelectedTooth}
-            />
+        <>
+          <RiskPanel patientId={patient.id} />
 
-            <div style={styles.legend}>
-              {conditions.map((c) => (
-                <div key={c.code} style={styles.legendItem}>
-                  <span style={{ ...styles.legendSwatch, backgroundColor: c.color }} />
-                  <span>{c.label}</span>
-                </div>
-              ))}
+          <div style={styles.layout}>
+            <div style={styles.chartCard}>
+              <h3 style={styles.sectionTitle}>Dental chart</h3>
+              <div style={styles.sectionSubtitle}>FDI notation. Click a tooth to view or add treatments.</div>
+              <DentalChart
+                treatmentsByTooth={treatments}
+                conditions={conditions}
+                selectedTooth={selectedTooth}
+                onSelectTooth={setSelectedTooth}
+              />
+
+              <div style={styles.legend}>
+                {conditions.map((c) => (
+                  <div key={c.code} style={styles.legendItem}>
+                    <span style={{ ...styles.legendSwatch, backgroundColor: c.color }} />
+                    <span>{c.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.sidePanel}>
+              {selectedTooth ? (
+                <ToothPanel
+                  toothNumber={selectedTooth}
+                  treatments={treatments[selectedTooth] || []}
+                  conditions={conditions}
+                  appointments={appointments}
+                  onChange={handleTreatmentCreated}
+                />
+              ) : (
+                <div style={styles.sidePanelEmpty}>Click a tooth to see its history and add a treatment.</div>
+              )}
             </div>
           </div>
-
-          <div style={styles.sidePanel}>
-            {selectedTooth ? (
-              <ToothPanel
-                toothNumber={selectedTooth}
-                treatments={treatments[selectedTooth] || []}
-                conditions={conditions}
-                appointments={appointments}
-                onChange={handleTreatmentCreated}
-              />
-            ) : (
-              <div style={styles.sidePanelEmpty}>Click a tooth to see its history and add a treatment.</div>
-            )}
-          </div>
-
-        </div>
+        </>
       )}
     </div>
   );

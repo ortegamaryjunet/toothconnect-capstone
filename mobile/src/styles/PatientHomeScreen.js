@@ -162,6 +162,32 @@ const styles = StyleSheet.create({
         fontSize: 13,
         textAlign: 'center',
         padding: 20
+    },
+    featureCard: {
+        backgroundColor: '#fff',
+        padding: 14,
+        borderRadius: 12,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+    },
+    featureCardTitle: {
+        color: '#1a365d',
+        fontSize: 15,
+        fontWeight: '600'
+    },
+    featureCardSubtitle: {
+        color: '#718096',
+        fontSize: 12,
+        marginTop: 3
+    },
+    featureCardArrow: {
+        color: '#2c7a7b',
+        fontSize: 20,
+        marginLeft: 12
     }
 });
 

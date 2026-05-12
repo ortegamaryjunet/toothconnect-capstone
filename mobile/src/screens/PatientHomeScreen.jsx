@@ -93,6 +93,28 @@ export default function PatientHomeScreen({ navigation }) {
           <Text style={styles.bookCardArrow}>→</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.featureCard}
+          onPress={() => navigation.navigate('RiskAssessment')}
+        >
+          <View style={styles.bookCardLeft}>
+            <Text style={styles.featureCardTitle}>Dental risk assessment</Text>
+            <Text style={styles.featureCardSubtitle}>Self-assess your caries risk and see recommendations</Text>
+          </View>
+          <Text style={styles.featureCardArrow}>→</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.featureCard}
+          onPress={() => navigation.navigate('TreatmentProgress')}
+        >
+          <View style={styles.bookCardLeft}>
+            <Text style={styles.featureCardTitle}>Treatment progress</Text>
+            <Text style={styles.featureCardSubtitle}>View your treatments per tooth</Text>
+          </View>
+          <Text style={styles.featureCardArrow}>→</Text>
+        </TouchableOpacity>
+
         <Text style={styles.sectionTitle}>Upcoming</Text>
         {loading ? (
           <Text style={styles.apptsLoading}>Loading...</Text>
