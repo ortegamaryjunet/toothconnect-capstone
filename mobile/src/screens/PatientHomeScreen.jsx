@@ -6,16 +6,19 @@ import { useAuth } from '../auth/AuthContext';
 import { listAppointments, cancelAppointment } from '../api/appointments';
 import { formatRelativeDate, formatTimeOnly } from '../utils/datetime';
 import styles from '../styles/PatientHomeScreen';
+import { getUnreadCount } from '../api/notifications';
 
 export default function PatientHomeScreen({ navigation }) {
   const { user, logout } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       fetchAppointments();
+      fetchUnreadCount();
     }, [])
   );
 
@@ -30,6 +33,13 @@ export default function PatientHomeScreen({ navigation }) {
       setRefreshing(false);
     }
   }
+
+  async function fetchUnreadCount() {
+  try {
+    const count = await getUnreadCount();
+    setUnreadCount(count);
+  } catch {}
+}
 
   function onRefresh() {
     setRefreshing(true);
@@ -68,11 +78,36 @@ export default function PatientHomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ToothConnect</Text>
-        <TouchableOpacity onPress={logout}>
-          <Text style={styles.logout}>Sign out</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+            <View style={{ position: 'relative' }}>
+              <Text style={{ fontSize: 22, color: '#fff' }}>🔔</Text>
+              {unreadCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -8,
+                  backgroundColor: '#e53e3e',
+                  borderRadius: 999,
+                  paddingHorizontal: 5,
+                  paddingVertical: 1,
+                  minWidth: 18,
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout}>
+            <Text style={styles.logout}>Sign out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -111,6 +146,17 @@ export default function PatientHomeScreen({ navigation }) {
           <View style={styles.bookCardLeft}>
             <Text style={styles.featureCardTitle}>Treatment progress</Text>
             <Text style={styles.featureCardSubtitle}>View your treatments per tooth</Text>
+          </View>
+          <Text style={styles.featureCardArrow}>→</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.featureCard}
+          onPress={() => navigation.navigate('MessagesList')}
+        >
+          <View style={styles.bookCardLeft}>
+            <Text style={styles.featureCardTitle}>Messages</Text>
+            <Text style={styles.featureCardSubtitle}>Chat with the clinic reception</Text>
           </View>
           <Text style={styles.featureCardArrow}>→</Text>
         </TouchableOpacity>

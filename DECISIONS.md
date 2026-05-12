@@ -212,6 +212,38 @@ The notification system uses persistent storage (notifications table) as the sou
 ### Defense framing
 "Push notification persistence and delivery are fully implemented. Expo Go's SDK 53 limitation means receiving notifications requires an EAS development build, which is part of the standard production deployment workflow. The code is unchanged whether running in Expo Go (in-app notifications only) or an EAS build (both in-app and push). This means the infrastructure can be validated independently of the testing environment."
 
+## Day 4 — Session 4A: Messaging, in-app notifications, and recall cron
+
+### Messaging restricted to patient ↔ receptionist
+Initial design considered patient-admin and dentist-receptionist messaging as well. Narrowed to patient ↔ receptionist only for v1 because that's where most operational clinic communication happens (scheduling questions, reminders, follow-ups). Dentists communicate with patients in-person during appointments; admins handle escalations through other channels. The validPairs constant in `routes/messages.js` enforces this server-side — UI restrictions alone aren't enough.
+
+### Patient registration ties to a branch (home_branch_id + user_branches)
+Patients pick a preferred branch during mobile registration. This sets both `home_branch_id` (single value) and inserts a row in `user_branches` (multi-branch model). Reasoning: receptionists need to know which patients are "theirs" before any appointments exist, and the home_branch_id lets new patients message reception with questions before booking. The user_branches insertion keeps the multi-branch model consistent — patients who later book at a different branch will get a second row in user_branches via the appointment flow.
+
+### Branch-scoped messaging access
+A patient can message a receptionist only if the patient has had an appointment at that receptionist's branch, OR if the receptionist works at the patient's home branch. Enforced in both the contacts endpoint (filters list) and the POST endpoint (rejects unauthorized sends with 403). Prevents cross-branch privacy leaks where a patient at QC could message a receptionist at Makati they have no relationship with.
+
+### Polling-based message updates (not WebSocket)
+Both web and mobile clients poll for messages — mobile every 6 seconds when a thread is open, web every 8 seconds. Considered WebSocket for real-time updates but rejected for v1: polling is simpler to deploy, doesn't require sticky-session config on Railway, and the UX is "good enough" for clinic-pace messaging (not Slack-pace). WebSocket is documented as v2 upgrade path.
+
+### Threads are derived, not stored
+No `threads` table. A thread is the set of messages where `(sender_id, receiver_id)` is the same pair in either direction. The `/threads` endpoint groups by `MAX(id)` per unique pair to find each conversation's latest message. Trade-off: harder to add thread-level metadata later (last-read marker, archive flag) but simpler for v1 and matches how most chat apps actually model 1-on-1 conversations under the hood.
+
+### Notification table as single source of truth
+Every notification — message arrival, appointment reminders, recall reminders — writes to the notifications table. Mobile reads from this table via polling on focus. This means in-app notifications work even without push, and push (when re-enabled via EAS dev build) just becomes an additional delivery channel for the same data. Push and in-app never disagree because they both reflect the same database state.
+
+### Cron jobs: hourly for appointments, daily for recall
+Two schedules. The hourly job handles 24-hour and 2-hour appointment reminders together (same query, different time windows). The daily job runs the recall reminder check, comparing each patient's last completed appointment against their CAMBRA-driven recall interval (low 6mo, moderate 4mo, high 3mo, default 6mo if no CAMBRA exists yet). Both schedules write to the same notifications table.
+
+### Cron deduplication via "reminder_sent" flags
+Each appointment has `reminder_sent_24h` and `reminder_sent_2h` boolean columns set when reminders fire. The cron query excludes already-sent appointments. For recall reminders, `users.recall_reminder_sent_at` tracks the last reminder timestamp; the cron requires at least 30 days since the last recall to avoid spamming patients who can't book immediately.
+
+### Manual cron trigger endpoints for testing
+Cron schedules don't fire instantly — testing "every 8 AM" in development is awkward. Added admin-only POST `/api/cron-admin/run-appointment-reminders` and `/api/cron-admin/run-recall-reminders` endpoints that execute the same logic immediately. Useful for development; should be gated or removed in production.
+
+### Push notifications stay deferred to EAS dev build
+Session 3.5 built the push infrastructure. Session 4A uses in-app notifications only because push doesn't work in Expo Go on SDK 53. Enabling push in production means uncommenting three lines in AuthContext after EAS dev builds are available. No backend changes needed.
+
 
 
 

@@ -71,6 +71,33 @@ const styles = StyleSheet.create({
     linkText: {
         color: '#3182ce',
         fontSize: 13
+    },
+    branchPicker: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 8,
+        marginTop: 4
+    },
+    branchChip: {
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#cbd5e0',
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 999
+    },
+    branchChipActive: {
+        backgroundColor: '#1a365d',
+        borderColor: '#1a365d'
+    },
+    branchChipText: {
+        fontSize: 13,
+        color: '#4a5568'
+    },
+    branchChipTextActive: {
+        color: '#fff',
+        fontWeight: '500'
     }
 });
 

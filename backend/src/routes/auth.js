@@ -64,13 +64,34 @@ function setRefreshCookie(res, token) {
   });
 }
 
+router.get('/branches', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, name, address FROM branches ORDER BY name ASC'
+    );
+    res.json({ branches: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.post('/register/start', async (req, res) => {
-  const { email, name, password, phone } = req.body;
+  const { email, name, password, phone, branch_id } = req.body;
   if (!email || !name || !password) {
     return res.status(400).json({ message: 'Email, name, and password are required' });
   }
   if (password.length < 8) {
     return res.status(400).json({ message: 'Password must be at least 8 characters' });
+  }
+
+  if (!branch_id) {
+     res.status(400).json({ message: 'branch_id is required' });
+  }
+
+  const [branchCheck] = await pool.query('SELECT id FROM branches WHERE id = ?', [branch_id]);
+  if (branchCheck.length === 0) {
+    return res.status(400).json({ message: 'Invalid branch_id' });
   }
 
   try {
@@ -97,10 +118,11 @@ router.post('/register/start', async (req, res) => {
     const pendingExpires = toMySQLDateTime(new Date(Date.now() + 30 * 60 * 1000));
 
     await pool.query(`DELETE FROM pending_registrations WHERE email = ? AND intended_role = 'patient'`, [email]);
+    
     await pool.query(
-      `INSERT INTO pending_registrations (email, name, phone, password_hash, intended_role, expires_at)
+      `INSERT INTO pending_registrations (email, name, phone, branch_id, password_hash, intended_role, expires_at)
        VALUES (?, ?, ?, ?, 'patient', ?)`,
-      [email, name, phone || null, passwordHash, pendingExpires]
+      [email, name, phone, branch_id || null, passwordHash, pendingExpires]
     );
 
     await sendOTPEmail({ to: email, code, purpose: 'register' });
@@ -159,6 +181,18 @@ router.post('/register/verify', async (req, res) => {
       [pending.name, email, pending.password_hash, pending.phone]
     );
     const userId = result.insertId;
+    const patientBranchId = pendingRow.branch_id;
+
+      if (patientBranchId) {
+        await pool.query(
+          'UPDATE users SET home_branch_id = ? WHERE id = ?',
+          [patientBranchId, newUserId]
+        );
+        await pool.query(
+          'INSERT INTO user_branches (user_id, branch_id) VALUES (?, ?)',
+          [newUserId, patientBranchId]
+        );
+      }
 
     await pool.query(`DELETE FROM pending_registrations WHERE email = ?`, [email]);
 

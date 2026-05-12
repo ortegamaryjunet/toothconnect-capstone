@@ -482,3 +482,105 @@ Content-Type: application/json
   "title": "Test from backend",
   "body": "This is a test."
 }
+
+###############################
+# Messaging — session 4A
+###############################
+
+### Login as patient1 (Liza)
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "patient1@test.com",
+  "password": "password123",
+  "platform": "mobile"
+}
+
+### Patient sends message to receptionist 1 (Anna Santos, id 4)
+POST http://localhost:4000/api/messages
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NjAwMjc0LCJleHAiOjE3Nzg2MDExNzR9.DxkpRxlqKdGFuHk2nbuZ23SHSZSjYBJnX6E_XbMfYnM
+Content-Type: application/json
+
+{
+  "receiver_id": 4,
+  "content": "Hi, I need to reschedule my appointment."
+}
+
+### Patient tries to message a dentist (should 403)
+POST http://localhost:4000/api/messages
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NjAwMjc0LCJleHAiOjE3Nzg2MDExNzR9.DxkpRxlqKdGFuHk2nbuZ23SHSZSjYBJnX6E_XbMfYnM
+Content-Type: application/json
+
+{
+  "receiver_id": 2,
+  "content": "Hello doctor"
+}
+
+### Login as receptionist 1
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "recep1@test.com",
+  "password": "password123",
+  "platform": "web"
+}
+
+### Receptionist lists their threads
+GET http://localhost:4000/api/messages/threads
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NjAwMjk5LCJleHAiOjE3Nzg2MDExOTl9.SiJVcaHK6WOVO0ONTK7yFIISGHrUF1E7JO0qMKlXdKE
+
+### Receptionist sees the thread with Liza
+GET http://localhost:4000/api/messages/thread/6
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NjAwMjk5LCJleHAiOjE3Nzg2MDExOTl9.SiJVcaHK6WOVO0ONTK7yFIISGHrUF1E7JO0qMKlXdKE
+
+### Receptionist replies
+POST http://localhost:4000/api/messages
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NjAwMjk5LCJleHAiOjE3Nzg2MDExOTl9.SiJVcaHK6WOVO0ONTK7yFIISGHrUF1E7JO0qMKlXdKE
+Content-Type: application/json
+
+{
+  "receiver_id": 6,
+  "content": "Of course. What date works for you?"
+}
+
+### Receptionist marks thread as read
+PATCH http://localhost:4000/api/messages/thread/6/read
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NjAwMjk5LCJleHAiOjE3Nzg2MDExOTl9.SiJVcaHK6WOVO0ONTK7yFIISGHrUF1E7JO0qMKlXdKE
+
+### Patient checks the thread
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "patient1@test.com",
+  "password": "password123",
+  "platform": "mobile"
+}
+
+###
+GET http://localhost:4000/api/messages/thread/4
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NjAwMzMyLCJleHAiOjE3Nzg2MDEyMzJ9.UtWS55o29Ou9syH4ZG-n6uikZmXTe_rHOJm-a0NCvao
+
+###############################
+# Cron job triggers (admin only)
+###############################
+
+### Login as admin
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "password123",
+  "platform": "web"
+}
+
+### Manually trigger appointment reminders
+POST http://localhost:4000/api/cron-admin/run-appointment-reminders
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODYwMDM1MSwiZXhwIjoxNzc4NjAxMjUxfQ.Nn4Y878g-ZwDqwYK6s6ZYPJAZofPF0Chv3wG0nPeSmU
+
+### Manually trigger recall reminders
+POST http://localhost:4000/api/cron-admin/run-recall-reminders
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODYwMDM1MSwiZXhwIjoxNzc4NjAxMjUxfQ.Nn4Y878g-ZwDqwYK6s6ZYPJAZofPF0Chv3wG0nPeSmU

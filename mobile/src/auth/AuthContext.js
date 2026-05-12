@@ -61,8 +61,8 @@ export function AuthProvider({ children }) {
     return res.data.user;
   }
 
-  async function registerStart(email, name, password) {
-    await api.post('/auth/register/start', { email, name, password });
+  async function registerStart(email, name, password, branch_id) {
+    await api.post('/auth/register/start', { email, name, password, branch_id });
   }
 
   async function registerVerify(email, code) {

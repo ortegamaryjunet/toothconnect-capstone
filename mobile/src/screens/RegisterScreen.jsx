@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
+import api from '../api/axios';
 import styles from '../styles/RegisterScreen';
 
 export default function RegisterScreen({ navigation }) {
@@ -11,8 +12,23 @@ export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
+  const [branchId, setBranchId] = useState(null);
+  const [branches, setBranches] = useState([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadBranches();
+  }, []);
+
+  async function loadBranches() {
+    try {
+      const res = await api.get('/auth/branches');
+      setBranches(res.data.branches);
+    } catch (err) {
+      // silent — handled when user tries to submit
+    }
+  }
 
   async function handleStart() {
     setError('');
@@ -20,9 +36,13 @@ export default function RegisterScreen({ navigation }) {
       setError('Password must be at least 8 characters');
       return;
     }
+    if (!branchId) {
+      setError('Please pick your preferred branch');
+      return;
+    }
     setSubmitting(true);
     try {
-      await registerStart(email.trim().toLowerCase(), name.trim(), password);
+      await registerStart(email.trim().toLowerCase(), name.trim(), password, branchId);
       setStep('otp');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
@@ -49,7 +69,7 @@ export default function RegisterScreen({ navigation }) {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.inner}>
+        <ScrollView contentContainerStyle={styles.inner}>
           <Text style={styles.title}>{step === 'form' ? 'Create account' : 'Verify email'}</Text>
           <Text style={styles.subtitle}>
             {step === 'form'
@@ -78,6 +98,30 @@ export default function RegisterScreen({ navigation }) {
                 onChangeText={setPassword}
                 secureTextEntry
               />
+
+              <Text style={styles.label}>Preferred branch</Text>
+              <View style={styles.branchPicker}>
+                {branches.map(b => {
+                  const isActive = branchId === b.id;
+                  return (
+                    <TouchableOpacity
+                      key={b.id}
+                      onPress={() => setBranchId(b.id)}
+                      style={[
+                        styles.branchChip,
+                        isActive && styles.branchChipActive,
+                      ]}
+                    >
+                      <Text style={[
+                        styles.branchChipText,
+                        isActive && styles.branchChipTextActive,
+                      ]}>
+                        {b.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -111,7 +155,7 @@ export default function RegisterScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.link}>
             <Text style={styles.linkText}>Already have an account? Sign in</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

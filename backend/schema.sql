@@ -23,6 +23,7 @@ CREATE TABLE users (
   push_token_updated_at TIMESTAMP NULL DEFAULT NULL,
   home_branch_id INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  recall_reminder_sent_at TIMESTAMP NULL;
   FOREIGN KEY (home_branch_id) REFERENCES branches(id)
 );
 
@@ -94,6 +95,8 @@ CREATE TABLE appointments (
   service_id INT NOT NULL,
   start_time DATETIME NOT NULL,
   duration_min INT NOT NULL,
+  reminder_sent_24h BOOLEAN DEFAULT FALSE;
+  reminder_sent_1h BOOLEAN DEFAULT FALSE;
   status ENUM('scheduled','completed','cancelled','no_show') DEFAULT 'scheduled',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (branch_id) REFERENCES branches(id),
@@ -156,8 +159,12 @@ CREATE TABLE notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   type VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NULL,
   body TEXT NOT NULL,
+  related_type VARCHAR(50) NULL,
+  related_id INT NULL,
   is_read BOOLEAN DEFAULT FALSE,
+  read_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -205,6 +212,8 @@ CREATE TABLE pending_registrations (
   intended_role ENUM('patient','admin') NOT NULL,
   expires_at DATETIME NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  branch_id INT NULL,
+  FOREIGN KEY (branch_id) REFERENCES branches(id),
   INDEX idx_email_role (email, intended_role)
 );
 

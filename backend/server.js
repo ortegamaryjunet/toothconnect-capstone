@@ -46,12 +46,23 @@ app.use('/api/risk-assessments', riskAssessmentRoutes);
 const pushRoutes = require('./src/routes/push');
 app.use('/api/push', pushRoutes);
 
+const messageRoutes = require('./src/routes/messages');
+app.use('/api/messages', messageRoutes);
+
+const notificationRoutes = require('./src/routes/notifications');
+app.use('/api/notifications', notificationRoutes);
+
+const cronAdminRoutes = require('./src/routes/cronAdmin');
+app.use('/api/cron-admin', cronAdminRoutes);
+
 app.get('/api/admin/ping',  authenticate, requireRole('admin'),        (req, res) => res.json({ message: 'Admin only', user: req.user }));
 app.get('/api/dentist/ping',authenticate, requireRole('dentist'),      (req, res) => res.json({ message: 'Dentist only', user: req.user }));
 app.get('/api/recep/ping',  authenticate, requireRole('receptionist'), (req, res) => res.json({ message: 'Receptionist only', user: req.user }));
 app.get('/api/patient/ping',authenticate, requireRole('patient'),      (req, res) => res.json({ message: 'Patient only', user: req.user }));
 
 const PORT = process.env.PORT || 4000;
+const { startCronJobs } = require('./src/services/cron');
+startCronJobs();
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Mock email mode: ${process.env.MOCK_EMAIL === 'true' ? 'ON (OTPs print to console)' : 'OFF (using Resend)'}`);

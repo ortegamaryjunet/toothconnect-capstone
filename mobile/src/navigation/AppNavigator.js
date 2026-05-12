@@ -11,6 +11,9 @@ import BookConfirmScreen from '../screens/BookConfirmScreen';
 import RiskAssessmentScreen from '../screens/RiskAssessmentScreen';
 import RiskResultScreen from '../screens/RiskResultScreen';
 import TreatmentProgressScreen from '../screens/TreatmentProgressScreen';
+import MessagesListScreen from '../screens/MessagesListScreen';
+import MessageThreadScreen from '../screens/MessageThreadScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,6 +40,9 @@ export default function AppNavigator() {
             <Stack.Screen name="RiskAssessment" component={RiskAssessmentScreen} />
             <Stack.Screen name="RiskResult" component={RiskResultScreen} />
             <Stack.Screen name="TreatmentProgress" component={TreatmentProgressScreen} />
+            <Stack.Screen name="MessagesList" component={MessagesListScreen} />
+            <Stack.Screen name="MessageThread" component={MessageThreadScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
           </>
         ) : (
           <>
