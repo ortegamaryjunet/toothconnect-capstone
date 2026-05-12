@@ -449,3 +449,36 @@ Content-Type: application/json
 ### Dentist lists Liza's assessments — should see both self-assessment + verification
 GET http://localhost:4000/api/risk-assessments/patient/6
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODU2MDA2MywiZXhwIjoxNzc4NTYwOTYzfQ.rbGJtoIGbqAukOx2m0KuJ9jMpxKsn86k9cW0B478Kzk
+
+###############################
+# Push notifications — session 3.5
+###############################
+
+### Login as patient
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "patient1@test.com",
+  "password": "password123",
+  "platform": "mobile"
+}
+
+### Register a fake push token (will fail validation — that's expected)
+POST http://localhost:4000/api/push/token
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NTc3NzA2LCJleHAiOjE3Nzg1Nzg2MDZ9.7VXED19cLTc5pWIg-IDmZTbSw_IJABqZZnjD4tYqTcY
+Content-Type: application/json
+
+{
+  "push_token": "fake-token-not-valid"
+}
+
+### Try to send test push to self (will skip because no real token yet)
+POST http://localhost:4000/api/push/_test-self
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJyb2xlIjoicGF0aWVudCIsImJyYW5jaGVzIjpbXSwiaWF0IjoxNzc4NTc3NzA2LCJleHAiOjE3Nzg1Nzg2MDZ9.7VXED19cLTc5pWIg-IDmZTbSw_IJABqZZnjD4tYqTcY
+Content-Type: application/json
+
+{
+  "title": "Test from backend",
+  "body": "This is a test."
+}

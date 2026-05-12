@@ -19,6 +19,9 @@ CREATE TABLE users (
   phone VARCHAR(30),
   email_verified BOOLEAN DEFAULT FALSE,
   must_change_password BOOLEAN DEFAULT FALSE,
+  push_token VARCHAR(255) NULL,
+  push_token_updated_at TIMESTAMP NULL DEFAULT NULL,
+  home_branch_id INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (home_branch_id) REFERENCES branches(id)
 );
@@ -204,3 +207,4 @@ CREATE TABLE pending_registrations (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_email_role (email, intended_role)
 );
+

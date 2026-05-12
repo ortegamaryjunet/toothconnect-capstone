@@ -43,6 +43,9 @@ app.use('/api/treatments', treatmentRoutes);
 const riskAssessmentRoutes = require('./src/routes/riskAssessments');
 app.use('/api/risk-assessments', riskAssessmentRoutes);
 
+const pushRoutes = require('./src/routes/push');
+app.use('/api/push', pushRoutes);
+
 app.get('/api/admin/ping',  authenticate, requireRole('admin'),        (req, res) => res.json({ message: 'Admin only', user: req.user }));
 app.get('/api/dentist/ping',authenticate, requireRole('dentist'),      (req, res) => res.json({ message: 'Dentist only', user: req.user }));
 app.get('/api/recep/ping',  authenticate, requireRole('receptionist'), (req, res) => res.json({ message: 'Receptionist only', user: req.user }));

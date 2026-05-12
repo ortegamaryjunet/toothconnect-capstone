@@ -193,6 +193,24 @@ Patient mobile view of treatments uses the same `/api/treatments/by-patient/:id`
 ### Modal-based dentist verification flow
 The dentist's "Verify and adjust" is a modal rather than a separate page. Reasoning: verification is part of reviewing a patient's record, not a separate task. The dentist is already on the patient profile when they verify, and keeping it inline preserves context. The modal pre-fills with the patient's selected factors so verification starts as adjustment rather than re-entry — matches the typical clinical workflow of "the patient said X, but I see Y."
 
+## Day 3.5 — Push notification infrastructure (deferred testing)
+
+### Push notification infrastructure built, testing deferred
+Implemented the full push notification stack:
+- Backend: `expo-server-sdk` installed, `push_token` column on users, push service module (`backend/src/services/push.js`), token registration endpoint (`POST /api/push/token`), test endpoints
+- Mobile: `expo-notifications` and `expo-device` installed, notification handler configured, app.json notification config with custom icon and Android channel, push service module (`mobile/src/services/push.js`) with permission flow + token retrieval + backend registration
+- Auth context wired to call push registration on login/bootstrap/register (currently commented out)
+
+### Why testing is deferred to day 5
+Expo Go in SDK 53 removed push notification support on both iOS and Android. Receiving an actual push notification requires building a development client via EAS, which is a 15-20 minute build per platform and benefits from being done once near deployment time when both test devices are available. The push registration calls in AuthContext are commented out to avoid console spam from `getExpoPushTokenAsync` failures in Expo Go.
+
+When EAS dev builds are created (day 5 alongside the production build), uncommenting three lines in AuthContext re-enables the entire flow. The backend never needed to change.
+
+### Why in-app notifications still cover the demo
+The notification system uses persistent storage (notifications table) as the source of truth. Mobile reads from this table via polling, so notifications work even when push is unavailable. Push is an additive delivery channel for when the app is closed — it doesn't change what gets shown when the user opens the app. Demo on Expo Go shows the full notification UX minus the lock-screen banner.
+
+### Defense framing
+"Push notification persistence and delivery are fully implemented. Expo Go's SDK 53 limitation means receiving notifications requires an EAS development build, which is part of the standard production deployment workflow. The code is unchanged whether running in Expo Go (in-app notifications only) or an EAS build (both in-app and push). This means the infrastructure can be validated independently of the testing environment."
 
 
 

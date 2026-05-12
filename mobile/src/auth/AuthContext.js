@@ -6,6 +6,7 @@ import api, {
   getRefreshToken,
   clearRefreshToken,
 } from '../api/axios';
+import { registerForPushNotificationsAsync, clearPushToken } from '../services/push';
 
 const AuthContext = createContext(null);
 
@@ -38,6 +39,9 @@ export function AuthProvider({ children }) {
         email: meRes.data.email,
         branches: meRes.data.branches,
       });
+      //registerForPushNotificationsAsync().catch(err => {
+      //  console.log('[push] Registration failed during bootstrap:', err.message);
+      //});
     } catch (err) {
       await clearRefreshToken();
       setUser(null);
@@ -51,6 +55,9 @@ export function AuthProvider({ children }) {
     setAccessToken(res.data.accessToken);
     await saveRefreshToken(res.data.refreshToken);
     setUser(res.data.user);
+    //registerForPushNotificationsAsync().catch(err => {
+    //  console.log('[push] Registration failed during login:', err.message);
+    //});
     return res.data.user;
   }
 
@@ -63,10 +70,18 @@ export function AuthProvider({ children }) {
     setAccessToken(res.data.accessToken);
     await saveRefreshToken(res.data.refreshToken);
     setUser(res.data.user);
+    //registerForPushNotificationsAsync().catch(err => {
+    //  console.log('[push] Registration failed during register:', err.message);
+    //});
     return res.data.user;
   }
 
   async function logout() {
+    try {
+      await clearPushToken();
+    } catch (err) {
+      // ignore
+    }
     try {
       const refreshToken = await getRefreshToken();
       await api.post('/auth/logout', { platform: 'mobile', refreshToken });
