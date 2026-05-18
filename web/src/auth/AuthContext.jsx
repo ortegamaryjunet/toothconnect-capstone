@@ -22,6 +22,7 @@ export function AuthProvider({ children }) {
         role: meRes.data.role,
         name: meRes.data.name,
         email: meRes.data.email,
+        home_branch_id: meRes.data.home_branch_id,
         branches: meRes.data.branches,
         must_change_password: meRes.data.must_change_password,
       });

@@ -7,7 +7,7 @@ async function seed() {
   await pool.query('SET FOREIGN_KEY_CHECKS = 0');
   const tables = [
     'refresh_tokens', 'audit_logs', 'inventory', 'notifications', 'messages',
-    'payments', 'risk_assessments', 'treatments', 'appointments',
+    'payments', 'patient_feedback', 'treatments', 'appointments',
     'dentist_schedules', 'dentist_services', 'services', 'otp_codes', 
     'pending_registrations', 'access_grants', 'user_branches', 'users', 'branches',
   ];
@@ -16,9 +16,9 @@ async function seed() {
   await pool.query('SET FOREIGN_KEY_CHECKS = 1');
 
   await pool.query(
-    `INSERT INTO branches (name, address, phone) VALUES
-     ('Quezon City', '123 Sample St, QC', '02-1234-5678'),
-     ('Makati', '456 Sample Ave, Makati', '02-8765-4321')`
+    `INSERT INTO branches (name, address, phone, contact_person, date_opened, operating_hours, years_active, status) VALUES
+     ('Las Piñas', '123 Sample St, Las Piñas', '02-1234-5678', 'Anna Santos', '2018-06-15', 'Mon - Sat, 9:00 AM - 5:00 PM', '15+ years', 'Active'),
+     ('Makati', '456 Sample Ave, Makati', '02-8765-4321', 'Rica Tan', '2017-04-10', 'Mon - Sat, 9:00 AM - 5:00 PM', '20+ years', 'Active')`
   );
 
   const users = [
@@ -49,12 +49,12 @@ async function seed() {
   );
 
   await pool.query(
-    `INSERT INTO services (name, duration_min, price) VALUES
-     ('Cleaning', 30, 1500.00),
-     ('Tooth extraction', 45, 2500.00),
-     ('Filling', 45, 2000.00),
-     ('Root canal', 90, 8000.00),
-     ('Consultation', 20, 500.00)`
+    `INSERT INTO services (name, category, duration_min, price) VALUES
+     ('Cleaning', 'General Dentistry', 30, 1500.00),
+     ('Tooth extraction', 'Surgery', 45, 2500.00),
+     ('Filling', 'General Dentistry', 45, 2000.00),
+     ('Root canal', 'General Dentistry', 90, 8000.00),
+     ('Consultation', 'General Dentistry', 20, 500.00)`
   );
 
   await pool.query(

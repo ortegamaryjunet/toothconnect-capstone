@@ -10,13 +10,18 @@ export async function getAppointment(id) {
   return res.data.appointment;
 }
 
+export async function getAppointmentMeta() {
+  const res = await api.get('/appointments/_meta/services-and-branches');
+  return res.data;
+}
+
 export async function createAppointment(payload) {
   const res = await api.post('/appointments', payload);
   return res.data;
 }
 
-export async function cancelAppointment(id) {
-  const res = await api.patch(`/appointments/${id}/cancel`);
+export async function cancelAppointment(id, body = {}) {
+  const res = await api.patch(`/appointments/${id}/cancel`, body);
   return res.data;
 }
 
@@ -27,5 +32,10 @@ export async function setAppointmentStatus(id, status) {
 
 export async function suggestSlots(payload) {
   const res = await api.post('/appointments/suggest', payload);
+  return res.data;
+}
+
+export async function saveAppointmentNote(id, note) {
+  const res = await api.patch(`/appointments/${id}/note`, { note });
   return res.data;
 }

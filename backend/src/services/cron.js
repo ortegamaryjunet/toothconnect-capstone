@@ -1,6 +1,5 @@
 const cron = require('node-cron');
 const pool = require('./../config/db');
-const cambra = require('./cambra');
 
 async function createNotification(userId, type, title, body, relatedType, relatedId) {
   await pool.query(
@@ -97,19 +96,7 @@ async function sendRecallReminders() {
       const monthsSinceLastVisit =
         (Date.now() - lastVisitDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
 
-      const [latestRiskRows] = await pool.query(
-        `SELECT factors, risk_level FROM risk_assessments
-         WHERE patient_id = ? AND assessed_by_role = 'dentist'
-         ORDER BY assessed_at DESC LIMIT 1`,
-        [p.id]
-      );
-
       let recallMonths = 6;
-      if (latestRiskRows.length > 0) {
-        const level = latestRiskRows[0].risk_level;
-        const rec = cambra.getRecommendations(level);
-        recallMonths = rec.recall_months;
-      }
 
       if (monthsSinceLastVisit < recallMonths) continue;
 

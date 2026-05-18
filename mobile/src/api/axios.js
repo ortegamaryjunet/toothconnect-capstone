@@ -1,8 +1,12 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const api = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
+  headers: {
+    'X-App-OS': Platform.OS === 'ios' ? 'iOS' : 'Android',
+  },
 });
 
 let accessToken = null;

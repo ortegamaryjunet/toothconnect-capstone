@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../api/axios';
+import { getBranchCity } from '../utils/branch';
 import styles from '../styles/BookServiceScreen';
 
 export default function BookServiceScreen({ navigation }) {
@@ -35,10 +36,12 @@ export default function BookServiceScreen({ navigation }) {
       setError('Please pick a branch first');
       return;
     }
+    const branch = branches.find(b => b.id === selectedBranch);
+
     navigation.navigate('BookSuggestions', {
       service,
       branchId: selectedBranch,
-      branchName: branches.find(b => b.id === selectedBranch)?.name,
+      branchName: getBranchCity(branch),
     });
   }
 
@@ -48,10 +51,14 @@ export default function BookServiceScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book appointment</Text>
+        <Text style={styles.headerTitle}>Book Appointment</Text>
       </View>
 
-      <ScrollView style={styles.body}>
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+      >
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {loading ? (
@@ -69,7 +76,7 @@ export default function BookServiceScreen({ navigation }) {
                   <Text
                     style={[styles.branchChipText, selectedBranch === b.id && styles.branchChipTextActive]}
                   >
-                    {b.name}
+                    {getBranchCity(b)}
                   </Text>
                 </TouchableOpacity>
               ))}

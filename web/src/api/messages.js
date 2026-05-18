@@ -19,3 +19,13 @@ export async function markThreadRead(otherUserId) {
   const res = await api.patch(`/messages/thread/${otherUserId}/read`);
   return res.data;
 }
+
+export async function sendPresenceHeartbeat() {
+  const res = await api.post('/messages/presence/heartbeat');
+  return res.data;
+}
+
+export async function getPresence(userId) {
+  const res = await api.get(`/messages/presence/${userId}`);
+  return res.data.presence;
+}

@@ -1,0 +1,725 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --gold: #c8a44d;
+    --gold-dark: #8b6b1d;
+    --gold-soft: #f6e7b8;
+    --cream: #fffaf0;
+    --bg: #fdf8ef;
+    --dark: #2b2113;
+    --text: #5f513c;
+    --muted: #8a7a62;
+    --white: #ffffff;
+    --line: #ead9b0;
+    --shadow: 0 22px 60px rgba(180, 140, 45, 0.14);
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: "Inter", sans-serif;
+    background: var(--bg);
+    color: var(--dark);
+    overflow-x: hidden;
+}
+
+a {
+    text-decoration: none;
+}
+
+button {
+    font-family: inherit;
+}
+
+.back-home-btn {
+    position: fixed;
+    top: 22px;
+    left: 42px;
+    z-index: 1000;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    height: 42px;
+    padding: 0 18px;
+
+    border-radius: 12px;
+    background: #ffffff;
+    color: #2b2113;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    border: 1px solid #ead9b0;
+    box-shadow: 0 8px 24px rgba(63, 56, 45, 0.1);
+
+    transition: 0.25s ease;
+}
+
+.back-home-btn i {
+    font-size: 13px;
+}
+
+.back-home-btn:hover {
+    transform: translateY(-2px);
+    color: #8b6b1d;
+    border-color: #c8a44d;
+}
+
+.hero {
+    min-height: 100vh;
+    padding: 165px 7% 90px;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: center;
+    gap: 50px;
+    background:
+        radial-gradient(circle at 10% 20%, rgba(232, 199, 106, 0.22), transparent 28%),
+        radial-gradient(circle at 95% 8%, rgba(200, 164, 77, 0.18), transparent 28%),
+        linear-gradient(135deg, #fffdf8, #fff5df);
+}
+
+.tag,
+.section-title span,
+.branch-info span,
+.team-title span,
+.services-heading span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 16px;
+    border-radius: 999px;
+    background: #f8edd0;
+    color: var(--gold-dark);
+    font-size: 13px;
+    font-weight: 900;
+    margin-bottom: 18px;
+}
+
+.hero h1 {
+    max-width: 800px;
+    font-size: clamp(42px, 6vw, 72px);
+    line-height: 1.04;
+    letter-spacing: -2px;
+    color: var(--dark);
+}
+
+.hero p {
+    max-width: 650px;
+    margin-top: 22px;
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1.8;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 32px;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 54px;
+    padding: 0 26px;
+    border-radius: 18px;
+    font-size: 15px;
+    font-weight: 900;
+    transition: 0.3s ease;
+}
+
+.secondary {
+    background: var(--white);
+    color: var(--gold-dark);
+    border: 1px solid var(--line);
+}
+
+.btn:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 28px rgba(180, 140, 45, 0.18);
+}
+
+.hero-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    padding: 46px;
+    border-radius: 42px;
+    box-shadow: var(--shadow);
+}
+
+.hero-card i {
+    width: 74px;
+    height: 74px;
+    display: grid;
+    place-items: center;
+    background: #fff3cf;
+    color: var(--gold-dark);
+    border-radius: 24px;
+    font-size: 32px;
+    margin-bottom: 26px;
+}
+
+.hero-card h3 {
+    font-size: 32px;
+    color: var(--dark);
+    margin-bottom: 14px;
+}
+
+.hero-card p {
+    margin: 0;
+    font-size: 16px;
+}
+
+.section {
+    padding: 90px 7%;
+}
+
+.section-title {
+    max-width: 760px;
+    margin: 0 auto 50px;
+    text-align: center;
+}
+
+.section-title h2,
+.branch-info h2,
+.team-title h2,
+.services-heading h2 {
+    font-size: clamp(32px, 4vw, 52px);
+    line-height: 1.12;
+    letter-spacing: -1px;
+    color: var(--dark);
+}
+
+.section-title p,
+.team-title p {
+    margin-top: 14px;
+    color: var(--text);
+    line-height: 1.8;
+}
+
+.about-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 26px;
+}
+
+.about-card {
+    padding: 34px;
+    border-radius: 32px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    transition: 0.3s ease;
+}
+
+.about-card:hover {
+    transform: translateY(-8px);
+}
+
+.about-card i {
+    width: 62px;
+    height: 62px;
+    display: grid;
+    place-items: center;
+    border-radius: 20px;
+    background: #fff3cf;
+    color: var(--gold-dark);
+    font-size: 26px;
+    margin-bottom: 22px;
+}
+
+.about-card h3 {
+    font-size: 23px;
+    margin-bottom: 12px;
+}
+
+.about-card p {
+    color: var(--text);
+    line-height: 1.7;
+}
+
+.team-section {
+    padding: 90px 7%;
+    background: var(--white);
+}
+
+.team-title {
+    max-width: 980px;
+    margin: 0 auto 48px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 24px;
+}
+
+.owner-row {
+    max-width: 980px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.owner-photo {
+    width: 260px;
+    height: 300px;
+    border-radius: 28px;
+    overflow: hidden;
+    background: #f3e7c4;
+    flex-shrink: 0;
+    box-shadow: var(--shadow);
+}
+
+.owner-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.owner-message {
+    position: relative;
+    flex: 1;
+    min-height: 280px;
+    padding: 50px 46px;
+    border-radius: 30px;
+    background: linear-gradient(135deg, #8b6b1d, #d4af37);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: 0 24px 55px rgba(180, 140, 45, 0.22);
+}
+
+.owner-message p {
+    font-size: 16px;
+    line-height: 1.9;
+    font-weight: 600;
+    margin-bottom: 22px;
+}
+
+.owner-message p:last-of-type {
+    margin-bottom: 0;
+}
+
+.owner-badge {
+    position: absolute;
+    right: 34px;
+    bottom: 28px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    color: var(--white);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.owner-name {
+    max-width: 980px;
+    margin: 24px auto 60px;
+    padding-left: 18px;
+}
+
+.owner-name h3 {
+    font-size: 18px;
+    color: var(--dark);
+    margin-bottom: 4px;
+}
+
+.owner-name p {
+    color: var(--muted);
+    font-size: 15px;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 34px;
+}
+
+.team-card {
+    min-width: 0;
+}
+
+.team-card img {
+    width: 100%;
+    height: 330px;
+    object-fit: cover;
+    border-radius: 22px;
+    background: #f3e7c4;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow);
+    display: block;
+}
+
+.team-card h3 {
+    font-size: 18px;
+    color: var(--dark);
+    margin-bottom: 5px;
+}
+
+.team-card p {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.branch-section {
+    padding: 90px 7%;
+    background:
+        radial-gradient(circle at 10% 20%, rgba(232, 199, 106, 0.18), transparent 28%),
+        linear-gradient(135deg, #2b2113, #8b6b1d);
+}
+
+.branch-info {
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.branch-info h2 {
+    color: var(--white);
+    max-width: 760px;
+}
+
+.branches-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+    margin-top: 34px;
+}
+
+.branch-box {
+    padding: 32px;
+    border-radius: 32px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    transition: 0.3s ease;
+}
+
+.branch-box:hover {
+    transform: translateY(-8px);
+}
+
+.branch-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 26px;
+}
+
+.branch-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.14);
+    display: grid;
+    place-items: center;
+    color: var(--white);
+    font-size: 26px;
+    flex-shrink: 0;
+}
+
+.branch-top h3 {
+    color: var(--white);
+    font-size: 24px;
+    margin-bottom: 6px;
+}
+
+.branch-status {
+    color: #f8e7bb;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.branch-details {
+    display: grid;
+    gap: 18px;
+}
+
+.branch-details div {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.branch-details i {
+    color: #fff4d6;
+    margin-top: 5px;
+}
+
+.branch-details p {
+    color: #fff4d6;
+    line-height: 1.7;
+}
+
+.branch-btn {
+    margin-top: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 50px;
+    padding: 0 22px;
+    border-radius: 16px;
+    background: var(--white);
+    color: var(--gold-dark);
+    font-weight: 800;
+    transition: 0.3s ease;
+}
+
+.branch-btn:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.12);
+}
+
+.services-showcase {
+    padding: 100px 7%;
+    background:
+        linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(232, 199, 106, 0.16)),
+        #fffdf8;
+}
+
+.services-heading {
+    max-width: 720px;
+    margin: 0 auto 48px;
+    text-align: center;
+}
+
+.services-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px;
+}
+
+.service-item {
+    min-width: 230px;
+    min-height: 92px;
+    padding: 22px 26px;
+    border-radius: 28px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    box-shadow: 0 18px 40px rgba(180, 140, 45, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--dark);
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.4;
+    transition: 0.3s ease;
+}
+
+.service-item:hover {
+    transform: translateY(-8px);
+    background: linear-gradient(135deg, #b88a2b, #d4af37);
+    color: var(--white);
+    border-color: transparent;
+}
+
+.map-section {
+    padding: 90px 7%;
+    background: var(--white);
+}
+
+.map-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+    margin-top: 40px;
+}
+
+.map-card {
+    background: var(--white);
+    border-radius: 34px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+}
+
+.map-header {
+    padding: 28px;
+}
+
+.map-header h3 {
+    font-size: 28px;
+    color: var(--dark);
+    margin-bottom: 8px;
+}
+
+.map-header p {
+    color: var(--text);
+    line-height: 1.7;
+}
+
+.map-wrapper {
+    width: 100%;
+    height: 380px;
+}
+
+.map-wrapper iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+footer {
+    padding: 28px;
+    text-align: center;
+    background: #2b2113;
+    color: #f8e7bb;
+}
+
+@media (max-width: 1200px) {
+    .hero {
+        grid-template-columns: 1fr;
+        padding-top: 140px;
+    }
+
+    .hero-card {
+        max-width: 720px;
+    }
+
+    .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 980px) {
+    .about-grid,
+    .branches-grid,
+    .map-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .owner-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .owner-photo {
+        width: 100%;
+        max-width: 340px;
+    }
+
+    .owner-name {
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 680px) {
+    .back-home-btn {
+        top: 16px;
+        left: 16px;
+        height: 40px;
+        font-size: 12px;
+    }
+
+    .hero {
+        padding: 120px 5% 70px;
+        gap: 34px;
+    }
+
+    .hero h1 {
+        font-size: 40px;
+        letter-spacing: -1px;
+    }
+
+    .hero p {
+        font-size: 16px;
+    }
+
+    .section,
+    .team-section,
+    .branch-section,
+    .map-section,
+    .services-showcase {
+        padding: 70px 5%;
+    }
+
+    .about-grid,
+    .team-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-card,
+    .owner-message,
+    .about-card,
+    .branch-box {
+        padding: 28px;
+        border-radius: 26px;
+    }
+
+    .owner-message {
+        min-height: auto;
+        padding-bottom: 78px;
+    }
+
+    .owner-badge {
+        right: 24px;
+        bottom: 24px;
+    }
+
+    .service-item {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .map-wrapper {
+        height: 320px;
+    }
+}
+
+@media (max-width: 560px) {
+    .hero h1 {
+        font-size: 34px;
+    }
+
+    .section-title h2,
+    .branch-info h2,
+    .team-title h2,
+    .services-heading h2 {
+        font-size: 30px;
+    }
+
+    .hero-card h3 {
+        font-size: 26px;
+    }
+
+    .branch-top {
+        align-items: flex-start;
+    }
+
+    .branch-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 16px;
+        font-size: 22px;
+    }
+
+    .branch-top h3 {
+        font-size: 21px;
+    }
+
+    .team-card img {
+        height: 300px;
+    }
+
+    .map-header h3 {
+        font-size: 24px;
+    }
+}

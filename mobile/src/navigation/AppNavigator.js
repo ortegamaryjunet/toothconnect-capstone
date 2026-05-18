@@ -8,12 +8,17 @@ import PatientHomeScreen from '../screens/PatientHomeScreen';
 import BookServiceScreen from '../screens/BookServiceScreen';
 import BookSuggestionsScreen from '../screens/BookSuggestionsScreen';
 import BookConfirmScreen from '../screens/BookConfirmScreen';
-import RiskAssessmentScreen from '../screens/RiskAssessmentScreen';
-import RiskResultScreen from '../screens/RiskResultScreen';
 import TreatmentProgressScreen from '../screens/TreatmentProgressScreen';
 import MessagesListScreen from '../screens/MessagesListScreen';
 import MessageThreadScreen from '../screens/MessageThreadScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import SplashScreen from '../screens/SplashScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import DashboardScreen from '../screens/DashboardScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import AppointmentsScreen from '../screens/AppointmentsScreen';
+import PatientRecordsScreen from '../screens/PatientRecordsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -33,21 +38,26 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>
-            <Stack.Screen name="Home" component={PatientHomeScreen} />
+            <Stack.Screen name="Home" component={DashboardScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Appointments" component={AppointmentsScreen} />
             <Stack.Screen name="BookService" component={BookServiceScreen} />
             <Stack.Screen name="BookSuggestions" component={BookSuggestionsScreen} />
             <Stack.Screen name="BookConfirm" component={BookConfirmScreen} />
-            <Stack.Screen name="RiskAssessment" component={RiskAssessmentScreen} />
-            <Stack.Screen name="RiskResult" component={RiskResultScreen} />
-            <Stack.Screen name="TreatmentProgress" component={TreatmentProgressScreen} />
             <Stack.Screen name="MessagesList" component={MessagesListScreen} />
             <Stack.Screen name="MessageThread" component={MessageThreadScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="TreatmentProgress" component={TreatmentProgressScreen} />
+            <Stack.Screen name="Records" component={PatientRecordsScreen} />
+            
           </>
         ) : (
           <>
+            <Stack.Screen name='SplashScreen' component={SplashScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
           </>
         )}
       </Stack.Navigator>

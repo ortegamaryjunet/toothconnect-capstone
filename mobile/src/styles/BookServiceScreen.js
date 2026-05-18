@@ -1,77 +1,92 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f4f6f8'
+        backgroundColor: '#f8f7f4'
     },
 
     header: {
-        backgroundColor: '#1a365d',
-        padding: 16,
+        height: 58,
         flexDirection: 'row',
-        alignItems: 'center'
+        alignItems: 'center',
+        borderBottomWidth: 1.2,
+        borderBottomColor: '#c88a11',
+        paddingHorizontal: 18,
+        backgroundColor: '#ffffff'
     },
     backButton: {
-        marginRight: 12
+        marginRight: 12,
+        paddingVertical: 6,
+        paddingRight: 4
     },
     backButtonText: {
-        color: '#fff',
-        fontSize: 14
+        color: '#b47a00',
+        fontSize: 14,
+        fontWeight: '800'
     },
     headerTitle: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '600'
+        color: '#1f1f1f',
+        fontSize: 22,
+        fontWeight: '900',
+        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif'
     },
 
     body: {
-        flex: 1,
-        padding: 20
+        flex: 1
+    },
+    bodyContent: {
+        paddingHorizontal: 18,
+        paddingTop: 20,
+        paddingBottom: 42
     },
 
     sectionLabel: {
-        fontSize: 12,
-        color: '#4a5568',
+        fontSize: 10,
+        color: '#8a650e',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 8,
-        marginTop: 8
+        letterSpacing: 1,
+        marginBottom: 10,
+        marginTop: 4,
+        fontWeight: '800'
     },
 
     branchPicker: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 8,
-        marginBottom: 20
+        marginBottom: 22
     },
     branchChip: {
-        backgroundColor: '#fff',
+        backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: '#cbd5e0',
-        paddingVertical: 8,
-        paddingHorizontal: 14,
+        borderColor: '#e4cf88',
+        paddingVertical: 7,
+        paddingHorizontal: 15,
         borderRadius: 999
     },
     branchChipActive: {
-        backgroundColor: '#1a365d',
-        borderColor: '#1a365d'
+        backgroundColor: '#c98904',
+        borderColor: '#c98904'
     },
     branchChipText: {
-        fontSize: 13,
-        color: '#4a5568'
+        fontSize: 12,
+        color: '#8a650e',
+        fontWeight: '800'
     },
     branchChipTextActive: {
-        color: '#fff',
-        fontWeight: '500'
+        color: '#ffffff',
+        fontWeight: '900'
     },
 
     serviceCard: {
-        backgroundColor: '#fff',
-        padding: 16,
+        backgroundColor: '#ffffff',
+        paddingVertical: 15,
+        paddingHorizontal: 16,
         borderRadius: 10,
-        marginBottom: 10,
+        marginBottom: 11,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: '#e4cf88',
         flexDirection: 'row',
         alignItems: 'center'
     },
@@ -80,33 +95,39 @@ const styles = StyleSheet.create({
     },
     serviceName: {
         fontSize: 16,
-        fontWeight: '500',
-        color: '#1a365d'
+        fontWeight: '900',
+        color: '#1f1f1f',
+        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif'
     },
     serviceMeta: {
         fontSize: 13,
-        color: '#718096',
-        marginTop: 4
+        color: '#888888',
+        marginTop: 3,
+        fontWeight: '600'
     },
     servicePrice: {
         fontSize: 15,
-        fontWeight: '600',
-        color: '#2c7a7b'
+        fontWeight: '900',
+        color: '#b47a00'
     },
 
     loading: {
-        color: '#718096',
-        fontSize: 14,
+        color: '#888888',
+        fontSize: 13,
         textAlign: 'center',
-        padding: 40
+        paddingVertical: 40,
+        fontWeight: '600'
     },
     error: {
-        backgroundColor: '#fed7d7',
-        color: '#9b2c2c',
+        backgroundColor: '#fff3f0',
+        color: '#993c1d',
         padding: 12,
-        borderRadius: 6,
+        borderRadius: 8,
         fontSize: 13,
-        marginBottom: 12
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#f0c6b8',
+        fontWeight: '600'
     }
 });
 

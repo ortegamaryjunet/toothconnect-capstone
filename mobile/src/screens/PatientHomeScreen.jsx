@@ -46,6 +46,21 @@ export default function PatientHomeScreen({ navigation }) {
     fetchAppointments();
   }
 
+  function confirmLogout() {
+    Alert.alert(
+      'Logout?',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: logout,
+        },
+      ]
+    );
+  }
+
   async function handleCancel(appointment) {
     Alert.alert(
       'Cancel appointment?',
@@ -104,7 +119,7 @@ export default function PatientHomeScreen({ navigation }) {
               )}
             </View>
           </TouchableOpacity>
-          <TouchableOpacity onPress={logout}>
+          <TouchableOpacity onPress={confirmLogout}>
             <Text style={styles.logout}>Sign out</Text>
           </TouchableOpacity>
         </View>
@@ -126,17 +141,6 @@ export default function PatientHomeScreen({ navigation }) {
             <Text style={styles.bookCardSubtitle}>AI-suggested slots based on your history</Text>
           </View>
           <Text style={styles.bookCardArrow}>→</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('RiskAssessment')}
-        >
-          <View style={styles.bookCardLeft}>
-            <Text style={styles.featureCardTitle}>Dental risk assessment</Text>
-            <Text style={styles.featureCardSubtitle}>Self-assess your caries risk and see recommendations</Text>
-          </View>
-          <Text style={styles.featureCardArrow}>→</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

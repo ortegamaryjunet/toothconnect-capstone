@@ -37,7 +37,10 @@ export function AuthProvider({ children }) {
         role: meRes.data.role,
         name: meRes.data.name,
         email: meRes.data.email,
+        home_branch_id: meRes.data.home_branch_id ?? null,
+        home_branch_city: meRes.data.home_branch_city ?? null,
         branches: meRes.data.branches,
+        created_at: meRes.data.created_at ?? null,
       });
       //registerForPushNotificationsAsync().catch(err => {
       //  console.log('[push] Registration failed during bootstrap:', err.message);
@@ -66,15 +69,10 @@ export function AuthProvider({ children }) {
   }
 
   async function registerVerify(email, code) {
-    const res = await api.post('/auth/register/verify', { email, code, platform: 'mobile' });
-    setAccessToken(res.data.accessToken);
-    await saveRefreshToken(res.data.refreshToken);
-    setUser(res.data.user);
-    //registerForPushNotificationsAsync().catch(err => {
-    //  console.log('[push] Registration failed during register:', err.message);
-    //});
-    return res.data.user;
-  }
+  const res = await api.post('/auth/register/verify', { email, code, platform: 'mobile' });
+  // Standard flow: don't auto-login. User navigates to login screen.
+  return res.data;
+}
 
   async function logout() {
     try {

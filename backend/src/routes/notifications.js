@@ -68,6 +68,22 @@ router.patch('/:id/read', async (req, res) => {
   }
 });
 
+router.patch('/:id/unread', async (req, res) => {
+  const userId = req.user.user_id;
+  const id = parseInt(req.params.id, 10);
+  try {
+    const [result] = await pool.query(
+      'UPDATE notifications SET is_read = FALSE, read_at = NULL WHERE id = ? AND user_id = ?',
+      [id, userId]
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Notification not found' });
+    res.json({ message: 'Marked as unread' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.patch('/read-all', async (req, res) => {
   const userId = req.user.user_id;
   try {
@@ -76,6 +92,21 @@ router.patch('/read-all', async (req, res) => {
       [userId]
     );
     res.json({ marked_read: result.affectedRows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/test-low-stock', async (req, res) => {
+  const userId = req.user.user_id;
+  try {
+    await pool.query(
+      `INSERT INTO notifications (user_id, type, title, body, related_type, is_read, created_at)
+       VALUES (?, 'low_stock', 'Low Stock Alert', 'Some inventory items are running low on stock. Please review and restock as needed.', 'inventory', FALSE, NOW())`,
+      [userId]
+    );
+    res.json({ message: 'Low stock notification sent' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

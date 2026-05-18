@@ -584,3 +584,183 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb
 ### Manually trigger recall reminders
 POST http://localhost:4000/api/cron-admin/run-recall-reminders
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODYwMDM1MSwiZXhwIjoxNzc4NjAxMjUxfQ.Nn4Y878g-ZwDqwYK6s6ZYPJAZofPF0Chv3wG0nPeSmU
+
+### Test real email — register a new patient
+POST http://localhost:4000/api/auth/register/start
+Content-Type: application/json
+
+{
+  "email": "maryj.ortega15@gmail.com",
+  "name": "Test Patient",
+  "password": "password123",
+  "branch_id": 1
+}
+
+###############################
+# Inventory — session 4B
+###############################
+
+### Login as admin
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "password123",
+  "platform": "web"
+}
+
+### List supplies at QC
+GET http://localhost:4000/api/inventory/supplies?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODY5MTg4MiwiZXhwIjoxNzc4NjkyNzgyfQ.3bCAMPG21NiVcW2xIw3NVy6cX2efD8peS_vQiSz7oXk
+
+### List medicines at QC
+GET http://localhost:4000/api/inventory/medicines?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODY5MTg4MiwiZXhwIjoxNzc4NjkyNzgyfQ.3bCAMPG21NiVcW2xIw3NVy6cX2efD8peS_vQiSz7oXk
+
+### List equipment at QC
+GET http://localhost:4000/api/inventory/equipment?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODY5MTg4MiwiZXhwIjoxNzc4NjkyNzgyfQ.3bCAMPG21NiVcW2xIw3NVy6cX2efD8peS_vQiSz7oXk
+
+### Low-stock summary at QC
+GET http://localhost:4000/api/inventory/low-stock-summary?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODY5MTg4MiwiZXhwIjoxNzc4NjkyNzgyfQ.3bCAMPG21NiVcW2xIw3NVy6cX2efD8peS_vQiSz7oXk
+
+### Add a new supply
+POST http://localhost:4000/api/inventory/supplies
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODY5MTg4MiwiZXhwIjoxNzc4NjkyNzgyfQ.3bCAMPG21NiVcW2xIw3NVy6cX2efD8peS_vQiSz7oXk
+Content-Type: application/json
+
+{
+  "branch_id": 1,
+  "supply_name": "Surgical Gloves",
+  "brand": "Ansell",
+  "category": "PPE",
+  "unit": "Box",
+  "quantity": 25,
+  "low_stock_threshold": 5
+}
+
+### Restock alcohol at QC (id 1)
+POST http://localhost:4000/api/inventory/supplies/1/restock
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODY5MTg4MiwiZXhwIjoxNzc4NjkyNzgyfQ.3bCAMPG21NiVcW2xIw3NVy6cX2efD8peS_vQiSz7oXk
+Content-Type: application/json
+
+{
+  "amount": 20
+}
+
+### Verify alcohol is now In Stock (was 2, +20 = 22, threshold 10)
+GET http://localhost:4000/api/inventory/supplies?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODY5MTg4MiwiZXhwIjoxNzc4NjkyNzgyfQ.3bCAMPG21NiVcW2xIw3NVy6cX2efD8peS_vQiSz7oXk
+
+### Update a medicine threshold
+PATCH http://localhost:4000/api/inventory/medicines/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJicmFuY2hlcyI6WzEsMl0sImlhdCI6MTc3ODY5MTg4MiwiZXhwIjoxNzc4NjkyNzgyfQ.3bCAMPG21NiVcW2xIw3NVy6cX2efD8peS_vQiSz7oXk
+Content-Type: application/json
+
+{
+  "low_stock_threshold": 5
+}
+
+### Login as receptionist1 (QC)
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "recep1@test.com",
+  "password": "password123",
+  "platform": "web"
+}
+
+### Receptionist can view their branch (QC)
+GET http://localhost:4000/api/inventory/supplies?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NjkyMDcyLCJleHAiOjE3Nzg2OTI5NzJ9.flsnzuuqJNKdSbG7DbIL7n7cCgXLBlC6ZPLbuPhkefk
+
+### Receptionist tries to view Makati (should 403)
+GET http://localhost:4000/api/inventory/supplies?branch_id=2
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NjkyMDcyLCJleHAiOjE3Nzg2OTI5NzJ9.flsnzuuqJNKdSbG7DbIL7n7cCgXLBlC6ZPLbuPhkefk
+
+### Receptionist can restock at QC
+POST http://localhost:4000/api/inventory/supplies/2/restock
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NjkyMDcyLCJleHAiOjE3Nzg2OTI5NzJ9.flsnzuuqJNKdSbG7DbIL7n7cCgXLBlC6ZPLbuPhkefk
+Content-Type: application/json
+
+{
+  "amount": 5
+}
+
+### Receptionist cannot DELETE (admin-only)
+DELETE http://localhost:4000/api/inventory/supplies/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoicmVjZXB0aW9uaXN0IiwiYnJhbmNoZXMiOlsxXSwiaWF0IjoxNzc4NjkyMDcyLCJleHAiOjE3Nzg2OTI5NzJ9.flsnzuuqJNKdSbG7DbIL7n7cCgXLBlC6ZPLbuPhkefk
+
+###############################
+# Service kit lookup + consumption — session 4B.9
+###############################
+
+### Login as dentist1 (Dr. Reyes, has both branches)
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "dentist1@test.com",
+  "password": "password123",
+  "platform": "web"
+}
+
+### Look up the kit for "Cleaning" (service_id 1) at QC (branch 1)
+GET http://localhost:4000/api/inventory/service-kits/1?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODY5MjU1NiwiZXhwIjoxNzc4NjkzNDU2fQ.1Ad4E9ItHRbIcMNSF1ZF5ES3BgeKVoP-vd0kFheWF_s
+
+### Look up Filling kit (service_id 3) at QC
+GET http://localhost:4000/api/inventory/service-kits/3?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODY5MjU1NiwiZXhwIjoxNzc4NjkzNDU2fQ.1Ad4E9ItHRbIcMNSF1ZF5ES3BgeKVoP-vd0kFheWF_s
+
+### Look up non-existent service kit (service_id 999)
+GET http://localhost:4000/api/inventory/service-kits/999?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODY5MjU1NiwiZXhwIjoxNzc4NjkzNDU2fQ.1Ad4E9ItHRbIcMNSF1ZF5ES3BgeKVoP-vd0kFheWF_s
+
+### Get an existing appointment to test consumption on
+# First check: SELECT id, dentist_id, branch_id, service_id, status
+# FROM appointments WHERE dentist_id = 2 AND status = 'scheduled' LIMIT 5;
+# Use one of those IDs below. Replace 1 with your actual appointment id.
+
+### Submit consumption for appointment (replace appointment_id with a real one)
+POST http://localhost:4000/api/inventory/appointments/1/consumption
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODY5MjU1NiwiZXhwIjoxNzc4NjkzNDU2fQ.1Ad4E9ItHRbIcMNSF1ZF5ES3BgeKVoP-vd0kFheWF_s
+Content-Type: application/json
+
+{
+  "items": [
+    { "category": "supply", "inventory_id": 6, "quantity_used": 4 },
+    { "category": "supply", "inventory_id": 4, "quantity_used": 1 },
+    { "category": "medicine", "inventory_id": 5, "quantity_used": 1 }
+  ],
+  "mark_complete": true
+}
+
+### Verify inventory decremented (check Cotton Roll, Bib, Fluoride Gel)
+GET http://localhost:4000/api/inventory/supplies?branch_id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODY5MjU1NiwiZXhwIjoxNzc4NjkzNDU2fQ.1Ad4E9ItHRbIcMNSF1ZF5ES3BgeKVoP-vd0kFheWF_s
+
+### Try to consume too much (should 400)
+POST http://localhost:4000/api/inventory/appointments/2/consumption
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODY5MjU1NiwiZXhwIjoxNzc4NjkzNDU2fQ.1Ad4E9ItHRbIcMNSF1ZF5ES3BgeKVoP-vd0kFheWF_s
+Content-Type: application/json
+
+{
+  "items": [
+    { "category": "supply", "inventory_id": 1, "quantity_used": 999 }
+  ]
+}
+
+### Try to consume on an appointment that already has consumption (should 409)
+POST http://localhost:4000/api/inventory/appointments/1/consumption
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiZGVudGlzdCIsImJyYW5jaGVzIjpbMV0sImlhdCI6MTc3ODY5MjU1NiwiZXhwIjoxNzc4NjkzNDU2fQ.1Ad4E9ItHRbIcMNSF1ZF5ES3BgeKVoP-vd0kFheWF_s
+Content-Type: application/json
+
+{
+  "items": [
+    { "category": "supply", "inventory_id": 6, "quantity_used": 1 }
+  ]
+}

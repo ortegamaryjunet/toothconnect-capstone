@@ -55,6 +55,45 @@ const styles = {
         marginTop: '4px'
     },
 
+    detailsCard: {
+        background: '#fff',
+        padding: '20px',
+        borderRadius: '10px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        marginBottom: '20px'
+    },
+    detailsGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+        gap: '12px',
+        marginTop: '14px'
+    },
+    notesGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+        gap: '12px',
+        marginTop: '14px',
+        paddingTop: '14px',
+        borderTop: '1px solid #edf2f7'
+    },
+    infoItem: {
+        minWidth: 0
+    },
+    infoLabel: {
+        fontSize: '11px',
+        color: '#718096',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        marginBottom: '4px'
+    },
+    infoValue: {
+        fontSize: '13px',
+        color: '#1a365d',
+        fontWeight: '500',
+        overflowWrap: 'break-word',
+        whiteSpace: 'pre-wrap'
+    },
+
     layout: {
         display: 'grid',
         gridTemplateColumns: '1fr 360px',

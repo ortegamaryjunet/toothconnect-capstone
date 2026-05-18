@@ -20,7 +20,22 @@ export async function markThreadRead(otherUserId) {
   return res.data;
 }
 
+export async function sendPresenceHeartbeat() {
+  const res = await api.post('/messages/presence/heartbeat');
+  return res.data;
+}
+
+export async function getPresence(userId) {
+  const res = await api.get(`/messages/presence/${userId}`);
+  return res.data.presence;
+}
+
 export async function listReceptionContacts() {
   const res = await api.get('/messages/contacts');
   return res.data.contacts;
+}
+
+export async function listMessageBranches() {
+  const res = await api.get('/messages/branches');
+  return res.data.branches;
 }

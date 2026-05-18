@@ -1,5 +1,6 @@
 const { toMySQLDateTime } = require('./dates');
 
+const APPOINTMENT_BUFFER_MINUTES = 10;
 const LUNCH_START_HOUR = 12;
 const LUNCH_END_HOUR = 13;
 
@@ -36,9 +37,7 @@ function generateCandidateSlots({ workStart, workEnd, durationMin, stepMin = 15 
   while (true) {
     const slotEnd = addMinutes(cursor, durationMin);
     if (slotEnd > workEnd) break;
-    if (!isInsideLunch(cursor, slotEnd)) {
-      slots.push({ start: new Date(cursor), end: new Date(slotEnd) });
-    }
+    slots.push({ start: new Date(cursor), end: new Date(slotEnd) });
     cursor = addMinutes(cursor, stepMin);
   }
   return slots;
@@ -69,6 +68,7 @@ function* eachUTCDayInRange(startDate, endDate) {
 module.exports = {
   LUNCH_START_HOUR,
   LUNCH_END_HOUR,
+  APPOINTMENT_BUFFER_MINUTES,
   jsWeekday,
   parseISOToDate,
   addMinutes,

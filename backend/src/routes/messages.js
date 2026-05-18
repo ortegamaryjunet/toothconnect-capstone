@@ -6,6 +6,81 @@ const router = express.Router();
 
 router.use(authenticate);
 
+const PRESENCE_ONLINE_WINDOW_SECONDS = 15;
+
+async function ensurePresenceTable() {
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS user_presence (
+       user_id INT PRIMARY KEY,
+       last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+     )`
+  );
+}
+
+function mapPresence(row) {
+  const secondsAgo = row?.seconds_ago;
+  const isOnline =
+    secondsAgo !== null &&
+    secondsAgo !== undefined &&
+    Number(secondsAgo) <= PRESENCE_ONLINE_WINDOW_SECONDS;
+
+  return {
+    user_id: row?.user_id || null,
+    last_seen_at: row?.last_seen_at || null,
+    is_online: isOnline,
+  };
+}
+
+router.post('/presence/heartbeat', async (req, res) => {
+  try {
+    await ensurePresenceTable();
+    await pool.query(
+      `INSERT INTO user_presence (user_id, last_seen_at)
+       VALUES (?, NOW())
+       ON DUPLICATE KEY UPDATE last_seen_at = NOW()`,
+      [req.user.user_id]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/presence/:userId', async (req, res) => {
+  const userId = parseInt(req.params.userId, 10);
+
+  if (Number.isNaN(userId)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+
+  try {
+    await ensurePresenceTable();
+    const [rows] = await pool.query(
+      `SELECT
+         u.id AS user_id,
+         up.last_seen_at,
+         TIMESTAMPDIFF(SECOND, up.last_seen_at, NOW()) AS seconds_ago
+       FROM users u
+       LEFT JOIN user_presence up ON up.user_id = u.id
+       WHERE u.id = ?
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ presence: mapPresence(rows[0]) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.get('/threads', async (req, res) => {
   const userId = req.user.user_id;
 
@@ -15,6 +90,9 @@ router.get('/threads', async (req, res) => {
          other_user.id AS other_user_id,
          other_user.name AS other_user_name,
          other_user.role AS other_user_role,
+         b.id AS branch_id,
+         b.name AS branch_name,
+         b.address AS branch_address,
          m.content AS last_message_body,
          m.sender_id AS last_message_from,
          m.created_at AS last_message_at,
@@ -34,6 +112,7 @@ router.get('/threads', async (req, res) => {
        ) threads
        JOIN messages m ON m.id = threads.last_message_id
        JOIN users other_user ON other_user.id = threads.other_id
+       LEFT JOIN branches b ON b.id = m.branch_id
        ORDER BY m.created_at DESC`,
       [userId, userId, userId, userId]
     );
@@ -109,17 +188,14 @@ router.post('/', async (req, res) => {
     if (userRole === 'patient' && recipient.role === 'receptionist') {
       const [accessCheck] = await pool.query(
         `SELECT 1 FROM user_branches ub
+         JOIN appointments a ON a.branch_id = ub.branch_id AND a.patient_id = ?
          WHERE ub.user_id = ?
-           AND (
-             ub.branch_id IN (SELECT DISTINCT branch_id FROM appointments WHERE patient_id = ?)
-             OR ub.branch_id = (SELECT home_branch_id FROM users WHERE id = ?)
-           )
          LIMIT 1`,
-        [receiver_id, userId, userId]
+        [userId, receiver_id]
       );
       if (accessCheck.length === 0) {
         return res.status(403).json({
-          message: 'You can only message receptionists at branches you visit',
+          message: 'Messaging is available after your first appointment at this branch.',
         });
       }
     }
@@ -181,6 +257,43 @@ router.patch('/thread/:otherUserId/read', async (req, res) => {
   }
 });
 
+router.get('/branches', async (req, res) => {
+  const userId = req.user.user_id;
+
+  if (req.user.role !== 'patient') {
+    return res.status(403).json({ message: 'Patients only' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT
+         b.id,
+         b.name  AS branch_name,
+         b.address AS branch_address,
+         (SELECT u.id   FROM users u JOIN user_branches ub ON ub.user_id = u.id
+          WHERE ub.branch_id = b.id AND u.role = 'receptionist' AND u.status = 'Active'
+          LIMIT 1) AS receptionist_id,
+         (SELECT u.name FROM users u JOIN user_branches ub ON ub.user_id = u.id
+          WHERE ub.branch_id = b.id AND u.role = 'receptionist' AND u.status = 'Active'
+          LIMIT 1) AS receptionist_name,
+         EXISTS(
+           SELECT 1 FROM appointments a
+           WHERE a.patient_id = ? AND a.branch_id = b.id
+         ) AS can_message
+       FROM branches b
+       WHERE b.status = 'Active'
+       ORDER BY b.name ASC`,
+      [userId]
+    );
+    res.json({
+      branches: rows.map(r => ({ ...r, can_message: Boolean(r.can_message) })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.get('/contacts', async (req, res) => {
   const role = req.user.role;
   const userId = req.user.user_id;
@@ -188,17 +301,20 @@ router.get('/contacts', async (req, res) => {
   try {
     if (role === 'patient') {
       const [rows] = await pool.query(
-        `SELECT DISTINCT u.id, u.name, u.role, b.id AS branch_id, b.name AS branch_name
+        `SELECT DISTINCT
+           u.id,
+           u.name,
+           u.role,
+           b.id AS branch_id,
+           b.name AS branch_name,
+           b.address AS branch_address
          FROM users u
          JOIN user_branches ub ON ub.user_id = u.id
          JOIN branches b ON b.id = ub.branch_id
          WHERE u.role = 'receptionist'
-           AND (
-             b.id IN (SELECT DISTINCT branch_id FROM appointments WHERE patient_id = ?)
-             OR b.id = (SELECT home_branch_id FROM users WHERE id = ?)
-           )
+           AND b.id IN (SELECT DISTINCT branch_id FROM appointments WHERE patient_id = ?)
          ORDER BY b.name, u.name`,
-        [userId, userId]
+        [userId]
       );
       res.json({ contacts: rows });
     } else {

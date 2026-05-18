@@ -244,6 +244,11 @@ Cron schedules don't fire instantly — testing "every 8 AM" in development is a
 ### Push notifications stay deferred to EAS dev build
 Session 3.5 built the push infrastructure. Session 4A uses in-app notifications only because push doesn't work in Expo Go on SDK 53. Enabling push in production means uncommenting three lines in AuthContext after EAS dev builds are available. No backend changes needed.
 
+## Day 5 - UI for mobile splashscreen, login, registration, otp, dashboard
+
+### Finalized the UI for the splashscreen, login, register
+The otp does not work yet and sends to email but backend is already done, just needs to polish it.
+
 
 
 
