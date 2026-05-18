@@ -19,7 +19,7 @@ async function sendEmail({ to, subject, html, text }) {
     throw new Error('Email service not configured');
   }
 
-  const result = await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: process.env.RESEND_FROM,
     to,
     subject,
@@ -27,7 +27,8 @@ async function sendEmail({ to, subject, html, text }) {
     text,
   });
 
-  return result;
+  if (error) throw new Error(`Resend error: ${error.message}`);
+  return data;
 }
 
 async function sendOTPEmail({ to, code, purpose }) {
