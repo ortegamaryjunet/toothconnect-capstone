@@ -1,3 +1,5 @@
+const API_BASE_URL = "https://api.smileempressdentalhub.com";
+
 document.addEventListener("DOMContentLoaded", function () {
 
     const header = document.getElementById("header");
@@ -301,7 +303,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             try {
-                const response = await fetch("/api/website/saveInquiry", {
+                const response = await fetch(`${API_BASE_URL}/api/website/saveInquiry`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"

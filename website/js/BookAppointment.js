@@ -1,3 +1,5 @@
+const API_BASE_URL = "https://api.smileempressdentalhub.com";
+
 document.addEventListener("DOMContentLoaded", function () {
     const calendarDays = document.getElementById("calendarDays");
     const monthYear = document.getElementById("monthYear");
@@ -345,7 +347,7 @@ document.addEventListener("DOMContentLoaded", function () {
             submitButton.textContent = "Scheduling...";
 
             try {
-                const response = await fetch("/api/website/saveAppointment", {
+                const response = await fetch(`${API_BASE_URL}/api/website/saveAppointment`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
