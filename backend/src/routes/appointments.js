@@ -308,7 +308,25 @@ router.get('/_meta/services-and-branches', async (req, res) => {
       available_branch_ids: branchIdsByService[s.id] || [],
     }));
 
-    res.json({ services: annotatedServices, branches, dentists });
+    // Attach service_ids to each dentist so the web form can filter by service
+    const dentistIds = dentists.map(d => d.id);
+    let dentistServiceMap = {};
+    if (dentistIds.length > 0) {
+      const [dsRows] = await pool.query(
+        `SELECT dentist_id, service_id FROM dentist_services WHERE dentist_id IN (${dentistIds.map(() => '?').join(',')})`,
+        dentistIds
+      );
+      for (const row of dsRows) {
+        if (!dentistServiceMap[row.dentist_id]) dentistServiceMap[row.dentist_id] = [];
+        dentistServiceMap[row.dentist_id].push(row.service_id);
+      }
+    }
+    const annotatedDentists = dentists.map(d => ({
+      ...d,
+      service_ids: dentistServiceMap[d.id] || [],
+    }));
+
+    res.json({ services: annotatedServices, branches, dentists: annotatedDentists });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -451,7 +469,7 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, res) => {
-  const { branch_id, patient_id, dentist_id, service_id, start_time, reschedule_appointment_id } = req.body;
+  const { branch_id, patient_id, dentist_id, service_id, start_time, reschedule_appointment_id, initial_status } = req.body;
   const role = req.user.role;
   const userId = req.user.user_id;
   const userBranches = req.user.branches || [];
@@ -497,7 +515,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
 
     const [conflicts] = await pool.query(
       `SELECT id FROM appointments
-       WHERE branch_id = ? AND status IN ('scheduled','arrived','completed')
+       WHERE branch_id = ? AND status IN ('scheduled','arrived')
          AND start_time < ?
          AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?`,
       [
@@ -531,10 +549,15 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
       isReschedule = true;
     }
 
+    const effectiveStatus =
+      (role === 'receptionist' || role === 'admin') && initial_status === 'arrived'
+        ? 'arrived'
+        : 'scheduled';
+
     const [result] = await pool.query(
       `INSERT INTO appointments (branch_id, patient_id, dentist_id, service_id, start_time, duration_min, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'scheduled')`,
-      [effectiveBranchId, effectivePatientId, dentist_id, service_id, toMySQLDateTime(start), service.duration_min]
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [effectiveBranchId, effectivePatientId, dentist_id, service_id, toMySQLDateTime(start), service.duration_min, effectiveStatus]
     );
 
     await pool.query(
@@ -884,10 +907,8 @@ router.post('/suggest', async (req, res) => {
     return res.status(400).json({ message: 'branch_id, service_id, from, and to are required' });
   }
 
-  const effectivePatientId = role === 'patient' ? userId : patient_id;
-  if (!effectivePatientId) {
-    return res.status(400).json({ message: 'patient_id is required when staff request suggestions' });
-  }
+  // For staff, patient_id is optional; 0 means no patient-preference weighting
+  const effectivePatientId = role === 'patient' ? userId : (patient_id || 0);
 
   if ((role === 'receptionist' || role === 'admin') && !userBranches.includes(branch_id)) {
     return res.status(403).json({ message: 'No access to this branch' });

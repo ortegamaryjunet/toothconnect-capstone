@@ -322,6 +322,88 @@ Neither subsystem knows about the other. OpenAI does not see appointment schedul
 ### Conflict check gate applies to both quick-pick and text-input paths
 An earlier version of the code only ran the conflict check inside `if (selectedQuick)`. This meant that typing a time in the free-text concern (e.g. "I have a toothache at 3:30 PM tomorrow") would bypass the check entirely and proceed directly to OpenAI, calling AI on a time slot the patient already had booked. The fix removed the gate: `parseConcernDateTime` now runs unconditionally on `concern` (the raw text input) regardless of whether a quick-pick service is also selected. If a parsed time is found, the check runs for both paths.
 
+## WEB FOLDER - RecepAppointmentForm.jsx - Receptionist auto-available slots
+
+### Time slot picker replaced with auto-computed slot grid
+The receptionist form's manual 30-minute time select dropdown was replaced with an auto-generated clickable slot grid. On date selection, `listAppointments` fetches all appointments for that day scoped to the logged-in receptionist's branch. The `computeAvailableSlots` pure helper computes 30-minute intervals from 10 AM to 6:30 PM, marks each `available: false` if the slot is in the past or blocked by an existing appointment's duration plus the 15-minute buffer.
+
+**Removed state:** `extraSlots`, `slotIndex`, `fetchingMoreSlots`, manual time picker options constant. These were from the manual 30-min dropdown + "another slot" cycling system.
+
+**Removed functions:** `handleTimePickerChange`, `handleSuggestedSlotClick`, `handleApplySuggestedSlot`, `handleApplySlot`, `handleNextSlot`, `fetchMoreSlots`. Slot selection is now one action: `handleSelectSlot(slot)` sets `formData.hour` and `formData.minute`.
+
+**Removed API calls:** `suggestSlots` (CSP backend endpoint). The form no longer calls `/appointments/suggest`; it computes available slots deterministically from the database appointments for the selected date.
+
+**New state:** `dayAppointments`, `dayAppointmentsLoading`. Appointments for the selected date are fetched into local state and passed to `computeAvailableSlots`.
+
+**New useEffect:** Slot validity auto-clear. When `availableSlots` changes (due to date, service, or appointments changing), if the currently selected time is no longer available, it auto-clears `formData.hour` and `formData.minute`. This prevents stale selection across date changes.
+
+### Clinic hours hardcoded, appointment duration caps slot candidates
+Clinic operates 10 AM–7 PM daily. `computeAvailableSlots` generates candidates every 30 minutes starting from 10 AM. Each candidate's availability depends on:
+1. **Not past:** `slotStart <= now` marks it unavailable (prevents booking into the past)
+2. **Not blocked:** Overlaps any existing appointment's `[start_time, start_time + duration_min + 15min)` interval
+3. **Fits within clinic hours:** The appointment end time (start + duration + buffer) must not exceed 7 PM
+
+### Slot grid styling: blue=available, grey=blocked, dark blue=selected
+Available slots render as blue chips (`#2563eb` border, `#eff6ff` background, `#1d4ed8` text). Blocked slots are grey with strikethrough (`#f1f5f9` background, `#e2e8f0` border, `#94a3b8` text, cursor `not-allowed`). Selected slots have dark blue background (`#2563eb`). All styles defined in `styles/RecepAppointmentForm.js`.
+
+### Duration-based slot blocking accounts for service
+`computeAvailableSlots` receives `durationMinutes` from `selectedService.duration_min || 30`. When checking if a slot is blocked, the query checks `slotStart < b.end && slotEnd > b.start` where `slotEnd = slotStart + durationMinutes + 15 min`. This means a 30-minute service occupies more window than a 20-minute service would.
+
+### Branch-scoped appointment fetching prevents cross-branch conflicts
+`fetchDayAppointments` passes `branch_id` as a query param to `listAppointments`. The backend filters appointments to the receptionist's branch only. This means conflict checking never crosses branches — a receptionist at QC branch cannot accidentally double-book against an appointment at Makati.
+
+### Guard on hour/minute state prevents broken time computations
+When `formData.hour` or `formData.minute` are empty strings (initial state), `timePickerValue` guards to return `''` instead of calling `toTimePickerValue`, which would break. Similarly, `estimatedTimeRange` guards to return `'—'` when `selectedTime` is empty. This prevents render crashes from undefined or NaN time values during the form init phase.
+
+## Day 5 — Session 6: Same-day appointments → queue; completed slots reopen
+
+### Completed appointments no longer block new time slots
+Previously, the conflict check on the receptionist form included `status IN ('scheduled', 'arrived', 'completed')`, which meant a completed appointment (e.g. a patient seen at 2 PM last week) would still block a new booking at 2 PM this week. Changed both frontend and backend to exclude `'completed'`:
+
+**Frontend:** `computeAvailableSlots` now filters appointments with `['scheduled', 'arrived'].includes(...)` — completed appointments are ignored when building the busy intervals list.
+
+**Backend:** Conflict check query on `POST /appointments` now uses `status IN ('scheduled', 'arrived')` instead of including `'completed'`.
+
+**Rationale:** A completed appointment is a historical record. The time slot is genuinely free for a future booking. This aligns with clinic practice where "we saw that patient 2 weeks ago at 3 PM" doesn't block a new patient from being scheduled at 3 PM today.
+
+### Same-day bookings created with initial_status='arrived' → appear in queue
+When a receptionist books an appointment for today, the form detects `selectedDate === toDateKey(today)` and passes `initial_status: 'arrived'` to the backend. The backend honors this for staff (receptionist/admin), but rejects it for patient callers (always defaults to `'scheduled'`).
+
+**Frontend logic:** In `handleSubmit`, before calling `createAppointment`:
+```javascript
+const isSameDay = selectedDate === toDateKey(today);
+await createAppointment({
+  // ... other fields ...
+  ...(isSameDay ? { initial_status: 'arrived' } : {}),
+});
+```
+
+**Backend logic:** In `POST /appointments`:
+```javascript
+const effectiveStatus =
+  (role === 'receptionist' || role === 'admin') && initial_status === 'arrived'
+    ? 'arrived'
+    : 'scheduled';
+// INSERT ... VALUES (..., ?, ...) with effectiveStatus
+```
+
+### Receptionist view immediately shows same-day bookings in queue
+The receptionist navigates to `/receptionistAppointments` after booking. The page fetches `listAppointments()` (all upcoming appointments) and filters into:
+- **Pending:** `status === 'scheduled'` (future bookings waiting for arrival)
+- **Queue:** `status === 'arrived'` (patients checked in and ready for service)
+
+A same-day appointment with `status: 'arrived'` lands directly in the queue. Future bookings get `status: 'scheduled'` and appear in pending.
+
+### Future appointments still use 'scheduled' status
+Only same-day bookings get `initial_status: 'arrived'`. Appointments for May 22+ are created with `status: 'scheduled'`, appearing in the pending section until the patient arrives.
+
+### Staff-only rule prevents patients from forcing status
+Patients always create appointments with `status: 'scheduled'` regardless of the date. The `initial_status: 'arrived'` override is only accepted if the caller's role is `'receptionist'` or `'admin'`. This prevents patients from attempting to bypass the arrival workflow.
+
+### Consistent conflict checking: backend and frontend both exclude completed
+Before these changes, there was a mismatch: the frontend's slot grid might show a time as available (completed appointments ignored), but the backend would reject it with a 409 conflict (because completed was in the SQL IN clause). Now both sides use the same logic — completed appointments don't block either the display or the save.
+
+
 
 
 
