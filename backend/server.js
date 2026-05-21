@@ -199,6 +199,7 @@ pool.query(`
     appointment_time TIME NOT NULL,
     duration_minutes INT NOT NULL DEFAULT 30,
     full_name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NULL,
     phone_number VARCHAR(30) NOT NULL,
     location VARCHAR(255) NOT NULL,
     reason_for_booking TEXT NULL,
@@ -208,6 +209,17 @@ pool.query(`
     INDEX idx_online_appt_status (status)
   )
 `).catch(err => console.error('[migration] online_appointments_tbl:', err.message));
+
+pool.query(
+  `ALTER TABLE online_appointments_tbl ADD COLUMN IF NOT EXISTS email VARCHAR(150) NULL AFTER full_name`
+).catch(() => {
+  pool.query(`SHOW COLUMNS FROM online_appointments_tbl LIKE 'email'`).then(([rows]) => {
+    if (rows.length === 0) {
+      pool.query(`ALTER TABLE online_appointments_tbl ADD COLUMN email VARCHAR(150) NULL AFTER full_name`)
+        .catch((err) => console.error('[migration] Failed to add email to online_appointments_tbl:', err.message));
+    }
+  });
+});
 
 pool.query(`
   CREATE TABLE IF NOT EXISTS online_inquiries_tbl (

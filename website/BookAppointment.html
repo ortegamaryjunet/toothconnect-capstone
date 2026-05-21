@@ -7,7 +7,6 @@
 
     <link rel="stylesheet" href="./css/BookAppointment.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/css/intlTelInput.css">
 </head>
 <body>
 
@@ -87,203 +86,198 @@
 
             <div class="time-card">
 
-                <div class="time-title">
-
-                    <div>
-                        <span>Step 2 · Appointment Time</span>
-
-                        <h2>
-                            Select your preferred time.
-                        </h2>
-                    </div>
-
+                <div class="step-lock-notice" id="step3Notice">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Select a branch in <strong>Step 2</strong> to unlock time slots.</span>
                 </div>
 
-                <div class="time-slots" id="timeSlots">
-                    <p class="empty-time-message">
-                        Please select a date first.
-                    </p>
+                <div id="step3Content">
+
+                    <div class="time-title">
+
+                        <div>
+                            <span>Step 3 · Select Your Preferred Time</span>
+
+                            <h2>
+                                Select your preferred time.
+                            </h2>
+                        </div>
+
+                    </div>
+
+                    <div class="time-slots" id="timeSlots">
+                        <p class="empty-time-message">
+                            Please select a date first.
+                        </p>
+                    </div>
+
+                    <span class="field-error-text" id="timeError"></span>
+
                 </div>
             </div>
         </div>
 
         <div class="form-card">
-            <div class="summary-box">
-                <div class="step-box">
-                    <span>Step 3 · Patient Information</span>
-                    <h2>Complete your appointment details.</h2>
-                </div>
 
-                <p>
-                    <i class="fa-regular fa-calendar"></i>
-                    <span id="summaryDate">No date selected</span>
-                </p>
-
-                <p>
-                    <i class="fa-regular fa-clock"></i>
-                    <span id="summaryTime">No time selected</span>
-                </p>
-
-                <p>
-                    <i class="fa-solid fa-hourglass-half"></i>
-                    <span>30 minutes duration</span>
-                </p>
-
+            <div class="step-lock-notice" id="step2Notice">
+                <i class="fa-solid fa-lock"></i>
+                <span>Select a date in <strong>Step 1</strong> to continue.</span>
             </div>
 
-            <form id="appointmentForm">
+            <div id="step2Content">
 
-                <input type="hidden" id="appointmentDate" name="appointmentDate">
-                <input type="hidden" id="appointmentTime" name="appointmentTime">
-                <input type="hidden" id="durationMinutes" name="durationMinutes" value="30">
-                <input type="hidden" id="selectedReason" name="reasonForBooking">
+                <div class="summary-box">
+                    <div class="step-box">
+                        <span>Step 2 · Complete Your Appointment Details</span>
+                        <h2>Complete your appointment details.</h2>
+                    </div>
 
-                <div class="input-group">
-                    <label for="patientName">Full Name</label>
+                    <p>
+                        <i class="fa-regular fa-calendar"></i>
+                        <span id="summaryDate">No date selected</span>
+                    </p>
 
-                    <input
-                        type="text"
-                        id="patientName"
-                        name="fullName"
-                        placeholder="Enter your full name"
-                        autocomplete="name"
-                        required>
+                    <p>
+                        <i class="fa-regular fa-clock"></i>
+                        <span id="summaryTime">No time selected</span>
+                    </p>
+
+                    <p>
+                        <i class="fa-solid fa-hourglass-half"></i>
+                        <span>30 minutes duration</span>
+                    </p>
+
                 </div>
 
-                <div class="input-group">
-                    <label for="email">Email Address</label>
+                <form id="appointmentForm">
 
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        placeholder="Enter your email address"
-                        autocomplete="email"
-                        required>
-                </div>
+                    <input type="hidden" id="appointmentDate" name="appointmentDate">
+                    <input type="hidden" id="appointmentTime" name="appointmentTime">
+                    <input type="hidden" id="durationMinutes" name="durationMinutes" value="30">
+                    <input type="hidden" id="selectedReason" name="reasonForBooking">
 
-                <div class="input-group">
-                    <label for="phoneNumber">Phone Number</label>
+                    <div class="input-group">
+                        <label for="patientName">Full Name</label>
 
-                    <div class="phone-field">
+                        <input
+                            type="text"
+                            id="patientName"
+                            name="fullName"
+                            placeholder="Enter your first and last name"
+                            autocomplete="name"
+                            required>
+
+                        <span class="field-error-text" id="nameError"></span>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="email">Email Address</label>
+
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            placeholder="Enter your email address"
+                            autocomplete="email"
+                            required>
+
+                        <span class="field-error-text" id="emailError"></span>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="phoneNumber">Phone Number</label>
+
                         <input
                             type="tel"
                             id="phoneNumber"
                             name="phoneNumber"
-                            placeholder="912 345 6789"
+                            placeholder="09XXXXXXXXX"
+                            maxlength="11"
                             autocomplete="tel"
                             required>
+
+                        <input id="fullPhoneNumber" type="hidden" name="fullPhoneNumber">
+
+                        <span class="field-error-text" id="phoneError"></span>
                     </div>
 
-                    <input id="fullPhoneNumber" type="hidden" name="fullPhoneNumber">
-                </div>
+                    <div class="input-group">
+                        <label>Location</label>
 
-                <div class="input-group">
-                    <label>Location</label>
+                        <div class="location-grid">
 
-                    <div class="location-grid">
+                            <label class="location-option">
+                                <input
+                                    type="radio"
+                                    name="location"
+                                    value="Makati Branch"
+                                    required>
 
-                        <label class="location-option">
-                            <input
-                                type="radio"
-                                name="location"
-                                value="Makati Branch"
-                                required>
+                                <span class="radio-design"></span>
 
-                            <span class="radio-design"></span>
+                                <div>
+                                    <strong>Makati Branch</strong>
+                                </div>
+                            </label>
 
-                            <div>
-                                <strong>Makati Branch</strong>
-                            </div>
-                        </label>
+                            <label class="location-option">
+                                <input
+                                    type="radio"
+                                    name="location"
+                                    value="Las Piñas Branch"
+                                    required>
 
-                        <label class="location-option">
-                            <input
-                                type="radio"
-                                name="location"
-                                value="Las Piñas Branch"
-                                required>
+                                <span class="radio-design"></span>
 
-                            <span class="radio-design"></span>
+                                <div>
+                                    <strong>Las Piñas Branch</strong>
+                                </div>
+                            </label>
 
-                            <div>
-                                <strong>Las Piñas Branch</strong>
-                            </div>
-                        </label>
-
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>Reason for Booking</label>
-
-                    <div class="custom-select">
-
-                        <button type="button" id="reasonBtn">
-                            <span id="reasonText">Select reason</span>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-
-                        <div class="reason-options" id="reasonOptions">
-                            <p data-value="I would like to schedule a general dental check-up.">
-                                I would like to schedule a general dental check-up.
-                            </p>
-
-                            <p data-value="I would like to have my teeth professionally cleaned.">
-                                I would like to have my teeth professionally cleaned.
-                            </p>
-
-                            <p data-value="I would like to book an orthodontic consultation.">
-                                I would like to book an orthodontic consultation.
-                            </p>
-
-                            <p data-value="I would like to inquire about dental filling treatment.">
-                                I would like to inquire about dental filling treatment.
-                            </p>
-
-                            <p data-value="I would like to undergo a tooth extraction procedure.">
-                                I would like to undergo a tooth extraction procedure.
-                            </p>
-
-                            <p data-value="I would like to schedule my routine braces adjustment.">
-                                I would like to schedule my routine braces adjustment.
-                            </p>
-
-                            <p data-value="I am experiencing dental pain or discomfort.">
-                                I am experiencing dental pain or discomfort.
-                            </p>
-
-                            <p data-value="I would like a cosmetic dental consultation.">
-                                I would like a cosmetic dental consultation.
-                            </p>
-
-                            <p data-value="I have another dental concern to discuss.">
-                                I have another dental concern to discuss.
-                            </p>
                         </div>
 
+                        <span class="field-error-text" id="locationError"></span>
                     </div>
-                </div>
 
-                <div class="booking-note">
-                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="input-group">
+                        <label>Reason for Booking</label>
 
-                    <p>
-                        Please wait for a clinic representative to contact you
-                        and confirm your appointment.
-                    </p>
-                </div>
+                        <div class="custom-select">
 
-                <button type="submit" class="schedule-btn">
-                    Schedule Appointment
-                </button>
-            </form>
+                            <button type="button" id="reasonBtn">
+                                <span id="reasonText">Select reason</span>
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
+
+                            <div class="reason-options" id="reasonOptions"></div>
+
+                        </div>
+
+                        <span class="field-error-text" id="reasonError"></span>
+                    </div>
+
+                    <div class="booking-note">
+                        <i class="fa-solid fa-circle-check"></i>
+
+                        <p>
+                            Please wait for a clinic representative to contact you
+                            and confirm your appointment.
+                        </p>
+                    </div>
+
+                    <span class="field-error-text" id="timeSubmitError"></span>
+
+                    <button type="submit" class="schedule-btn">
+                        Schedule Appointment
+                    </button>
+                </form>
+
+            </div>
         </div>
     </section>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/intlTelInput.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/utils.js"></script>
 <script src="./js/BookAppointment.js" defer></script>
+
 </body>
 </html>

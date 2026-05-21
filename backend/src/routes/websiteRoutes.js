@@ -11,6 +11,7 @@ router.post('/saveAppointment', async (req, res) => {
       appointmentTime,
       durationMinutes,
       fullName,
+      email,
       phoneNumber,
       location,
       reasonForBooking
@@ -29,6 +30,7 @@ router.post('/saveAppointment', async (req, res) => {
       appointmentTime,
       durationMinutes,
       fullName,
+      email,
       phoneNumber,
       location,
       reasonForBooking
