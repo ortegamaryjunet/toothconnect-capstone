@@ -6,6 +6,7 @@ const {
   toMySQLDateTime,
   parseISOToDate,
   addMinutes,
+  startOfUTCDay,
 } = require('../utils/scheduling');
 const { suggestSlots } = require('../services/scheduler');
 
@@ -287,7 +288,27 @@ router.get('/_meta/services-and-branches', async (req, res) => {
       dentistParams
     );
 
-    res.json({ services, branches, dentists });
+    const [serviceAvailability] = await pool.query(
+      `SELECT DISTINCT dsv.service_id, dsch.branch_id
+       FROM dentist_services dsv
+       JOIN users u ON u.id = dsv.dentist_id AND u.role = 'dentist' AND u.status = 'Active'
+       JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id`
+    );
+
+    const branchIdsByService = {};
+    for (const row of serviceAvailability) {
+      if (!branchIdsByService[row.service_id]) {
+        branchIdsByService[row.service_id] = [];
+      }
+      branchIdsByService[row.service_id].push(row.branch_id);
+    }
+
+    const annotatedServices = services.map(s => ({
+      ...s,
+      available_branch_ids: branchIdsByService[s.id] || [],
+    }));
+
+    res.json({ services: annotatedServices, branches, dentists });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -752,6 +773,104 @@ router.patch('/:id/note', requireRole('dentist'), async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Pre-flight conflict check used by the AI booking assistant before calling OpenAI.
+// Checks (1) whether the patient already has an overlapping appointment and
+// (2) whether the branch has a dentist free at the requested time.
+// Returns the next available slot from CSP/weighted scoring when a conflict exists.
+router.post('/conflict-check', requireRole('patient'), async (req, res) => {
+  const { branch_id, service_id, requested_start, duration_min } = req.body;
+  const patientId = req.user.user_id;
+  const BUFFER = 15;
+
+  if (!branch_id || !requested_start) {
+    return res.status(400).json({ message: 'branch_id and requested_start are required.' });
+  }
+
+  let reqStart;
+  try {
+    reqStart = parseISOToDate(requested_start);
+  } catch {
+    return res.status(400).json({ message: 'Invalid requested_start.' });
+  }
+
+  const effectiveDuration = Math.max(15, parseInt(duration_min, 10) || 30);
+  const reqEnd = addMinutes(reqStart, effectiveDuration + BUFFER);
+
+  try {
+    // 1. Patient-schedule conflict: does the patient already have an appointment
+    //    whose window (duration + buffer) overlaps the requested window?
+    const [patientConflicts] = await pool.query(
+      `SELECT a.id, a.start_time, a.duration_min, sv.name AS service_name
+       FROM appointments a
+       JOIN services sv ON sv.id = a.service_id
+       WHERE a.patient_id = ?
+         AND a.status IN ('scheduled', 'arrived')
+         AND a.start_time < ?
+         AND DATE_ADD(a.start_time, INTERVAL (a.duration_min + ?) MINUTE) > ?`,
+      [patientId, toMySQLDateTime(reqEnd), BUFFER, toMySQLDateTime(reqStart)]
+    );
+
+    const hasPatientConflict = patientConflicts.length > 0;
+
+    // 2. Resolve a usable service_id for the slot-suggestion pass.
+    //    If no service was supplied (text-input path), pick the first active service
+    //    offered at this branch so we can still run the CSP scheduler.
+    let effectiveServiceId = service_id ? parseInt(service_id, 10) : null;
+    if (!effectiveServiceId) {
+      const [anyService] = await pool.query(
+        `SELECT ds.service_id
+         FROM dentist_services ds
+         JOIN users u ON u.id = ds.dentist_id
+         LEFT JOIN user_branches ub ON ub.user_id = ds.dentist_id
+         WHERE u.role = 'dentist' AND u.status = 'Active'
+           AND (u.home_branch_id = ? OR ub.branch_id = ?)
+         LIMIT 1`,
+        [branch_id, branch_id]
+      );
+      effectiveServiceId = anyService[0]?.service_id || null;
+    }
+
+    // 3. Run the CSP scheduler to find the next available slot and detect
+    //    branch-level unavailability (no dentist free within 15 min of request).
+    let nextAvailable = null;
+    let branchConflict = false;
+
+    if (effectiveServiceId) {
+      const from = startOfUTCDay(reqStart);
+      const to = new Date(from.getTime() + 8 * 24 * 60 * 60 * 1000);
+
+      const slotResult = await suggestSlots({
+        patientId,
+        branchId: parseInt(branch_id, 10),
+        serviceId: effectiveServiceId,
+        fromDate: from.toISOString(),
+        toDate: to.toISOString(),
+        preferredStartDate: reqStart,
+        limit: 1,
+      });
+
+      const best = slotResult.suggestions?.[0] || null;
+      const distance = best?.distance_to_preferred_minutes ?? 999;
+      branchConflict = distance > 15;
+      nextAvailable = best;
+    }
+
+    if (hasPatientConflict || branchConflict) {
+      return res.json({
+        conflict: true,
+        conflict_type: hasPatientConflict ? 'patient_schedule' : 'branch_unavailable',
+        existing: hasPatientConflict ? patientConflicts[0] : null,
+        next_available: nextAvailable,
+      });
+    }
+
+    return res.json({ conflict: false });
+  } catch (err) {
+    console.error('[conflict-check]', err.message);
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 

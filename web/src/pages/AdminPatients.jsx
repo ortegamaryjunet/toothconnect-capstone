@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
-import { listMyPatients } from '../api/patients';
+import { listPatients } from '../api/patients';
 import { useAuth } from '../auth/AuthContext';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminPatientsStyles from '../styles/AdminPatients';
@@ -43,7 +43,7 @@ export default function AdminPatients() {
       setPatientsError('');
 
       try {
-        const rows = await listMyPatients();
+        const rows = await listPatients();
         setPatients(rows.map(mapPatientRow));
       } catch (err) {
         setPatientsError(err.response?.data?.message || 'Failed to load patients.');

@@ -244,25 +244,88 @@ Cron schedules don't fire instantly — testing "every 8 AM" in development is a
 ### Push notifications stay deferred to EAS dev build
 Session 3.5 built the push infrastructure. Session 4A uses in-app notifications only because push doesn't work in Expo Go on SDK 53. Enabling push in production means uncommenting three lines in AuthContext after EAS dev builds are available. No backend changes needed.
 
-## Day 5 - UI for mobile splashscreen, login, registration, otp, dashboard
+## Day 4 — Session 4B: AI booking assistant and pre-flight conflict check
 
-### Finalized the UI for the splashscreen, login, register
-The otp does not work yet and sends to email but backend is already done, just needs to polish it.
+### AI booking flow: four screens in sequence
+The patient AI booking flow chains four screens:
+
+1. **BookAIAssistantScreen** — patient picks a branch, optionally quick-picks a service, types a free-text concern. All input validation and the pre-flight conflict check live here. Nothing calls OpenAI from this screen.
+2. **AIAnalysisScreen** — on mount, calls `POST /api/ai/analyze` (OpenAI GPT-4o-mini). Returns interpreted concern, suggested service, urgency, duration, confidence score, and optional safety note. Only reached after the pre-flight conflict check passes.
+3. **BookSuggestionsScreen** — calls `POST /api/appointments/suggest` (CSP scheduler) to surface the top 3 dentist-time slots. Receives `preferredDate`/`preferredTime` to activate the `close_to_requested_time` soft-scoring bonus.
+4. **BookConfirmScreen** — patient reviews and confirms, calls `POST /api/appointments`.
+
+The quick-pick path (service already chosen) skips AIAnalysisScreen entirely and jumps from BookAIAssistantScreen directly to BookSuggestionsScreen when "Use Suggested Time" is accepted from the conflict modal, or to BookSuggestionsScreen via the normal `proceedToAnalysis` path after conflict check passes.
+
+### Pre-flight conflict check: no OpenAI tokens spent on blocked slots
+Before `AIAnalysisScreen` mounts (and therefore before OpenAI is ever called), `BookAIAssistantScreen` runs a lightweight backend check. If the concern text contains a recognisable date + time, it calls `POST /api/appointments/conflict-check` against the Express backend. This is a pure database query — no AI involved. If the check returns `conflict: true`, a modal is shown and the user never reaches `AIAnalysisScreen`. OpenAI is called only when navigation to `AIAnalysisScreen` actually happens.
+
+Rule: **OpenAI is called if and only if `AIAnalysisScreen` mounts.** The pre-flight check is the gate.
+
+### parseConcernDateTime: conservative — both date AND time required
+Client-side date/time parsing (`parseConcernDateTime`) only returns a result when it finds **both** a valid time (AM/PM or 24-hour within 10:00–19:00 clinic hours) **and** a date reference ("today", "tomorrow", day name, or ISO date). If only a time is present ("at 3pm" with no date), the function returns `null` and the pre-flight check is skipped entirely. This prevents false positives that would show a conflict modal when no specific slot was intended.
+
+### buildClinicISO: local PH time → UTC ISO string
+The parsed local time (e.g. `2026-05-22`, `15:30`) is converted to a UTC ISO string by subtracting 8 hours: `new Date(Date.UTC(year, month-1, day, hour-8, minute, 0, 0)).toISOString()`. This matches how all appointment `start_time` values are stored in the database (UTC), ensuring the conflict SQL comparison is timezone-safe.
+
+### Conflict check: two-layer detection with 15-minute buffer
+`POST /api/appointments/conflict-check` (patient-only endpoint) runs two checks:
+
+1. **Patient-schedule conflict** (checked first): does the requesting patient already have a `scheduled` or `arrived` appointment whose window `[start_time, start_time + duration_min + 15min)` overlaps the requested window? Detects the case where the patient tries to double-book themselves.
+
+2. **Branch unavailability** (checked second): runs the CSP scheduler (`suggestSlots`) from the start of the requested day over an 8-day window with `preferredStartDate` set to the requested time. If the best returned slot has `distance_to_preferred_minutes > 15`, no dentist is free within the 15-minute buffer and the branch is considered unavailable.
+
+A 15-minute buffer (not the scheduler's internal 10-minute `APPOINTMENT_BUFFER_MINUTES`) is used for the conflict window. This gives a small cushion for transition time between patients and matches the real-world expectation that two appointments cannot be less than 15 minutes apart at the same branch.
+
+Patient-schedule conflict takes priority: if the patient has a personal overlap, `conflict_type` is `patient_schedule` and the modal shows the specific existing appointment. If only the branch is unavailable, `conflict_type` is `branch_unavailable` and the modal shows a generic "not available" message.
+
+### Service fallback for text-input conflict check
+When the patient types a free-text concern (service unknown), no `service_id` is sent with the conflict-check request. The backend falls back to the first active service offered by any dentist at the requested branch (via `dentist_services` join) to use as a proxy for the CSP scheduler call. This allows branch availability to be assessed even when the specific service hasn't been determined yet by OpenAI.
+
+### Conflict check is non-blocking on network failure
+If the `checkAppointmentConflict` API call throws (network error, 5xx), the catch block silently swallows the error and calls `proceedToAnalysis()` anyway. The conflict check is a courtesy gate — a failed check should never prevent the user from booking. The backend's final `POST /api/appointments` endpoint is the authoritative source of truth for conflicts.
+
+### Conflict modal: two actions, "Use Suggested Time" vs "Change Input"
+When `conflict: true` is returned:
+- The modal shows the specific blocking appointment (if `conflict_type === 'patient_schedule'`) or the unavailable time (if `branch_unavailable`), plus the next available slot from the CSP scheduler.
+- **"Use Suggested Time"** accepts the suggested slot and continues the booking. For quick-picks (service known), this navigates directly to `BookSuggestionsScreen` with the suggested date/time as `preferredDate`/`preferredTime`. For free-text input (service unknown), it navigates to `AIAnalysisScreen` with `overridePreferredDate`/`overridePreferredTime` so the AI step can still determine the service while the slot is already pinned.
+- **"Change Input"** dismisses the modal so the patient can edit their concern or pick a different time.
+- If the CSP scheduler returns no next available slot, only "Change Input" is shown.
+
+### overridePreferredDate/Time: AI analysis passes override through to BookSuggestions
+`AIAnalysisScreen` accepts `overridePreferredDate` and `overridePreferredTime` route params. If present, these take priority over any date/time that OpenAI extracted from the concern text. This ensures that when a patient accepts a conflict-free suggested slot before going through AI analysis, the slot they agreed to is honoured in `BookSuggestionsScreen` — not overridden by whatever time OpenAI happened to parse from the concern text.
+
+### Input validation rules for the concern text field
+Three layers, applied in order before the conflict check runs:
+
+1. **Branch required**: if no branch is selected, inline error "Please select a branch."
+2. **Empty input**: if neither a quick-pick service nor a typed concern is present, inline error "Please describe your concern or pick a service."
+3. **Non-dental keyword check** (text-input path only): if the concern text contains none of the 40+ dental keyword patterns, show the "Dental Concerns Only" modal. The keyword list covers symptoms (toothache, swelling, jaw pain), procedures (cleaning, extraction, root canal), and service terms (consultation, x-ray, checkup).
+4. **Minimum length** (text-input path only): if the concern is dental-related but under 10 characters, inline error "Please describe your dental concern in more detail." — prevents single-word inputs like "tooth" from being sent to OpenAI.
+5. **Maximum length**: `maxLength={500}` on the TextInput silently blocks characters beyond 500 — no error, no modal. A `{n}/500` character counter is displayed below the input at all times.
+
+The non-dental modal and minimum-length error are checked in that order so a very short non-dental input shows the modal, not the length error.
+
+### Button spinner during conflict check
+While the conflict check is in flight, the "Analyze & Continue" button disables and replaces its label with an `<ActivityIndicator>` spinner + "Checking availability…" text. This prevents double-submission and communicates that work is happening without blocking the rest of the UI. The `loading` state (initial data fetch) also disables the button.
+
+### AI analysis + CSP/weighted scoring work together, not in parallel
+The two AI subsystems serve different purposes and run sequentially:
+
+- **OpenAI (GPT-4o-mini)** in `AIAnalysisScreen` determines **what** service to book. Given a free-text concern ("I have a toothache and possible cavity"), it returns `suggested_service_id`, `interpreted_concern`, `urgency_level`, `confidence_score`, and optionally `preferred_date`/`preferred_time`. Temperature 0.2 for reproducible clinical suggestions.
+- **CSP scheduler** in `BookSuggestionsScreen` determines **when** and **with whom** to book. Given the service, branch, patient history, and optional preferred time, it scores all valid slots against hard and soft constraints and returns the top 3 diverse suggestions with score breakdowns.
+
+Neither subsystem knows about the other. OpenAI does not see appointment schedules; the CSP scheduler does not see the patient's symptoms. The screens act as the integration layer, passing outputs from one as inputs to the other.
+
+### Suggested slot date/time is passed as preferred, not forced
+`BookSuggestionsScreen` receives `preferredDate` and `preferredTime` as route params. These activate the `close_to_requested_time` soft-scoring bonus in the CSP scheduler (+1 to +10 points based on proximity) via the `preferredStartDate` parameter. The scheduler still scores other slots normally — if a much better slot exists that day, it can outrank the preferred time. The preferred time is a suggestion signal, not a hard constraint. Hard enforcement of a specific time would defeat the purpose of showing three diverse options.
+
+### Conflict check gate applies to both quick-pick and text-input paths
+An earlier version of the code only ran the conflict check inside `if (selectedQuick)`. This meant that typing a time in the free-text concern (e.g. "I have a toothache at 3:30 PM tomorrow") would bypass the check entirely and proceed directly to OpenAI, calling AI on a time slot the patient already had booked. The fix removed the gate: `parseConcernDateTime` now runs unconditionally on `concern` (the raw text input) regardless of whether a quick-pick service is also selected. If a parsed time is found, the check runs for both paths.
 
 
 
 
 
-
-
-
-
-
-
-## Ideas / future work (deferred)
-
-### Day 5 polish list
-- "See more options" button on AI suggestions screen — refetches with current top 3 excluded so patient can browse alternatives
 
 
 

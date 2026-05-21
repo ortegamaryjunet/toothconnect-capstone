@@ -45,7 +45,7 @@ export default function LoginScreen({ navigation, route }) {
     try {
       await login(email.trim().toLowerCase(), password);
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || 'Incorrect email or password.');
     } finally {
       setSubmitting(false);
     }

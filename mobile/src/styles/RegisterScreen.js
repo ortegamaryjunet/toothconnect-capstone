@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     borderColor: "#c98904",
     paddingVertical: 9,
     paddingHorizontal: 14,
-    borderRadius: 999,
+    borderRadius: 12,
     marginRight: 6,
     marginBottom: 8,
   },
@@ -194,6 +194,19 @@ const styles = StyleSheet.create({
   branchChipTextActive: {
     color: "#ffffff",
     fontWeight: "900",
+  },
+
+  branchChipAddress: {
+    fontSize: 11,
+    color: "#b77c00",
+    fontWeight: "500",
+    marginTop: 2,
+    opacity: 0.8,
+  },
+
+  branchChipAddressActive: {
+    color: "#ffffff",
+    opacity: 0.9,
   },
 
   error: {

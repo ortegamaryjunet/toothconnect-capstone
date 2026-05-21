@@ -83,7 +83,13 @@ export default function BookServiceScreen({ navigation }) {
             </View>
 
             <Text style={styles.sectionLabel}>Choose a service</Text>
-            {services.map(s => (
+            {services
+              .filter(s =>
+                !selectedBranch ||
+                !s.available_branch_ids ||
+                s.available_branch_ids.includes(selectedBranch)
+              )
+              .map(s => (
               <TouchableOpacity
                 key={s.id}
                 onPress={() => handleServiceTap(s)}

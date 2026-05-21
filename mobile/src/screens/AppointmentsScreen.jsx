@@ -7,13 +7,12 @@ import {
   Alert,
   Modal,
   Pressable,
-  Animated,
-  Dimensions,
-  PanResponder,
-  Image,
   TextInput,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import AppSidebar from '../components/AppSidebar';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -49,12 +48,12 @@ const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024;
 const RECEIPT_PICKER_QUALITY = 0.72;
 
 export default function AppointmentsScreen({ navigation, route }) {
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
+  const sidebarRef = useRef(null);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeAppointmentTab, setActiveAppointmentTab] = useState('upcoming');
 
   const [cancelModal, setCancelModal] = useState({ visible: false, appointment: null });
@@ -70,34 +69,6 @@ export default function AppointmentsScreen({ navigation, route }) {
   const [highlightedId, setHighlightedId] = useState(null);
   const [historyFilter, setHistoryFilter] = useState('all');
   const highlightTimerRef = useRef(null);
-
-  const screenWidth = Dimensions.get('window').width;
-  const sidebarWidth = screenWidth * 0.9;
-  const sidebarTranslateX = useRef(new Animated.Value(-sidebarWidth)).current;
-
-  const sidebarPanResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) =>
-        gestureState.dx < -10 &&
-        Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dx < 0) {
-          sidebarTranslateX.setValue(Math.max(-sidebarWidth, gestureState.dx));
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -80) {
-          closeSidebar();
-        } else {
-          Animated.timing(sidebarTranslateX, {
-            toValue: 0,
-            duration: 180,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-    })
-  ).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -319,42 +290,6 @@ export default function AppointmentsScreen({ navigation, route }) {
     } finally {
       setRatingSubmitting(false);
     }
-  }
-
-  function openSidebar() {
-    setSidebarOpen(true);
-    sidebarTranslateX.setValue(-sidebarWidth);
-    Animated.timing(sidebarTranslateX, {
-      toValue: 0,
-      duration: 230,
-      useNativeDriver: true,
-    }).start();
-  }
-
-  function closeSidebar() {
-    Animated.timing(sidebarTranslateX, {
-      toValue: -sidebarWidth,
-      duration: 230,
-      useNativeDriver: true,
-    }).start(() => setSidebarOpen(false));
-  }
-
-  function confirmLogout() {
-    Alert.alert(
-      'Logout?',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            closeSidebar();
-            await logout();
-          },
-        },
-      ]
-    );
   }
 
   function getAppointmentBranchCity(appointment) {
@@ -596,7 +531,7 @@ export default function AppointmentsScreen({ navigation, route }) {
 
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity style={styles.menuButton} onPress={openSidebar}>
+            <TouchableOpacity style={styles.menuButton} onPress={() => sidebarRef.current?.open()}>
               <Text style={styles.menuButtonText}>☰</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Appointments</Text>
@@ -637,7 +572,7 @@ export default function AppointmentsScreen({ navigation, route }) {
 
             <TouchableOpacity
               style={styles.bookCard}
-              onPress={() => navigation.navigate('BookService')}
+              onPress={() => navigation.navigate('BookAIAssistant')}
             >
               <View style={styles.bookCardLeft}>
                 <Text style={styles.bookCardTitle}>Book an appointment</Text>
@@ -764,105 +699,7 @@ export default function AppointmentsScreen({ navigation, route }) {
           </ScrollView>
         </View>
 
-        {/* Sidebar — same structure and variables as DashboardScreen */}
-        {sidebarOpen && (
-          <View style={styles.sidebarOverlay}>
-            <Pressable style={styles.darkBackdrop} onPress={closeSidebar} />
-            <Animated.View
-              style={[
-                styles.sidebar,
-                { width: sidebarWidth, transform: [{ translateX: sidebarTranslateX }] },
-              ]}
-              {...sidebarPanResponder.panHandlers}
-            >
-              <View style={styles.profileSection}>
-                <View style={styles.avatarBox}>
-                  <Text style={styles.avatarText}>{getUserInitials(user?.name)}</Text>
-                </View>
-                <View style={styles.profileTextArea}>
-                  <Text style={styles.profileName}>{user?.name ?? 'My Account'}</Text>
-                  <Text style={styles.profileBranch}>{user?.home_branch_city ?? 'My Branch'}</Text>
-                </View>
-              </View>
-
-              <View style={styles.sidebarLine} />
-
-              <View style={styles.menuList}>
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate('Home'), 240); }}
-                >
-                  <Image source={require('../../assets/images/home.png')} style={styles.sidebarIcon} resizeMode="contain" />
-                  <Text style={styles.menuText}>Home</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate('Profile'), 240); }}
-                >
-                  <Image source={require('../../assets/images/profile.png')} style={styles.sidebarIcon} resizeMode="contain" />
-                  <Text style={styles.menuText}>Profile</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.menuItem}
-                  onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("MessagesList"), 240); }}
-                >
-                  <Image source={require('../../assets/images/message.png')} style={styles.sidebarIcon} resizeMode="contain" />
-                  <Text style={styles.menuText}>Message</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.menuItem, styles.activeMenuItem]} onPress={closeSidebar}>
-                  <Image source={require('../../assets/images/appointment.png')} style={styles.sidebarIcon} resizeMode="contain" />
-                  <Text style={[styles.menuText, styles.activeMenuText]}>Appointments</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.menuItem}
-                  onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("Records"), 240); }}
-                >
-                  <Image source={require('../../assets/images/records.png')} style={styles.sidebarIcon} resizeMode="contain" />
-                  <Text style={styles.menuText}>History</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("Notifications"), 240); }}
-                >
-                  <View style={{ position: 'relative', marginRight: 16 }}>
-                    <Image source={require('../../assets/images/notification-bell.png')} style={[styles.sidebarIcon, { marginRight: 0 }]} resizeMode="contain" />
-                    {unreadCount > 0 && (
-                      <View style={{
-                        position: 'absolute',
-                        top: -4,
-                        right: -4,
-                        backgroundColor: '#e53e3e',
-                        borderRadius: 999,
-                        paddingHorizontal: 4,
-                        paddingVertical: 1,
-                        minWidth: 16,
-                        alignItems: 'center',
-                      }}>
-                        <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.menuText}>Notifications</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.signOutSection}>
-                <View style={styles.sidebarLine} />
-                <TouchableOpacity style={styles.signOutButton} onPress={confirmLogout}>
-                  <Image source={require('../../assets/images/logout.png')} style={styles.sidebarIcon} resizeMode="contain" />
-                  <Text style={styles.signOutText}>Sign Out</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          </View>
-        )}
+        <AppSidebar ref={sidebarRef} navigation={navigation} activeScreen="Appointments" />
       </View>
 
       {/* Cancel Modal */}
@@ -921,7 +758,11 @@ export default function AppointmentsScreen({ navigation, route }) {
         animationType="slide"
         onRequestClose={closeRatingModal}
       >
-        <Pressable style={styles.modalOverlay} onPress={closeRatingModal}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={styles.modalOverlay} onPress={closeRatingModal}>
           <Pressable style={styles.modalSheet} onPress={() => {}}>
             <View style={styles.modalHandle} />
 
@@ -1064,7 +905,8 @@ export default function AppointmentsScreen({ navigation, route }) {
               </View>
             )}
           </Pressable>
-        </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -1211,13 +1053,6 @@ function getImageExtension(mimeType, fileName) {
   };
 
   return mimeExtensions[mimeType] || 'jpg';
-}
-
-function getUserInitials(name) {
-  if (!name) return '?';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 async function uploadReceiptToCloudinary(asset, signature) {
