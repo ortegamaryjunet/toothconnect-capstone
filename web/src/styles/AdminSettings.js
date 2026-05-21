@@ -191,7 +191,7 @@
       marginBottom: 20,
       padding: isMobile ? 24 : 30,
       borderRadius: isMobile ? 22 : 24,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       display: 'flex',
       alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'space-between',
