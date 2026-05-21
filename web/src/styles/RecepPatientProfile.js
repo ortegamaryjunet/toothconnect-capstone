@@ -101,10 +101,10 @@ const createRecepPatientProfileStyles = ({
     },
 
     menuItemActive: {
-      background: '#2563eb',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       fontWeight: 600,
-      boxShadow: '0 8px 18px rgba(37, 99, 235, 0.20)',
+      boxShadow: '0 8px 18px rgba(139, 101, 8, 0.22)',
     },
 
     mainContainer: {

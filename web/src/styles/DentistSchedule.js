@@ -68,9 +68,9 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
     },
 
     menuItemActive: {
-      background: 'linear-gradient(135deg, #0f62f1 0%, #1f7bff 100%)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
-      boxShadow: '0 10px 20px rgba(15, 98, 241, 0.22)',
+      boxShadow: '0 10px 20px rgba(139, 101, 8, 0.24)',
     },
 
     menuItemIcon: {

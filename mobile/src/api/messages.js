@@ -30,11 +30,6 @@ export async function getPresence(userId) {
   return res.data.presence;
 }
 
-export async function listReceptionContacts() {
-  const res = await api.get('/messages/contacts');
-  return res.data.contacts;
-}
-
 export async function listMessageBranches() {
   const res = await api.get('/messages/branches');
   return res.data.branches;

@@ -30,10 +30,11 @@ const months = [
 
 const clinicStartMinutes = 10 * 60;
 const clinicEndMinutes = 19 * 60;
-const appointmentBufferMinutes = 10;
+const appointmentBufferMinutes = 15;
 
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 11 }, (_, index) => currentYear + index);
+
 
 export default function RecepAppointmentForm() {
   const navigate = useNavigate();
@@ -55,8 +56,10 @@ export default function RecepAppointmentForm() {
   const [showPatientOptions, setShowPatientOptions] = useState(false);
   const [branches, setBranches] = useState([]);
   const [dentists, setDentists] = useState([]);
+  const [dentistsByService, setDentistsByService] = useState({});
   const [services, setServices] = useState([]);
   const [dayAppointments, setDayAppointments] = useState([]);
+  const [dayAppointmentsLoading, setDayAppointmentsLoading] = useState(false);
 
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth());
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
@@ -70,8 +73,8 @@ export default function RecepAppointmentForm() {
     dentistId: '',
     serviceId: '',
     note: '',
-    hour: '10',
-    minute: '00',
+    hour: '',
+    minute: '',
   });
 
   const isMobile = screenWidth <= 900;
@@ -82,39 +85,36 @@ export default function RecepAppointmentForm() {
     isVerySmall,
   });
 
-  const timePickerValue = toTimePickerValue(formData.hour, formData.minute);
-  const selectedTime = formatTimePickerValue(timePickerValue);
+  const timePickerValue =
+    formData.hour !== '' && formData.minute !== ''
+      ? toTimePickerValue(formData.hour, formData.minute)
+      : '';
+  const selectedTime = timePickerValue ? formatTimePickerValue(timePickerValue) : '';
 
   const selectedService = useMemo(() => {
     return services.find((service) => String(service.id) === String(formData.serviceId));
   }, [services, formData.serviceId]);
 
+  const filteredDentists = useMemo(() => {
+    if (!formData.serviceId) return dentists;
+    const sid = Number(formData.serviceId);
+    return dentists.filter((d) => (dentistsByService[d.id] || []).includes(sid));
+  }, [dentists, dentistsByService, formData.serviceId]);
+
   const estimatedDuration = Number(selectedService?.duration_min || 30);
 
   const estimatedTimeRange = useMemo(() => {
+    if (!selectedTime) return '—';
     return getEstimatedTimeRange(selectedTime, estimatedDuration);
   }, [selectedTime, estimatedDuration]);
 
-  const isTimeWithinClinicHours = useMemo(() => {
-    const selectedMinutes = getSelectedMinutes(formData.hour, formData.minute);
-    return (
-      selectedMinutes >= clinicStartMinutes &&
-      selectedMinutes + estimatedDuration <= clinicEndMinutes
-    );
-  }, [formData.hour, formData.minute, estimatedDuration]);
-
-  const timeConflict = useMemo(() => {
-    if (!formData.serviceId) {
-      return null;
-    }
-
-    return findTimeConflict({
+  const availableSlots = useMemo(() => {
+    return computeAvailableSlots({
       appointments: dayAppointments,
       dateKey: selectedDate,
-      time: selectedTime,
       durationMinutes: estimatedDuration,
     });
-  }, [dayAppointments, selectedDate, selectedTime, estimatedDuration, formData.serviceId]);
+  }, [dayAppointments, selectedDate, estimatedDuration]);
 
   const calendarDays = useMemo(() => {
     return buildCalendarDays(calendarYear, calendarMonth, today);
@@ -127,8 +127,8 @@ export default function RecepAppointmentForm() {
   }, []);
 
   useEffect(() => {
-    fetchDayAppointments(selectedDate);
-  }, [selectedDate]);
+    fetchDayAppointments(selectedDate, formData.branchId);
+  }, [selectedDate, formData.branchId]);
 
   useEffect(() => {
     const query = formData.patientName.trim();
@@ -200,25 +200,27 @@ export default function RecepAppointmentForm() {
     };
   }, []);
 
+  // Reset dentistId when service changes and the chosen dentist no longer offers it
   useEffect(() => {
-    const selectedMinutes = getSelectedMinutes(formData.hour, formData.minute);
-
-    if (selectedMinutes < clinicStartMinutes) {
-      setFormData((current) => ({
-        ...current,
-        hour: '10',
-        minute: '00',
-      }));
+    if (!formData.serviceId || !formData.dentistId) return;
+    const sid = Number(formData.serviceId);
+    const offeredIds = dentistsByService[Number(formData.dentistId)] || [];
+    if (!offeredIds.includes(sid)) {
+      setFormData((current) => ({ ...current, dentistId: '' }));
     }
+  }, [formData.serviceId, dentistsByService]);
 
-    if (selectedMinutes > clinicEndMinutes) {
-      setFormData((current) => ({
-        ...current,
-        hour: '7',
-        minute: '00',
-      }));
+  // Clear selected slot if it becomes unavailable (date, service, or appointments changed)
+  useEffect(() => {
+    if (!formData.hour || !formData.minute) return;
+    const currentValue = toTimePickerValue(formData.hour, formData.minute);
+    const stillAvailable = availableSlots.some(
+      (s) => s.value === currentValue && s.available
+    );
+    if (!stillAvailable) {
+      setFormData((current) => ({ ...current, hour: '', minute: '' }));
     }
-  }, [formData.hour, formData.minute]);
+  }, [availableSlots, formData.hour, formData.minute]);
 
   async function fetchAppointmentMeta() {
     setMetaLoading(true);
@@ -230,8 +232,17 @@ export default function RecepAppointmentForm() {
       const dentistOptions = Array.isArray(meta.dentists) ? meta.dentists : [];
       const serviceOptions = Array.isArray(meta.services) ? meta.services : [];
 
+      // Build dentistId → service_ids[] map from the dentist objects returned by meta
+      const serviceMap = {};
+      for (const d of dentistOptions) {
+        if (Array.isArray(d.service_ids)) {
+          serviceMap[d.id] = d.service_ids;
+        }
+      }
+
       setBranches(branchOptions);
       setDentists(dentistOptions);
+      setDentistsByService(serviceMap);
       setServices(serviceOptions);
       setFormData((current) => ({
         ...current,
@@ -246,24 +257,39 @@ export default function RecepAppointmentForm() {
     }
   }
 
-  async function fetchDayAppointments(dateKey) {
+  async function fetchDayAppointments(dateKey, branchId) {
+    setDayAppointmentsLoading(true);
     try {
       const bounds = dayBoundsUTC(dateKey);
-      const appointments = await listAppointments({
-        from: bounds.fromUTC,
-        to: bounds.toUTC,
-      });
-
+      const params = { from: bounds.fromUTC, to: bounds.toUTC };
+      if (branchId) params.branch_id = branchId;
+      const appointments = await listAppointments(params);
       setDayAppointments(Array.isArray(appointments) ? appointments : []);
     } catch (err) {
       setDayAppointments([]);
+    } finally {
+      setDayAppointmentsLoading(false);
     }
   }
 
   function handleInputChange(field, value) {
+    let sanitized = value;
+
     if (field === 'patientName') {
+      sanitized = value.replace(/[^a-zA-ZÀ-ɏ\s]/g, '');
       setSelectedPatient(null);
       setShowPatientOptions(true);
+    }
+
+    if (field === 'contactNumber') {
+      const digitsOnly = value.replace(/[^0-9]/g, '');
+      sanitized = value.startsWith('+') ? '+' + digitsOnly : digitsOnly;
+      const maxLen = sanitized.startsWith('+') ? 13 : 11;
+      sanitized = sanitized.slice(0, maxLen);
+    }
+
+    if (field === 'email') {
+      sanitized = value.replace(/[^a-zA-Z0-9.@_\-]/g, '');
     }
 
     if (field !== 'patientName') {
@@ -279,17 +305,15 @@ export default function RecepAppointmentForm() {
 
     setFormData((current) => ({
       ...current,
-      [field]: value,
+      [field]: sanitized,
     }));
   }
 
-  function handleTimePickerChange(value) {
-    const parsed = parseTimePickerValue(value);
-
+  function handleSelectSlot(slot) {
     setFormData((current) => ({
       ...current,
-      hour: parsed.hour,
-      minute: parsed.minute,
+      hour: slot.hour,
+      minute: slot.minute,
     }));
     setFormError('');
   }
@@ -320,16 +344,6 @@ export default function RecepAppointmentForm() {
     }
 
     setSelectedDate(dayItem.dateKey);
-  }
-
-  function handleSuggestedSlotClick(slot) {
-    const parsedTime = parseDisplayTime(slot);
-
-    setFormData((current) => ({
-      ...current,
-      hour: parsedTime.hour,
-      minute: parsedTime.minute,
-    }));
   }
 
   function handleSelectPatient(patient) {
@@ -371,8 +385,8 @@ export default function RecepAppointmentForm() {
       dentistId: '',
       serviceId: '',
       note: '',
-      hour: '10',
-      minute: '00',
+      hour: '',
+      minute: '',
     });
 
     setSelectedPatient(null);
@@ -387,8 +401,8 @@ export default function RecepAppointmentForm() {
     event.preventDefault();
     setFormError('');
 
-    if (!isTimeWithinClinicHours) {
-      setFormError('Selected time is outside clinic hours.');
+    if (!formData.hour || !formData.minute) {
+      setFormError('Please select an appointment time.');
       return;
     }
 
@@ -402,17 +416,19 @@ export default function RecepAppointmentForm() {
       return;
     }
 
-    const emailError = validateEmail(formData.email);
-    if (emailError) {
-      setFieldErrors({ email: emailError });
-      setFormError(emailError);
-      return;
-    }
+    const newFieldErrors = {};
 
-    if (timeConflict) {
-      setFormError(
-        `This time overlaps with an existing branch appointment for ${timeConflict.patientName}.`
-      );
+    const nameError = validatePatientName(formData.patientName);
+    if (nameError) newFieldErrors.patientName = nameError;
+
+    const contactError = validateContactNumber(formData.contactNumber);
+    if (contactError) newFieldErrors.contactNumber = contactError;
+
+    const emailError = validateEmail(formData.email);
+    if (emailError) newFieldErrors.email = emailError;
+
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
       return;
     }
 
@@ -440,12 +456,14 @@ export default function RecepAppointmentForm() {
         });
       }
 
+      const isSameDay = selectedDate === toDateKey(today);
       await createAppointment({
         patient_id: Number(patient.id),
         dentist_id: Number(formData.dentistId),
         service_id: Number(formData.serviceId),
         start_time: buildAppointmentStartISO(selectedDate, selectedTime),
         note: formData.note,
+        ...(isSameDay ? { initial_status: 'arrived' } : {}),
       });
 
       navigate('/receptionistAppointments');
@@ -506,7 +524,10 @@ export default function RecepAppointmentForm() {
                     handleInputChange('patientName', event.target.value)
                   }
                   required
-                  style={styles.input}
+                  style={{
+                    ...styles.input,
+                    ...(fieldErrors.patientName ? styles.inputError : {}),
+                  }}
                   autoComplete="off"
                   onFocus={() => setShowPatientOptions(true)}
                 />
@@ -534,6 +555,10 @@ export default function RecepAppointmentForm() {
                   </div>
                 )}
 
+                {fieldErrors.patientName && (
+                  <p style={styles.fieldError}>{fieldErrors.patientName}</p>
+                )}
+
                 <p style={styles.helperText}>
                   Recommendations only show patients from your assigned branch.
                 </p>
@@ -547,14 +572,22 @@ export default function RecepAppointmentForm() {
                 <input
                   type="tel"
                   name="contactNumber"
-                  placeholder="Enter contact number"
+                  placeholder="e.g. 09XXXXXXXXX or +639XXXXXXXXX"
                   value={formData.contactNumber}
                   onChange={(event) =>
                     handleInputChange('contactNumber', event.target.value)
                   }
                   required
-                  style={styles.input}
+                  maxLength={13}
+                  style={{
+                    ...styles.input,
+                    ...(fieldErrors.contactNumber ? styles.inputError : {}),
+                  }}
                 />
+
+                {fieldErrors.contactNumber && (
+                  <p style={styles.fieldError}>{fieldErrors.contactNumber}</p>
+                )}
               </div>
 
               <div style={styles.field}>
@@ -584,32 +617,6 @@ export default function RecepAppointmentForm() {
 
               <div style={styles.field}>
                 <label style={styles.label}>
-                  Doctor Name <span style={styles.required}>*</span>
-                </label>
-                <select
-                  name="dentistId"
-                  value={formData.dentistId}
-                  onChange={(event) =>
-                    handleInputChange('dentistId', event.target.value)
-                  }
-                  required
-                  style={styles.input}
-                  disabled={metaLoading}
-                >
-                  <option value="" disabled>
-                    Select doctor
-                  </option>
-
-                  {dentists.map((dentist) => (
-                    <option key={dentist.id} value={dentist.id}>
-                      {dentist.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>
                   Purpose of Visit <span style={styles.required}>*</span>
                 </label>
                 <select
@@ -629,6 +636,34 @@ export default function RecepAppointmentForm() {
                   {services.map((service) => (
                     <option key={service.id} value={service.id}>
                       {service.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>
+                  Doctor Name <span style={styles.required}>*</span>
+                </label>
+                <select
+                  name="dentistId"
+                  value={formData.dentistId}
+                  onChange={(event) =>
+                    handleInputChange('dentistId', event.target.value)
+                  }
+                  required
+                  style={styles.input}
+                  disabled={metaLoading}
+                >
+                  <option value="" disabled>
+                    {formData.serviceId && filteredDentists.length === 0
+                      ? 'No doctors available for this service'
+                      : 'Select doctor'}
+                  </option>
+
+                  {filteredDentists.map((dentist) => (
+                    <option key={dentist.id} value={dentist.id}>
+                      {dentist.name}
                     </option>
                   ))}
                 </select>
@@ -752,49 +787,35 @@ export default function RecepAppointmentForm() {
 
                 <div style={styles.timeSection}>
                   <label style={styles.label}>
-                    Time <span style={styles.required}>*</span>
+                    Available Time Slots <span style={styles.required}>*</span>
                   </label>
 
-                  <div style={styles.timePickerRow}>
-                    <input
-                      type="time"
-                      value={timePickerValue}
-                      min="10:00"
-                      max="19:00"
-                      step="1800"
-                      onChange={(event) =>
-                        handleTimePickerChange(event.target.value)
-                      }
-                      required
-                      style={styles.timeInput}
-                    />
-                  </div>
-
-                  {!isTimeWithinClinicHours && (
-                    <div style={styles.warningBox}>
-                      <i className="fi fi-rr-triangle-warning" style={styles.warningIcon}></i>
-                      <div>
-                        <strong style={styles.warningTitle}>
-                          Selected time is outside clinic hours.
-                        </strong>
-                        <p style={styles.warningText}>
-                          Please choose a time between 10:00 AM and 7:00 PM.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {timeConflict && (
-                    <div style={styles.warningBox}>
-                      <i className="fi fi-rr-triangle-warning" style={styles.warningIcon}></i>
-                      <div>
-                        <strong style={styles.warningTitle}>
-                          {selectedTime} overlaps with an existing branch appointment.
-                        </strong>
-                        <p style={styles.warningText}>
-                          {timeConflict.patientName} with {timeConflict.dentistName} at {timeConflict.time}.
-                        </p>
-                      </div>
+                  {dayAppointmentsLoading ? (
+                    <p style={styles.slotLoadingText}>Loading available slots...</p>
+                  ) : availableSlots.filter((s) => s.available).length === 0 ? (
+                    <p style={styles.slotEmptyText}>No available slots on this date.</p>
+                  ) : (
+                    <div style={styles.slotGrid}>
+                      {availableSlots.map((slot) => {
+                        const isSelected = slot.value === timePickerValue;
+                        return (
+                          <button
+                            key={slot.value}
+                            type="button"
+                            disabled={!slot.available}
+                            style={{
+                              ...styles.slotChip,
+                              ...(!slot.available ? styles.slotChipBlocked : {}),
+                              ...(isSelected && slot.available
+                                ? styles.slotChipSelected
+                                : {}),
+                            }}
+                            onClick={() => slot.available && handleSelectSlot(slot)}
+                          >
+                            {slot.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -806,7 +827,9 @@ export default function RecepAppointmentForm() {
                           Estimated Duration: {estimatedTimeRange}
                         </p>
                         <p style={styles.infoSubText}>
-                          Estimated duration is based on the selected purpose of visit. A 10-minute cleaning/preparation buffer is blocked after each appointment.
+                          Estimated duration is based on the selected purpose of visit. A
+                          15-minute cleaning/preparation buffer is blocked after each
+                          appointment.
                         </p>
                       </div>
                     </div>
@@ -814,9 +837,7 @@ export default function RecepAppointmentForm() {
                     <div style={styles.infoRow}>
                       <i className="fi fi-rr-info" style={styles.infoIconGray}></i>
                       <div>
-                        <p style={styles.infoText}>
-                          Clinic Hours: 10:00 AM - 7:00 PM
-                        </p>
+                        <p style={styles.infoText}>Clinic Hours: 10:00 AM - 7:00 PM</p>
                         <p style={styles.infoSubText}>
                           Time slots are limited to clinic operating hours.
                         </p>
@@ -1036,65 +1057,6 @@ function dayBoundsUTC(dateKey) {
   };
 }
 
-function findTimeConflict({ appointments, dateKey, time, durationMinutes }) {
-  const selectedStart = buildAppointmentStartISO(dateKey, time);
-  const startMs = new Date(selectedStart).getTime();
-  const endMs =
-    startMs + (durationMinutes + appointmentBufferMinutes) * 60 * 1000;
-
-  return appointments.find((appointment) => {
-    const status = String(appointment.status || '').toLowerCase();
-
-    if (!['scheduled', 'arrived', 'completed'].includes(status)) {
-      return false;
-    }
-
-    const appointmentStart = new Date(appointment.start_time).getTime();
-    const appointmentEnd =
-      appointmentStart +
-      (Number(appointment.duration_min || 30) + appointmentBufferMinutes) *
-        60 *
-        1000;
-
-    return startMs < appointmentEnd && endMs > appointmentStart;
-  })
-    ? mapConflictAppointment(
-        appointments.find((appointment) => {
-          const status = String(appointment.status || '').toLowerCase();
-
-          if (!['scheduled', 'arrived', 'completed'].includes(status)) {
-            return false;
-          }
-
-          const appointmentStart = new Date(appointment.start_time).getTime();
-          const appointmentEnd =
-            appointmentStart +
-            (Number(appointment.duration_min || 30) + appointmentBufferMinutes) *
-              60 *
-              1000;
-
-          return startMs < appointmentEnd && endMs > appointmentStart;
-        })
-      )
-    : null;
-}
-
-function mapConflictAppointment(appointment) {
-  const start = new Date(appointment.start_time);
-
-  return {
-    patientName: appointment.patient_name || 'another patient',
-    dentistName: appointment.dentist_name || 'their dentist',
-    time: Number.isNaN(start.getTime())
-      ? 'that time'
-      : start.toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        }),
-  };
-}
-
 function buildAppointmentStartISO(dateKey, displayTime) {
   const [year, month, day] = dateKey.split('-').map(Number);
   const minutes = parseTimeToMinutes(displayTime);
@@ -1105,27 +1067,98 @@ function buildAppointmentStartISO(dateKey, displayTime) {
   return date.toISOString();
 }
 
-function parseDisplayTime(timeString) {
-  const [time] = timeString.split(' ');
-  const [hour, minute] = time.split(':');
-
-  return {
-    hour,
-    minute,
-  };
-}
-
 function validateEmail(value) {
   const email = String(value || '').trim();
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!email) {
     return 'Email address is required.';
   }
 
+  if (/[^a-zA-Z0-9.@_\-]/.test(email)) {
+    return 'Email may only contain letters, numbers, and . - _ characters.';
+  }
+
+  const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._\-]*@[a-zA-Z0-9][a-zA-Z0-9._\-]*\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(email)) {
     return 'Please enter a valid email address.';
   }
 
   return '';
+}
+
+function validatePatientName(value) {
+  const name = String(value || '').trim();
+
+  if (!name) {
+    return 'Patient name is required.';
+  }
+
+  if (/[^a-zA-ZÀ-ɏ\s]/.test(name)) {
+    return 'Patient name must contain letters and spaces only.';
+  }
+
+  return '';
+}
+
+function validateContactNumber(value) {
+  const contact = String(value || '').trim();
+
+  if (!contact) {
+    return 'Contact number is required.';
+  }
+
+  if (!/^(09\d{9}|\+639\d{9})$/.test(contact)) {
+    return 'Enter a valid PH number (09XXXXXXXXX or +639XXXXXXXXX).';
+  }
+
+  return '';
+}
+
+// Returns all 30-min slots within clinic hours for the selected date.
+// Each slot has { label, value, hour, minute, available }.
+// available=false when the slot is in the past or blocked by an existing appointment + buffer.
+function computeAvailableSlots({ appointments, dateKey, durationMinutes }) {
+  const now = Date.now();
+  const [year, month, day] = dateKey.split('-').map(Number);
+
+  const busyIntervals = appointments
+    .filter((a) =>
+      ['scheduled', 'arrived'].includes(
+        String(a.status || '').toLowerCase()
+      )
+    )
+    .map((a) => {
+      const s = new Date(a.start_time).getTime();
+      const e =
+        s + (Number(a.duration_min || 30) + appointmentBufferMinutes) * 60 * 1000;
+      return { start: s, end: e };
+    });
+
+  const slots = [];
+
+  for (let m = clinicStartMinutes; m < clinicEndMinutes; m += 30) {
+    const h24 = Math.floor(m / 60);
+    const min = m % 60;
+    const slotDate = new Date(year, month - 1, day, h24, min, 0, 0);
+    const slotStart = slotDate.getTime();
+    const slotEnd =
+      slotStart + (durationMinutes + appointmentBufferMinutes) * 60 * 1000;
+
+    const isPast = slotStart <= now;
+    const isBlocked =
+      !isPast && busyIntervals.some((b) => slotStart < b.end && slotEnd > b.start);
+
+    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+    const period = h24 >= 12 ? 'PM' : 'AM';
+
+    slots.push({
+      label: `${h12}:${String(min).padStart(2, '0')} ${period}`,
+      value: `${String(h24).padStart(2, '0')}:${String(min).padStart(2, '0')}`,
+      hour: String(h24 > 12 ? h24 - 12 : h24),
+      minute: String(min).padStart(2, '0'),
+      available: !isPast && !isBlocked,
+    });
+  }
+
+  return slots;
 }

@@ -328,6 +328,16 @@ export default function RegisterScreen({ navigation }) {
                         >
                           {b.name}
                         </Text>
+                        {b.address ? (
+                          <Text
+                            style={[
+                              styles.branchChipAddress,
+                              isActive && styles.branchChipAddressActive,
+                            ]}
+                          >
+                            {b.address}
+                          </Text>
+                        ) : null}
                       </TouchableOpacity>
                     );
                   })}

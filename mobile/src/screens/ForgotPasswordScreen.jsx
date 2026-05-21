@@ -101,7 +101,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       setResendTimer(RESEND_WAIT_SECONDS);
       setCanResend(false);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send OTP');
+      setError(err.response?.data?.message || 'Unable to send OTP. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -139,7 +139,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       setResendTimer(RESEND_WAIT_SECONDS);
       setCanResend(false);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to resend OTP');
+      setError(err.response?.data?.message || 'Unable to resend OTP. Please try again.');
     } finally {
       setSubmitting(false);
     }

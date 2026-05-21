@@ -6,6 +6,8 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import PatientHomeScreen from '../screens/PatientHomeScreen';
 import BookServiceScreen from '../screens/BookServiceScreen';
+import BookAIAssistantScreen from '../screens/BookAIAssistantScreen';
+import AIAnalysisScreen from '../screens/AIAnalysisScreen';
 import BookSuggestionsScreen from '../screens/BookSuggestionsScreen';
 import BookConfirmScreen from '../screens/BookConfirmScreen';
 import TreatmentProgressScreen from '../screens/TreatmentProgressScreen';
@@ -41,6 +43,8 @@ export default function AppNavigator() {
             <Stack.Screen name="Home" component={DashboardScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="Appointments" component={AppointmentsScreen} />
+            <Stack.Screen name="BookAIAssistant" component={BookAIAssistantScreen} />
+            <Stack.Screen name="AIAnalysis" component={AIAnalysisScreen} />
             <Stack.Screen name="BookService" component={BookServiceScreen} />
             <Stack.Screen name="BookSuggestions" component={BookSuggestionsScreen} />
             <Stack.Screen name="BookConfirm" component={BookConfirmScreen} />

@@ -25,6 +25,11 @@ export async function suggestSlots(payload) {
   return res.data;
 }
 
+export async function checkAppointmentConflict(payload) {
+  const res = await api.post('/appointments/conflict-check', payload);
+  return res.data;
+}
+
 export async function getAppointmentFeedback(appointmentId) {
   const res = await api.get(`/appointments/patient-feedback/appointment/${appointmentId}`);
   return res.data;

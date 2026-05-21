@@ -112,7 +112,10 @@ export default function RecepMessage() {
     fetchPatients();
     fetchChats();
     sendPresenceHeartbeat().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  useEffect(() => {
     if (selectedChatId) {
       fetchPresence(selectedChatId, true);
     }
@@ -656,50 +659,45 @@ function mapPatientOption(patient) {
 }
 
 function mergeChatsWithThreads(currentChats, threads) {
-  const draft = [...currentChats];
+  const existingByIdMap = new Map(
+    currentChats.map((chat) => [String(chat.id), chat])
+  );
 
-  threads.forEach((thread) => {
+  const threadChatIds = new Set();
+
+  // Build list in backend sort order (most recent first).
+  const result = threads.map((thread) => {
     const chatId = String(thread.other_user_id);
-    const nextChat = {
+    threadChatIds.add(chatId);
+    const existing = existingByIdMap.get(chatId);
+
+    return {
       id: thread.other_user_id,
       name: thread.other_user_name || 'Patient',
       unread: Number(thread.unread_count || 0),
       lastTime: previewTime(thread.last_message_at),
-      messages: [
-        {
-          text: thread.last_message_body || '',
-          type: 'received',
-          time: previewTime(thread.last_message_at),
-          status: '',
-        },
-      ],
+      messages:
+        existing?.messages?.length > 0
+          ? existing.messages
+          : [
+              {
+                text: thread.last_message_body || '',
+                type: 'received',
+                time: previewTime(thread.last_message_at),
+                status: '',
+              },
+            ],
     };
+  });
 
-    const existingIndex = draft.findIndex(
-      (chat) => String(chat.id) === chatId
-    );
-
-    if (existingIndex >= 0) {
-      draft[existingIndex] = {
-        ...draft[existingIndex],
-        name: nextChat.name,
-        unread: nextChat.unread,
-        lastTime: nextChat.lastTime,
-        messages:
-          draft[existingIndex].messages.length > 0
-            ? draft[existingIndex].messages
-            : nextChat.messages,
-      };
-    } else {
-      draft.push(nextChat);
+  // Prepend any locally-created draft chats not yet persisted on the backend.
+  currentChats.forEach((chat) => {
+    if (!threadChatIds.has(String(chat.id))) {
+      result.unshift(chat);
     }
   });
 
-  return draft.sort((first, second) => {
-    if (first.lastTime === 'New') return -1;
-    if (second.lastTime === 'New') return 1;
-    return 0;
-  });
+  return result;
 }
 
 function normalizeMessages(items, currentUserId) {

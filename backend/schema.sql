@@ -1,6 +1,3 @@
--- Dental Clinic Management System
--- Day 1 schema. All business tables carry branch_id for multi-branch scoping.
-
 CREATE TABLE branches (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -253,7 +250,8 @@ CREATE TABLE services (
   category VARCHAR(100) NOT NULL DEFAULT 'General Dentistry',
   duration_min INT NOT NULL,
   price DECIMAL(10,2) NOT NULL,
-  status ENUM('Active','Inactive','Discontinued') NOT NULL DEFAULT 'Active'
+  status ENUM('Active','Inactive','Discontinued') NOT NULL DEFAULT 'Active',
+  description TEXT NULL
 );
 
 CREATE TABLE dentist_services (
@@ -309,6 +307,27 @@ CREATE TABLE treatments (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (appointment_id) REFERENCES appointments(id),
   FOREIGN KEY (dentist_id) REFERENCES users(id)
+);
+
+CREATE TABLE treatment_plans (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  patient_id INT NOT NULL,
+  dentist_id INT NOT NULL,
+  tooth_number TINYINT NULL,
+  planned_treatment VARCHAR(255) NOT NULL,
+  status ENUM('planned','in_progress','completed') NOT NULL DEFAULT 'planned',
+  notes TEXT NULL,
+  date_completed DATE NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (patient_id) REFERENCES users(id),
+  FOREIGN KEY (dentist_id) REFERENCES users(id),
+
+  INDEX idx_treatment_plans_patient (patient_id),
+  INDEX idx_treatment_plans_dentist (dentist_id),
+  INDEX idx_treatment_plans_tooth (patient_id, tooth_number),
+  INDEX idx_treatment_plans_status (status)
 );
 
 CREATE TABLE patient_feedback (
@@ -389,11 +408,13 @@ CREATE TABLE messages (
   receiver_id INT NOT NULL,
   content TEXT NOT NULL,
   is_read BOOLEAN DEFAULT FALSE,
+  read_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (branch_id) REFERENCES branches(id),
   FOREIGN KEY (sender_id) REFERENCES users(id),
   FOREIGN KEY (receiver_id) REFERENCES users(id)
 );
+-- Migration: ALTER TABLE messages ADD COLUMN read_at TIMESTAMP NULL DEFAULT NULL AFTER is_read;
 
 CREATE TABLE notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,

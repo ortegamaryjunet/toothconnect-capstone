@@ -27,21 +27,68 @@ const HOUR_OPTIONS = Array.from({ length: 10 }, (_, index) => 10 + index);
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => index);
 
 export default function BookSuggestionsScreen({ navigation, route }) {
-  const { service, branchId, branchName, rescheduleAppointmentId } = route.params;
+  const { service, branchId, branchName, rescheduleAppointmentId, preferredDate: aiDate, preferredTime: aiTime } = route.params;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showPreferredSearch, setShowPreferredSearch] = useState(false);
-  const [preferredDate, setPreferredDate] = useState(getDefaultPreferredDate());
-  const [preferredTime, setPreferredTime] = useState('10:00');
+  const [preferredDate, setPreferredDate] = useState(aiDate || getDefaultPreferredDate());
+  const [preferredTime, setPreferredTime] = useState(aiTime || '10:00');
   const [preferredLoading, setPreferredLoading] = useState(false);
   const [suggestionMode, setSuggestionMode] = useState('earliest');
   const [pickerMode, setPickerMode] = useState(null);
   const [selectedSlotBooked, setSelectedSlotBooked] = useState(false);
 
   useEffect(() => {
-    loadSuggestions();
+    if (aiDate || aiTime) {
+      loadInitialSlotsWithPreference();
+    } else {
+      loadSuggestions();
+    }
   }, []);
+
+  async function loadInitialSlotsWithPreference() {
+    const date = aiDate || getDefaultPreferredDate();
+    const time = aiTime || '10:00';
+
+    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
+    const validTime = /^\d{2}:\d{2}$/.test(time);
+
+    if (validDate && validTime) {
+      const [h, m] = time.split(':').map(Number);
+      const inRange = h >= 10 && (h < 19 || (h === 19 && m === 0));
+      if (inRange) {
+        setLoading(true);
+        setError('');
+        try {
+          const preferredStart = buildClinicISO(date, time);
+          const preferred = new Date(preferredStart);
+          const from = new Date(preferred);
+          from.setDate(preferred.getDate() - 3);
+          const to = new Date(preferred);
+          to.setDate(preferred.getDate() + 14);
+
+          const result = await suggestSlots({
+            branch_id: branchId,
+            service_id: service.id,
+            from: from.toISOString(),
+            to: to.toISOString(),
+            preferred_start: preferredStart,
+          });
+          setData(result);
+          setSuggestionMode('preferred');
+          setSelectedSlotBooked(Boolean(result.selected_slot_booked));
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to load suggestions');
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+    }
+
+    loadSuggestions();
+  }
 
   async function loadSuggestions() {
     setLoading(true);
@@ -188,6 +235,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
                 preferredTime={preferredTime}
                 preferredLoading={preferredLoading}
                 selectedSlotBooked={selectedSlotBooked}
+                aiPrefilled={Boolean(aiDate || aiTime)}
                 onOpenDatePicker={() => setPickerMode('date')}
                 onOpenTimePicker={() => setPickerMode('time')}
                 onSearch={handlePreferredSearch}
@@ -273,6 +321,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
                 preferredTime={preferredTime}
                 preferredLoading={preferredLoading}
                 selectedSlotBooked={selectedSlotBooked}
+                aiPrefilled={Boolean(aiDate || aiTime)}
                 onOpenDatePicker={() => setPickerMode('date')}
                 onOpenTimePicker={() => setPickerMode('time')}
                 onSearch={handlePreferredSearch}
@@ -314,6 +363,7 @@ function PreferredSlotCard({
   preferredTime,
   preferredLoading,
   selectedSlotBooked,
+  aiPrefilled,
   onOpenDatePicker,
   onOpenTimePicker,
   onSearch,
@@ -321,9 +371,15 @@ function PreferredSlotCard({
   return (
     <View style={styles.preferredCard}>
       <Text style={styles.preferredTitle}>Preferred date and time</Text>
-      <Text style={styles.preferredSub}>
-        Choose a target slot. We will return the closest three available options.
-      </Text>
+      {aiPrefilled ? (
+        <Text style={styles.preferredSub}>
+          We detected a time preference from your concern. Adjust if needed, then search.
+        </Text>
+      ) : (
+        <Text style={styles.preferredSub}>
+          Choose a target slot. We will return the closest three available options.
+        </Text>
+      )}
 
       <View style={styles.inputRow}>
         <View style={styles.inputGroup}>

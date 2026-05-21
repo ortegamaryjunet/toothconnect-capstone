@@ -133,7 +133,7 @@ router.get('/thread/:otherUserId', async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      `SELECT m.id, m.sender_id, m.receiver_id, m.content, m.is_read, m.read_at, m.created_at,
+      `SELECT m.id, m.sender_id, m.receiver_id, m.content, m.is_read, m.created_at,
               u_from.name AS from_user_name, u_from.role AS from_user_role
        FROM messages m
        JOIN users u_from ON u_from.id = m.sender_id
@@ -185,25 +185,33 @@ router.post('/', async (req, res) => {
       });
     }
 
+    let patientBranchId = null;
+
     if (userRole === 'patient' && recipient.role === 'receptionist') {
-      const [accessCheck] = await pool.query(
-        `SELECT 1 FROM user_branches ub
-         JOIN appointments a ON a.branch_id = ub.branch_id AND a.patient_id = ?
-         WHERE ub.user_id = ?
+      const [accessRows] = await pool.query(
+        `SELECT branch_id FROM (
+           SELECT ub.branch_id FROM user_branches ub
+           JOIN appointments a ON a.branch_id = ub.branch_id AND a.patient_id = ?
+           WHERE ub.user_id = ? AND a.status = 'completed'
+           UNION ALL
+           SELECT branch_id FROM messages
+           WHERE sender_id = ? AND receiver_id = ?
+         ) t
          LIMIT 1`,
-        [userId, receiver_id]
+        [userId, receiver_id, receiver_id, userId]
       );
-      if (accessCheck.length === 0) {
+      if (accessRows.length === 0) {
         return res.status(403).json({
           message: 'Messaging is available after your first appointment at this branch.',
         });
       }
+      patientBranchId = accessRows[0].branch_id;
     }
-    
+
     let effectiveBranchId = branch_id;
     if (!effectiveBranchId) {
       if (userRole === 'patient') {
-        effectiveBranchId = recipient.home_branch_id || (userBranches[0]) || null;
+        effectiveBranchId = patientBranchId || recipient.home_branch_id || null;
       } else {
         effectiveBranchId = userBranches[0] || recipient.home_branch_id || null;
       }
@@ -245,7 +253,7 @@ router.patch('/thread/:otherUserId/read', async (req, res) => {
   try {
     const [result] = await pool.query(
       `UPDATE messages
-       SET is_read = TRUE, read_at = NOW()
+       SET is_read = TRUE
        WHERE sender_id = ? AND receiver_id = ? AND is_read = FALSE`,
       [otherUserId, userId]
     );
@@ -279,6 +287,7 @@ router.get('/branches', async (req, res) => {
          EXISTS(
            SELECT 1 FROM appointments a
            WHERE a.patient_id = ? AND a.branch_id = b.id
+             AND a.status = 'completed'
          ) AS can_message
        FROM branches b
        WHERE b.status = 'Active'

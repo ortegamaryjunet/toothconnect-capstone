@@ -1,4 +1,4 @@
-const createAdminNotifStyles = ({
+﻿const createAdminNotifStyles = ({
   isMobile = false,
   isTablet = false,
   isSmallScreen = false,
@@ -84,7 +84,7 @@ const createAdminNotifStyles = ({
     menuItemActive: {
       background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       color: '#ffffff',
-      boxShadow: '0 10px 22px rgba(37, 99, 235, 0.22)',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.24)',
     },
 
     logoutSection: {
@@ -300,7 +300,7 @@ const createAdminNotifStyles = ({
     },
 
     summaryTabActive: {
-      background: 'linear-gradient(135deg, #60a5fa, #2563eb)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       boxShadow: '0 8px 18px rgba(37, 99, 235, 0.22)',
     },

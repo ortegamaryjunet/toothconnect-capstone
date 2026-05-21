@@ -67,7 +67,15 @@ export default function MessageThreadScreen({ navigation, route }) {
       const data = await getThread(otherUserId);
       setMessages(data);
       if (data.some(m => m.receiver_id === user.id && !m.is_read)) {
-        markThreadRead(otherUserId).catch(() => {});
+        markThreadRead(otherUserId)
+          .then(() => {
+            setMessages(prev =>
+              prev.map(m =>
+                m.receiver_id === user.id ? { ...m, is_read: true } : m
+              )
+            );
+          })
+          .catch(() => {});
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load messages');
@@ -90,7 +98,7 @@ export default function MessageThreadScreen({ navigation, route }) {
     try {
       await sendMessage({ receiver_id: otherUserId, content: composer.trim() });
       setComposer('');
-      await fetchMessages();
+      await fetchMessages(true);
       scrollRef.current?.scrollToEnd({ animated: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send');

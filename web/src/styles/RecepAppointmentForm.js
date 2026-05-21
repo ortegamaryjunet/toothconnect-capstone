@@ -494,6 +494,37 @@ const createRecepAppointmentFormStyles = ({
       fontFamily: 'Arial, sans-serif',
     },
 
+    slotActionRow: {
+      display: 'flex',
+      gap: 8,
+      marginTop: 6,
+      flexWrap: 'wrap',
+    },
+
+    slotSuggestionBtn: {
+      padding: '5px 14px',
+      background: '#2563eb',
+      color: '#fff',
+      border: 'none',
+      borderRadius: 6,
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      cursor: 'pointer',
+      fontWeight: 600,
+    },
+
+    slotNextBtn: {
+      padding: '5px 14px',
+      background: '#475569',
+      color: '#fff',
+      border: 'none',
+      borderRadius: 6,
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      cursor: 'pointer',
+      fontWeight: 600,
+    },
+
     suggestedWrapper: {
       marginTop: 14,
     },
@@ -523,6 +554,56 @@ const createRecepAppointmentFormStyles = ({
       fontSize: 14,
       cursor: 'pointer',
       transition: '0.2s ease',
+    },
+
+    slotGrid: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 10,
+      marginBottom: 4,
+    },
+
+    slotChip: {
+      padding: '8px 14px',
+      border: '1px solid #93c5fd',
+      borderRadius: 8,
+      background: '#eff6ff',
+      color: '#1d4ed8',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 13,
+      fontWeight: 600,
+      cursor: 'pointer',
+      transition: 'background 0.15s ease, border-color 0.15s ease',
+    },
+
+    slotChipSelected: {
+      background: '#2563eb',
+      borderColor: '#2563eb',
+      color: '#ffffff',
+    },
+
+    slotChipBlocked: {
+      background: '#f1f5f9',
+      borderColor: '#e2e8f0',
+      color: '#94a3b8',
+      cursor: 'not-allowed',
+      textDecoration: 'line-through',
+    },
+
+    slotLoadingText: {
+      margin: '10px 0 4px',
+      color: '#64748b',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    slotEmptyText: {
+      margin: '10px 0 4px',
+      color: '#94a3b8',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      fontStyle: 'italic',
     },
 
     infoRows: {

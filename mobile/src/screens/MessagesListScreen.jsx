@@ -246,13 +246,15 @@ export default function MessagesListScreen({ navigation }) {
 
             <Text style={styles.headerTitle}>Messages</Text>
 
-            <TouchableOpacity style={styles.notificationButton}>
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={() => navigation.navigate('Notifications')}
+            >
               <Image
                 source={require('../../assets/images/notification-bell.png')}
                 style={styles.headerIcon}
                 resizeMode="contain"
               />
-              onPress={() => navigation.navigate('Notifications')}
             </TouchableOpacity>
           </View>
 

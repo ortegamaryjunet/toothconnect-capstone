@@ -731,9 +731,16 @@ router.post('/login', async (req, res) => {
       [email]
     );
     if (users.length === 0) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Incorrect email or password.' });
     }
     const user = users[0];
+
+    if (platform === 'mobile' && user.role !== 'patient') {
+      return res.status(403).json({ message: 'Staff log in via the web app' });
+    }
+    if (platform === 'web' && user.role === 'patient') {
+      return res.status(403).json({ message: 'Patients use the mobile app to log in' });
+    }
 
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
@@ -742,7 +749,7 @@ router.post('/login', async (req, res) => {
         `INSERT INTO audit_logs (user_id, action, device_browser, log_status) VALUES (?, 'login_failed', ?, 'failed')`,
         [user.id, deviceBrowser]
       ).catch(() => {});
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Incorrect email or password.' });
     }
 
     if (user.status !== 'Active') {
@@ -751,13 +758,6 @@ router.post('/login', async (req, res) => {
 
     if (user.role === 'patient' && !user.email_verified) {
       return res.status(403).json({ message: 'Email not verified. Please complete registration.' });
-    }
-
-    if (platform === 'web' && user.role === 'patient') {
-      return res.status(403).json({ message: 'Patients use the mobile app to log in' });
-    }
-    if (platform === 'mobile' && user.role !== 'patient') {
-      return res.status(403).json({ message: 'Staff log in via the web app' });
     }
 
     const userAgent = req.headers['user-agent'];
@@ -932,7 +932,7 @@ router.post('/forgot-password', async (req, res) => {
 
     if (users.length === 0) {
       if (platform === 'mobile') {
-        return res.status(404).json({ message: 'Email does not exist' });
+        return res.status(404).json({ message: 'No account found with this email address.' });
       }
 
       return res.json({

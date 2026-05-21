@@ -4,13 +4,9 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Animated,
-  Alert,
-  Dimensions,
-  Pressable,
-  PanResponder,
   Image,
 } from "react-native";
+import AppSidebar from '../components/AppSidebar';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../auth/AuthContext";
@@ -69,14 +65,12 @@ function getBranchCity(address, fallback = "Dental Clinic") {
 }
 
 export default function DashboardScreen({ navigation }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const sidebarRef = useRef(null);
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const [branches, setBranches] = useState([]);
-
-  // This is only for the About the Clinic card branch tabs.
   const [clinicBranchId, setClinicBranchId] = useState(null);
 
   const [upcomingAppt, setUpcomingAppt] = useState(null);
@@ -88,11 +82,6 @@ export default function DashboardScreen({ navigation }) {
   const [servicesData, setServicesData] = useState([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [expandedServiceId, setExpandedServiceId] = useState(null);
-
-  const screenWidth = Dimensions.get("window").width;
-  const sidebarWidth = screenWidth * 0.9;
-
-  const sidebarTranslateX = useRef(new Animated.Value(-sidebarWidth)).current;
 
   useEffect(() => {
     let isMounted = true;
@@ -259,83 +248,9 @@ export default function DashboardScreen({ navigation }) {
     return getBranchCity(branch.address, branch.name || "Branch");
   }
 
-  function openSidebar() {
-    setSidebarOpen(true);
-    sidebarTranslateX.setValue(-sidebarWidth);
-
-    Animated.timing(sidebarTranslateX, {
-      toValue: 0,
-      duration: 230,
-      useNativeDriver: true,
-    }).start();
-  }
-
-  function closeSidebar() {
-    Animated.timing(sidebarTranslateX, {
-      toValue: -sidebarWidth,
-      duration: 230,
-      useNativeDriver: true,
-    }).start(() => {
-      setSidebarOpen(false);
-    });
-  }
-
-  const sidebarPanResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return (
-          gestureState.dx < -10 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy)
-        );
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dx < 0) {
-          sidebarTranslateX.setValue(Math.max(-sidebarWidth, gestureState.dx));
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -80) {
-          closeSidebar();
-        } else {
-          Animated.timing(sidebarTranslateX, {
-            toValue: 0,
-            duration: 180,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-    })
-  ).current;
-
-  function confirmLogout() {
-    Alert.alert("Logout?", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          closeSidebar();
-          await logout();
-        },
-      },
-    ]);
-  }
-
   function toggleService(id) {
     setExpandedServiceId((prev) => (prev === id ? null : id));
   }
-
-  const userInitials = useMemo(() => {
-    if (!user?.name) return "JD";
-
-    return user.name
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase();
-  }, [user]);
 
   const profileBranchText =
     user?.home_branch_city ||
@@ -346,7 +261,7 @@ export default function DashboardScreen({ navigation }) {
       <View style={styles.mainWrapper}>
         <View style={styles.dashboardArea}>
           <View style={styles.header}>
-            <TouchableOpacity style={styles.menuButton} onPress={openSidebar}>
+            <TouchableOpacity style={styles.menuButton} onPress={() => sidebarRef.current?.open()}>
               <Text style={styles.menuButtonText}>☰</Text>
             </TouchableOpacity>
 
@@ -402,10 +317,7 @@ export default function DashboardScreen({ navigation }) {
 
               <View style={styles.branchBadge}>
                 <Text style={styles.branchBadgeText}>
-                  {patientBranch?.name || "Smile Empress Dental Hub"}
-                  {patientBranch?.address
-                    ? "  •  " + getBranchCity(patientBranch.address)
-                    : ""}
+                  {profileBranchText}
                 </Text>
               </View>
             </View>
@@ -694,158 +606,7 @@ export default function DashboardScreen({ navigation }) {
           </ScrollView>
         </View>
 
-        {sidebarOpen ? (
-          <View style={styles.sidebarOverlay}>
-            <Pressable style={styles.darkBackdrop} onPress={closeSidebar} />
-
-            <Animated.View
-              style={[
-                styles.sidebar,
-                {
-                  width: sidebarWidth,
-                  transform: [{ translateX: sidebarTranslateX }],
-                },
-              ]}
-              {...sidebarPanResponder.panHandlers}
-            >
-              <View style={styles.profileSection}>
-                <View style={styles.avatarBox}>
-                  <Text style={styles.avatarText}>{userInitials}</Text>
-                </View>
-
-                <View style={styles.profileTextArea}>
-                  <Text style={styles.profileName}>{user?.name || "Patient"}</Text>
-                  <Text style={styles.profileBranch}>{profileBranchText}</Text>
-                </View>
-              </View>
-
-              <View style={styles.sidebarLine} />
-
-              <View style={styles.menuList}>
-                <TouchableOpacity
-                  style={[styles.menuItem, styles.activeMenuItem]}
-                  onPress={closeSidebar}
-                >
-                  <Image
-                    source={require("../../assets/images/home.png")}
-                    style={styles.sidebarIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={[styles.menuText, styles.activeMenuText]}>
-                    Home
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => {
-                    closeSidebar();
-                    setTimeout(() => navigation.navigate("Profile"), 240);
-                  }}
-                >
-                  <Image
-                    source={require("../../assets/images/profile.png")}
-                    style={styles.sidebarIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.menuText}>Profile</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => {
-                    closeSidebar();
-                    setTimeout(() => navigation.navigate("MessagesList"), 240);
-                  }}
-                >
-                  <Image
-                    source={require("../../assets/images/message.png")}
-                    style={styles.sidebarIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.menuText}>Message</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => {
-                    closeSidebar();
-                    setTimeout(() => navigation.navigate("Appointments"), 240);
-                  }}
-                >
-                  <Image
-                    source={require("../../assets/images/appointment.png")}
-                    style={styles.sidebarIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.menuText}>Appointments</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => {
-                    closeSidebar();
-                    setTimeout(() => navigation.navigate("Records"), 240);
-                  }}
-                >
-                  <Image
-                    source={require("../../assets/images/records.png")}
-                    style={styles.sidebarIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.menuText}>History</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => {
-                    closeSidebar();
-                    setTimeout(() => navigation.navigate("Notifications"), 240);
-                  }}
-                >
-                  <View style={{ position: 'relative', marginRight: 16 }}>
-                    <Image
-                      source={require("../../assets/images/notification-bell.png")}
-                      style={[styles.sidebarIcon, { marginRight: 0 }]}
-                      resizeMode="contain"
-                    />
-                    {unreadCount > 0 && (
-                      <View style={{
-                        position: 'absolute',
-                        top: -4,
-                        right: -4,
-                        backgroundColor: '#e53e3e',
-                        borderRadius: 999,
-                        paddingHorizontal: 4,
-                        paddingVertical: 1,
-                        minWidth: 16,
-                        alignItems: 'center',
-                      }}>
-                        <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.menuText}>Notifications</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.signOutSection}>
-                <View style={styles.sidebarLine} />
-
-                <TouchableOpacity style={styles.signOutButton} onPress={confirmLogout}>
-                  <Image
-                    source={require("../../assets/images/logout.png")}
-                    style={styles.sidebarIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.signOutText}>Sign Out</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          </View>
-        ) : null}
+        <AppSidebar ref={sidebarRef} navigation={navigation} activeScreen="Home" />
       </View>
     </SafeAreaView>
   );

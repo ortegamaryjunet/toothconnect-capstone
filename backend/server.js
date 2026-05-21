@@ -89,6 +89,9 @@ app.use('/api/dentist-dashboard', dentistDashboardRoutes);
 const treatmentPlanRoutes = require('./src/routes/treatmentPlans');
 app.use('/api/treatment-plans', treatmentPlanRoutes);
 
+const aiRoutes = require('./src/routes/ai');
+app.use('/api/ai', aiRoutes);
+
 app.get('/api/admin/ping',  authenticate, requireRole('admin'),        (req, res) => res.json({ message: 'Admin only', user: req.user }));
 app.get('/api/dentist/ping',authenticate, requireRole('dentist'),      (req, res) => res.json({ message: 'Dentist only', user: req.user }));
 app.get('/api/recep/ping',  authenticate, requireRole('receptionist'), (req, res) => res.json({ message: 'Receptionist only', user: req.user }));
