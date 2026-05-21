@@ -197,7 +197,7 @@ const createDentistNotificationsStyles = ({
       width: '100%',
       minHeight: isMobile ? 'auto' : 190,
       borderRadius: isTablet ? 22 : isMobile ? 24 : 28,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       padding: isTablet ? 20 : isMobile ? 22 : isSmallScreen ? 26 : 30,
       marginBottom: 22,
       overflow: 'hidden',

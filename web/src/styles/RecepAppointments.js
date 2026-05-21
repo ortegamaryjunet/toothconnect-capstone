@@ -194,7 +194,7 @@ const createRecepAppointmentsStyles = ({
       width: '100%',
       minHeight: isVerySmall ? 'auto' : 190,
       borderRadius: isVerySmall ? 18 : 28,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       padding: isVerySmall ? 20 : isMobile ? 24 : 30,
       marginBottom: 22,
       overflow: 'hidden',

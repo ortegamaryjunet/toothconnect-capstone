@@ -83,7 +83,7 @@ const createRecepDashboardStyles = ({
     },
 
     menuItemActive: {
-      background: 'linear-gradient(135deg, #60a5fa, #2563eb)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       color: '#ffffff',
       boxShadow: '0 10px 22px rgba(37, 99, 235, 0.22)',
     },
@@ -234,7 +234,7 @@ const createRecepDashboardStyles = ({
       width: '100%',
       minHeight: isVerySmall ? 'auto' : 190,
       borderRadius: isVerySmall ? 18 : 28,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       padding: isVerySmall ? 20 : isMobile ? 24 : 30,
       marginBottom: 22,
       overflow: 'hidden',

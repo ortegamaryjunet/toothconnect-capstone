@@ -198,7 +198,7 @@ const createRecepNotificationsStyles = ({
       width: '100%',
       minHeight: isMobile ? 'auto' : 190,
       borderRadius: isVerySmall ? 22 : isTablet ? 24 : 28,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       padding: isVerySmall ? 20 : isTablet ? 22 : isSmallScreen ? 26 : 30,
       marginBottom: 22,
       overflow: 'hidden',

@@ -190,7 +190,7 @@ const createAdminReportsStyles = ({
       width: '100%',
       minHeight: isMobile ? 'auto' : 200,
       borderRadius: isMobile ? 22 : 24,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       padding: isMobile ? 24 : 30,
       marginBottom: 20,
       overflow: 'hidden',

@@ -213,33 +213,12 @@ section {
     box-shadow: 0 16px 30px rgba(139, 101, 8, 0.22);
 }
 
-.header-btn {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 54px;
-    padding: 0 28px;
-    border: none;
-    border-radius: 18px;
-    text-decoration: none;
-    font-size: 15px;
-    font-weight: 900;
-    cursor: pointer;
-    overflow: hidden;
-    transition: 0.25s ease;
-    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: var(--white);
-    box-shadow: 0 16px 34px rgba(139, 101, 8, 0.24);
-}
-
 .outline-btn {
     border: 1px solid var(--line);
     color: var(--gold-dark);
     background: var(--white);
 }
 
-.header-btn:hover,
 .primary-btn:hover,
 .outline-btn:hover {
     transform: translateY(-3px);
@@ -258,11 +237,12 @@ section {
 /* HERO SECTION */
 .hero {
     min-height: 100vh;
-    padding: 160px 7% 90px;
+    padding: 150px 7% 70px;
     display: grid;
-    grid-template-columns: 1.05fr 0.95fr;
+    grid-template-columns: 1fr 0.9fr;
     align-items: center;
-    gap: 60px;
+    gap: 50px;
+    overflow: hidden;
     background:
         radial-gradient(circle at 12% 22%, rgba(212, 175, 55, 0.22), transparent 28%),
         radial-gradient(circle at 92% 14%, rgba(139, 101, 8, 0.14), transparent 30%),
@@ -286,19 +266,52 @@ section {
     font-weight: 900;
 }
 
+.hero-left {
+    position: relative;
+    z-index: 2;
+}
+
 .hero h1 {
     max-width: 760px;
-    margin-bottom: 22px;
-    font-size: clamp(42px, 6vw, 76px);
+    margin: 0 0 22px;
+    font-size: clamp(42px, 5.6vw, 74px);
     line-height: 1.02;
-    letter-spacing: -2.4px;
+    letter-spacing: -2.5px;
+    color: #18120d;
 }
 
 .hero p {
-    max-width: 640px;
-    color: var(--text);
+    max-width: 650px;
+    margin: 0 0 0;
+    color: #5f4930;
     font-size: 18px;
-    line-height: 1.8;
+    line-height: 1.75;
+}
+
+.header-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 30px;
+    min-width: 180px;
+    height: 56px;
+    padding: 0 28px;
+    border-radius: 18px;
+    text-decoration: none;
+    background: linear-gradient(135deg, #9a6a00, #d4af37);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    border: none;
+    box-shadow: 0 14px 28px rgba(212, 175, 55, 0.28);
+    transition: all 0.25s ease;
+}
+
+.header-btn:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 36px rgba(212, 175, 55, 0.36);
+    background: linear-gradient(135deg, #b8860b, #e6c14d);
 }
 
 .hero-actions {
@@ -316,10 +329,11 @@ section {
 }
 
 .hero-stats div {
+    min-height: 98px;
     padding: 20px;
-    border-radius: 24px;
-    background: rgba(255, 255, 255, 0.78);
-    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(212, 175, 55, 0.35);
     box-shadow: 0 16px 35px rgba(139, 101, 8, 0.09);
 }
 
@@ -340,7 +354,7 @@ section {
 
 .hero-right {
     position: relative;
-    min-height: 560px;
+    min-height: 540px;
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -397,22 +411,26 @@ section {
 }
 
 .float-card h4 {
+    margin: 0;
     font-size: 14px;
 }
 
 .float-card p {
     color: var(--muted);
     font-size: 12px;
+    margin: 3px 0 0;
+    font-size: 12px;
+    line-height: 1.3;
 }
 
 .top-card {
-    top: 120px;
+    top: 115px;
     left: 0;
 }
 
 .bottom-card {
     right: 0;
-    bottom: 90px;
+    bottom: 80px;
 }
 
 /* SERVICE STRIP */
@@ -1465,11 +1483,109 @@ section {
 }
 
 /* RESPONSIVE */
-@media (max-width: 1120px) {
-    .header-btn {
-        display: none;
+@media (max-width: 1200px) {
+    .hero,
+    .benefits,
+    .about,
+    .faq-wrapper,
+    .contact,
+    .footer-top {
+        grid-template-columns: 1fr;
     }
 
+    .hero {
+        padding: 150px 6% 80px;
+        gap: 70px;
+        text-align: center;
+    }
+
+    .hero-left {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .hero h1 {
+        max-width: 760px;
+    }
+
+    .hero p,
+    .section-title p,
+    .contact p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .hero-actions,
+    .contact-socials {
+        justify-content: center;
+    }
+
+    .hero-stats {
+        width: 100%;
+        max-width: 820px;
+    }
+
+    .hero-right {
+        min-height: auto;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .image-panel {
+        width: min(500px, 100%);
+        height: 560px;
+        border-radius: 36px;
+    }
+
+    .image-panel::before {
+        border-radius: 28px;
+    }
+
+    .image-panel img {
+        object-fit: cover;
+        object-position: center top;
+    }
+
+    .top-card {
+        top: 90px;
+        left: -10px;
+    }
+
+    .bottom-card {
+        right: -10px;
+        bottom: 50px;
+    }
+
+    .steps-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .about {
+        gap: 70px;
+    }
+
+    .about-images {
+        grid-template-columns: 1fr 1fr;
+        align-items: stretch;
+    }
+
+    .about-images img:first-child,
+    .about-images img:last-child {
+        height: 440px;
+        margin: 0;
+    }
+
+    .contact {
+        padding: 50px 40px;
+    }
+
+    .footer-top {
+        gap: 40px;
+    }
+}
+
+@media (max-width: 1120px) {
     .hero,
     .benefits,
     .about,
@@ -1542,6 +1658,114 @@ section {
 
     .contact {
         padding: 52px 40px;
+    }
+}
+
+@media (max-width: 992px) {
+
+    .header {
+        width: calc(100% - 22px);
+        padding: 16px 18px;
+        top: 12px;
+    }
+
+    .menu-btn {
+        display: grid;
+        place-items: center;
+    }
+
+    .nav {
+        position: absolute;
+        top: 88px;
+        left: 0;
+        right: 0;
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 18px;
+        border-radius: 24px;
+        background: var(--white);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+    }
+
+    .nav.show {
+        display: flex;
+    }
+
+    .nav a {
+        text-align: center;
+        padding: 14px;
+    }
+
+    .hero {
+        padding-top: 150px;
+        gap: 60px;
+    }
+
+    .hero h1 {
+        font-size: clamp(42px, 7vw, 62px);
+        line-height: 1.08;
+    }
+
+    .hero p {
+        font-size: 17px;
+    }
+
+    .image-panel {
+        max-width: 460px;
+        height: 500px;
+    }
+
+    .float-card {
+        transform: scale(0.9);
+    }
+
+    .service-carousel {
+        min-height: 500px;
+    }
+
+    .service-stack {
+        width: 100%;
+        height: 470px;
+    }
+
+    .service-card {
+        width: 250px;
+        height: 350px;
+    }
+
+    .service-card.active {
+        width: 300px;
+        height: 420px;
+    }
+
+    .service-card.prev {
+        transform: translate(-100%, -50%) rotate(-10deg) scale(0.82);
+    }
+
+    .service-card.next {
+        transform: translate(0%, -50%) rotate(10deg) scale(0.82);
+    }
+
+    .benefit-img img {
+        height: 430px;
+    }
+
+    .faq-wrapper {
+        grid-template-columns: 1fr;
+    }
+
+    .contact {
+        margin: 40px 5% 70px;
+        padding: 40px 26px;
+        border-radius: 34px;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 
@@ -1698,7 +1922,7 @@ section {
     }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 768px) {
     .hero,
     .services,
     .steps,
@@ -1711,51 +1935,57 @@ section {
     }
 
     .logo-text h2 {
-        font-size: 13px;
+        font-size: 15px;
     }
 
     .logo-subline p {
-        font-size: 8px;
+        font-size: 9px;
         letter-spacing: 2px;
     }
 
     .brand-mark {
-        width: 54px;
-        height: 54px;
-        border-radius: 18px;
+        width: 58px;
+        height: 58px;
     }
 
     .hero {
         padding-top: 135px;
+        gap: 50px;
     }
 
     .hero h1 {
-        font-size: 40px;
-        line-height: 1.08;
+        font-size: clamp(36px, 9vw, 50px);
+        line-height: 1.1;
         letter-spacing: -1px;
     }
 
     .hero p {
         font-size: 15px;
-    }
-
-    .hero-actions {
-        flex-direction: column;
+        line-height: 1.8;
     }
 
     .primary-btn,
     .outline-btn,
     .header-btn {
         width: 100%;
+        max-width: 320px;
     }
 
-    .hero-stats {
+    .hero-stats,
+    .steps-grid,
+    .footer-top,
+    .form-row {
         grid-template-columns: 1fr;
+    }
+
+    .hero-right {
+        width: 100%;
     }
 
     .image-panel {
         width: 100%;
-        height: 340px;
+        max-width: 360px;
+        height: 400px;
         border-radius: 28px;
     }
 
@@ -1764,15 +1994,21 @@ section {
         border-radius: 22px;
     }
 
+    .image-panel img {
+        object-fit: cover;
+        object-position: center top;
+    }
+
     .float-card {
         display: none;
     }
 
     .section-title h2,
-    .about-content h2,
     .benefit-content h2,
+    .about-content h2,
     .contact h2 {
-        font-size: 34px;
+        font-size: 36px;
+        line-height: 1.2;
     }
 
     .section-title p {
@@ -1780,47 +2016,33 @@ section {
     }
 
     .service-carousel {
-        min-height: 420px;
+        min-height: 430px;
     }
 
     .service-stack {
-        height: 380px;
+        height: 390px;
     }
 
     .service-card {
-        width: 190px;
-        height: 280px;
+        width: 200px;
+        height: 290px;
     }
 
     .service-card.active {
-        width: 240px;
-        height: 340px;
+        width: 250px;
+        height: 350px;
     }
 
     .service-card.prev {
-        transform: translate(-82%, -50%) rotate(-8deg) scale(0.72);
+        transform: translate(-85%, -50%) rotate(-8deg) scale(0.74);
     }
 
     .service-card.next {
-        transform: translate(-18%, -50%) rotate(8deg) scale(0.72);
-    }
-
-    .service-card span {
-        top: 14px;
-        right: 14px;
-        font-size: 13px;
-        padding: 8px 12px;
-        border-radius: 10px;
-    }
-
-    .service-arrow {
-        width: 42px;
-        height: 42px;
-        font-size: 15px;
+        transform: translate(-15%, -50%) rotate(8deg) scale(0.74);
     }
 
     .benefit-img img {
-        height: 300px;
+        height: 320px;
         border-radius: 24px;
     }
 
@@ -1828,26 +2050,14 @@ section {
         gap: 45px;
     }
 
+    .about-images {
+        grid-template-columns: 1fr;
+    }
+
     .about-images img:first-child,
     .about-images img:last-child {
-        height: 250px;
+        height: 260px;
         border-radius: 24px;
-    }
-
-    .about-content p,
-    .benefit-content p,
-    .contact p {
-        font-size: 15px;
-        line-height: 1.8;
-    }
-
-    .contact span {
-        align-items: center;
-        justify-content: center;
-    }
-
-    .dentist-card img {
-        height: 300px;
     }
 
     .help-card,
@@ -1871,8 +2081,7 @@ section {
         padding: 30px 18px;
     }
 
-    .contact span {
-        align-items: center;
+    .contact-socials {
         justify-content: center;
     }
 
@@ -1881,15 +2090,8 @@ section {
         border-radius: 22px;
     }
 
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-        font-size: 13px;
-        border-radius: 14px;
-    }
-
-    .phone-field input {
-        padding-left: 92px !important;
+    .phone-field .iti__country-list {
+        width: 100% !important;
     }
 
     .service-modal {
@@ -1903,30 +2105,14 @@ section {
 
     .service-modal-card h2 {
         font-size: 28px;
-        margin-bottom: 18px;
     }
 
     .modal-img-box {
         height: 180px;
-        padding: 6px;
-        border-radius: 16px;
-    }
-
-    .modal-info {
-        gap: 12px;
-    }
-
-    .modal-info span {
-        font-size: 14px;
-    }
-
-    .service-modal-card p {
-        font-size: 15px;
     }
 
     .quote-btn {
         width: 100%;
-        text-align: center;
     }
 
     .footer {
@@ -1946,14 +2132,115 @@ section {
     .footer-bottom p {
         font-size: 14px;
     }
+}
+
+@media (max-width: 560px) {
+
+    .header {
+        padding: 12px 14px;
+        border-radius: 18px;
+    }
+
+    .logo-box {
+        gap: 10px;
+    }
+
+    .logo-text h2 {
+        font-size: 12px;
+    }
+
+    .logo-subline p {
+        font-size: 7px;
+        letter-spacing: 1.5px;
+    }
+
+    .brand-mark {
+        width: 50px;
+        height: 50px;
+        border-radius: 16px;
+    }
+
+    .hero {
+        padding-top: 125px;
+    }
+
+    .hero h1 {
+        font-size: 32px;
+    }
+
+    .hero p {
+        font-size: 14px;
+    }
+
+    .hero-stats strong {
+        font-size: 26px;
+    }
+
+    .hero-stats span {
+        font-size: 12px;
+    }
+
+    .image-panel {
+        max-width: 100%;
+        height: 330px;
+        border-radius: 24px;
+    }
+
+    .image-panel::before {
+        inset: 8px;
+        border-radius: 18px;
+    }
+
+    .image-panel img {
+        object-fit: cover;
+        object-position: center top;
+    }
+
+    .section-title h2,
+    .benefit-content h2,
+    .about-content h2,
+    .contact h2 {
+        font-size: 30px;
+    }
+
+    .service-stack {
+        height: 350px;
+    }
+
+    .service-card {
+        width: 170px;
+        height: 250px;
+    }
+
+    .service-card.active {
+        width: 220px;
+        height: 320px;
+    }
+
+    .service-card span {
+        top: 12px;
+        right: 12px;
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    .benefit-img img,
+    .about-images img:first-child,
+    .about-images img:last-child {
+        height: 230px;
+    }
+
+    .contact {
+        border-radius: 24px;
+    }
 
     .message-box {
-        max-width: 92%;
-        padding: 28px 22px 24px;
+        max-width: 94%;
+        padding: 24px 18px;
     }
 
     .message-box h3 {
-        font-size: 24px;
+        font-size: 22px;
     }
 
     .message-box p {

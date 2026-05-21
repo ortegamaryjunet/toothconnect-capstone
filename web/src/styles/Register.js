@@ -94,7 +94,7 @@ const createRegisterStyles = ({ isMobile = false } = {}) => {
       borderRadius: '18px',
       background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
-      fontSize: '25px',
+      fontSize: '21px',
       fontWeight: 'bold',
       cursor: 'pointer',
       boxShadow: '0 16px 34px rgba(139, 101, 8, 0.24)',
