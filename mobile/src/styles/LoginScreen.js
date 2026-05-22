@@ -10,8 +10,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  inner: {
+  scrollView: {
     flex: 1,
+  },
+
+  inner: {
+    flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 22,
     paddingVertical: 28,

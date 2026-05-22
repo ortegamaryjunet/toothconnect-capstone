@@ -2,8 +2,10 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || '').replace(/[\\/]+$/, '');
+
 const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'X-App-OS': Platform.OS === 'ios' ? 'iOS' : 'Android',
   },

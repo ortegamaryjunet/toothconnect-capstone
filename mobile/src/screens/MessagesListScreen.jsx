@@ -516,6 +516,18 @@ export default function MessagesListScreen({ navigation }) {
                   <Text style={styles.menuText}>History</Text>
                 </TouchableOpacity>
 
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("DentalTreatmentPlan"), 240); }}
+                >
+                  <Image
+                    source={require('../../assets/images/records.png')}
+                    style={styles.sidebarIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.menuText}>Treatment Plan</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity 
                   style={styles.menuItem}
                   onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("Notifications"), 240); }}

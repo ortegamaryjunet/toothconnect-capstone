@@ -181,9 +181,11 @@ export default function ForgotPasswordScreen({ navigation, route }) {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardWrapper}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.inner}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

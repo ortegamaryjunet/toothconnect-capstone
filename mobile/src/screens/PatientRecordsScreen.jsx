@@ -8,9 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../auth/AuthContext';
 import { listAppointments } from '../api/appointments';
-import { getTreatmentPlansByPatient } from '../api/treatmentPlans';
 import { getUnreadCount } from '../api/notifications';
 import { formatDateTime } from '../utils/datetime';
 import AppSidebar from '../components/AppSidebar';
@@ -192,17 +190,11 @@ function DentalChart({ planMap, onToothPress }) {
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function PatientRecordsScreen({ navigation }) {
-  const { user } = useAuth();
   const sidebarRef = useRef(null);
 
   const [expanded, setExpanded]         = useState(null);
   const [appointments, setAppointments] = useState([]);
-  const [plans, setPlans]               = useState([]);
   const [loading, setLoading]           = useState(true);
-  const [loadingPlans, setLoadingPlans] = useState(false);
-  const [plansFetched, setPlansFetched] = useState(false);
-  const [toothModal, setToothModal]     = useState(false);
-  const [selectedTooth, setSelectedTooth] = useState(null);
   const [unreadCount, setUnreadCount]   = useState(0);
 
   useFocusEffect(
@@ -232,43 +224,12 @@ export default function PatientRecordsScreen({ navigation }) {
     }
   }
 
-  async function fetchPlans() {
-    if (plansFetched) return;
-    setLoadingPlans(true);
-    try {
-      const data = await getTreatmentPlansByPatient(user.id);
-      setPlans(data.plans || []);
-    } catch {
-      setPlans([]);
-    } finally {
-      setLoadingPlans(false);
-      setPlansFetched(true);
-    }
-  }
-
   function toggleSection(key) {
     const next = expanded === key ? null : key;
     setExpanded(next);
-    if (next === 'dental' && !plansFetched) fetchPlans();
-  }
-
-  function openToothModal(tooth) {
-    setSelectedTooth(tooth);
-    setToothModal(true);
-  }
-
-  // Most-recent plan per tooth for chart coloring (backend returns ORDER BY created_at DESC)
-  const planMap = {};
-  // All plans per tooth for the modal
-  const planListMap = {};
-  for (const plan of plans) {
-    if (!planMap[plan.tooth_number]) planMap[plan.tooth_number] = plan;
-    if (!planListMap[plan.tooth_number]) planListMap[plan.tooth_number] = [];
-    planListMap[plan.tooth_number].push(plan);
   }
 
   const txAppts = appointments.filter(a => a.payment_id != null);
-  const selectedPlans = selectedTooth != null ? (planListMap[selectedTooth] || []) : [];
 
   return (
     <SafeAreaView style={s.container}>
@@ -342,78 +303,6 @@ export default function PatientRecordsScreen({ navigation }) {
           )}
         </SectionCard>
 
-        {/* ── Dental Treatment Plan ───────────────────────── */}
-        <SectionCard
-          title="Dental Treatment Plan"
-          isOpen={expanded === 'dental'}
-          onToggle={() => toggleSection('dental')}
-        >
-          {loadingPlans ? (
-            <Text style={s.loadingText}>Loading chart...</Text>
-          ) : plansFetched && plans.length === 0 ? (
-            <Text style={s.emptyText}>No treatment plan recorded by dentist yet.</Text>
-          ) : (
-            <>
-              <DentalChart planMap={planMap} onToothPress={openToothModal} />
-              {toothModal && selectedTooth !== null && (
-                <View style={s.toothDetailCard}>
-                  <View style={s.toothDetailHeader}>
-                    <Text style={s.toothDetailTitle}>Tooth #{selectedTooth}</Text>
-                    <TouchableOpacity style={s.toothDetailClose} onPress={() => setToothModal(false)}>
-                      <Text style={s.toothDetailCloseText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={s.toothDetailBody}>
-                    {selectedPlans.length > 0 ? (
-                      selectedPlans.map((plan, idx) => (
-                        <View key={plan.id}>
-                          {idx > 0 && <View style={s.planDivider} />}
-                          {selectedPlans.length > 1 && (
-                            <Text style={s.planIndexLabel}>
-                              Plan {idx + 1} of {selectedPlans.length}
-                            </Text>
-                          )}
-                          <View style={s.modalRow}>
-                            <Text style={s.modalLabel}>Treatment</Text>
-                            <Text style={s.modalValue}>{plan.planned_treatment}</Text>
-                          </View>
-                          <View style={s.modalRow}>
-                            <Text style={s.modalLabel}>Status</Text>
-                            <StatusBadge status={plan.status} />
-                          </View>
-                          <View style={s.modalRow}>
-                            <Text style={s.modalLabel}>Dentist</Text>
-                            <Text style={s.modalValue}>{plan.dentist_name}</Text>
-                          </View>
-                          {plan.notes ? (
-                            <View style={s.modalRow}>
-                              <Text style={s.modalLabel}>Notes</Text>
-                              <Text style={s.modalValue}>{plan.notes}</Text>
-                            </View>
-                          ) : null}
-                          {plan.date_completed ? (
-                            <View style={s.modalRow}>
-                              <Text style={s.modalLabel}>Completed</Text>
-                              <Text style={s.modalValue}>{formatDateOnly(plan.date_completed)}</Text>
-                            </View>
-                          ) : null}
-                          <View style={[s.modalRow, s.modalRowLast]}>
-                            <Text style={s.modalLabel}>Date added</Text>
-                            <Text style={s.modalValue}>{formatDateOnly(plan.created_at?.slice(0, 10))}</Text>
-                          </View>
-                        </View>
-                      ))
-                    ) : (
-                      <Text style={s.modalEmpty}>
-                        No treatment plan has been set{'\n'}for this tooth by your dentist.
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              )}
-            </>
-          )}
-        </SectionCard>
           </ScrollView>
 
         </View>

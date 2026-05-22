@@ -21,6 +21,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
 import PatientRecordsScreen from '../screens/PatientRecordsScreen';
+import DentalTreatmentPlanScreen from '../screens/DentalTreatmentPlanScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -53,6 +54,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="TreatmentProgress" component={TreatmentProgressScreen} />
             <Stack.Screen name="Records" component={PatientRecordsScreen} />
+            <Stack.Screen name="DentalTreatmentPlan" component={DentalTreatmentPlanScreen} />
             
           </>
         ) : (
