@@ -1,21 +1,22 @@
 const API_BASE_URL = "http://localhost:4000";
 
 document.addEventListener("DOMContentLoaded", function () {
-
     const header = document.getElementById("header");
     const menuBtn = document.getElementById("menuBtn");
     const navMenu = document.getElementById("navMenu");
     const navLinks = document.querySelectorAll("#navMenu a");
-
     const faqItems = document.querySelectorAll(".faq-item");
 
-    const inquiryForm = document.querySelector(".inquiry-form");
+    const inquiryForm = document.getElementById("inquiryForm");
+    const fullNameInput = document.getElementById("inquiryName");
+    const emailInput = document.getElementById("inquiryEmail");
     const phoneInput = document.getElementById("phoneNumber");
+    const concernInput = document.getElementById("inquiryConcern");
+    const messageInput = document.getElementById("inquiryMessage");
 
     const serviceCards = document.querySelectorAll(".service-card");
     const prevService = document.getElementById("prevService");
     const nextService = document.getElementById("nextService");
-
     const serviceModals = document.querySelectorAll(".service-modal");
     const closeButtons = document.querySelectorAll(".modal-close");
 
@@ -25,19 +26,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const messageTitle = document.getElementById("messageTitle");
     const messageText = document.getElementById("messageText");
     const messageIcon = document.getElementById("messageIcon");
-
-    function closeMenu() {
-        if (!navMenu || !menuBtn) return;
-
-        navMenu.classList.remove("show");
-
-        const icon = menuBtn.querySelector("i");
-
-        if (icon) {
-            icon.classList.add("fa-bars");
-            icon.classList.remove("fa-xmark");
-        }
-    }
 
     function showMessage(title, text, type = "error") {
         if (!messageModal || !messageTitle || !messageText || !messageIcon) {
@@ -67,6 +55,47 @@ document.addEventListener("DOMContentLoaded", function () {
 
         messageModal.classList.remove("show");
         document.body.style.overflow = "";
+    }
+
+    function closeMenu() {
+        if (!navMenu || !menuBtn) return;
+
+        navMenu.classList.remove("show");
+
+        const icon = menuBtn.querySelector("i");
+
+        if (icon) {
+            icon.classList.add("fa-bars");
+            icon.classList.remove("fa-xmark");
+        }
+    }
+
+    function isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+    }
+
+    if (fullNameInput) {
+        fullNameInput.addEventListener("input", function () {
+            this.value = this.value.replace(/[^a-zA-Z\s]/g, "");
+        });
+    }
+
+    if (phoneInput) {
+        phoneInput.addEventListener("input", function () {
+            this.value = this.value.replace(/[^0-9]/g, "").slice(0, 11);
+        });
+    }
+
+    if (messageInput) {
+        messageInput.addEventListener("input", function () {
+            this.value = this.value.replace(/[^a-zA-Z\s.,!?'"()\-]/g, "");
+        });
+    }
+
+    if (emailInput) {
+        emailInput.addEventListener("input", function () {
+            this.value = this.value.replace(/\s/g, "");
+        });
     }
 
     if (closeMessageModal) {
@@ -237,68 +266,59 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             closeMessage();
-
             document.body.style.overflow = "";
         }
     });
-
-    const fullNameInput = inquiryForm
-        ? inquiryForm.querySelector("input[type='text']")
-        : null;
-
-    if (fullNameInput) {
-        fullNameInput.addEventListener("input", function () {
-            this.value = this.value.replace(/[^a-zA-Z\s]/g, "");
-        });
-    }
-
-    let iti = null;
-
-    if (phoneInput && window.intlTelInput) {
-        iti = window.intlTelInput(phoneInput, {
-            initialCountry: "ph",
-            preferredCountries: ["ph", "us", "gb", "au", "jp", "kr", "sg", "ae"],
-            separateDialCode: true,
-            nationalMode: false,
-            autoPlaceholder: "aggressive",
-            utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/utils.js"
-        });
-
-        phoneInput.addEventListener("input", function () {
-            let value = this.value.replace(/\D/g, "");
-
-            if (value.length > 10) {
-                value = value.substring(0, 10);
-            }
-
-            this.value = value;
-        });
-    }
 
     if (inquiryForm) {
         inquiryForm.addEventListener("submit", async function (event) {
             event.preventDefault();
 
-            const fullName = inquiryForm.querySelector("input[type='text']").value.trim();
+            const fullName = fullNameInput ? fullNameInput.value.trim() : "";
+            const emailAddress = emailInput ? emailInput.value.trim() : "";
             const phoneNumber = phoneInput ? phoneInput.value.trim() : "";
-            const concern = inquiryForm.querySelector("select").value;
-            const message = inquiryForm.querySelector("textarea").value.trim();
+            const branchInput = inquiryForm.querySelector("input[name='branch']:checked");
+            const branch = branchInput ? branchInput.value : "";
+            const concern = concernInput ? concernInput.value.trim() : "";
+            const message = messageInput ? messageInput.value.trim() : "";
 
-            if (!fullName || !phoneNumber || !concern || !message) {
+            if (!fullName || !emailAddress || !phoneNumber || !branch || !concern || !message) {
                 showMessage(
                     "Incomplete Information",
                     "Please complete all required fields."
                 );
-
                 return;
             }
 
-            if (phoneNumber.length < 10) {
+            if (fullName.length < 2) {
+                showMessage(
+                    "Invalid Full Name",
+                    "Please enter a valid full name."
+                );
+                return;
+            }
+
+            if (!isValidEmail(emailAddress)) {
+                showMessage(
+                    "Invalid Email Address",
+                    "Please enter a valid email address."
+                );
+                return;
+            }
+
+            if (!/^09\d{9}$/.test(phoneNumber)) {
                 showMessage(
                     "Invalid Phone Number",
-                    "Please enter a valid phone number."
+                    "Phone number must start with 09 and contain 11 digits only."
                 );
+                return;
+            }
 
+            if (message.length < 5) {
+                showMessage(
+                    "Invalid Message",
+                    "Please enter a message with at least 5 characters."
+                );
                 return;
             }
 
@@ -310,7 +330,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     },
                     body: JSON.stringify({
                         fullName,
+                        emailAddress,
                         phoneNumber,
+                        branch,
                         concern,
                         message
                     })
@@ -326,12 +348,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 if (result.success) {
                     inquiryForm.reset();
-
-                    if (iti) {
-                        iti.setCountry("ph");
-                    }
                 }
-
             } catch (error) {
                 console.error("Inquiry submit error:", error);
 
@@ -342,5 +359,4 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-
 });
