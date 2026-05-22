@@ -10,6 +10,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  scrollView: {
+    flex: 1,
+  },
+
   inner: {
     flexGrow: 1,
     justifyContent: "center",

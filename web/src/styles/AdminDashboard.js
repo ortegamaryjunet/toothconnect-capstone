@@ -173,6 +173,7 @@
 
     adminPosition: {
       fontSize: 12,
+      textAlign: 'left',
       color: '#64748b',
       marginTop: 2,
     },
@@ -188,7 +189,7 @@
     dashboardHero: {
       position: 'relative',
       width: '100%',
-      minHeight: isMobile ? 160 : 190,
+      minHeight: isMobile ? 170 : 225,
       borderRadius: isMobile ? 22 : 28,
       background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       padding: isMobile ? 20 : 30,
@@ -201,6 +202,7 @@
       flexDirection: isMobile ? 'column' : 'row',
       textAlign: 'left',
       boxSizing: 'border-box',
+      boxShadow: '0 18px 40px rgba(185, 140, 20, 0.22)',
     },
 
     heroBadge: {
@@ -246,10 +248,11 @@
       width: isMobile ? 70 : 90,
       height: isMobile ? 70 : 90,
       borderRadius: 24,
-      background: 'rgba(255, 255, 255, 0.18)',
+      background: 'rgba(255, 255, 255, 0.22)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      color: '#ffffff',
       flexShrink: 0,
     },
 

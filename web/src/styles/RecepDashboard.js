@@ -26,7 +26,7 @@
       height: '100vh',
       background: '#ffffff',
       borderRight: '1px solid #e5e7eb',
-      padding: isVerySmall ? '16px 8px' : isMobile ? '18px 10px' : '22px 16px',
+      padding: isMobile ? '18px 10px' : '22px 16px',
       zIndex: 200,
       display: 'flex',
       flexDirection: 'column',
@@ -35,13 +35,13 @@
 
     logo: {
       textAlign: 'center',
-      paddingBottom: isVerySmall ? 16 : 22,
+      paddingBottom: 22,
       marginBottom: 14,
       borderBottom: '1px solid #e5e7eb',
     },
 
     logoImg: {
-      width: isVerySmall ? 48 : isMobile ? 55 : 125,
+      width: isMobile ? 55 : 125,
       height: 'auto',
     },
 
@@ -57,7 +57,7 @@
       alignItems: 'center',
       justifyContent: isMobile ? 'center' : 'flex-start',
       gap: 12,
-      padding: isMobile ? '13px 10px' : '13px 14px',
+      padding: '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
@@ -83,7 +83,7 @@
     },
 
     menuItemActive: {
-      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       boxShadow: '0 10px 22px rgba(139, 101, 8, 0.24)',
     },
@@ -152,13 +152,13 @@
       top: 0,
       left: sidebarWidth,
       right: 0,
-      height: isVerySmall ? 76 : 86,
+      height: 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: isVerySmall ? '0 12px' : isMobile ? '0 18px' : '0 28px',
+      padding: isMobile ? '0 14px' : '0 28px',
       zIndex: 150,
       boxSizing: 'border-box',
     },
@@ -171,15 +171,15 @@
     },
 
     receptProfile: {
-      display: 'inline-flex',
+      display: 'flex',
       alignItems: 'center',
       gap: 10,
-      minHeight: 60,
-      padding: '10px 20px',
+      height: 52,
+      padding: '0 12px',
       borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
-      boxSizing: 'border-box',
+      cursor: 'pointer',
     },
 
     avatar: {
@@ -191,7 +191,6 @@
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      flexShrink: 0,
     },
 
     avatarIcon: {
@@ -199,22 +198,21 @@
     },
 
     receptInfo: {
-      display: isMobile ? 'none' : 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      lineHeight: 1.2,
+      display: isMobile ? 'none' : 'block',
     },
 
     receptName: {
-      fontSize: 16,
-      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 600,
       color: '#0f172a',
     },
 
     receptPosition: {
-      marginTop: 2,
-      fontSize: 15,
+      fontSize: 12,
+      textAlign: 'left',
       color: '#64748b',
+      marginTop: 2,
     },
 
     mainContent: {

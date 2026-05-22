@@ -10,24 +10,23 @@
     page: {
       minHeight: '100vh',
       width: '100%',
-      background: '#f4f7fb',
+      background: '#f5f7fb',
       fontFamily: 'Arial, sans-serif',
       color: '#172033',
-      display: isMobile ? 'block' : 'flex',
+      display: 'flex',
       overflowX: 'hidden',
       boxSizing: 'border-box',
     },
 
     sidebar: {
-      position: isMobile ? 'relative' : 'fixed',
+      position: 'fixed',
       left: 0,
       top: 0,
-      width: isMobile ? '100%' : sidebarWidth,
-      height: isMobile ? 'auto' : '100vh',
+      width: sidebarWidth,
+      height: '100vh',
       background: '#ffffff',
-      borderRight: isMobile ? 'none' : '1px solid #e5e7eb',
-      borderBottom: isMobile ? '1px solid #e5e7eb' : 'none',
-      padding: isVerySmall ? '14px 12px' : isMobile ? '18px 14px' : isTablet ? '20px 14px' : '22px 16px',
+      borderRight: '1px solid #e5e7eb',
+      padding: isMobile ? '18px 10px' : '22px 16px',
       zIndex: 200,
       display: 'flex',
       flexDirection: 'column',
@@ -36,30 +35,29 @@
 
     logo: {
       textAlign: 'center',
-      paddingBottom: isVerySmall ? 12 : 22,
+      paddingBottom: 22,
       marginBottom: 14,
       borderBottom: '1px solid #e5e7eb',
     },
 
     logoImg: {
-      width: isVerySmall ? 105 : isMobile ? 115 : 125,
+      width: isMobile ? 55 : 125,
       height: 'auto',
     },
 
     menu: {
       display: 'flex',
-      flexDirection: isMobile ? 'row' : 'column',
+      flexDirection: 'column',
       gap: 8,
       flex: 1,
-      overflowX: isMobile ? 'auto' : 'visible',
     },
 
     menuItem: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justifyContent: isMobile ? 'center' : 'flex-start',
       gap: 12,
-      padding: isVerySmall ? '11px 12px' : '13px 14px',
+      padding: '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
@@ -70,8 +68,6 @@
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
-      whiteSpace: isMobile ? 'nowrap' : 'normal',
-      flex: isMobile ? '0 0 auto' : 'initial',
     },
 
     menuItemIcon: {
@@ -93,9 +89,9 @@
     },
 
     logoutSection: {
-      marginTop: isMobile ? 0 : 'auto',
-      paddingTop: isMobile ? 0 : 18,
-      borderTop: isMobile ? 'none' : '1px solid #e5e7eb',
+      marginTop: 'auto',
+      paddingTop: 18,
+      borderTop: '1px solid #e5e7eb',
     },
 
     logoutItem: {
@@ -112,17 +108,17 @@
     },
 
     topHeader: {
-      position: isMobile ? 'relative' : 'fixed',
+      position: 'fixed',
       top: 0,
-      left: isMobile ? 0 : sidebarWidth,
+      left: sidebarWidth,
       right: 0,
-      height: isVerySmall ? 72 : isMobile ? 76 : 86,
+      height: 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: isVerySmall ? '0 14px' : isTablet ? '0 20px' : '0 28px',
+      padding: isMobile ? '0 14px' : '0 28px',
       zIndex: 150,
       boxSizing: 'border-box',
     },
@@ -135,27 +131,26 @@
     },
 
     receptProfile: {
-      display: 'inline-flex',
+      display: 'flex',
       alignItems: 'center',
       gap: 10,
-      minHeight: 60,
-      padding: isTablet ? 10 : '10px 20px',
+      height: 52,
+      padding: '0 12px',
       borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
-      boxSizing: 'border-box',
+      cursor: 'pointer',
     },
 
     avatar: {
-      width: isVerySmall ? 38 : 40,
-      height: isVerySmall ? 38 : 40,
+      width: 40,
+      height: 40,
       borderRadius: 13,
       background: '#eff6ff',
       color: '#2563eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      flexShrink: 0,
     },
 
     avatarIcon: {
@@ -163,22 +158,21 @@
     },
 
     receptInfo: {
-      display: isTablet ? 'none' : 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      lineHeight: 1.2,
+      display: isMobile ? 'none' : 'block',
     },
 
     receptName: {
-      fontSize: 15,
-      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 600,
       color: '#0f172a',
     },
 
     receptPosition: {
-      marginTop: 2,
-      fontSize: 13,
+      fontSize: 12,
+      textAlign: 'left',
       color: '#64748b',
+      marginTop: 2,
     },
 
     receiptContent: {

@@ -27,6 +27,7 @@ const MENU_ITEMS = [
   { key: 'MessagesList',  label: 'Message',       screen: 'MessagesList',  icon: require('../../assets/images/message.png') },
   { key: 'Appointments',  label: 'Appointments',  screen: 'Appointments',  icon: require('../../assets/images/appointment.png') },
   { key: 'Records',       label: 'History',       screen: 'Records',       icon: require('../../assets/images/records.png') },
+  { key: 'TreatmentPlan',  label: 'Treatment Plan', screen: 'DentalTreatmentPlan', icon: require('../../assets/images/records.png') },
   { key: 'Notifications', label: 'Notifications', screen: 'Notifications', icon: require('../../assets/images/notification-bell.png') },
 ];
 

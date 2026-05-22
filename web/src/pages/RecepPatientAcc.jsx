@@ -357,7 +357,7 @@ export default function RecepPatientAcc() {
 
         <nav style={styles.menu}>
           <Link to="/receptionist" style={styles.menuItem}>
-            <i className="fi fi-rr-apps" style={styles.menuItemIcon}></i>
+            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 

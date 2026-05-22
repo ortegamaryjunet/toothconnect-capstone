@@ -22,6 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.capstone.toothconnect",
+      "softwareKeyboardLayoutMode": "resize",
       "edgeToEdgeEnabled": true
     },
     "web": {

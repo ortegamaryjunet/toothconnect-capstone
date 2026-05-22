@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,9 +56,15 @@ export default function LoginScreen({ navigation, route }) {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardWrapper}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
-        <View style={styles.inner}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.inner}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.logoSection}>
             <Image
               source={require('../../assets/images/clinic-logo.png')}
@@ -165,7 +172,7 @@ export default function LoginScreen({ navigation, route }) {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

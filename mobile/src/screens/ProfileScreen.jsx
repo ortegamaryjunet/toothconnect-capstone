@@ -15,7 +15,6 @@ import {
   Pressable,
   PanResponder,
   Image,
-  TouchableWithoutFeedback,
   Keyboard,
   ActivityIndicator,
 } from "react-native";
@@ -485,13 +484,14 @@ export default function ProfileScreen({ navigation }) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={styles.mainWrapper}>
+        <View style={styles.mainWrapper}>
             <ScrollView
               style={styles.container}
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              nestedScrollEnabled
             >
               <View style={styles.headerCard}>
                 <View style={styles.topRow}>
@@ -966,6 +966,14 @@ export default function ProfileScreen({ navigation }) {
 
                     <TouchableOpacity
                       style={styles.menuItem}
+                      onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("DentalTreatmentPlan"), 240); }}
+                    >
+                      <Image source={require("../../assets/images/records.png")} style={styles.sidebarIcon} resizeMode="contain" />
+                      <Text style={styles.menuText}>Treatment Plan</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.menuItem}
                       onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("Notifications"), 240); }}
                     >
                       <View style={{ position: 'relative', marginRight: 16 }}>
@@ -1009,7 +1017,6 @@ export default function ProfileScreen({ navigation }) {
               </View>
             ) : null}
           </View>
-        </TouchableWithoutFeedback>
 
         <Modal
           visible={nationalityModalVisible}

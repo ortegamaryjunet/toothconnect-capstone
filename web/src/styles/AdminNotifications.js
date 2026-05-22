@@ -82,7 +82,7 @@
     },
 
     menuItemActive: {
-      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       boxShadow: '0 10px 22px rgba(139, 101, 8, 0.24)',
     },
@@ -136,27 +136,26 @@
     },
 
     adminProfile: {
-      display: 'inline-flex',
+      display: 'flex',
       alignItems: 'center',
       gap: 10,
-      minHeight: 60,
-      padding: isMobile ? 10 : '10px 20px',
+      height: 52,
+      padding: '0 12px',
       borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
-      boxSizing: 'border-box',
+      cursor: 'pointer',
     },
 
     avatar: {
-      width: isMobile ? 34 : 40,
-      height: isMobile ? 34 : 40,
-      borderRadius: isMobile ? 12 : 13,
+      width: 40,
+      height: 40,
+      borderRadius: 13,
       background: '#eff6ff',
       color: '#2563eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      flexShrink: 0,
     },
 
     avatarIcon: {
@@ -164,24 +163,21 @@
     },
 
     adminInfo: {
-      display: isMobile ? 'none' : 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      lineHeight: 1.2,
+      display: isMobile ? 'none' : 'block',
     },
 
     adminName: {
-      fontSize: 16,
-      fontWeight: 700,
-      color: '#0f172a',
       fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 600,
+      color: '#0f172a',
     },
 
     adminPosition: {
-      marginTop: 2,
-      fontSize: 15,
+      fontSize: 12,
+      textAlign: 'left',
       color: '#64748b',
-      fontFamily: 'Arial, sans-serif',
+      marginTop: 2,
     },
 
     mainContent: {

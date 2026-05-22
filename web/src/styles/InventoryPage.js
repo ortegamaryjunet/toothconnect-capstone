@@ -115,7 +115,7 @@
       top: 0,
       left: sidebarWidth,
       right: 0,
-      height: isMobile ? 78 : 86,
+      height: 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
@@ -129,7 +129,7 @@
     headerActions: {
       display: 'flex',
       alignItems: 'center',
-      gap: isMobile ? 10 : 18,
+      gap: 18,
       height: '100%',
     },
 
@@ -137,8 +137,8 @@
       display: 'flex',
       alignItems: 'center',
       gap: 10,
-      minHeight: isMobile ? 52 : 60,
-      padding: isMobile ? '8px 10px' : '10px 16px',
+      height: 52,
+      padding: '0 12px',
       borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
@@ -146,9 +146,9 @@
     },
 
     avatar: {
-      width: isMobile ? 36 : 40,
-      height: isMobile ? 36 : 40,
-      borderRadius: isMobile ? 12 : 13,
+      width: 40,
+      height: 40,
+      borderRadius: 13,
       background: '#eff6ff',
       color: '#2563eb',
       display: 'flex',
@@ -166,13 +166,13 @@
 
     adminName: {
       fontFamily: 'Arial, sans-serif',
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: 600,
       color: '#0f172a',
     },
 
     adminPosition: {
-      fontSize: 14,
+      fontSize: 12,
       color: '#64748b',
       marginTop: 2,
     },
@@ -286,7 +286,7 @@
     },
 
     tabBtnActive: {
-      background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       border: 'none',
       outline: 'none',

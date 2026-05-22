@@ -314,7 +314,7 @@ export default function AdminEmployees() {
 
         <nav style={styles.menu}>
           <Link to="/admin" style={styles.menuItem}>
-            <i className="fi fi-rr-apps" style={styles.menuItemIcon}></i>
+            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
@@ -416,7 +416,7 @@ export default function AdminEmployees() {
             </div>
 
             <div style={styles.heroIconBox}>
-              <i className="fi fi-rr-users-alt" style={styles.heroIcon}></i>
+              <i className="fi fi-rr-stethoscope" style={styles.heroIcon}></i>
             </div>
           </section>
 

@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const pool = require('./../config/db');
+const pool = require('../config/db');
 
 async function createNotification(userId, type, title, body, relatedType, relatedId) {
   await pool.query(

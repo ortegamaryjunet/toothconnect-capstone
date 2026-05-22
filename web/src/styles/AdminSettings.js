@@ -283,7 +283,7 @@
     },
 
     settingsTabActive: {
-      background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       borderColor: 'transparent',
       boxShadow: '0 10px 24px rgba(37, 99, 235, 0.22)',

@@ -26,7 +26,7 @@
       height: '100vh',
       background: '#ffffff',
       borderRight: '1px solid #e5e7eb',
-      padding: isVerySmall ? '16px 8px' : isMobile ? '18px 10px' : '22px 16px',
+      padding: isMobile ? '18px 10px' : '22px 16px',
       zIndex: 200,
       display: 'flex',
       flexDirection: 'column',
@@ -35,20 +35,20 @@
 
     logo: {
       textAlign: 'center',
-      paddingBottom: isVerySmall ? 16 : isMobile ? 18 : 22,
-      marginBottom: isMobile ? 12 : 14,
+      paddingBottom: 22,
+      marginBottom: 14,
       borderBottom: '1px solid #e5e7eb',
     },
 
     logoImg: {
-      width: isVerySmall ? 46 : isMobile ? 54 : 125,
+      width: isMobile ? 55 : 125,
       height: 'auto',
     },
 
     menu: {
       display: 'flex',
       flexDirection: 'column',
-      gap: isMobile ? 10 : 8,
+      gap: 8,
       flex: 1,
     },
 
@@ -57,7 +57,7 @@
       alignItems: 'center',
       justifyContent: isMobile ? 'center' : 'flex-start',
       gap: 12,
-      padding: isVerySmall ? '13px 8px' : isMobile ? '14px 10px' : '13px 14px',
+      padding: '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
@@ -72,7 +72,7 @@
 
     menuItemIcon: {
       marginRight: isMobile ? 0 : 12,
-      fontSize: isMobile && !isVerySmall ? 20 : 18,
+      fontSize: 18,
       verticalAlign: 'middle',
     },
 
@@ -96,8 +96,10 @@
 
     logoutItem: {
       color: '#dc2626',
+      transition: '0.2s ease',
+      cursor: 'pointer',
     },
-
+    
     mainContainer: {
       marginLeft: sidebarWidth,
       minHeight: '100vh',
@@ -112,13 +114,13 @@
       top: 0,
       left: sidebarWidth,
       right: 0,
-      height: isVerySmall || isTablet ? 76 : 86,
+      height: 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: isVerySmall ? '0 14px' : isMobile ? '0 18px' : '0 28px',
+      padding: isMobile ? '0 14px' : '0 28px',
       zIndex: 150,
       boxSizing: 'border-box',
     },
@@ -131,27 +133,26 @@
     },
 
     receptProfile: {
-      display: 'inline-flex',
+      display: 'flex',
       alignItems: 'center',
       gap: 10,
-      minHeight: 60,
-      padding: isMobile ? 10 : '10px 20px',
+      height: 52,
+      padding: '0 12px',
       borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
-      boxSizing: 'border-box',
+      cursor: 'pointer',
     },
 
     avatar: {
-      width: isVerySmall ? 34 : 40,
-      height: isVerySmall ? 34 : 40,
-      borderRadius: isVerySmall ? 12 : 13,
+      width: 40,
+      height: 40,
+      borderRadius: 13,
       background: '#eff6ff',
       color: '#2563eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      flexShrink: 0,
     },
 
     avatarIcon: {
@@ -159,22 +160,21 @@
     },
 
     receptInfo: {
-      display: isMobile ? 'none' : 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      lineHeight: 1.2,
+      display: isMobile ? 'none' : 'block',
     },
 
     receptName: {
-      fontSize: 16,
-      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 600,
       color: '#0f172a',
     },
 
     receptPosition: {
-      marginTop: 2,
-      fontSize: 15,
+      fontSize: 12,
+      textAlign: 'left',
       color: '#64748b',
+      marginTop: 2,
     },
 
     mainContent: {

@@ -62,12 +62,17 @@ const createAdminEmployeeFormStyles = ({
       fontFamily: 'Arial, sans-serif',
     },
 
+    backBtnHover: {
+      background: 'rgba(37, 99, 235, 0.12)',
+      color: '#1d4ed8',
+    },
+
     headerTitle: {
       margin: 0,
       fontFamily: 'Arial, sans-serif',
       fontSize: isMobile ? 22 : 26,
       color: '#0f172a',
-      fontWeight: 800,
+      fontWeight: 600,
     },
 
     headerText: {
@@ -96,7 +101,7 @@ const createAdminEmployeeFormStyles = ({
       color: '#334155',
       cursor: 'pointer',
       whiteSpace: 'nowrap',
-      fontWeight: 700,
+      fontWeight: 600,
     },
 
     radioInput: {
@@ -135,7 +140,7 @@ const createAdminEmployeeFormStyles = ({
       fontFamily: 'Arial, sans-serif',
       fontSize: isMobile ? 15 : 17,
       color: '#1e293b',
-      fontWeight: 800,
+      fontWeight: 700,
     },
 
     circleBtn: {
@@ -144,7 +149,7 @@ const createAdminEmployeeFormStyles = ({
       minWidth: isMobile ? 31 : 34,
       borderRadius: '50%',
       border: 'none',
-      background: '#2563eb',
+      background: 'linear-gradient(135deg, #b8860b, #d4af37)',
       color: '#ffffff',
       fontSize: 20,
       cursor: 'pointer',
@@ -190,7 +195,7 @@ const createAdminEmployeeFormStyles = ({
     label: {
       fontFamily: 'Arial, sans-serif',
       fontSize: 14,
-      fontWeight: 700,
+      fontWeight: 600,
       color: '#334155',
     },
 
@@ -389,7 +394,7 @@ const createAdminEmployeeFormStyles = ({
       fontFamily: 'Arial, sans-serif',
       fontSize: 21,
       color: '#0f172a',
-      fontWeight: 800,
+      fontWeight: 600,
     },
 
     modalText: {

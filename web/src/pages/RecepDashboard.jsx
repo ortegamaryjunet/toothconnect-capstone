@@ -346,7 +346,7 @@ export default function RecepDashboard() {
             to="/receptionist"
             style={{ ...styles.menuItem, ...styles.menuItemActive }}
           >
-            <i className="fi fi-rr-apps" style={styles.menuItemIcon}></i>
+            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 

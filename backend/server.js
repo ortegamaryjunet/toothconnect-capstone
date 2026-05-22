@@ -123,6 +123,7 @@ pool.query('DROP TABLE IF EXISTS risk_assessments')
   .catch((err) => console.error('[migration] Failed to drop risk_assessments:', err.message));
 
 pool.query(`ALTER TABLE patient_profile MODIFY COLUMN address VARCHAR(255) NULL`)
+
   .catch(err => console.error('[migration] patient_profile address nullable:', err.message));
 
 [

@@ -9,7 +9,7 @@
     page: {
       minHeight: '100vh',
       width: '100%',
-      background: '#f4f7fb',
+      background: '#f5f7fb',
       fontFamily: 'Arial, sans-serif',
       color: '#172033',
       display: 'flex',
@@ -25,7 +25,7 @@
       height: '100vh',
       background: '#ffffff',
       borderRight: '1px solid #e5e7eb',
-      padding: isVerySmall ? '14px 8px' : isMobile ? '18px 10px' : '22px 16px',
+      padding: isMobile ? '18px 10px' : '22px 16px',
       zIndex: 200,
       display: 'flex',
       flexDirection: 'column',
@@ -34,20 +34,20 @@
 
     logo: {
       textAlign: 'center',
-      paddingBottom: isVerySmall ? 16 : 22,
-      marginBottom: isVerySmall ? 10 : 14,
+      paddingBottom: 22,
+      marginBottom: 14,
       borderBottom: '1px solid #e5e7eb',
     },
 
     logoImg: {
-      width: isVerySmall ? 48 : isMobile ? 55 : 125,
+      width: isMobile ? 55 : 125,
       height: 'auto',
     },
 
     menu: {
       display: 'flex',
       flexDirection: 'column',
-      gap: isVerySmall ? 6 : 8,
+      gap: 8,
       flex: 1,
     },
 
@@ -56,8 +56,8 @@
       alignItems: 'center',
       justifyContent: isMobile ? 'center' : 'flex-start',
       gap: 12,
-      padding: isVerySmall ? '12px 8px' : isMobile ? '13px 10px' : '13px 14px',
-      borderRadius: isVerySmall ? 12 : 14,
+      padding: '13px 14px',
+      borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
       transition: '0.2s ease',
@@ -71,7 +71,7 @@
 
     menuItemIcon: {
       marginRight: isMobile ? 0 : 12,
-      fontSize: isVerySmall ? 17 : 18,
+      fontSize: 18,
       verticalAlign: 'middle',
     },
 
@@ -80,9 +80,9 @@
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
     },
-
+    
     menuItemActive: {
-      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       boxShadow: '0 10px 22px rgba(139, 101, 8, 0.24)',
     },
@@ -111,13 +111,13 @@
       top: 0,
       left: sidebarWidth,
       right: 0,
-      height: isVerySmall ? 76 : 86,
+      height: 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: isVerySmall ? '0 12px' : isMobile ? '0 18px' : '0 28px',
+      padding: isMobile ? '0 14px' : '0 28px',
       zIndex: 150,
       boxSizing: 'border-box',
     },
@@ -170,29 +170,26 @@
     },
 
     receptProfile: {
-      display: 'inline-flex',
+      display: 'flex',
       alignItems: 'center',
       gap: 10,
-      minHeight: isVerySmall ? 52 : 60,
-      padding: isVerySmall ? 8 : '10px 20px',
-      borderRadius: isVerySmall ? 14 : 16,
+      height: 52,
+      padding: '0 12px',
+      borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
-      boxSizing: 'border-box',
       cursor: 'pointer',
-      fontFamily: 'Arial, sans-serif',
     },
 
     avatar: {
-      width: isVerySmall ? 36 : 40,
-      height: isVerySmall ? 36 : 40,
-      borderRadius: isVerySmall ? 12 : 13,
+      width: 40,
+      height: 40,
+      borderRadius: 13,
       background: '#eff6ff',
       color: '#2563eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      flexShrink: 0,
     },
 
     avatarIcon: {
@@ -200,22 +197,21 @@
     },
 
     receptInfo: {
-      display: isMobile ? 'none' : 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      lineHeight: 1.2,
+      display: isMobile ? 'none' : 'block',
     },
 
     receptName: {
-      fontSize: 16,
-      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 600,
       color: '#0f172a',
     },
 
     receptPosition: {
-      marginTop: 2,
-      fontSize: 15,
+      fontSize: 12,
+      textAlign: 'left',
       color: '#64748b',
+      marginTop: 2,
     },
 
     mainContent: {
