@@ -183,6 +183,7 @@ export default function InventoryPage() {
     medicine: 1,
     equipment: 1,
     supplies: 1,
+    search: 1,
   });
 
   const location = useLocation();
@@ -340,6 +341,8 @@ export default function InventoryPage() {
     },
   };
 
+  const isSearchActive = searchValue.trim().length > 0;
+
   const activeRows = inventoryMap[activeTab].rows;
 
   const filteredRows = useMemo(() => {
@@ -351,6 +354,28 @@ export default function InventoryPage() {
       return matchesSearch;
     });
   }, [activeRows, searchValue]);
+
+  const crossCategoryResults = useMemo(() => {
+    const search = searchValue.toLowerCase().trim();
+    if (!search) return [];
+
+    function matchItem(item) {
+      return Object.values(item).join(' ').toLowerCase().includes(search);
+    }
+
+    return [
+      ...medicines.filter(matchItem).map((item) => ({ ...item, _type: 'medicine', _name: item.medicineName })),
+      ...equipment.filter(matchItem).map((item) => ({ ...item, _type: 'equipment', _name: item.equipmentName })),
+      ...supplies.filter(matchItem).map((item) => ({ ...item, _type: 'supplies', _name: item.supplyName })),
+    ];
+  }, [medicines, equipment, supplies, searchValue]);
+
+  const searchTotalPages = Math.ceil(crossCategoryResults.length / rowsPerPage);
+
+  const paginatedCrossResults = useMemo(() => {
+    const start = (currentPages.search - 1) * rowsPerPage;
+    return crossCategoryResults.slice(start, start + rowsPerPage);
+  }, [crossCategoryResults, currentPages.search]);
 
   const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
   const currentPage = currentPages[activeTab];
@@ -578,6 +603,7 @@ export default function InventoryPage() {
     setCurrentPages((prev) => ({
       ...prev,
       [activeTab]: 1,
+      search: 1,
     }));
   }, [searchValue]); // tab changes reset page via handleTabChange; highlight sets page directly
 
@@ -719,6 +745,34 @@ export default function InventoryPage() {
         [activeTab]: prev[activeTab] - 1,
       }));
     }
+  }
+
+  function nextCrossPage() {
+    if (currentPages.search < searchTotalPages) {
+      setCurrentPages((prev) => ({ ...prev, search: prev.search + 1 }));
+    }
+  }
+
+  function prevCrossPage() {
+    if (currentPages.search > 1) {
+      setCurrentPages((prev) => ({ ...prev, search: prev.search - 1 }));
+    }
+  }
+
+  function openEditModalCross(item, type) {
+    setSelectedInventoryItem({ ...item, type });
+    setEditForm({
+      genericName: item.genericName === 'N/A' ? '' : item.genericName || '',
+      brand: item.brand === 'N/A' ? '' : item.brand || '',
+      category: item.category === 'N/A' ? '' : item.category || '',
+      form: item.form === 'N/A' ? '' : item.form || '',
+      dosage: item.dosage === 'N/A' ? '' : item.dosage || '',
+      unit: item.unit === 'N/A' ? '' : item.unit || '',
+      maintenanceStatus:
+        item.maintenanceStatus === 'N/A' ? 'Available' : item.maintenanceStatus || 'Available',
+    });
+    setEditError('');
+    setShowEditModal(true);
   }
 
   function getStatusBadgeStyle(status) {
@@ -884,6 +938,112 @@ export default function InventoryPage() {
       </tr>
       );
     });
+  }
+
+  function renderCrossSearchTable() {
+    const typeLabel = { medicine: 'Medicine', equipment: 'Equipment', supplies: 'Supply' };
+
+    return (
+      <>
+        <div style={styles.tableHeaderRow}>
+          <div>
+            <h3 style={styles.tableTitle}>Search Results</h3>
+            <p style={styles.tableSubtitle}>
+              {inventoryLoading
+                ? 'Loading inventory records...'
+                : `Showing matches across medicine, equipment, and supplies${isReceptionist ? ' for your branch' : ''}.`}
+            </p>
+            {inventoryError && (
+              <p style={{ ...styles.tableSubtitle, color: '#b91c1c' }}>{inventoryError}</p>
+            )}
+          </div>
+          <button type="button" style={styles.stockSummaryBtn} onClick={openStockSummaryModal}>
+            View Stock Summary
+          </button>
+        </div>
+
+        <div style={styles.tableWrapper}>
+          <table style={{ ...styles.inventoryTable, minWidth: 850 }}>
+            <thead>
+              <tr>
+                <th style={styles.tableHead}>ID</th>
+                <th style={styles.tableHead}>Type</th>
+                {!isReceptionist && <th style={styles.tableHead}>Branch</th>}
+                <th style={styles.tableHead}>Item Name</th>
+                <th style={styles.tableHead}>Category</th>
+                <th style={styles.tableHead}>Qty</th>
+                <th style={styles.tableHead}>Status</th>
+                {!isReceptionist && <th style={styles.tableHead}>Action</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedCrossResults.length === 0 ? (
+                <tr>
+                  <td colSpan={isReceptionist ? 5 : 7} style={styles.emptyRow}>
+                    No inventory records found matching your search.
+                  </td>
+                </tr>
+              ) : (
+                paginatedCrossResults.map((item) => (
+                  <tr key={`${item._type}-${item.rawId}`} style={styles.tableRow}>
+                    <td style={styles.tableCell}>{item.id}</td>
+                    <td style={styles.tableCell}>{typeLabel[item._type] || item._type}</td>
+                    {!isReceptionist && <td style={styles.tableCell}>{item.branchName}</td>}
+                    <td style={{ ...styles.tableCell, fontWeight: 600 }}>{item._name}</td>
+                    <td style={styles.tableCell}>{item.category}</td>
+                    <td style={styles.tableCell}>{item.quantity}</td>
+                    <td style={styles.tableCell}>
+                      <span style={getStatusBadgeStyle(item.status)}>{item.status}</span>
+                    </td>
+                    {!isReceptionist && (
+                      <td style={styles.tableCell}>
+                        <button
+                          type="button"
+                          style={styles.editBtn}
+                          onClick={() => openEditModalCross(item, item._type)}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={styles.pagination}>
+          <button
+            type="button"
+            onClick={prevCrossPage}
+            disabled={currentPages.search === 1}
+            style={{
+              ...styles.pageBtn,
+              ...(currentPages.search === 1 ? styles.pageBtnDisabled : {}),
+            }}
+          >
+            <i className="fi fi-rr-angle-left"></i>
+          </button>
+          <span style={styles.pageInfo}>
+            {crossCategoryResults.length === 0
+              ? 'Page 0 of 0'
+              : `Page ${currentPages.search} of ${searchTotalPages}`}
+          </span>
+          <button
+            type="button"
+            onClick={nextCrossPage}
+            disabled={currentPages.search >= searchTotalPages}
+            style={{
+              ...styles.pageBtn,
+              ...(currentPages.search >= searchTotalPages ? styles.pageBtnDisabled : {}),
+            }}
+          >
+            <i className="fi fi-rr-angle-right"></i>
+          </button>
+        </div>
+      </>
+    );
   }
 
   function renderTableHead() {
@@ -1232,7 +1392,7 @@ export default function InventoryPage() {
 
               <input
                 type="text"
-                placeholder="Search inventory item"
+                placeholder="Search across all inventory categories"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
                 style={styles.searchInput}
@@ -1242,73 +1402,77 @@ export default function InventoryPage() {
           </section>
 
           <section style={styles.tableCard}>
-            <div style={styles.tableHeaderRow}>
-              <div>
-                <h3 style={styles.tableTitle}>{inventoryMap[activeTab].title}</h3>
-                <p style={styles.tableSubtitle}>
-                  {inventoryLoading
-                    ? 'Loading inventory records...'
-                    : inventoryMap[activeTab].description}
-                </p>
-                {inventoryError && (
-                  <p style={{ ...styles.tableSubtitle, color: '#b91c1c' }}>
-                    {inventoryError}
-                  </p>
-                )}
-              </div>
+            {isSearchActive ? renderCrossSearchTable() : (
+              <>
+                <div style={styles.tableHeaderRow}>
+                  <div>
+                    <h3 style={styles.tableTitle}>{inventoryMap[activeTab].title}</h3>
+                    <p style={styles.tableSubtitle}>
+                      {inventoryLoading
+                        ? 'Loading inventory records...'
+                        : inventoryMap[activeTab].description}
+                    </p>
+                    {inventoryError && (
+                      <p style={{ ...styles.tableSubtitle, color: '#b91c1c' }}>
+                        {inventoryError}
+                      </p>
+                    )}
+                  </div>
 
-              <button
-                type="button"
-                style={styles.stockSummaryBtn}
-                onClick={openStockSummaryModal}
-              >
-                View Stock Summary
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    style={styles.stockSummaryBtn}
+                    onClick={openStockSummaryModal}
+                  >
+                    View Stock Summary
+                  </button>
+                </div>
 
-            <div style={styles.tableWrapper}>
-              <table
-                style={{
-                  ...styles.inventoryTable,
-                  minWidth: inventoryMap[activeTab].tableMinWidth,
-                }}
-              >
-                <thead>{renderTableHead()}</thead>
-                <tbody>{renderTableBody()}</tbody>
-              </table>
-            </div>
+                <div style={styles.tableWrapper}>
+                  <table
+                    style={{
+                      ...styles.inventoryTable,
+                      minWidth: inventoryMap[activeTab].tableMinWidth,
+                    }}
+                  >
+                    <thead>{renderTableHead()}</thead>
+                    <tbody>{renderTableBody()}</tbody>
+                  </table>
+                </div>
 
-            <div style={styles.pagination}>
-              <button
-                type="button"
-                onClick={prevPage}
-                disabled={currentPage === 1}
-                style={{
-                  ...styles.pageBtn,
-                  ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
-                }}
-              >
-                <i className="fi fi-rr-angle-left"></i>
-              </button>
+                <div style={styles.pagination}>
+                  <button
+                    type="button"
+                    onClick={prevPage}
+                    disabled={currentPage === 1}
+                    style={{
+                      ...styles.pageBtn,
+                      ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
+                    }}
+                  >
+                    <i className="fi fi-rr-angle-left"></i>
+                  </button>
 
-              <span style={styles.pageInfo}>
-                {filteredRows.length === 0
-                  ? 'Page 0 of 0'
-                  : `Page ${currentPage} of ${totalPages}`}
-              </span>
+                  <span style={styles.pageInfo}>
+                    {filteredRows.length === 0
+                      ? 'Page 0 of 0'
+                      : `Page ${currentPage} of ${totalPages}`}
+                  </span>
 
-              <button
-                type="button"
-                onClick={nextPage}
-                disabled={currentPage >= totalPages}
-                style={{
-                  ...styles.pageBtn,
-                  ...(currentPage >= totalPages ? styles.pageBtnDisabled : {}),
-                }}
-              >
-                <i className="fi fi-rr-angle-right"></i>
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={nextPage}
+                    disabled={currentPage >= totalPages}
+                    style={{
+                      ...styles.pageBtn,
+                      ...(currentPage >= totalPages ? styles.pageBtnDisabled : {}),
+                    }}
+                  >
+                    <i className="fi fi-rr-angle-right"></i>
+                  </button>
+                </div>
+              </>
+            )}
           </section>
         </main>
       </div>

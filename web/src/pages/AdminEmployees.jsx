@@ -21,6 +21,9 @@ export default function AdminEmployees() {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [editedEmployee, setEditedEmployee] = useState(null);
   const [isEditingEmployee, setIsEditingEmployee] = useState(false);
+  const [editErrors, setEditErrors] = useState(new Set());
+  const [showEditErrorModal, setShowEditErrorModal] = useState(false);
+  const [editErrorMessage, setEditErrorMessage] = useState('');
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -100,7 +103,7 @@ export default function AdminEmployees() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showEmployeeModal) {
+    if (showLogoutModal || showEmployeeModal || showEditErrorModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -109,7 +112,7 @@ export default function AdminEmployees() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showEmployeeModal]);
+  }, [showLogoutModal, showEmployeeModal, showEditErrorModal]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -209,6 +212,7 @@ export default function AdminEmployees() {
     setSelectedEmployee(null);
     setEditedEmployee(null);
     setIsEditingEmployee(false);
+    setEditErrors(new Set());
   }
 
   function handleEmployeeModalOverlayClick(event) {
@@ -224,6 +228,7 @@ export default function AdminEmployees() {
   function handleCancelEditEmployee() {
     setEditedEmployee({ ...selectedEmployee });
     setIsEditingEmployee(false);
+    setEditErrors(new Set());
   }
 
   function handleEmployeeInputChange(event) {
@@ -235,7 +240,28 @@ export default function AdminEmployees() {
     }));
   }
 
+  function validateEditFields() {
+    const required = [
+      'firstName', 'lastName', 'homeAddress', 'contactNumber', 'email',
+      'birthday', 'gender', 'startDate', 'employmentType',
+    ];
+    const errors = new Set();
+    required.forEach((name) => {
+      if (!editedEmployee?.[name]) errors.add(name);
+    });
+    return errors;
+  }
+
   async function handleSaveEmployeeChanges() {
+    const errors = validateEditFields();
+    if (errors.size > 0) {
+      setEditErrors(errors);
+      setEditErrorMessage('Please fill in all required fields before saving.');
+      setShowEditErrorModal(true);
+      return;
+    }
+    setEditErrors(new Set());
+
     try {
       const res = await api.patch(
         `/auth/staff-profiles/${editedEmployee.profileId}`,
@@ -254,14 +280,18 @@ export default function AdminEmployees() {
       setIsEditingEmployee(false);
     } catch (err) {
       console.error('Failed to update employee', err);
-      alert(err.response?.data?.message || 'Failed to update employee.');
+      setEditErrorMessage(err.response?.data?.message || 'Failed to update employee.');
+      setShowEditErrorModal(true);
     }
   }
 
   function modalField(label, name, type = 'text') {
+    const hasError = editErrors.has(name);
     return (
       <div style={styles.employeeModalField}>
-        <label style={styles.employeeModalLabel}>{label}</label>
+        <label style={styles.employeeModalLabel}>
+          {label}{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+        </label>
 
         <input
           type={type}
@@ -272,6 +302,7 @@ export default function AdminEmployees() {
           style={{
             ...styles.employeeModalInput,
             ...(!isEditingEmployee ? styles.employeeModalInputReadOnly : {}),
+            ...(hasError ? { borderColor: '#dc2626', borderWidth: '2px' } : {}),
           }}
         />
       </div>
@@ -279,9 +310,12 @@ export default function AdminEmployees() {
   }
 
   function modalSelect(label, name, options) {
+    const hasError = editErrors.has(name);
     return (
       <div style={styles.employeeModalField}>
-        <label style={styles.employeeModalLabel}>{label}</label>
+        <label style={styles.employeeModalLabel}>
+          {label}{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+        </label>
 
         <select
           name={name}
@@ -291,6 +325,7 @@ export default function AdminEmployees() {
           style={{
             ...styles.employeeModalInput,
             ...(!isEditingEmployee ? styles.employeeModalInputReadOnly : {}),
+            ...(hasError ? { borderColor: '#dc2626', borderWidth: '2px' } : {}),
           }}
         >
           <option value="">Select</option>
@@ -781,6 +816,27 @@ export default function AdminEmployees() {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditErrorModal && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div style={{ ...styles.modalIcon, background: '#fee2e2', color: '#dc2626' }}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Incomplete Form</h2>
+            <p style={styles.modalText}>{editErrorMessage}</p>
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, background: '#dc2626', color: '#ffffff' }}
+                onClick={() => setShowEditErrorModal(false)}
+              >
+                OK
+              </button>
             </div>
           </div>
         </div>

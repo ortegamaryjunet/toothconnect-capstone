@@ -32,6 +32,17 @@ async function loadUserBranches(userId) {
   ])];
 }
 
+function formatMysqlDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    const y = value.getUTCFullYear();
+    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(value.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return String(value).split('T')[0];
+}
+
 function mapStaffProfileRow(row) {
   return {
     id: `E-${String(row.id).padStart(4, '0')}`,
@@ -46,7 +57,7 @@ function mapStaffProfileRow(row) {
     middleName: row.middle_name || '',
     nickname: row.nickname || '',
     suffix: row.suffix || '',
-    birthday: row.birthday,
+    birthday: formatMysqlDate(row.birthday),
     age: row.age || '',
     gender: row.gender || '',
     civilStatus: row.civil_status || '',
@@ -62,7 +73,7 @@ function mapStaffProfileRow(row) {
     licenseNumber: row.license_number || '',
     yearsExperience: row.years_experience || 0,
     skills: row.skills || '',
-    startDate: row.start_date,
+    startDate: formatMysqlDate(row.start_date),
     employmentType: row.employment_type || '',
     shiftType: row.shift_type || '',
     workDays: row.work_days || '',
@@ -399,6 +410,38 @@ router.get('/services', authenticate, requireRole('admin'), async (req, res) => 
   try {
     const services = await loadServices();
     res.json({ services });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Returns distinct service categories available at a branch (via dentists assigned there).
+// Falls back to all categories when the branch has no dentists with linked services yet.
+router.get('/branch-services/:branchId', authenticate, requireRole('admin'), async (req, res) => {
+  const branchId = parseInt(req.params.branchId, 10);
+  if (!branchId) {
+    return res.status(400).json({ message: 'Invalid branch ID' });
+  }
+  try {
+    const [rows] = await pool.query(
+      `SELECT DISTINCT s.category
+       FROM services s
+       JOIN dentist_services ds ON ds.service_id = s.id
+       JOIN user_branches ub ON ub.user_id = ds.dentist_id
+       WHERE ub.branch_id = ?
+         AND s.status = 'Active'
+       ORDER BY s.category ASC`,
+      [branchId]
+    );
+    let categories = rows.map((r) => r.category).filter(Boolean);
+    if (categories.length === 0) {
+      const [allRows] = await pool.query(
+        `SELECT DISTINCT category FROM services WHERE status = 'Active' ORDER BY category ASC`
+      );
+      categories = allRows.map((r) => r.category).filter(Boolean);
+    }
+    res.json({ categories });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
