@@ -6,6 +6,7 @@ async function saveAppointment(appointmentData) {
     appointmentTime,
     durationMinutes,
     fullName,
+    email,
     phoneNumber,
     location,
     reasonForBooking
@@ -33,18 +34,20 @@ async function saveAppointment(appointmentData) {
       appointment_time,
       duration_minutes,
       full_name,
+      email,
       phone_number,
       location,
       reason_for_booking,
       status,
       created_at
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())`,
     [
       appointmentDate,
       appointmentTime,
       durationMinutes || 30,
       fullName,
+      email || null,
       phoneNumber,
       location,
       reasonForBooking || null

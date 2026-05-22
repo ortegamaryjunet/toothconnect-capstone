@@ -600,6 +600,7 @@ CREATE TABLE IF NOT EXISTS online_appointments_tbl (
   appointment_time TIME NOT NULL,
   duration_minutes INT NOT NULL DEFAULT 30,
   full_name VARCHAR(150) NOT NULL,
+  email VARCHAR(150) NULL,
   phone_number VARCHAR(30) NOT NULL,
   location VARCHAR(255) NOT NULL,
   reason_for_booking TEXT NULL,

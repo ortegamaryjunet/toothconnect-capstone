@@ -195,7 +195,7 @@
       width: '100%',
       minHeight: isStacked ? 'auto' : 190,
       borderRadius: isSingleColumn ? 20 : 28,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       padding: isVerySmall ? 20 : isSingleColumn ? 24 : 30,
       marginBottom: isVerySmall ? 18 : 22,
       overflow: 'hidden',

@@ -182,7 +182,7 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
 
     heroCard: {
       borderRadius: '22px',
-      background: 'linear-gradient(135deg, #0f62f1 0%, #55a2ff 100%)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       color: '#ffffff',
       padding: '26px 30px',
       boxSizing: 'border-box',

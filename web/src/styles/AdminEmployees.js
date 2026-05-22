@@ -190,7 +190,7 @@
       width: '100%',
       minHeight: isMobile ? 'auto' : isSmallScreen ? 170 : 190,
       borderRadius: isMobile ? 22 : 28,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       padding: isMobile ? 22 : isSmallScreen ? 28 : 30,
       marginBottom: 22,
       overflow: 'hidden',

@@ -83,7 +83,7 @@
     },
 
     menuItemActive: {
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       color: '#ffffff',
       boxShadow: '0 10px 22px rgba(139, 101, 8, 0.24)',
     },
@@ -234,7 +234,7 @@
       width: '100%',
       minHeight: isVerySmall ? 'auto' : 190,
       borderRadius: isVerySmall ? 18 : 28,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
       padding: isVerySmall ? 20 : isMobile ? 24 : 30,
       marginBottom: 22,
       overflow: 'hidden',

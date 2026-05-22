@@ -403,6 +403,136 @@ Patients always create appointments with `status: 'scheduled'` regardless of the
 ### Consistent conflict checking: backend and frontend both exclude completed
 Before these changes, there was a mismatch: the frontend's slot grid might show a time as available (completed appointments ignored), but the backend would reject it with a 409 conflict (because completed was in the SQL IN clause). Now both sides use the same logic — completed appointments don't block either the display or the save.
 
+---
+
+## Website (patient-facing static HTML/CSS/JS) — Session: BookAppointment Redesign
+
+### API base URL switched to localhost
+`website/js/HomePage.js` and `website/js/BookAppointment.js` previously pointed to the production domain (`https://api.smileempressdentalhub.com`). Both were updated to `http://localhost:4000` for local development. This is an intentional temporary change that must be reverted before deploying to production.
+
+**Affected files:**
+- `website/js/HomePage.js` — line 1, `API_BASE_URL`
+- `website/js/BookAppointment.js` — line 1, `API_BASE_URL`
+
+### Email input added to BookAppointment form
+An email address field was added before the phone number input in `website/BookAppointment.html`. Uses the same `.input-group` styling as all other fields. No backend support was wired at this point — it was a frontend-only change initially patched in a later session.
+
+**Affected file:** `website/BookAppointment.html` — email `<input type="email">` with id `email`, error span `emailError`
+
+### BookAppointment form: step-locking UX
+Step 2 (form fields) and Step 3 (time slots) are locked behind prior steps completing. Step 2 unlocks only when a date is selected (Step 1). Step 3 unlocks only when a branch is selected (Step 2). Lock state is driven by CSS classes: `.step-lock-notice.visible` shows a dashed notice banner; `#step2Content.locked` and `#step3Content.locked` apply `opacity: 0.4 + pointer-events: none + user-select: none`. The unlock trigger for Step 3 is branch selection, not full form completion — this was a deliberate UX decision so patients can see time availability as soon as they pick a branch, before filling all fields.
+
+**Affected files:**
+- `website/BookAppointment.html` — added `#step2Notice`, `#step3Notice` lock banners; wrapped content in `#step2Content`, `#step3Content`
+- `website/css/BookAppointment.css` — added `.step-lock-notice`, `.step-lock-notice.visible`, `#step2Content.locked`, `#step3Content.locked` rules
+- `website/js/BookAppointment.js` — `updateStepLocks()` function called on date selection and branch change
+
+### BookAppointment form: step renaming and reorder
+Step labels were swapped to match the new unlock order. The form fields section (previously Step 3) became **Step 2 — Complete Your Appointment Details**. The time slot picker (previously Step 2) became **Step 3 — Select Your Preferred Time**. HTML labels and JS references were updated consistently.
+
+**Affected files:**
+- `website/BookAppointment.html` — step labels in `.card-heading` and `.step-box`
+- `website/js/BookAppointment.js` — no structural change, order follows HTML layout
+
+### BookAppointment form: inline validation matching RecepAppointmentForm
+All form fields now show inline errors consistent with the web portal's `RecepAppointmentForm.jsx` pattern: invalid inputs get a red border (`#dc2626`) with a background tint (`#fff7f7`), and a `.field-error-text` span below the input shows the error message. Errors are cleared on user input (real-time) and set on blur or submit.
+
+Validation rules:
+- **Full Name:** minimum 2 words (first + last name required), no numbers, no special characters. Unicode-safe (`À-ɏ` range allowed for accented names).
+- **Email:** standard format check via regex, required.
+- **Phone:** Philippine format only — must match `09XXXXXXXXX` (11 digits, starts with `09`). Digits-only input enforced. Letters and special characters are stripped on input. The `intl-tel-input` library was removed entirely since only PH numbers are accepted.
+- **Location:** radio group, must select a branch.
+- **Reason for Booking:** must select from branch-filtered dropdown.
+- **Time:** must select a time slot before submitting.
+
+**Affected files:**
+- `website/css/BookAppointment.css` — added `.input-error`, `.field-error-text`, `.field-error-text.active`
+- `website/js/BookAppointment.js` — `validateFullName()`, `validateEmail()`, `validatePhone()`, `showFieldError()`, `clearFieldError()`, `setInputError()` functions
+
+### BookAppointment form: intl-tel-input library removed
+`intl-tel-input` (CDN CSS + JS) was removed from `website/BookAppointment.html`. The phone field is now a plain `<input type="tel">` restricted to 11 digits. A `toPhInternational()` helper converts `09XXXXXXXXX` → `+639XXXXXXXXX` and stores it in a hidden `#fullPhoneNumber` field. The backend receives the international format (`+63...`) via `fullPhoneNumber`, preserving API compatibility with existing records and the receptionist's view.
+
+**Why removed:** The booking page only serves Philippine patients. A country picker added UX complexity with no practical benefit, and the library added two CDN requests on every page load.
+
+**Affected files:**
+- `website/BookAppointment.html` — removed `intl-tel-input` `<link>` and `<script>` tags; simplified phone field markup (removed `.phone-field` wrapper)
+- `website/js/BookAppointment.js` — replaced `iti` initialization with digit-only input handler + `toPhInternational()` conversion
+
+### BookAppointment form: branch-filtered service dropdown
+The reason-for-booking dropdown is no longer hardcoded HTML. It is rendered dynamically by `renderReasonOptions(branch)` when a branch radio is selected. Each branch has a curated static list in the `servicesByBranch` JS object:
+- **Makati Branch:** 9 services (includes orthodontic consultation and braces adjustment)
+- **Las Piñas Branch:** 7 services (general services only, no ortho/braces)
+
+Selecting a different branch clears any previously selected reason and re-renders the dropdown. This prevents submitting a reason that the selected branch doesn't offer.
+
+**Decision:** A static JS map was used instead of a backend API call because the static website has no authentication, and the list of services per branch is not expected to change frequently. Dynamic backend fetching would add latency and complexity for marginal benefit at this scope.
+
+**Affected file:** `website/js/BookAppointment.js` — `servicesByBranch` constant, `renderReasonOptions()` function, branch radio `change` listener
+
+### BookAppointment form: backend API payload unchanged
+The JS payload sent to `POST /api/website/saveAppointment` preserves all original field names (`appointmentDate`, `appointmentTime`, `durationMinutes`, `fullName`, `phoneNumber`, `location`, `reasonForBooking`) plus the newly added `email`. No backend route names, variable names, or response shapes were changed. The `fullPhoneNumber` field continues to carry the `+63` international format that the backend stores.
+
+**Affected file:** `website/js/BookAppointment.js` — `appointmentData` object in submit handler
+
+---
+
+## Backend — Session: Email field patch for online_appointments_tbl
+
+### email column added to online_appointments_tbl
+The website booking form collected an email address but the backend discarded it. Patched to fully support the `email` field end-to-end without altering any existing logic.
+
+**Changes made:**
+
+| File | What changed |
+|------|-------------|
+| `backend/src/routes/websiteRoutes.js` | Added `email` to `req.body` destructuring; added `email` to `websiteService.saveAppointment()` call. Required-field validation (`appointmentDate`, `appointmentTime`, `fullName`, `phoneNumber`, `location`) left unchanged — `email` is treated as optional at the API level for backward compatibility. |
+| `backend/src/services/websiteService.js` | Added `email` to function destructuring; added `email` column to INSERT column list; added `email || null` to INSERT parameters array. Duplicate-check query (by date+time+name+phone) was intentionally left unchanged — email is not part of the uniqueness constraint. |
+| `backend/server.js` | (1) Updated `CREATE TABLE IF NOT EXISTS online_appointments_tbl` block to include `email VARCHAR(150) NULL AFTER full_name` — applies to fresh installs. (2) Added `ALTER TABLE online_appointments_tbl ADD COLUMN IF NOT EXISTS email VARCHAR(150) NULL AFTER full_name` startup migration — applies to existing installs without data loss. |
+| `backend/schema.sql` | Added `email VARCHAR(150) NULL` to the `online_appointments_tbl` table definition for documentation consistency. |
+
+### email column is nullable
+The column is defined as `VARCHAR(150) NULL`, not `NOT NULL`. Reasons: (1) existing rows in the database have no email — a NOT NULL ALTER would require a DEFAULT value or fail; (2) backward compatibility — any direct API calls that omit `email` continue to succeed; (3) frontend already validates email as required, so NULL values in practice only occur for pre-patch submissions.
+
+### No changes to web portal or mobile
+`AdminSettings.jsx` renders appointment rows by named property (`appt.full_name`, `appt.phone_number`, etc.). The `listAppointments()` function uses `SELECT *`, so the new `email` column is returned but silently ignored by the React table — no JSX changes needed. Mobile and web portal appointment flows use authenticated `/api/appointments` endpoints, completely separate from `/api/website/saveAppointment`. Neither was touched.
+
+---
+
+## Database
+
+### online_appointments_tbl schema change
+Added `email VARCHAR(150) NULL AFTER full_name`. No existing data affected (nullable). Managed via startup migration in `server.js` following the same `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` pattern used for `services.description` and `appointments.dentist_note` in earlier sessions.
+
+### No other table changes
+`online_inquiries_tbl`, `appointments`, `users`, `patient_profile`, and all other tables are unchanged in this session.
+
+---
+
+## Web Portal (React — `web/`)
+
+### No changes this session
+All web portal files (`RecepAppointmentForm.jsx`, `AdminSettings.jsx`, `DentistAppointment.jsx`, etc.) were reviewed for compatibility but not modified. `AdminSettings.jsx` was confirmed safe after the `email` column addition because it accesses appointment data by named property, not by column index.
+
+---
+
+## Mobile (`mobile/`)
+
+### No changes this session
+Mobile app was confirmed to have no dependency on `website/` files and no calls to `/api/website/saveAppointment`. All mobile appointment flows use authenticated internal endpoints. No code was modified.
+
+---
+
+## Pending Issues
+
+### API_BASE_URL still set to localhost in website JS
+`website/js/HomePage.js` and `website/js/BookAppointment.js` both have `API_BASE_URL = "http://localhost:4000"`. These must be reverted to the production URL before deploying to production, or managed via a build-time environment variable injection.
+
+### Email not displayed in AdminSettings.jsx appointments table
+The `AdminSettings.jsx` online appointments table shows Full Name, Phone, Date, Time, Location, Reason, Status, and Action — but not Email. Now that email is captured and stored, the admin table should be updated to display it so clinic staff can follow up with patients by email.
+
+### email field not validated on the backend route
+The `POST /saveAppointment` route does not check for a missing or malformed email. Frontend validation ensures it is always sent, but a direct API call bypassing the website can omit it. Consider adding `!email` to the existing required-field check once backward compatibility is no longer a concern.
+
 
 
 

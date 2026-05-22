@@ -691,7 +691,62 @@ body {
         padding: 14px;
     }
 
-    .phone-field .iti__country-list {
-        width: 280px !important;
-    }
+}
+
+/* ---- Inline error states ---- */
+
+.input-error,
+.input-error:focus {
+    border-color: #dc2626 !important;
+    background: #fff7f7 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.field-error-text {
+    display: none;
+    margin: 6px 0 0;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.field-error-text.active {
+    display: block;
+}
+
+/* ---- Step lock states ---- */
+
+.step-lock-notice {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: #fafaf9;
+    border: 1px dashed var(--line);
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.step-lock-notice.visible {
+    display: flex;
+}
+
+.step-lock-notice i {
+    color: var(--gold-dark);
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.step-lock-notice strong {
+    color: var(--dark);
+}
+
+#step2Content.locked,
+#step3Content.locked {
+    opacity: 0.4;
+    pointer-events: none;
+    user-select: none;
 }
