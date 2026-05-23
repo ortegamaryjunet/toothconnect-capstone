@@ -300,6 +300,31 @@ const createAdminEmployeeFormStyles = ({
       boxSizing: 'border-box',
     },
 
+    workItemHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+
+    removeWorkBtn: {
+      width: 28,
+      height: 28,
+      minWidth: 28,
+      borderRadius: '50%',
+      border: 'none',
+      background: '#fee2e2',
+      color: '#dc2626',
+      fontSize: 18,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontWeight: 'bold',
+      lineHeight: 1,
+      flexShrink: 0,
+    },
+
     addWork: {
       display: 'flex',
       justifyContent: 'center',
