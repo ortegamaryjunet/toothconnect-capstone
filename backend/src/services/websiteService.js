@@ -40,9 +40,9 @@ async function saveAppointment(appointmentData) {
     `SELECT id
      FROM online_appointments_tbl
      WHERE appointment_date = ?
-     AND appointment_time = ?
-     AND full_name = ?
-     AND phone_number = ?
+       AND appointment_time = ?
+       AND full_name = ?
+       AND phone_number = ?
      LIMIT 1`,
     [appointmentDate, appointmentTime, fullName, phoneNumber]
   );
@@ -103,10 +103,10 @@ async function saveInquiry(inquiryData) {
     `SELECT id
      FROM online_inquiries_tbl
      WHERE full_name = ?
-     AND email_address = ?
-     AND phone_number = ?
-     AND branch = ?
-     AND concern = ?
+       AND email_address = ?
+       AND phone_number = ?
+       AND branch = ?
+       AND concern = ?
      LIMIT 1`,
     [fullName, emailAddress, phoneNumber, branch, concern]
   );
@@ -195,13 +195,14 @@ async function listAppointments({ search = '', status = '' } = {}) {
   }
 
   if (status) {
-    sql += ` AND status = ?`;
+    sql += ' AND status = ?';
     params.push(status);
   }
 
-  sql += ` ORDER BY created_at DESC`;
+  sql += ' ORDER BY created_at DESC';
 
   const [rows] = await db.query(sql, params);
+
   return rows;
 }
 
@@ -240,9 +241,10 @@ async function listInquiries({ search = '' } = {}) {
     params.push(like, like, like, like, like);
   }
 
-  sql += ` ORDER BY created_at DESC`;
+  sql += ' ORDER BY created_at DESC';
 
   const [rows] = await db.query(sql, params);
+
   return rows;
 }
 

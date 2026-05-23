@@ -226,18 +226,65 @@ pool.query(`
   CREATE TABLE IF NOT EXISTS online_inquiries_tbl (
     id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(150) NOT NULL,
+    email_address VARCHAR(150) NOT NULL,
     phone_number VARCHAR(30) NOT NULL,
+    branch VARCHAR(150) NOT NULL,
     concern VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_online_inquiry_phone (phone_number)
+
+    INDEX idx_online_inquiry_phone (phone_number),
+    INDEX idx_online_inquiry_branch (branch)
   )
-`).catch(err => console.error('[migration] online_inquiries_tbl:', err.message));
+`).catch(err => {
+  console.error('[migration] online_inquiries_tbl:', err.message);
+});
+
+pool.query(`
+  ALTER TABLE online_inquiries_tbl
+  ADD COLUMN IF NOT EXISTS email_address VARCHAR(150) NOT NULL AFTER full_name
+`).catch(() => {
+  pool.query(`SHOW COLUMNS FROM online_inquiries_tbl LIKE 'email_address'`)
+    .then(([rows]) => {
+      if (rows.length === 0) {
+        return pool.query(`
+          ALTER TABLE online_inquiries_tbl
+          ADD COLUMN email_address VARCHAR(150) NOT NULL AFTER full_name
+        `);
+      }
+    })
+    .catch(err => {
+      console.error('[migration] Failed to add email_address:', err.message);
+    });
+});
+
+pool.query(`
+  ALTER TABLE online_inquiries_tbl
+  ADD COLUMN IF NOT EXISTS branch VARCHAR(150) NOT NULL AFTER phone_number
+`).catch(() => {
+  pool.query(`SHOW COLUMNS FROM online_inquiries_tbl LIKE 'branch'`)
+    .then(([rows]) => {
+      if (rows.length === 0) {
+        return pool.query(`
+          ALTER TABLE online_inquiries_tbl
+          ADD COLUMN branch VARCHAR(150) NOT NULL AFTER phone_number
+        `);
+      }
+    })
+    .catch(err => {
+      console.error('[migration] Failed to add branch:', err.message);
+    });
+});
 
 const PORT = process.env.PORT || 4000;
-const { startCronJobs } = require('./src/services/cron');
-startCronJobs();
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Mock email mode: ${process.env.MOCK_EMAIL === 'true' ? 'ON (OTPs print to console)' : 'OFF (using Resend)'}`);
+  console.log(
+    `Mock email mode: ${
+      process.env.MOCK_EMAIL === 'true'
+        ? 'ON (OTPs print to console)'
+        : 'OFF (using Resend)'
+    }`
+  );
 });

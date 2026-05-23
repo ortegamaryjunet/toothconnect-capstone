@@ -88,7 +88,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (messageInput) {
         messageInput.addEventListener("input", function () {
-            this.value = this.value.replace(/[^a-zA-Z\s.,!?'"()\-]/g, "");
+            this.value = this.value.replace(/[^a-zA-Z0-9\s.,!?'"()\-]/g, "");
         });
     }
 
@@ -323,7 +323,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/api/website/saveInquiry`, {
+                const response = await fetch("http://localhost:4000/api/website/saveInquiry", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -342,7 +342,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 showMessage(
                     result.messageTitle || "Inquiry Status",
-                    result.message || "Your inquiry request has been processed.",
+                    result.message || "Your inquiry has been submitted successfully. Please wait for our response.",
                     result.success ? "success" : "error"
                 );
 
