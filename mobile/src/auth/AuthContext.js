@@ -42,9 +42,9 @@ export function AuthProvider({ children }) {
         branches: meRes.data.branches,
         created_at: meRes.data.created_at ?? null,
       });
-      //registerForPushNotificationsAsync().catch(err => {
-      //  console.log('[push] Registration failed during bootstrap:', err.message);
-      //});
+      registerForPushNotificationsAsync().catch(err => {
+        console.log('[push] Registration failed during bootstrap:', err.message);
+      });
     } catch (err) {
       await clearRefreshToken();
       setUser(null);
@@ -58,9 +58,9 @@ export function AuthProvider({ children }) {
     setAccessToken(res.data.accessToken);
     await saveRefreshToken(res.data.refreshToken);
     setUser(res.data.user);
-    //registerForPushNotificationsAsync().catch(err => {
-    //  console.log('[push] Registration failed during login:', err.message);
-    //});
+    registerForPushNotificationsAsync().catch(err => {
+      console.log('[push] Registration failed during login:', err.message);
+    });
     return res.data.user;
   }
 

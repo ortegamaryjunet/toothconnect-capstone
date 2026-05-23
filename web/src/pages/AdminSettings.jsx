@@ -145,6 +145,18 @@ export default function AdminSettings() {
   const [onlineAppointments, setOnlineAppointments] = useState([]);
   const [onlineInquiries, setOnlineInquiries] = useState([]);
   const [websiteTab, setWebsiteTab] = useState('appointments');
+
+  const [websiteContent, setWebsiteContent] = useState({});
+  const [websiteFaqs, setWebsiteFaqs] = useState([]);
+  const [websiteServices, setWebsiteServices] = useState([]);
+  const [websiteAnnouncements, setWebsiteAnnouncements] = useState([]);
+  const [websiteContentSection, setWebsiteContentSection] = useState('hero');
+  const [websiteContentForm, setWebsiteContentForm] = useState({});
+  const [websiteContentSaving, setWebsiteContentSaving] = useState(false);
+  const [websiteContentMsg, setWebsiteContentMsg] = useState({ text: '', type: '' });
+  const [websiteFaqOverlay, setWebsiteFaqOverlay] = useState(null);
+  const [websiteServiceOverlay, setWebsiteServiceOverlay] = useState(null);
+  const [websiteAnnouncementOverlay, setWebsiteAnnouncementOverlay] = useState(null);
   const [users, setUsers] = useState([]);
   const [adminAccountForm, setAdminAccountForm] = useState(initialAdminAccountForm);
   const [isEditingAdminAccount, setIsEditingAdminAccount] = useState(false);
@@ -220,7 +232,7 @@ export default function AdminSettings() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || activeOverlay) {
+    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -229,13 +241,16 @@ export default function AdminSettings() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, activeOverlay]);
+  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
         closeOverlay();
+        setWebsiteFaqOverlay(null);
+        setWebsiteServiceOverlay(null);
+        setWebsiteAnnouncementOverlay(null);
       }
     }
 
@@ -253,6 +268,10 @@ export default function AdminSettings() {
     loadAdminAccount();
     loadOnlineAppointments();
     loadOnlineInquiries();
+    loadWebsiteContent();
+    loadWebsiteFaqs();
+    loadWebsiteServices();
+    loadWebsiteAnnouncements();
   }, []);
 
 
@@ -303,6 +322,135 @@ export default function AdminSettings() {
     } catch (err) {
       console.error('Failed to load online inquiries', err);
       setOnlineInquiries([]);
+    }
+  }
+
+  async function loadWebsiteContent() {
+    try {
+      const res = await api.get('/website/content');
+      const content = res.data.content || {};
+      setWebsiteContent(content);
+      setWebsiteContentForm(content);
+    } catch (err) {
+      console.error('Failed to load website content', err);
+    }
+  }
+
+  async function loadWebsiteFaqs() {
+    try {
+      const res = await api.get('/website/faqs/all');
+      setWebsiteFaqs(res.data.faqs || []);
+    } catch (err) {
+      console.error('Failed to load website FAQs', err);
+    }
+  }
+
+  async function loadWebsiteServices() {
+    try {
+      const res = await api.get('/website/website-services/all');
+      setWebsiteServices(res.data.services || []);
+    } catch (err) {
+      console.error('Failed to load website services', err);
+    }
+  }
+
+  async function loadWebsiteAnnouncements() {
+    try {
+      const res = await api.get('/website/announcements/all');
+      setWebsiteAnnouncements(res.data.announcements || []);
+    } catch (err) {
+      console.error('Failed to load website announcements', err);
+    }
+  }
+
+  async function saveWebsiteContent(sectionFields) {
+    setWebsiteContentSaving(true);
+    setWebsiteContentMsg({ text: '', type: '' });
+    try {
+      const res = await api.put('/website/content', { fields: sectionFields });
+      const updated = res.data.content || {};
+      setWebsiteContent(updated);
+      setWebsiteContentForm(updated);
+      setWebsiteContentMsg({ text: 'Content saved successfully.', type: 'success' });
+    } catch (err) {
+      setWebsiteContentMsg({ text: err.response?.data?.message || 'Failed to save content.', type: 'error' });
+    } finally {
+      setWebsiteContentSaving(false);
+    }
+  }
+
+  async function saveFaq(data) {
+    try {
+      if (data.id) {
+        const res = await api.put(`/website/faqs/${data.id}`, data);
+        setWebsiteFaqs(res.data.faqs || []);
+      } else {
+        const res = await api.post('/website/faqs', data);
+        setWebsiteFaqs(res.data.faqs || []);
+      }
+      setWebsiteFaqOverlay(null);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to save FAQ.');
+    }
+  }
+
+  async function deleteFaq(id) {
+    if (!window.confirm('Delete this FAQ?')) return;
+    try {
+      const res = await api.delete(`/website/faqs/${id}`);
+      setWebsiteFaqs(res.data.faqs || []);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete FAQ.');
+    }
+  }
+
+  async function saveWebsiteService(data) {
+    try {
+      if (data.id) {
+        const res = await api.put(`/website/website-services/${data.id}`, data);
+        setWebsiteServices(res.data.services || []);
+      } else {
+        const res = await api.post('/website/website-services', data);
+        setWebsiteServices(res.data.services || []);
+      }
+      setWebsiteServiceOverlay(null);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to save service.');
+    }
+  }
+
+  async function deleteWebsiteService(id) {
+    if (!window.confirm('Delete this service card?')) return;
+    try {
+      const res = await api.delete(`/website/website-services/${id}`);
+      setWebsiteServices(res.data.services || []);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete service.');
+    }
+  }
+
+  async function saveAnnouncement(data) {
+    try {
+      if (data.id) {
+        const res = await api.put(`/website/announcements/${data.id}`, data);
+        setWebsiteAnnouncements(res.data.announcements || []);
+      } else {
+        const res = await api.post('/website/announcements', data);
+        setWebsiteAnnouncements(res.data.announcements || []);
+      }
+      setWebsiteAnnouncementOverlay(null);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to save announcement.');
+    }
+  }
+
+  async function deleteAnnouncement(id) {
+    if (!window.confirm('Delete this announcement?')) return;
+    try {
+      const res = await api.delete(`/website/announcements/${id}`);
+      setWebsiteAnnouncements(res.data.announcements || []);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete announcement.');
     }
   }
 
@@ -794,107 +942,461 @@ export default function AdminSettings() {
       return !s || a.full_name?.toLowerCase().includes(s) || a.phone_number?.toLowerCase().includes(s) || a.concern?.toLowerCase().includes(s);
     });
 
-    return (
-      <section style={styles.tableCard}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+    const tabBtnStyle = (active) => ({
+      ...styles.settingsTab,
+      ...(active ? styles.settingsTabActive : {}),
+    });
+
+    const contentSectionBtnStyle = (active) => ({
+      padding: '6px 14px',
+      borderRadius: 8,
+      border: '1px solid #e2e8f0',
+      background: active ? '#2563eb' : '#fff',
+      color: active ? '#fff' : '#475569',
+      cursor: 'pointer',
+      fontSize: 13,
+      fontWeight: active ? 600 : 400,
+    });
+
+    const fieldRow = (label, key, type = 'text') => (
+      <div key={key} style={{ marginBottom: 14 }}>
+        <label style={{ display: 'block', fontSize: 13, color: '#64748b', marginBottom: 4 }}>{label}</label>
+        {type === 'textarea' ? (
+          <textarea
+            value={websiteContentForm[key] || ''}
+            onChange={(e) => setWebsiteContentForm((prev) => ({ ...prev, [key]: e.target.value }))}
+            rows={3}
+            style={{ ...styles.formInput, resize: 'vertical', width: '100%', boxSizing: 'border-box' }}
+          />
+        ) : (
           <input
             type="text"
-            placeholder="Search name, phone, location…"
-            value={filters.websiteSearch}
-            onChange={(e) => updateFilter('websiteSearch', e.target.value)}
-            style={{ ...styles.formInput, maxWidth: 280, margin: 0 }}
+            value={websiteContentForm[key] || ''}
+            onChange={(e) => setWebsiteContentForm((prev) => ({ ...prev, [key]: e.target.value }))}
+            style={{ ...styles.formInput, width: '100%', boxSizing: 'border-box' }}
           />
-          <button
-            type="button"
-            onClick={() => setWebsiteTab('appointments')}
-            style={{
-              ...styles.pageBtn,
-              ...(websiteTab === 'appointments' ? styles.pageBtnActive || { fontWeight: 700, borderBottom: '2px solid #2563eb' } : {}),
-            }}
-          >
-            Online Appointments ({filteredAppts.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setWebsiteTab('inquiries')}
-            style={{
-              ...styles.pageBtn,
-              ...(websiteTab === 'inquiries' ? styles.pageBtnActive || { fontWeight: 700, borderBottom: '2px solid #2563eb' } : {}),
-            }}
-          >
-            Online Inquiries ({filteredInqs.length})
-          </button>
-        </div>
+        )}
+      </div>
+    );
 
-        {websiteTab === 'appointments' && (
-          <div style={styles.tableWrapper}>
-            <table style={styles.branchTable}>
-              <thead>
-                <tr>
-                  {['Full Name', 'Phone', 'Date', 'Time', 'Location', 'Reason', 'Status', 'Action'].map((col) => (
-                    <th key={col} style={styles.tableHead}>{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAppts.length === 0 ? (
-                  <tr><td colSpan={8} style={styles.emptyRow}>No online appointment submissions found.</td></tr>
-                ) : filteredAppts.map((appt) => (
-                  <tr key={appt.id} style={styles.tableRow}>
-                    <td style={styles.tableCell}>{appt.full_name}</td>
-                    <td style={styles.tableCell}>{appt.phone_number}</td>
-                    <td style={styles.tableCell}>{String(appt.appointment_date || '').slice(0, 10)}</td>
-                    <td style={styles.tableCell}>{String(appt.appointment_time || '').slice(0, 5)}</td>
-                    <td style={styles.tableCell}>{appt.location}</td>
-                    <td style={styles.tableCell}>{appt.reason_for_booking || '—'}</td>
-                    <td style={styles.tableCell}>
-                      <span style={getStatusStyle(appt.status)}>{appt.status}</span>
-                    </td>
-                    <td style={styles.tableCell}>
-                      <select
-                        value={appt.status}
-                        onChange={(e) => updateOnlineAppointmentStatus(appt.id, e.target.value)}
-                        style={{ ...styles.formInput, margin: 0, padding: '4px 8px', fontSize: 13 }}
-                      >
-                        {apptStatusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    function getContentSectionFields() {
+      if (websiteContentSection === 'hero') {
+        return (
+          <div>
+            {fieldRow('Eyebrow Text', 'hero_eyebrow')}
+            {fieldRow('Heading', 'hero_heading')}
+            {fieldRow('Description', 'hero_description', 'textarea')}
+            {fieldRow('Stat 1 Value (e.g. 10+)', 'hero_stat1_value')}
+            {fieldRow('Stat 1 Label', 'hero_stat1_label')}
+            {fieldRow('Stat 2 Value (e.g. 98%)', 'hero_stat2_value')}
+            {fieldRow('Stat 2 Label', 'hero_stat2_label')}
+            {fieldRow('Stat 3 Value (e.g. 20+)', 'hero_stat3_value')}
+            {fieldRow('Stat 3 Label', 'hero_stat3_label')}
+            {fieldRow('Featured Dentist Name', 'hero_dentist_name')}
+            {fieldRow('Featured Dentist Title', 'hero_dentist_title')}
+            <button
+              type="button"
+              style={styles.saveBtn}
+              disabled={websiteContentSaving}
+              onClick={() => saveWebsiteContent(Object.fromEntries(
+                Object.entries(websiteContentForm).filter(([k]) => k.startsWith('hero_'))
+              ))}
+            >
+              {websiteContentSaving ? 'Saving…' : 'Save Hero Content'}
+            </button>
           </div>
+        );
+      }
+      if (websiteContentSection === 'about') {
+        return (
+          <div>
+            {fieldRow('Paragraph 1', 'about_paragraph1', 'textarea')}
+            {fieldRow('Paragraph 2', 'about_paragraph2', 'textarea')}
+            {fieldRow('Paragraph 3', 'about_paragraph3', 'textarea')}
+            <button
+              type="button"
+              style={styles.saveBtn}
+              disabled={websiteContentSaving}
+              onClick={() => saveWebsiteContent(Object.fromEntries(
+                Object.entries(websiteContentForm).filter(([k]) => k.startsWith('about_'))
+              ))}
+            >
+              {websiteContentSaving ? 'Saving…' : 'Save About Content'}
+            </button>
+          </div>
+        );
+      }
+      if (websiteContentSection === 'contact') {
+        return (
+          <div>
+            {fieldRow('Phone Number 1', 'contact_phone1')}
+            {fieldRow('Phone Number 2', 'contact_phone2')}
+            {fieldRow('Email Address', 'contact_email')}
+            {fieldRow('Facebook Page URL', 'contact_facebook_url')}
+            {fieldRow('Contact Section Tagline', 'contact_tagline')}
+            {fieldRow('Weekdays Label (e.g. Monday to Saturday)', 'hours_weekdays')}
+            {fieldRow('Weekday Hours (e.g. 10:00 AM - 7:00 PM)', 'hours_weekday_time')}
+            {fieldRow('Sunday Label', 'hours_sunday')}
+            {fieldRow('Sunday Note (e.g. By Appointment)', 'hours_sunday_note')}
+            <button
+              type="button"
+              style={styles.saveBtn}
+              disabled={websiteContentSaving}
+              onClick={() => saveWebsiteContent(Object.fromEntries(
+                Object.entries(websiteContentForm).filter(([k]) => k.startsWith('contact_') || k.startsWith('hours_'))
+              ))}
+            >
+              {websiteContentSaving ? 'Saving…' : 'Save Contact & Hours'}
+            </button>
+          </div>
+        );
+      }
+      if (websiteContentSection === 'footer') {
+        return (
+          <div>
+            {fieldRow('Brand Name', 'footer_brand_name')}
+            {fieldRow('Team / Subtitle', 'footer_team_name')}
+            <button
+              type="button"
+              style={styles.saveBtn}
+              disabled={websiteContentSaving}
+              onClick={() => saveWebsiteContent(Object.fromEntries(
+                Object.entries(websiteContentForm).filter(([k]) => k.startsWith('footer_'))
+              ))}
+            >
+              {websiteContentSaving ? 'Saving…' : 'Save Footer Content'}
+            </button>
+          </div>
+        );
+      }
+      if (websiteContentSection === 'faqs') {
+        return (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button
+                type="button"
+                style={styles.primaryBtn}
+                onClick={() => setWebsiteFaqOverlay({ question: '', answer: '', sort_order: websiteFaqs.length + 1, status: 'active' })}
+              >
+                <i className="fi fi-rr-plus"></i> <span>Add FAQ</span>
+              </button>
+            </div>
+            <div style={styles.tableWrapper}>
+              <table style={{ ...styles.branchTable, minWidth: 660 }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...styles.tableHead, width: 44 }}>#</th>
+                    <th style={styles.tableHead}>Question</th>
+                    <th style={styles.tableHead}>Answer</th>
+                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Status</th>
+                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {websiteFaqs.length === 0 ? (
+                    <tr><td colSpan={5} style={styles.emptyRow}>No FAQs found.</td></tr>
+                  ) : websiteFaqs.map((faq) => (
+                    <tr key={faq.id} style={styles.tableRow}>
+                      <td style={styles.tableCell}>{faq.sort_order}</td>
+                      <td style={{ ...styles.tableCell, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {faq.question?.length > 80 ? faq.question.slice(0, 80) + '…' : faq.question}
+                      </td>
+                      <td style={{ ...styles.tableCell, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {faq.answer?.length > 100 ? faq.answer.slice(0, 100) + '…' : faq.answer}
+                      </td>
+                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                        <span style={getStatusStyle(faq.status === 'active' ? 'Active' : 'Inactive')}>
+                          {faq.status === 'active' ? 'Active' : 'Hidden'}
+                        </span>
+                      </td>
+                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                        <button type="button" style={styles.editBtn} onClick={() => setWebsiteFaqOverlay({ ...faq })}>
+                          <i className="fi fi-rr-file-edit"></i>
+                        </button>
+                        <button type="button" style={{ ...styles.editBtn, color: '#dc2626', marginLeft: 6 }} onClick={() => deleteFaq(faq.id)}>
+                          <i className="fi fi-rr-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+      if (websiteContentSection === 'services') {
+        return (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button
+                type="button"
+                style={styles.primaryBtn}
+                onClick={() => setWebsiteServiceOverlay({ name: '', image_path: '', description: '', slug: '', sort_order: websiteServices.length + 1, status: 'active' })}
+              >
+                <i className="fi fi-rr-plus"></i> <span>Add Service</span>
+              </button>
+            </div>
+            <div style={styles.tableWrapper}>
+              <table style={{ ...styles.branchTable, minWidth: 720 }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...styles.tableHead, width: 44 }}>#</th>
+                    <th style={styles.tableHead}>Name</th>
+                    <th style={styles.tableHead}>Image Path</th>
+                    <th style={styles.tableHead}>Slug</th>
+                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Status</th>
+                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {websiteServices.length === 0 ? (
+                    <tr><td colSpan={6} style={styles.emptyRow}>No service cards found.</td></tr>
+                  ) : websiteServices.map((svc) => (
+                    <tr key={svc.id} style={styles.tableRow}>
+                      <td style={styles.tableCell}>{svc.sort_order}</td>
+                      <td style={styles.tableCell}>{svc.name}</td>
+                      <td style={{ ...styles.tableCell, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 12, color: '#64748b' }}>
+                        {svc.image_path || '—'}
+                      </td>
+                      <td style={styles.tableCell}>{svc.slug || '—'}</td>
+                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                        <span style={getStatusStyle(svc.status === 'active' ? 'Active' : 'Inactive')}>
+                          {svc.status === 'active' ? 'Active' : 'Hidden'}
+                        </span>
+                      </td>
+                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                        <button type="button" style={styles.editBtn} onClick={() => setWebsiteServiceOverlay({ ...svc })}>
+                          <i className="fi fi-rr-file-edit"></i>
+                        </button>
+                        <button type="button" style={{ ...styles.editBtn, color: '#dc2626', marginLeft: 6 }} onClick={() => deleteWebsiteService(svc.id)}>
+                          <i className="fi fi-rr-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+      if (websiteContentSection === 'announcements') {
+        return (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button
+                type="button"
+                style={styles.primaryBtn}
+                onClick={() => setWebsiteAnnouncementOverlay({ title: '', message: '', start_date: '', end_date: '', status: 'active' })}
+              >
+                <i className="fi fi-rr-plus"></i> <span>Add Announcement</span>
+              </button>
+            </div>
+            <div style={styles.tableWrapper}>
+              <table style={{ ...styles.branchTable, minWidth: 680 }}>
+                <thead>
+                  <tr>
+                    <th style={styles.tableHead}>Title</th>
+                    <th style={styles.tableHead}>Message</th>
+                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 100 }}>Start</th>
+                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 100 }}>End</th>
+                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Status</th>
+                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {websiteAnnouncements.length === 0 ? (
+                    <tr><td colSpan={6} style={styles.emptyRow}>No announcements found.</td></tr>
+                  ) : websiteAnnouncements.map((ann) => (
+                    <tr key={ann.id} style={styles.tableRow}>
+                      <td style={{ ...styles.tableCell, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {ann.title?.length > 50 ? ann.title.slice(0, 50) + '…' : ann.title}
+                      </td>
+                      <td style={{ ...styles.tableCell, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {ann.message?.length > 80 ? ann.message.slice(0, 80) + '…' : ann.message}
+                      </td>
+                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{ann.start_date ? String(ann.start_date).slice(0, 10) : '—'}</td>
+                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{ann.end_date ? String(ann.end_date).slice(0, 10) : '—'}</td>
+                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                        <span style={getStatusStyle(ann.status === 'active' ? 'Active' : 'Inactive')}>
+                          {ann.status === 'active' ? 'Active' : 'Hidden'}
+                        </span>
+                      </td>
+                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                        <button type="button" style={styles.editBtn} onClick={() => setWebsiteAnnouncementOverlay({ ...ann })}>
+                          <i className="fi fi-rr-file-edit"></i>
+                        </button>
+                        <button type="button" style={{ ...styles.editBtn, color: '#dc2626', marginLeft: 6 }} onClick={() => deleteAnnouncement(ann.id)}>
+                          <i className="fi fi-rr-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+      return null;
+    }
+
+    const contentSections = [
+      { key: 'hero', label: 'Hero' },
+      { key: 'about', label: 'About' },
+      { key: 'contact', label: 'Contact & Hours' },
+      { key: 'footer', label: 'Footer' },
+      { key: 'faqs', label: 'FAQs' },
+      { key: 'services', label: 'Services' },
+      { key: 'announcements', label: 'Announcements' },
+    ];
+
+    return (
+      <>
+        <section style={styles.tableCard}>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => setWebsiteTab('appointments')} style={tabBtnStyle(websiteTab === 'appointments')}>
+              Online Appointments ({filteredAppts.length})
+            </button>
+            <button type="button" onClick={() => setWebsiteTab('content')} style={tabBtnStyle(websiteTab === 'content')}>
+              Website Content
+            </button>
+            {websiteTab === 'appointments' && (
+              <input
+                type="text"
+                placeholder="Search name, phone, location…"
+                value={filters.websiteSearch}
+                onChange={(e) => updateFilter('websiteSearch', e.target.value)}
+                style={{ ...styles.formInput, maxWidth: 280, margin: 0 }}
+              />
+            )}
+          </div>
+
+          {websiteTab === 'appointments' && (
+            <div style={styles.tableWrapper}>
+              <table style={styles.branchTable}>
+                <thead>
+                  <tr>
+                    {['Full Name', 'Phone', 'Date', 'Time', 'Location', 'Reason', 'Status', 'Action'].map((col) => (
+                      <th key={col} style={styles.tableHead}>{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAppts.length === 0 ? (
+                    <tr><td colSpan={8} style={styles.emptyRow}>No online appointment submissions found.</td></tr>
+                  ) : filteredAppts.map((appt) => (
+                    <tr key={appt.id} style={styles.tableRow}>
+                      <td style={styles.tableCell}>{appt.full_name}</td>
+                      <td style={styles.tableCell}>{appt.phone_number}</td>
+                      <td style={styles.tableCell}>{String(appt.appointment_date || '').slice(0, 10)}</td>
+                      <td style={styles.tableCell}>{String(appt.appointment_time || '').slice(0, 5)}</td>
+                      <td style={styles.tableCell}>{appt.location}</td>
+                      <td style={styles.tableCell}>{appt.reason_for_booking || '—'}</td>
+                      <td style={styles.tableCell}>
+                        <span style={getStatusStyle(appt.status)}>{appt.status}</span>
+                      </td>
+                      <td style={styles.tableCell}>
+                        <select
+                          value={appt.status}
+                          onChange={(e) => updateOnlineAppointmentStatus(appt.id, e.target.value)}
+                          style={{ ...styles.formInput, margin: 0, padding: '4px 8px', fontSize: 13 }}
+                        >
+                          {apptStatusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {websiteTab === 'content' && (
+            <div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+                {contentSections.map((sec) => (
+                  <button
+                    key={sec.key}
+                    type="button"
+                    style={contentSectionBtnStyle(websiteContentSection === sec.key)}
+                    onClick={() => setWebsiteContentSection(sec.key)}
+                  >
+                    {sec.label}
+                  </button>
+                ))}
+              </div>
+
+              {websiteContentMsg.text && (
+                <p style={{
+                  marginBottom: 14,
+                  padding: '8px 14px',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  background: websiteContentMsg.type === 'success' ? '#dcfce7' : '#fee2e2',
+                  color: websiteContentMsg.type === 'success' ? '#15803d' : '#dc2626',
+                }}>
+                  {websiteContentMsg.text}
+                </p>
+              )}
+
+              {getContentSectionFields()}
+            </div>
+          )}
+        </section>
+
+        {websiteFaqOverlay && (
+          <WebsiteItemOverlay
+            styles={styles}
+            title={websiteFaqOverlay.id ? 'Edit FAQ' : 'New FAQ'}
+            onClose={() => setWebsiteFaqOverlay(null)}
+            onSave={(data) => saveFaq(data)}
+            data={websiteFaqOverlay}
+            fields={[
+              { key: 'question', label: 'Question', type: 'textarea' },
+              { key: 'answer', label: 'Answer', type: 'textarea' },
+              { key: 'sort_order', label: 'Sort Order (number)', type: 'number' },
+              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'hidden', label: 'Hidden' }] },
+            ]}
+          />
         )}
 
-        {websiteTab === 'inquiries' && (
-          <div style={styles.tableWrapper}>
-            <table style={styles.branchTable}>
-              <thead>
-                <tr>
-                  {['Full Name', 'Phone', 'Concern', 'Message', 'Submitted'].map((col) => (
-                    <th key={col} style={styles.tableHead}>{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInqs.length === 0 ? (
-                  <tr><td colSpan={5} style={styles.emptyRow}>No online inquiry submissions found.</td></tr>
-                ) : filteredInqs.map((inq) => (
-                  <tr key={inq.id} style={styles.tableRow}>
-                    <td style={styles.tableCell}>{inq.full_name}</td>
-                    <td style={styles.tableCell}>{inq.phone_number}</td>
-                    <td style={styles.tableCell}>{inq.concern}</td>
-                    <td style={styles.tableCell} title={inq.message}>
-                      {inq.message?.length > 80 ? inq.message.slice(0, 80) + '…' : inq.message}
-                    </td>
-                    <td style={styles.tableCell}>{String(inq.created_at || '').slice(0, 10)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {websiteServiceOverlay && (
+          <WebsiteItemOverlay
+            styles={styles}
+            title={websiteServiceOverlay.id ? 'Edit Service Card' : 'New Service Card'}
+            onClose={() => setWebsiteServiceOverlay(null)}
+            onSave={(data) => saveWebsiteService(data)}
+            data={websiteServiceOverlay}
+            fields={[
+              { key: 'name', label: 'Service Name' },
+              { key: 'image_path', label: 'Image Path (e.g. ./images/crowns.jpeg)' },
+              { key: 'description', label: 'Modal Description', type: 'textarea' },
+              { key: 'slug', label: 'Slug (for Services.html link, e.g. crowns)' },
+              { key: 'sort_order', label: 'Sort Order (number)', type: 'number' },
+              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'hidden', label: 'Hidden' }] },
+            ]}
+          />
         )}
-      </section>
+
+        {websiteAnnouncementOverlay && (
+          <WebsiteItemOverlay
+            styles={styles}
+            title={websiteAnnouncementOverlay.id ? 'Edit Announcement' : 'New Announcement'}
+            onClose={() => setWebsiteAnnouncementOverlay(null)}
+            onSave={(data) => saveAnnouncement(data)}
+            data={websiteAnnouncementOverlay}
+            fields={[
+              { key: 'title', label: 'Title' },
+              { key: 'message', label: 'Message', type: 'textarea' },
+              { key: 'start_date', label: 'Start Date (YYYY-MM-DD, leave blank for no start limit)', type: 'date' },
+              { key: 'end_date', label: 'End Date (YYYY-MM-DD, leave blank for no end limit)', type: 'date' },
+              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'hidden', label: 'Hidden' }] },
+            ]}
+          />
+        )}
+      </>
     );
   }
 
@@ -1904,6 +2406,77 @@ function FormActions({ styles, label }) {
       <button type="submit" style={styles.saveBtn}>
         {label}
       </button>
+    </div>
+  );
+}
+
+function WebsiteItemOverlay({ styles, title, onClose, onSave, data, fields }) {
+  const [form, setForm] = useState(() => {
+    const initial = {};
+    fields.forEach(f => { initial[f.key] = data[f.key] ?? ''; });
+    return initial;
+  });
+
+  function handleChange(key, value) {
+    setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    onSave({ ...data, ...form });
+  }
+
+  function handleOverlayClick(e) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
+  return (
+    <div style={styles.overlay} onClick={handleOverlayClick}>
+      <div style={styles.overlayContent}>
+        <div style={styles.overlayHeader}>
+          <h3 style={styles.overlayTitle}>{title}</h3>
+          <button type="button" onClick={onClose} style={styles.overlayClose}>&times;</button>
+        </div>
+        <div style={styles.overlayBody}>
+          <form onSubmit={handleSubmit}>
+            <div style={styles.formGrid}>
+              {fields.map(f => (
+                <div key={f.key} style={{ ...styles.field, ...styles.fieldWide }}>
+                  <label style={styles.fieldLabel}>{f.label}</label>
+                  {f.type === 'textarea' ? (
+                    <textarea
+                      style={{ ...styles.formInput, minHeight: 80, resize: 'vertical' }}
+                      value={form[f.key]}
+                      onChange={e => handleChange(f.key, e.target.value)}
+                    />
+                  ) : f.type === 'select' ? (
+                    <select
+                      style={styles.formInput}
+                      value={form[f.key]}
+                      onChange={e => handleChange(f.key, e.target.value)}
+                    >
+                      {(f.options || []).map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={f.type || 'text'}
+                      style={styles.formInput}
+                      value={form[f.key]}
+                      onChange={e => handleChange(f.key, e.target.value)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            <div style={styles.overlayActions}>
+              <button type="button" onClick={onClose} style={styles.secondaryBtn}>Cancel</button>
+              <button type="submit" style={styles.saveBtn}>Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

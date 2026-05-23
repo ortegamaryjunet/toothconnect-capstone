@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import logger from '../utils/logger';
 
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || '').replace(/[\\/]+$/, '');
 
@@ -77,6 +78,7 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
+        logger.error('axios', 'Token refresh failed, logging out', refreshError?.message);
         setAccessToken(null);
         await clearRefreshToken();
         onAuthChange(null);

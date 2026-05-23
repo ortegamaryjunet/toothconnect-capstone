@@ -10,6 +10,7 @@ console.log(
 const pool = require('./src/config/db');
 const authRoutes = require('./src/routes/auth');
 const { authenticate, requireRole } = require('./src/middleware/auth');
+const { loginLimiter, registerLimiter, passwordResetLimiter } = require('./src/middleware/rateLimiter');
 
 //FOR WEBSITE
 const path = require('path');
@@ -48,6 +49,10 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/register', registerLimiter);
+app.use('/api/auth/forgot-password', passwordResetLimiter);
+app.use('/api/auth/reset-password', passwordResetLimiter);
 app.use('/api/auth', authRoutes);
 
 const appointmentRoutes = require('./src/routes/appointments');
@@ -275,6 +280,118 @@ pool.query(`
       console.error('[migration] Failed to add branch:', err.message);
     });
 });
+
+// ── Website CMS tables ────────────────────────────────────────────────────────
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS website_content (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    section VARCHAR(50) NOT NULL,
+    field_key VARCHAR(100) NOT NULL,
+    field_value TEXT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_wc_section_key (section, field_key)
+  )
+`).then(() => pool.query(
+  'INSERT IGNORE INTO website_content (section, field_key, field_value) VALUES ?',
+  [[
+    ['hero', 'eyebrow',       'Smile with confidence. Shine with us.'],
+    ['hero', 'heading',       "Let's illuminate your smile journey together!"],
+    ['hero', 'description',   'Smile Empress Dental Hub delivers gentle and modern dental care focused on keeping every patient comfortable while achieving healthier, brighter, and more confident smiles.'],
+    ['hero', 'stat1_value',   '10+'],
+    ['hero', 'stat1_label',   'Dental Services'],
+    ['hero', 'stat2_value',   '98%'],
+    ['hero', 'stat2_label',   'Happy & Satisfied Patients'],
+    ['hero', 'stat3_value',   '20+'],
+    ['hero', 'stat3_label',   'Years of Dental Experience'],
+    ['hero', 'dentist_name',  'Dra. Twinky D. Belino'],
+    ['hero', 'dentist_title', 'Cosmetic Dentist'],
+    ['about', 'paragraph1',   'Smile Empress Dental Hub is built on friendly, gentle, and quality dental care for every patient.'],
+    ['about', 'paragraph2',   'Our clinic provides preventive care, cosmetic treatments, orthodontics, root canal treatment, dentures, crowns, veneers, clear aligners, and dental implants.'],
+    ['about', 'paragraph3',   'Whether you need dental cleaning, a smile make-over, or complete oral care, our team is ready to help you achieve a healthier and brighter smile.'],
+    ['contact', 'phone1',        '0977-066-5269'],
+    ['contact', 'phone2',        '0916-525-8468'],
+    ['contact', 'email',         'smileempressdentalhub@gmail.com'],
+    ['contact', 'facebook_url',  'https://www.facebook.com/Thesmileempressdentalhub'],
+    ['contact', 'tagline',       'Your Smile, Our Priority'],
+    ['hours', 'weekdays',      'Monday to Saturday'],
+    ['hours', 'weekday_time',  '10:00 AM - 7:00 PM'],
+    ['hours', 'sunday',        'Sunday'],
+    ['hours', 'sunday_note',   'By Appointment'],
+    ['footer', 'brand_name',   'Smile Empress Dental Hub'],
+    ['footer', 'team_name',    'ToothConnect by CODE IV: GECO'],
+  ]]
+)).catch(err => console.error('[migration] website_content:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS website_faqs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    status ENUM('active','hidden') NOT NULL DEFAULT 'active',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )
+`).then(() => pool.query('SELECT COUNT(*) AS cnt FROM website_faqs'))
+  .then(([rows]) => {
+    if (rows[0].cnt === 0) {
+      return pool.query(
+        'INSERT INTO website_faqs (question, answer, sort_order) VALUES ?',
+        [[
+          ['What services do you offer?', 'We offer deep scaling, teeth whitening, veneers, crowns, dentures, root canal treatment, braces, clear aligners, and dental implants.', 1],
+          ['Do I need to make an appointment?', 'Yes. Booking an appointment helps us prepare your schedule and service properly.', 2],
+          ['Do you accept walk-ins?', 'Walk-ins may be accepted depending on clinic availability.', 3],
+          ['What is your clinic schedule?', 'We are open Monday to Saturday, 10:00 AM to 7:00 PM. Sunday is by appointment.', 4],
+          ['How can I contact the clinic?', 'You may contact us at 0977-066-5269 or 0916-525-8468, or email us at smileempressdentalhub@gmail.com.', 5],
+        ]]
+      );
+    }
+  }).catch(err => console.error('[migration] website_faqs:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS website_services (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    image_path VARCHAR(255) NULL,
+    description TEXT NULL,
+    slug VARCHAR(100) NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    status ENUM('active','hidden') NOT NULL DEFAULT 'active',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )
+`).then(() => pool.query('SELECT COUNT(*) AS cnt FROM website_services'))
+  .then(([rows]) => {
+    if (rows[0].cnt === 0) {
+      return pool.query(
+        'INSERT INTO website_services (name, image_path, description, slug, sort_order, status) VALUES ?',
+        [[
+          ['Deep Scaling',      './images/deep-scaling.webp',    'Deep scaling removes plaque, tartar, and buildup from teeth and gum areas. It helps improve gum health, freshen breath, and prevent dental problems caused by bacteria.',                                                        'scaling',       1, 'active'],
+          ['Smile Make-Overs',  './images/smile-makeover.jpg',   'Smile make-overs improve the look of your smile through customized cosmetic dental treatments. It may include whitening, veneers, crowns, and other treatments based on your dental needs.',                                       'smilemakeovers',2, 'active'],
+          ['Teeth Whitening',   './images/teeth-whitening.jpg',  'Teeth whitening helps reduce stains and discoloration for a cleaner and brighter smile. It is a simple cosmetic treatment that improves tooth color safely.',                                                                     'whitening',     3, 'active'],
+          ['Veneers',           './images/veneers.jpg',          'Veneers are thin covers placed on the front part of the teeth. They help improve tooth shape, color, spacing, and overall smile appearance.',                                                                                     'veneers',       4, 'active'],
+          ['Porcelain Crowns',  './images/crowns.jpeg',          'Porcelain jacket crowns protect and restore damaged teeth. They improve strength, appearance, and natural function for better chewing and smiling.',                                                                               'crowns',        5, 'active'],
+          ['Dentures',          './images/dentures.jpg',         'Dentures replace missing teeth and support chewing, speaking, and smiling. They are made to fit comfortably and restore daily oral function.',                                                                                     'dentures',      6, 'active'],
+          ['Root Canal',        './images/root-canal.jpg',       'Root canal treatment helps save infected or damaged teeth. It removes infection inside the tooth and helps reduce pain while keeping the natural tooth.',                                                                          'rootcanal',     7, 'active'],
+          ['Braces',            './images/braces.jpg',           'Braces help align crooked teeth and correct bite problems. This treatment improves smile appearance, oral function, and long-term dental health.',                                                                                'braces',        8, 'active'],
+          ['Clear Aligners',    './images/clear-aligner.webp',   'Clear aligners are removable trays that straighten teeth in a comfortable and discreet way. They are ideal for patients who want a cleaner orthodontic look.',                                                                    'aligners',      9, 'active'],
+          ['Dental Implants',   './images/dental-implant.jpg',   'Dental implants replace missing teeth with strong and natural-looking support. They help restore comfort, chewing ability, and confidence when smiling.',                                                                         'implants',     10, 'active'],
+        ]]
+      );
+    }
+  }).catch(err => console.error('[migration] website_services:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS website_announcements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    start_date DATE NULL,
+    end_date DATE NULL,
+    status ENUM('active','hidden') NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )
+`).catch(err => console.error('[migration] website_announcements:', err.message));
 
 const PORT = process.env.PORT || 4000;
 

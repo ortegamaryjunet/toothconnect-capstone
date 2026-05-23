@@ -8,6 +8,7 @@ const {
   addMinutes,
   startOfUTCDay,
 } = require('../utils/scheduling');
+const { sendPushToUser } = require('../services/push');
 const { suggestSlots } = require('../services/scheduler');
 
 const router = express.Router();
@@ -311,22 +312,64 @@ router.get('/_meta/services-and-branches', async (req, res) => {
     // Attach service_ids to each dentist so the web form can filter by service
     const dentistIds = dentists.map(d => d.id);
     let dentistServiceMap = {};
+    let dentistBranchMap = {};
     if (dentistIds.length > 0) {
+      const placeholders = dentistIds.map(() => '?').join(',');
       const [dsRows] = await pool.query(
-        `SELECT dentist_id, service_id FROM dentist_services WHERE dentist_id IN (${dentistIds.map(() => '?').join(',')})`,
+        `SELECT dentist_id, service_id FROM dentist_services WHERE dentist_id IN (${placeholders})`,
         dentistIds
       );
       for (const row of dsRows) {
         if (!dentistServiceMap[row.dentist_id]) dentistServiceMap[row.dentist_id] = [];
         dentistServiceMap[row.dentist_id].push(row.service_id);
       }
+      const [dsBranchRows] = await pool.query(
+        `SELECT DISTINCT dentist_id, branch_id FROM dentist_schedules WHERE dentist_id IN (${placeholders})`,
+        dentistIds
+      );
+      for (const row of dsBranchRows) {
+        if (!dentistBranchMap[row.dentist_id]) dentistBranchMap[row.dentist_id] = [];
+        dentistBranchMap[row.dentist_id].push(row.branch_id);
+      }
     }
     const annotatedDentists = dentists.map(d => ({
       ...d,
       service_ids: dentistServiceMap[d.id] || [],
+      branch_ids: dentistBranchMap[d.id] || [],
     }));
 
     res.json({ services: annotatedServices, branches, dentists: annotatedDentists });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/_meta/dentist-busy-slots', async (req, res) => {
+  const { dentist_id, date } = req.query;
+  if (!dentist_id || !date) {
+    return res.status(400).json({ message: 'dentist_id and date are required' });
+  }
+  const dentistId = parseInt(dentist_id, 10);
+  if (!dentistId) return res.status(400).json({ message: 'Invalid dentist_id' });
+
+  const dateParts = date.split('-').map(Number);
+  if (dateParts.length !== 3 || dateParts.some(Number.isNaN)) {
+    return res.status(400).json({ message: 'date must be YYYY-MM-DD' });
+  }
+  const [y, mo, d] = dateParts;
+  const dayStart = new Date(y, mo - 1, d, 0, 0, 0, 0);
+  const dayEnd = new Date(y, mo - 1, d + 1, 0, 0, 0, 0);
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT start_time, duration_min, status FROM appointments
+       WHERE dentist_id = ?
+         AND status IN ('scheduled','arrived')
+         AND start_time >= ? AND start_time < ?`,
+      [dentistId, toMySQLDateTime(dayStart), toMySQLDateTime(dayEnd)]
+    );
+    res.json({ appointments: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -515,18 +558,18 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
 
     const [conflicts] = await pool.query(
       `SELECT id FROM appointments
-       WHERE branch_id = ? AND status IN ('scheduled','arrived')
+       WHERE dentist_id = ? AND status IN ('scheduled','arrived')
          AND start_time < ?
          AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?`,
       [
-        effectiveBranchId,
+        dentist_id,
         toMySQLDateTime(blockedEnd),
         APPOINTMENT_BUFFER_MINUTES,
         toMySQLDateTime(start),
       ]
     );
     if (conflicts.length > 0) {
-      return res.status(409).json({ message: 'Time slot conflicts with an existing branch appointment' });
+      return res.status(409).json({ message: 'This dentist already has an appointment at that time' });
     }
 
     // Validate and cancel old appointment when rescheduling
@@ -718,6 +761,7 @@ router.patch('/:id/cancel', async (req, res) => {
            VALUES (?, 'appointment_cancelled_by_staff', 'Appointment Cancelled', ?, 'appointment', ?)`,
           [appt.patient_id, notifBody, id]
         );
+        sendPushToUser(appt.patient_id, { title: 'Appointment Cancelled', body: notifBody, data: { type: 'appointment_cancelled_by_staff', appointment_id: id } }).catch(() => {});
       } catch (notificationErr) {
         console.error('Failed to create patient cancellation notification:', notificationErr);
       }

@@ -19,12 +19,6 @@ import {
   getPatientSatisfactionReport,
   getStockAvailabilityReport,
 } from '../api/reports';
-import {
-  createInventoryPurchaseExpense,
-  listEquipment,
-  listMedicines,
-  listSupplies,
-} from '../api/inventory';
 import { getRevenueReport } from '../api/payments';
 import { listAuditLogs } from '../api/auditLogs';
 import api from '../api/axios';
@@ -243,24 +237,6 @@ const reportData = {
   },
 };
 
-const emptyExpenseItemOptions = {
-  medicine: [],
-  equipment: [],
-  supplies: [],
-};
-
-const emptyExpenseInventoryRows = {
-  medicine: [],
-  equipment: [],
-  supplies: [],
-};
-
-const expenseCategoryLabels = {
-  medicine: 'Dental Medicine',
-  equipment: 'Dental Equipment',
-  supplies: 'Dental Supplies',
-};
-
 function formatPeso(value) {
   return `\u20B1${Number(value || 0).toLocaleString('en-PH', {
     minimumFractionDigits: 0,
@@ -270,23 +246,6 @@ function formatPeso(value) {
 
 function parseAmount(value) {
   return Number(String(value || 0).replace(/[^0-9.-]/g, '')) || 0;
-}
-
-function uniqueSortedNames(rows, fieldName) {
-  return Array.from(
-    new Set(
-      rows
-        .map((row) => row?.[fieldName])
-        .filter((name) => typeof name === 'string' && name.trim())
-        .map((name) => name.trim())
-    )
-  ).sort((a, b) => a.localeCompare(b));
-}
-
-function getInventoryItemName(row, category) {
-  if (category === 'medicine') return row?.medicine_name;
-  if (category === 'equipment') return row?.equipment_name;
-  return row?.supply_name;
 }
 
 function getBranchCity(branch) {
@@ -394,7 +353,6 @@ export default function AdminReports() {
   const adminName = user?.name || 'Admin';
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showExpenseConfirmModal, setShowExpenseConfirmModal] = useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -414,23 +372,7 @@ export default function AdminReports() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState('');
   const [filterClicked, setFilterClicked] = useState(false);
-  const [saveExpenseClicked, setSaveExpenseClicked] = useState(false);
-  const [expenseSaving, setExpenseSaving] = useState(false);
-  const [expenseSaveError, setExpenseSaveError] = useState('');
   const [branchOptions, setBranchOptions] = useState([]);
-  const [expenseInventoryRows, setExpenseInventoryRows] = useState(
-    emptyExpenseInventoryRows
-  );
-
-  const [expenseForm, setExpenseForm] = useState({
-    date: '',
-    branchId: '',
-    category: 'supplies',
-    itemName: '',
-    supplier: '',
-    orderQuantity: '',
-    pricePerItem: '',
-  });
 
   const rowsPerPage = 10;
 
@@ -483,89 +425,6 @@ export default function AdminReports() {
   const totalExpense = revenueRows.reduce((sum, row) => sum + row.expense, 0);
   const netRevenue = totalIncome - totalExpense;
 
-  const computedExpense =
-    Number(expenseForm.orderQuantity || 0) *
-    Number(expenseForm.pricePerItem || 0);
-
-  const selectedExpenseBranch = branchOptions.find(
-    (branch) => String(branch.id) === String(expenseForm.branchId)
-  );
-
-  const expenseItemOptions = useMemo(() => {
-    if (!expenseForm.branchId) {
-      return emptyExpenseItemOptions;
-    }
-
-    const branchId = Number(expenseForm.branchId);
-    const byBranch = (rows) =>
-      rows.filter((row) => Number(row.branch_id) === branchId);
-
-    return {
-      medicine: uniqueSortedNames(
-        byBranch(expenseInventoryRows.medicine),
-        'medicine_name'
-      ),
-      equipment: uniqueSortedNames(
-        byBranch(expenseInventoryRows.equipment),
-        'equipment_name'
-      ),
-      supplies: uniqueSortedNames(
-        byBranch(expenseInventoryRows.supplies),
-        'supply_name'
-      ),
-    };
-  }, [expenseForm.branchId, expenseInventoryRows]);
-
-  const selectedExpenseInventoryRows = useMemo(() => {
-    if (!expenseForm.branchId) return [];
-
-    const branchId = Number(expenseForm.branchId);
-
-    return (expenseInventoryRows[expenseForm.category] || []).filter(
-      (row) => Number(row.branch_id) === branchId
-    );
-  }, [expenseForm.branchId, expenseForm.category, expenseInventoryRows]);
-
-  const expenseSupplierOptions = useMemo(() => {
-    return uniqueSortedNames(selectedExpenseInventoryRows, 'supplier');
-  }, [selectedExpenseInventoryRows]);
-
-  async function refreshExpenseFormOptions() {
-    try {
-      const [medicines, equipment, supplies, branchesRes] = await Promise.all([
-        listMedicines(),
-        listEquipment(),
-        listSupplies(),
-        api.get('/auth/branches'),
-      ]);
-
-      const nextBranches = branchesRes.data.branches || [];
-
-      setExpenseInventoryRows({
-        medicine: medicines,
-        equipment,
-        supplies,
-      });
-      setBranchOptions(nextBranches);
-      setExpenseForm((prev) => {
-        if (
-          prev.branchId &&
-          !nextBranches.some((branch) => String(branch.id) === String(prev.branchId))
-        ) {
-          return {
-            ...prev,
-            branchId: '',
-            itemName: '',
-          };
-        }
-
-        return prev;
-      });
-    } catch (err) {
-      console.error('Failed to load expense form options.', err);
-    }
-  }
-
   useEffect(() => {
     function handleResize() {
       setScreenWidth(window.innerWidth);
@@ -597,7 +456,7 @@ export default function AdminReports() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showExpenseConfirmModal) {
+    if (showLogoutModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -606,13 +465,12 @@ export default function AdminReports() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showExpenseConfirmModal]);
+  }, [showLogoutModal]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
-        closeExpenseConfirmModal();
       }
     }
 
@@ -688,43 +546,22 @@ export default function AdminReports() {
   useEffect(() => {
     let isMounted = true;
 
-    async function loadExpenseItemOptions() {
+    async function loadBranchOptions() {
       try {
-        const [medicines, equipment, supplies, branchesRes] =
-          await Promise.all([
-            listMedicines(),
-            listEquipment(),
-            listSupplies(),
-            api.get('/auth/branches'),
-          ]);
-
+        const branchesRes = await api.get('/auth/branches');
         if (!isMounted) return;
-
-        const nextBranches = branchesRes.data.branches || [];
-
-        setExpenseInventoryRows({
-          medicine: medicines,
-          equipment,
-          supplies,
-        });
-        setBranchOptions(nextBranches);
+        setBranchOptions(branchesRes.data.branches || []);
       } catch (err) {
-        console.error('Failed to load expense form options.', err);
+        console.error('Failed to load branch options.', err);
       }
     }
 
-    loadExpenseItemOptions();
+    loadBranchOptions();
 
     return () => {
       isMounted = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (isRevenueReport) {
-      refreshExpenseFormOptions();
-    }
-  }, [isRevenueReport]);
 
   const filteredRows = useMemo(() => {
     if (isRevenueReport) return [];
@@ -914,10 +751,6 @@ export default function AdminReports() {
     setShowLogoutModal(false);
   }
 
-  function closeExpenseConfirmModal() {
-    setShowExpenseConfirmModal(false);
-  }
-
   function handleLogout() {
     window.location.href = '/login';
   }
@@ -925,7 +758,6 @@ export default function AdminReports() {
   function handleModalOverlayClick(event) {
     if (event.target === event.currentTarget) {
       closeLogoutModal();
-      closeExpenseConfirmModal();
     }
   }
 
@@ -967,90 +799,6 @@ export default function AdminReports() {
   function prevPage() {
     if (currentPage > 1) {
       setCurrentPage((prev) => prev - 1);
-    }
-  }
-
-  function handleExpenseChange(field, value) {
-    setExpenseForm((prev) => {
-      const updatedForm = {
-        ...prev,
-        [field]: value,
-      };
-
-      if (field === 'category' || field === 'branchId') {
-        updatedForm.itemName = '';
-        updatedForm.supplier = '';
-      }
-
-      if (field === 'itemName') {
-        const matchingItem = selectedExpenseInventoryRows.find(
-          (row) =>
-            String(getInventoryItemName(row, prev.category) || '')
-              .trim()
-              .toLowerCase() === String(value || '').trim().toLowerCase()
-        );
-
-        updatedForm.supplier = matchingItem?.supplier || '';
-        if (matchingItem) {
-          updatedForm.pricePerItem = Number(matchingItem.price_per_item || 0);
-        }
-      }
-
-      return updatedForm;
-    });
-  }
-
-  function handleSaveExpense() {
-    setExpenseSaveError('');
-    setSaveExpenseClicked(true);
-    setTimeout(() => setSaveExpenseClicked(false), 160);
-    setTimeout(() => {
-      setShowExpenseConfirmModal(true);
-    }, 90);
-  }
-
-  async function handleConfirmExpenseSave() {
-    setExpenseSaving(true);
-    setExpenseSaveError('');
-
-    try {
-      await createInventoryPurchaseExpense({
-        branch_id: expenseForm.branchId,
-        date: expenseForm.date,
-        category: expenseForm.category,
-        itemName: expenseForm.itemName,
-        supplier: expenseForm.supplier,
-        orderQuantity: expenseForm.orderQuantity,
-        pricePerItem: expenseForm.pricePerItem,
-      });
-
-      setShowExpenseConfirmModal(false);
-      await refreshExpenseFormOptions();
-      if (isRevenueReport) {
-        const data = await getRevenueReport({
-          from: appliedFromDate || undefined,
-          to: appliedToDate || undefined,
-        });
-
-        setLiveReports((prev) => ({
-          ...prev,
-          revenue: data,
-        }));
-      }
-
-      setExpenseForm((prev) => ({
-        ...prev,
-        itemName: '',
-        supplier: '',
-        orderQuantity: '',
-        pricePerItem: '',
-      }));
-    } catch (err) {
-      setExpenseSaveError(
-        err.response?.data?.message || 'Failed to save expense.'
-      );
-    } finally {
-      setExpenseSaving(false);
     }
   }
 
@@ -1503,15 +1251,6 @@ export default function AdminReports() {
           {isRevenueReport ? (
             <RevenueReportSection
               styles={styles}
-              expenseForm={expenseForm}
-              branchOptions={branchOptions}
-              expenseItemOptions={expenseItemOptions}
-              expenseSupplierOptions={expenseSupplierOptions}
-              handleExpenseChange={handleExpenseChange}
-              refreshExpenseFormOptions={refreshExpenseFormOptions}
-              handleSaveExpense={handleSaveExpense}
-              saveExpenseClicked={saveExpenseClicked}
-              computedExpense={computedExpense}
               revenueRows={revenueRows}
               totalIncome={totalIncome}
               totalExpense={totalExpense}
@@ -1736,119 +1475,6 @@ export default function AdminReports() {
         </main>
       </div>
 
-      {showExpenseConfirmModal && (
-        <div style={styles.modal} onClick={handleModalOverlayClick}>
-          <div style={{ ...styles.modalContent, ...styles.expenseModalContent }}>
-            <div style={{ ...styles.modalIcon, ...styles.expenseModalIcon }}>
-              <i
-                className="fi fi-rr-receipt"
-                style={styles.modalIconText}
-              ></i>
-            </div>
-
-            <h2 style={styles.modalTitle}>Confirm Expense</h2>
-
-            <p style={styles.modalText}>
-              Please review the details before saving this expense.
-            </p>
-
-            <div style={styles.expenseOverview}>
-              <div style={styles.expenseOverviewRow}>
-                <span style={styles.expenseOverviewLabel}>Date</span>
-                <strong style={styles.expenseOverviewValue}>
-                  {expenseForm.date || 'Not selected'}
-                </strong>
-              </div>
-
-              <div style={styles.expenseOverviewRow}>
-                <span style={styles.expenseOverviewLabel}>Branch</span>
-                <strong style={styles.expenseOverviewValue}>
-                  {selectedExpenseBranch
-                    ? getBranchCity(selectedExpenseBranch)
-                    : 'Not selected'}
-                </strong>
-              </div>
-
-              <div style={styles.expenseOverviewRow}>
-                <span style={styles.expenseOverviewLabel}>Category</span>
-                <strong style={styles.expenseOverviewValue}>
-                  {expenseCategoryLabels[expenseForm.category] ||
-                    expenseForm.category}
-                </strong>
-              </div>
-
-              <div style={styles.expenseOverviewRow}>
-                <span style={styles.expenseOverviewLabel}>Item Name</span>
-                <strong style={styles.expenseOverviewValue}>
-                  {expenseForm.itemName || 'Not entered'}
-                </strong>
-              </div>
-
-              <div style={styles.expenseOverviewRow}>
-                <span style={styles.expenseOverviewLabel}>Supplier</span>
-                <strong style={styles.expenseOverviewValue}>
-                  {expenseForm.supplier || 'Not entered'}
-                </strong>
-              </div>
-
-              <div style={styles.expenseOverviewRow}>
-                <span style={styles.expenseOverviewLabel}>Quantity</span>
-                <strong style={styles.expenseOverviewValue}>
-                  {expenseForm.orderQuantity || 0}
-                </strong>
-              </div>
-
-              <div style={styles.expenseOverviewRow}>
-                <span style={styles.expenseOverviewLabel}>Price per Item</span>
-                <strong style={styles.expenseOverviewValue}>
-                  {formatPeso(expenseForm.pricePerItem || 0)}
-                </strong>
-              </div>
-
-              <div
-                style={{
-                  ...styles.expenseOverviewRow,
-                  ...styles.expenseOverviewTotalRow,
-                }}
-              >
-                <span style={styles.expenseOverviewTotalLabel}>
-                  Total Expense
-                </span>
-                <strong style={styles.expenseOverviewTotalValue}>
-                  {formatPeso(computedExpense)}
-                </strong>
-              </div>
-            </div>
-
-            {expenseSaveError && (
-              <p style={{ ...styles.modalText, color: '#dc2626' }}>
-                {expenseSaveError}
-              </p>
-            )}
-
-            <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={{ ...styles.modalButton, ...styles.saveExpenseModalBtn }}
-                disabled={expenseSaving}
-                onClick={handleConfirmExpenseSave}
-              >
-                {expenseSaving ? 'Saving...' : 'Save'}
-              </button>
-
-              <button
-                type="button"
-                style={{ ...styles.modalButton, ...styles.cancelBtn }}
-                disabled={expenseSaving}
-                onClick={closeExpenseConfirmModal}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
           <div style={styles.modalContent}>
@@ -1889,15 +1515,6 @@ export default function AdminReports() {
 
 function RevenueReportSection({
   styles,
-  expenseForm,
-  branchOptions,
-  expenseItemOptions,
-  expenseSupplierOptions,
-  handleExpenseChange,
-  refreshExpenseFormOptions,
-  handleSaveExpense,
-  saveExpenseClicked,
-  computedExpense,
   revenueRows,
   totalIncome,
   totalExpense,
@@ -1907,8 +1524,6 @@ function RevenueReportSection({
   exportToCSV,
   exportToPDF,
 }) {
-  const selectedItemOptions = expenseItemOptions[expenseForm.category] || [];
-
   return (
     <section style={styles.revenueContent}>
       <section style={styles.revenueLayout}>
@@ -2108,166 +1723,6 @@ function RevenueReportSection({
             </div>
           </section>
         </div>
-
-        <aside style={{ ...styles.reportCard, ...styles.expensePanel }}>
-          <div style={styles.expensePanelHeader}>
-            <h3 style={styles.cardTitle}>Expense Input</h3>
-            <p style={styles.cardSubtitle}>
-              Inventory purchase expense
-            </p>
-          </div>
-
-          <label style={styles.revenueFormGroup}>
-            <span style={styles.revenueFormLabel}>Date</span>
-            <input
-              type="date"
-              value={expenseForm.date}
-              placeholder="Select Date"
-              onChange={(event) =>
-                handleExpenseChange('date', event.target.value)
-              }
-              style={styles.revenueFormInput}
-            />
-          </label>
-
-          <label style={styles.revenueFormGroup}>
-            <span style={styles.revenueFormLabel}>Branch</span>
-            <select
-              value={expenseForm.branchId}
-              onFocus={refreshExpenseFormOptions}
-              onChange={(event) =>
-                handleExpenseChange('branchId', event.target.value)
-              }
-              style={styles.revenueFormInput}
-            >
-              <option value="">Select branch</option>
-              {branchOptions.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {getBranchCity(branch)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={styles.revenueFormGroup}>
-            <span style={styles.revenueFormLabel}>Category</span>
-            <select
-              value={expenseForm.category}
-              onChange={(event) =>
-                handleExpenseChange('category', event.target.value)
-              }
-              style={styles.revenueFormInput}
-            >
-              <option value="medicine">Dental Medicine</option>
-              <option value="equipment">Dental Equipment</option>
-              <option value="supplies">Dental Supplies</option>
-            </select>
-          </label>
-
-          <label style={styles.revenueFormGroup}>
-            <span style={styles.revenueFormLabel}>Item Name</span>
-            <input
-              type="text"
-              list="expense-item-options"
-              value={expenseForm.itemName}
-              onChange={(event) =>
-                handleExpenseChange('itemName', event.target.value)
-              }
-              placeholder={
-                !expenseForm.branchId
-                  ? 'Select Branch First'
-                  : selectedItemOptions.length
-                  ? 'Select or enter item name'
-                  : 'Enter item name'
-              }
-              style={styles.revenueFormInput}
-            />
-            <datalist id="expense-item-options">
-              {selectedItemOptions.map((itemName) => (
-                <option key={itemName} value={itemName} />
-              ))}
-            </datalist>
-          </label>
-
-          <label style={styles.revenueFormGroup}>
-            <span style={styles.revenueFormLabel}>Supplier</span>
-            <input
-              type="text"
-              list="expense-supplier-options"
-              value={expenseForm.supplier}
-              onChange={(event) =>
-                handleExpenseChange('supplier', event.target.value)
-              }
-              placeholder="Enter Supplier"
-              style={styles.revenueFormInput}
-            />
-            <datalist id="expense-supplier-options">
-              {expenseSupplierOptions.map((supplier) => (
-                <option key={supplier} value={supplier} />
-              ))}
-            </datalist>
-          </label>
-
-          <label style={styles.revenueFormGroup}>
-            <span style={styles.revenueFormLabel}>Order Quantity</span>
-            <input
-              type="number"
-              min="1"
-              value={expenseForm.orderQuantity}
-              placeholder="Select Quantity"
-              onChange={(event) =>
-                handleExpenseChange(
-                  'orderQuantity',
-                  event.target.value === '' ? '' : Number(event.target.value)
-                )
-              }
-              style={styles.revenueFormInput}
-            />
-          </label>
-
-          <label style={styles.revenueFormGroup}>
-            <span style={styles.revenueFormLabel}>Price per Item</span>
-            <input
-              type="number"
-              min="0"
-              value={expenseForm.pricePerItem}
-              placeholder="Select Price Per Item"
-              onChange={(event) =>
-                handleExpenseChange(
-                  'pricePerItem',
-                  event.target.value === '' ? '' : Number(event.target.value)
-                )
-              }
-              style={styles.revenueFormInput}
-            />
-          </label>
-
-          <div style={styles.totalExpenseBox}>
-            <p style={styles.totalExpenseLabel}>Total Expense</p>
-            <h3 style={styles.totalExpenseValue}>
-              {expenseForm.orderQuantity || 0} x{' '}
-              {formatPeso(expenseForm.pricePerItem || 0)} ={' '}
-              {formatPeso(computedExpense)}
-            </h3>
-          </div>
-
-          <button
-            type="button"
-            style={{
-              ...styles.saveExpenseBtn,
-              transform: saveExpenseClicked ? 'scale(0.97)' : 'scale(1)',
-              opacity: saveExpenseClicked ? 0.82 : 1,
-              transition: 'transform 120ms ease, opacity 120ms ease',
-            }}
-            onClick={handleSaveExpense}
-          >
-            Save Expense
-          </button>
-
-          <div style={styles.expenseNote}>
-            Used for inventory expense entries only.
-          </div>
-        </aside>
       </section>
     </section>
   );

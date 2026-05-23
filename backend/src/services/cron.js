@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const pool = require('../config/db');
+const { sendPushToUser } = require('./push');
 
 async function createNotification(userId, type, title, body, relatedType, relatedId) {
   await pool.query(
@@ -28,14 +29,16 @@ async function sendAppointmentReminders() {
       const localTime = new Date(a.start_time).toLocaleString('en-PH', {
         hour: 'numeric', minute: '2-digit', hour12: true,
       });
+      const body24 = `Your ${a.service_name} with ${a.dentist_name} at ${a.branch_name} is tomorrow at ${localTime}.`;
       await createNotification(
         a.patient_id,
         'appointment_reminder',
         'Appointment tomorrow',
-        `Your ${a.service_name} with ${a.dentist_name} at ${a.branch_name} is tomorrow at ${localTime}.`,
+        body24,
         'appointment',
         a.id
       );
+      sendPushToUser(a.patient_id, { title: 'Appointment tomorrow', body: body24, data: { type: 'appointment_reminder', appointment_id: a.id } }).catch(() => {});
       await pool.query('UPDATE appointments SET reminder_sent_24h = TRUE WHERE id = ?', [a.id]);
     }
     if (appts24.length > 0) console.log(`[cron] Sent ${appts24.length} 24-hour reminders`);
@@ -57,14 +60,16 @@ async function sendAppointmentReminders() {
       const localTime = new Date(a.start_time).toLocaleString('en-PH', {
         hour: 'numeric', minute: '2-digit', hour12: true,
       });
+      const body1h = `Reminder: your ${a.service_name} with ${a.dentist_name} is at ${localTime}.`;
       await createNotification(
         a.patient_id,
         'appointment_reminder',
         'Appointment in 1 hour',
-        `Reminder: your ${a.service_name} with ${a.dentist_name} is at ${localTime}.`,
+        body1h,
         'appointment',
         a.id
       );
+      sendPushToUser(a.patient_id, { title: 'Appointment in 1 hour', body: body1h, data: { type: 'appointment_reminder', appointment_id: a.id } }).catch(() => {});
       await pool.query('UPDATE appointments SET reminder_sent_1h = TRUE WHERE id = ?', [a.id]);
     }
     if (appts2.length > 0) console.log(`[cron] Sent ${appts2.length} 1-hour reminders`);
@@ -106,14 +111,16 @@ async function sendRecallReminders() {
         if (daysSinceLastSent < 30) continue;
       }
 
+      const recallBody = `Your last visit was ${Math.floor(monthsSinceLastVisit)} months ago. We recommend visits every ${recallMonths} months. Book an appointment when ready.`;
       await createNotification(
         p.id,
         'recall',
         'Time for a check-up',
-        `Your last visit was ${Math.floor(monthsSinceLastVisit)} months ago. We recommend visits every ${recallMonths} months. Book an appointment when ready.`,
+        recallBody,
         null,
         null
       );
+      sendPushToUser(p.id, { title: 'Time for a check-up', body: recallBody, data: { type: 'recall' } }).catch(() => {});
       await pool.query(
         'UPDATE users SET recall_reminder_sent_at = NOW() WHERE id = ?',
         [p.id]

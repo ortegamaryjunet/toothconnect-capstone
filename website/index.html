@@ -10,6 +10,8 @@
 </head>
 <body>
 
+<div id="announcement-banner" style="display:none;background:#1e40af;color:#fff;text-align:center;padding:10px 20px;font-size:14px;z-index:999;position:relative;"></div>
+
 <header class="header" id="header">
 	<a href="#home" class="logo-box">
 	    <div class="brand-mark">
@@ -44,12 +46,12 @@
     <div class="hero-left">
         <span class="eyebrow">
             <i class="fa-solid fa-notes-medical"></i>
-            Smile with confidence. Shine with us.
+            <span id="hero-eyebrow">Smile with confidence. Shine with us.</span>
         </span>
 
-        <h1>Let's illuminate your smile journey together!</h1>
+        <h1 id="hero-heading">Let's illuminate your smile journey together!</h1>
 
-        <p>
+        <p id="hero-description">
             Smile Empress Dental Hub delivers gentle and modern dental care focused on
             keeping every patient comfortable while achieving healthier, brighter,
             and more confident smiles.
@@ -59,18 +61,18 @@
 
         <div class="hero-stats">
             <div>
-                <strong>10+</strong>
-                <span>Dental Services</span>
+                <strong id="hero-stat1-value">10+</strong>
+                <span id="hero-stat1-label">Dental Services</span>
             </div>
 
             <div>
-                <strong>98%</strong>
-                <span>Happy & Satisfied Patients</span>
+                <strong id="hero-stat2-value">98%</strong>
+                <span id="hero-stat2-label">Happy &amp; Satisfied Patients</span>
             </div>
 
             <div>
-                <strong>20+</strong>
-                <span>Years of Dental Experience</span>
+                <strong id="hero-stat3-value">20+</strong>
+                <span id="hero-stat3-label">Years of Dental Experience</span>
             </div>
         </div>
     </div>
@@ -84,8 +86,8 @@
             <i class="fa-solid fa-user-doctor"></i>
 
             <div>
-                <h4>Dra. Twinky D. Belino</h4>
-                <p>Cosmetic Dentist</p>
+                <h4 id="hero-dentist-name">Dra. Twinky D. Belino</h4>
+                <p id="hero-dentist-title">Cosmetic Dentist</p>
             </div>
         </div>
 
@@ -101,7 +103,7 @@
 </section>
 
 <section class="service-strip">
-    <div class="strip-track">
+    <div class="strip-track" id="strip-track">
         <span>Deep Scaling</span>
         <span>Smile Make-Overs</span>
         <span>Teeth Whitening</span>
@@ -288,16 +290,16 @@
             Smile Empress Dental Hub
         </h2>
 
-        <p>
+        <p id="about-p1">
             Smile Empress Dental Hub is built on friendly, gentle, and quality dental care for every patient.
         </p>
 
-        <p>
+        <p id="about-p2">
             Our clinic provides preventive care, cosmetic treatments, orthodontics, root canal treatment,
             dentures, crowns, veneers, clear aligners, and dental implants.
         </p>
 
-        <p>
+        <p id="about-p3">
             Whether you need dental cleaning, a smile make-over, or complete oral care,
             our team is ready to help you achieve a healthier and brighter smile.
         </p>
@@ -316,7 +318,7 @@
     </div>
 
     <div class="faq-wrapper">
-        <div class="faq-left">
+        <div class="faq-left" id="faq-list">
 
             <div class="faq-item active">
                 <button type="button">
@@ -405,30 +407,30 @@
                 </h3>
 
                 <p>
-                    <span>Monday to Saturday</span>
-                    <b>10:00 AM - 7:00 PM</b>
+                    <span id="hours-weekdays">Monday to Saturday</span>
+                    <b id="hours-weekday-time">10:00 AM - 7:00 PM</b>
                 </p>
 
                 <p>
-                    <span>Sunday</span>
-                    <b>By Appointment</b>
+                    <span id="hours-sunday">Sunday</span>
+                    <b id="hours-sunday-note">By Appointment</b>
                 </p>
             </div>
 
             <div class="call-card">
                 <div class="call-content">
-                    <small>Your Smile, Our Priority</small>
+                    <small id="call-tagline">Your Smile, Our Priority</small>
 
                     <h4>
                         <i class="fa-solid fa-phone"></i>
-                        <span>0977-066-5269</span>
+                        <span id="call-phone1">0977-066-5269</span>
                         or
-                        <span>0916-525-8468</span>
+                        <span id="call-phone2">0916-525-8468</span>
                     </h4>
 
                     <div class="call-email">
                         <i class="fa-solid fa-envelope"></i>
-                        <span>smileempressdentalhub@gmail.com</span>
+                        <span id="call-email">smileempressdentalhub@gmail.com</span>
                     </div>
                 </div>
             </div>
@@ -441,14 +443,14 @@
         <span>Contact Us</span>
         <h2>Start Your Dental Care Journey Today</h2>
 
-        <p>
+        <p id="contact-description">
             For appointments and questions, contact us at
             0977-066-5269 or 0916-525-8468,
             or email us at smileempressdentalhub@gmail.com.
         </p>
 
         <div class="contact-socials">
-            <a href="https://www.facebook.com/Thesmileempressdentalhub" target="_blank" class="facebook-social" aria-label="Facebook page">
+            <a id="contact-facebook" href="https://www.facebook.com/Thesmileempressdentalhub" target="_blank" class="facebook-social" aria-label="Facebook page">
                 <i class="fa-brands fa-facebook-f"></i>
             </a>
         </div>
@@ -576,20 +578,20 @@
         <div class="footer-column">
             <h4>SUPPORT</h4>
 
-            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=smileempressdentalhub@gmail.com" target="_blank">
+            <a id="footer-email-link" href="https://mail.google.com/mail/?view=cm&fs=1&to=smileempressdentalhub@gmail.com" target="_blank">
                 smileempressdentalhub@gmail.com
             </a>
 
-            <p>(+63) 977-066-5269</p>
-            <p>(+63) 916-525-8468</p>
+            <p id="footer-phone1">(+63) 977-066-5269</p>
+            <p id="footer-phone2">(+63) 916-525-8468</p>
         </div>
 
         <div class="footer-column">
             <h4>SOCIALS</h4>
 
-            <a href="https://www.facebook.com/Thesmileempressdentalhub" target="_blank">
+            <a id="footer-facebook" href="https://www.facebook.com/Thesmileempressdentalhub" target="_blank">
                 <i class="fa-brands fa-facebook"></i>
-                Smile Empress Dental Hub
+                <span id="footer-brand-social">Smile Empress Dental Hub</span>
             </a>
         </div>
 

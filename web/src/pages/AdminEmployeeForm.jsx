@@ -86,13 +86,15 @@ function makeInputFilter(disallowedRegex) {
 // Letters, spaces, hyphens, apostrophes only (name fields)
 const filterNameInput = makeInputFilter(/[^a-zA-ZÀ-ÿ\s'\-]/g);
 
-// Digits and a leading + only; max 13 chars for PH phone (+639XXXXXXXXX / 09XXXXXXXXX)
+// PH phone only: 09XXXXXXXXX (11 digits) or +639XXXXXXXXX (13 chars)
 function filterContactInput(event) {
   const el = event.target;
   let val = el.value.replace(/[^0-9+]/g, '');
-  // Keep + only at position 0
+  // + only at position 0
   val = val.replace(/(.)\+/g, '$1');
-  if (val.length > 13) val = val.slice(0, 13);
+  // Enforce PH length: international +63... = 13, local 09... = 11
+  const maxLen = val.startsWith('+') ? 13 : 11;
+  if (val.length > maxLen) val = val.slice(0, maxLen);
   if (val !== el.value) el.value = val;
 }
 
@@ -282,6 +284,7 @@ export default function AdminEmployeeForm() {
   const [formErrors, setFormErrors] = useState(new Set());
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
+  const [accessEmail, setAccessEmail] = useState('');
 
   const [ageValues, setAgeValues] = useState({
     dentist: '',
@@ -446,6 +449,7 @@ export default function AdminEmployeeForm() {
     setEmployeeType(event.target.value);
     setOpenSections({});
     setFormErrors(new Set());
+    setAccessEmail('');
   }
 
   function toggleSection(sectionName) {
@@ -583,8 +587,9 @@ export default function AdminEmployeeForm() {
         contact_number: payload[`${prefix}Contact`],
         email: payload[`${prefix}Email`],
         position: isDentist ? 'Dentist' : isDentalAssistant ? 'Dental Assistant' : 'Receptionist',
-        specialization: isDentist
-          ? payload.specialization || payload.department || null
+        specialization: isDentist ? payload.specialization || null : null,
+        work_department: isDentist
+          ? payload.department || null
           : isDentalAssistant
             ? payload.daDepartment || null
             : null,
@@ -625,6 +630,7 @@ export default function AdminEmployeeForm() {
         branch_ids: [branchId],
         phone: payload[`${prefix}Contact`],
         password: payload.accessPassword,
+        department: isDentist ? (payload.department || null) : null,
         staffProfile: commonStaffProfile,
       });
 
@@ -635,6 +641,8 @@ export default function AdminEmployeeForm() {
       setShowErrorModal(true);
     }
   }
+
+  const today = new Date().toISOString().split('T')[0];
 
   // ─── Render helpers (plain functions, not React components) ──────────────────
   // Calling these as {renderXxx()} instead of <Xxx /> means React reconciles
@@ -738,7 +746,7 @@ export default function AdminEmployeeForm() {
         <div style={styles.rowThree}>
           <FieldRaw label="Home Address:" name={`${prefix}Address`} hasError={formErrors.has(`${prefix}Address`)} styles={styles} />
           <FieldRaw label="Contact Number:" name={`${prefix}Contact`} type="tel" onInput={filterContactInput} maxLength={13} hasError={formErrors.has(`${prefix}Contact`)} styles={styles} />
-          <FieldRaw label="Email Address:" name={`${prefix}Email`} type="email" onInput={filterEmailInput} hasError={formErrors.has(`${prefix}Email`)} styles={styles} />
+          <FieldRaw label="Email Address:" name={`${prefix}Email`} type="email" onInput={filterEmailInput} onChange={type !== 'dentalAssistant' ? (e) => setAccessEmail(e.target.value) : undefined} hasError={formErrors.has(`${prefix}Email`)} styles={styles} />
         </div>
       </>
     );
@@ -899,7 +907,7 @@ export default function AdminEmployeeForm() {
                 hasError={formErrors.has('department')}
                 styles={styles}
               />
-              <FieldRaw label="Start Date" name="startDate" type="date" hasError={formErrors.has('startDate')} styles={styles} />
+              <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>
               <SelectFieldRaw label="Employment Type" name="employmentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('employmentType')} styles={styles} />
@@ -915,7 +923,7 @@ export default function AdminEmployeeForm() {
         {renderSection('docAccess', 'Section 4 - Web Access',
           <>
             <div style={styles.rowTwo}>
-              <FieldRaw label="Email Address" name="accessEmail" type="text" onInput={filterEmailInput} hasError={formErrors.has('accessEmail')} styles={styles} />
+              <FieldRaw label="Email Address" name="accessEmail" type="text" value={accessEmail} onChange={(e) => setAccessEmail(e.target.value)} onInput={filterEmailInput} hasError={formErrors.has('accessEmail')} styles={styles} />
               <FieldRaw label="Password" name="accessPassword" type="password" onInput={filterPasswordInput} hasError={formErrors.has('accessPassword')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>
@@ -992,7 +1000,7 @@ export default function AdminEmployeeForm() {
               <SelectFieldRaw label="Assigned Dentist" name="daAssignedDentist" placeholder="Select Dentist" options={dentistOptions} styles={styles} />
             </div>
             <div style={styles.rowTwo}>
-              <FieldRaw label="Start Date" name="daStartDate" type="date" hasError={formErrors.has('daStartDate')} styles={styles} />
+              <FieldRaw label="Start Date" name="daStartDate" type="date" min={today} hasError={formErrors.has('daStartDate')} styles={styles} />
               <SelectFieldRaw label="Employment Type" name="daEmploymentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('daEmploymentType')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>
@@ -1045,7 +1053,7 @@ export default function AdminEmployeeForm() {
               <TimeRangeFieldRaw startName="recepWorkStart" endName="recepWorkEnd" styles={styles} />
             </div>
             <div style={styles.rowTwo}>
-              <FieldRaw label="Start Date" name="startDate" type="date" hasError={formErrors.has('startDate')} styles={styles} />
+              <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
               <SelectFieldRaw label="Employment Type" name="employmentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('employmentType')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>
@@ -1057,7 +1065,7 @@ export default function AdminEmployeeForm() {
         {renderSection('recAccess', 'Section 4 - Web Access',
           <>
             <div style={styles.rowTwo}>
-              <FieldRaw label="Email Address" name="accessEmail" type="text" onInput={filterEmailInput} hasError={formErrors.has('accessEmail')} styles={styles} />
+              <FieldRaw label="Email Address" name="accessEmail" type="text" value={accessEmail} onChange={(e) => setAccessEmail(e.target.value)} onInput={filterEmailInput} hasError={formErrors.has('accessEmail')} styles={styles} />
               <FieldRaw label="Password" name="accessPassword" type="password" onInput={filterPasswordInput} hasError={formErrors.has('accessPassword')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>

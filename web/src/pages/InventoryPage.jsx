@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../auth/AuthContext';
 import {
+  createInventoryPurchaseExpense,
   listEquipment,
   listMedicines,
   listSupplies,
@@ -11,6 +12,7 @@ import {
   updateSupply,
 } from '../api/inventory';
 import { getUnreadNotificationCount } from '../api/notifications';
+import api from '../api/axios';
 import createInventoryPageStyles from '../styles/InventoryPage';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
@@ -150,12 +152,57 @@ function getSummaryColumnLabel(type) {
   return 'Item Name';
 }
 
+const emptyExpenseInventoryRows = { medicine: [], equipment: [], supplies: [] };
+const emptyExpenseItemOptions = { medicine: [], equipment: [], supplies: [] };
+const expenseCategoryLabels = { medicine: 'Dental Medicine', equipment: 'Dental Equipment', supplies: 'Dental Supplies' };
+
+function uniqueSortedNames(rows, fieldName) {
+  return Array.from(
+    new Set(
+      rows
+        .map((row) => row?.[fieldName])
+        .filter((name) => typeof name === 'string' && name.trim())
+        .map((name) => name.trim())
+    )
+  ).sort((a, b) => a.localeCompare(b));
+}
+
+function getExpenseItemName(row, category) {
+  if (category === 'medicine') return row?.medicine_name;
+  if (category === 'equipment') return row?.equipment_name;
+  return row?.supply_name;
+}
+
+function getExpenseBranchLabel(branch) {
+  const address = branch?.address || '';
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return branch?.name || 'Branch';
+  const cityPart = parts.find((part) => !/\d/.test(part)) || parts[parts.length - 1];
+  return cityPart.replace(/\b(branch|clinic)\b/gi, '').trim() || cityPart;
+}
+
 export default function InventoryPage() {
   const { user } = useAuth();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStockSummaryModal, setShowStockSummaryModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showExpenseConfirmModal, setShowExpenseConfirmModal] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({
+    date: '',
+    branchId: '',
+    category: 'supplies',
+    itemName: '',
+    supplier: '',
+    orderQuantity: '',
+    pricePerItem: '',
+  });
+  const [expenseInventoryRows, setExpenseInventoryRows] = useState(emptyExpenseInventoryRows);
+  const [expenseBranchOptions, setExpenseBranchOptions] = useState([]);
+  const [expenseSaving, setExpenseSaving] = useState(false);
+  const [expenseSaveError, setExpenseSaveError] = useState('');
+  const [saveExpenseClicked, setSaveExpenseClicked] = useState(false);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
   const [editForm, setEditForm] = useState({
     genericName: '',
@@ -400,6 +447,39 @@ export default function InventoryPage() {
     );
   }, [stockSummaryDetailRows]);
 
+  const computedExpense =
+    Number(expenseForm.orderQuantity || 0) * Number(expenseForm.pricePerItem || 0);
+
+  const selectedExpenseBranch = expenseBranchOptions.find(
+    (b) => String(b.id) === String(expenseForm.branchId)
+  );
+
+  const expenseItemOptions = useMemo(() => {
+    if (!expenseForm.branchId) return emptyExpenseItemOptions;
+    const branchId = Number(expenseForm.branchId);
+    const byBranch = (rows) => rows.filter((row) => Number(row.branch_id) === branchId);
+    return {
+      medicine: uniqueSortedNames(byBranch(expenseInventoryRows.medicine), 'medicine_name'),
+      equipment: uniqueSortedNames(byBranch(expenseInventoryRows.equipment), 'equipment_name'),
+      supplies: uniqueSortedNames(byBranch(expenseInventoryRows.supplies), 'supply_name'),
+    };
+  }, [expenseForm.branchId, expenseInventoryRows]);
+
+  const selectedExpenseInventoryRows = useMemo(() => {
+    if (!expenseForm.branchId) return [];
+    const branchId = Number(expenseForm.branchId);
+    return (expenseInventoryRows[expenseForm.category] || []).filter(
+      (row) => Number(row.branch_id) === branchId
+    );
+  }, [expenseForm.branchId, expenseForm.category, expenseInventoryRows]);
+
+  const expenseSupplierOptions = useMemo(
+    () => uniqueSortedNames(selectedExpenseInventoryRows, 'supplier'),
+    [selectedExpenseInventoryRows]
+  );
+
+  const expenseItemOptionsList = expenseItemOptions[expenseForm.category] || [];
+
   useEffect(() => {
     function handleResize() {
       setScreenWidth(window.innerWidth);
@@ -455,7 +535,7 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showEditModal || showStockSummaryModal) {
+    if (showLogoutModal || showEditModal || showStockSummaryModal || showExpenseModal || showExpenseConfirmModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -464,7 +544,7 @@ export default function InventoryPage() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showEditModal, showStockSummaryModal]);
+  }, [showLogoutModal, showEditModal, showStockSummaryModal, showExpenseModal, showExpenseConfirmModal]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -472,6 +552,8 @@ export default function InventoryPage() {
         closeLogoutModal();
         closeEditModal();
         closeStockSummaryModal();
+        closeExpenseModal();
+        closeExpenseConfirmModal();
       }
     }
 
@@ -556,6 +638,12 @@ export default function InventoryPage() {
       search: 1,
     }));
   }, [searchValue]); // tab changes reset page via handleTabChange; highlight sets page directly
+
+  useEffect(() => {
+    if (showExpenseModal) {
+      refreshExpenseFormOptions();
+    }
+  }, [showExpenseModal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -723,6 +811,101 @@ export default function InventoryPage() {
     });
     setEditError('');
     setShowEditModal(true);
+  }
+
+  function openExpenseModal() {
+    setShowExpenseModal(true);
+  }
+
+  function closeExpenseModal() {
+    setShowExpenseModal(false);
+    setExpenseSaveError('');
+  }
+
+  function closeExpenseConfirmModal() {
+    setShowExpenseConfirmModal(false);
+  }
+
+  async function refreshExpenseFormOptions() {
+    try {
+      const [meds, equip, sups, branchesRes] = await Promise.all([
+        listMedicines(),
+        listEquipment(),
+        listSupplies(),
+        api.get('/auth/branches'),
+      ]);
+      const nextBranches = branchesRes.data.branches || [];
+      setExpenseInventoryRows({ medicine: meds, equipment: equip, supplies: sups });
+      setExpenseBranchOptions(nextBranches);
+      setExpenseForm((prev) => {
+        if (prev.branchId && !nextBranches.some((b) => String(b.id) === String(prev.branchId))) {
+          return { ...prev, branchId: '', itemName: '' };
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error('Failed to load expense form options.', err);
+    }
+  }
+
+  function handleExpenseChange(field, value) {
+    setExpenseForm((prev) => {
+      const updatedForm = { ...prev, [field]: value };
+      if (field === 'category' || field === 'branchId') {
+        updatedForm.itemName = '';
+        updatedForm.supplier = '';
+      }
+      if (field === 'itemName') {
+        const matchingItem = selectedExpenseInventoryRows.find(
+          (row) =>
+            String(getExpenseItemName(row, prev.category) || '')
+              .trim()
+              .toLowerCase() === String(value || '').trim().toLowerCase()
+        );
+        updatedForm.supplier = matchingItem?.supplier || '';
+        if (matchingItem) {
+          updatedForm.pricePerItem = Number(matchingItem.price_per_item || 0);
+        }
+      }
+      return updatedForm;
+    });
+  }
+
+  function handleSaveExpense() {
+    setExpenseSaveError('');
+    setSaveExpenseClicked(true);
+    setTimeout(() => setSaveExpenseClicked(false), 160);
+    setTimeout(() => { setShowExpenseConfirmModal(true); }, 90);
+  }
+
+  async function handleConfirmExpenseSave() {
+    setExpenseSaving(true);
+    setExpenseSaveError('');
+    try {
+      await createInventoryPurchaseExpense({
+        branch_id: expenseForm.branchId,
+        date: expenseForm.date,
+        category: expenseForm.category,
+        itemName: expenseForm.itemName,
+        supplier: expenseForm.supplier,
+        orderQuantity: expenseForm.orderQuantity,
+        pricePerItem: expenseForm.pricePerItem,
+      });
+      setShowExpenseConfirmModal(false);
+      await refreshExpenseFormOptions();
+      await loadInventory();
+      setExpenseForm((prev) => ({
+        ...prev,
+        itemName: '',
+        supplier: '',
+        orderQuantity: '',
+        pricePerItem: '',
+      }));
+    } catch (err) {
+      setExpenseSaveError(err.response?.data?.message || 'Failed to save expense.');
+    } finally {
+      setExpenseSaving(false);
+    }
   }
 
   function getStatusBadgeStyle(status) {
@@ -907,9 +1090,16 @@ export default function InventoryPage() {
               <p style={{ ...styles.tableSubtitle, color: '#b91c1c' }}>{inventoryError}</p>
             )}
           </div>
-          <button type="button" style={styles.stockSummaryBtn} onClick={openStockSummaryModal}>
-            View Stock Summary
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {!isReceptionist && (
+              <button type="button" style={styles.stockSummaryBtn} onClick={openExpenseModal}>
+                Expense Input
+              </button>
+            )}
+            <button type="button" style={styles.stockSummaryBtn} onClick={openStockSummaryModal}>
+              View Stock Summary
+            </button>
+          </div>
         </div>
 
         <div style={styles.tableWrapper}>
@@ -1369,13 +1559,20 @@ export default function InventoryPage() {
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    style={styles.stockSummaryBtn}
-                    onClick={openStockSummaryModal}
-                  >
-                    View Stock Summary
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {!isReceptionist && (
+                      <button type="button" style={styles.stockSummaryBtn} onClick={openExpenseModal}>
+                        Expense Input
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      style={styles.stockSummaryBtn}
+                      onClick={openStockSummaryModal}
+                    >
+                      View Stock Summary
+                    </button>
+                  </div>
                 </div>
 
                 <div style={styles.tableWrapper}>
@@ -1617,6 +1814,194 @@ export default function InventoryPage() {
                 type="button"
                 onClick={closeEditModal}
                 style={styles.cancelEditBtn}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isReceptionist && showExpenseModal && (
+        <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeExpenseModal(); }}>
+          <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '28px 28px 24px', boxShadow: '0 8px 32px rgba(0,0,0,0.16)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a', fontFamily: 'Arial, sans-serif' }}>Expense Input</h3>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b', fontFamily: 'Arial, sans-serif' }}>Inventory purchase expense</p>
+              </div>
+              <button type="button" onClick={closeExpenseModal} style={styles.closeBtn}>×</button>
+            </div>
+
+            <label style={styles.formGroup}>
+              <span style={styles.formLabel}>Date</span>
+              <input
+                type="date"
+                value={expenseForm.date}
+                onChange={(e) => handleExpenseChange('date', e.target.value)}
+                style={styles.formInput}
+              />
+            </label>
+
+            <label style={styles.formGroup}>
+              <span style={styles.formLabel}>Branch</span>
+              <select
+                value={expenseForm.branchId}
+                onFocus={refreshExpenseFormOptions}
+                onChange={(e) => handleExpenseChange('branchId', e.target.value)}
+                style={styles.formInput}
+              >
+                <option value="">Select branch</option>
+                {expenseBranchOptions.map((b) => (
+                  <option key={b.id} value={b.id}>{getExpenseBranchLabel(b)}</option>
+                ))}
+              </select>
+            </label>
+
+            <label style={styles.formGroup}>
+              <span style={styles.formLabel}>Category</span>
+              <select
+                value={expenseForm.category}
+                onChange={(e) => handleExpenseChange('category', e.target.value)}
+                style={styles.formInput}
+              >
+                <option value="medicine">Dental Medicine</option>
+                <option value="equipment">Dental Equipment</option>
+                <option value="supplies">Dental Supplies</option>
+              </select>
+            </label>
+
+            <label style={styles.formGroup}>
+              <span style={styles.formLabel}>Item Name</span>
+              <input
+                type="text"
+                list="inv-expense-item-options"
+                value={expenseForm.itemName}
+                onChange={(e) => handleExpenseChange('itemName', e.target.value)}
+                placeholder={!expenseForm.branchId ? 'Select Branch First' : expenseItemOptionsList.length ? 'Select or enter item name' : 'Enter item name'}
+                style={styles.formInput}
+              />
+              <datalist id="inv-expense-item-options">
+                {expenseItemOptionsList.map((name) => <option key={name} value={name} />)}
+              </datalist>
+            </label>
+
+            <label style={styles.formGroup}>
+              <span style={styles.formLabel}>Supplier</span>
+              <input
+                type="text"
+                list="inv-expense-supplier-options"
+                value={expenseForm.supplier}
+                onChange={(e) => handleExpenseChange('supplier', e.target.value)}
+                placeholder="Enter Supplier"
+                style={styles.formInput}
+              />
+              <datalist id="inv-expense-supplier-options">
+                {expenseSupplierOptions.map((s) => <option key={s} value={s} />)}
+              </datalist>
+            </label>
+
+            <label style={styles.formGroup}>
+              <span style={styles.formLabel}>Order Quantity</span>
+              <input
+                type="number"
+                min="1"
+                value={expenseForm.orderQuantity}
+                placeholder="Enter Quantity"
+                onChange={(e) => handleExpenseChange('orderQuantity', e.target.value === '' ? '' : Number(e.target.value))}
+                style={styles.formInput}
+              />
+            </label>
+
+            <label style={styles.formGroup}>
+              <span style={styles.formLabel}>Price per Item</span>
+              <input
+                type="number"
+                min="0"
+                value={expenseForm.pricePerItem}
+                placeholder="Enter Price Per Item"
+                onChange={(e) => handleExpenseChange('pricePerItem', e.target.value === '' ? '' : Number(e.target.value))}
+                style={styles.formInput}
+              />
+            </label>
+
+            <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '12px 14px', fontFamily: 'Arial, sans-serif' }}>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Total Expense</p>
+              <h4 style={{ margin: '4px 0 0', fontSize: 15, color: '#0f172a', fontWeight: 700 }}>
+                {expenseForm.orderQuantity || 0} × {formatPeso(expenseForm.pricePerItem || 0)} = {formatPeso(computedExpense)}
+              </h4>
+            </div>
+
+            {expenseSaveError && (
+              <p style={{ margin: 0, fontSize: 13, color: '#b91c1c', fontFamily: 'Arial, sans-serif' }}>{expenseSaveError}</p>
+            )}
+
+            <div style={styles.editModalActions}>
+              <button
+                type="button"
+                style={{
+                  ...styles.saveBtn,
+                  transform: saveExpenseClicked ? 'scale(0.97)' : 'scale(1)',
+                  opacity: saveExpenseClicked ? 0.82 : 1,
+                  transition: 'transform 120ms ease, opacity 120ms ease',
+                }}
+                onClick={handleSaveExpense}
+              >
+                Save Expense
+              </button>
+              <button type="button" style={styles.cancelEditBtn} onClick={closeExpenseModal}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isReceptionist && showExpenseConfirmModal && (
+        <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeExpenseConfirmModal(); }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-receipt" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Confirm Expense</h2>
+            <p style={styles.modalText}>Please review the details before saving this expense.</p>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {[
+                ['Date', expenseForm.date || 'Not selected'],
+                ['Branch', selectedExpenseBranch ? getExpenseBranchLabel(selectedExpenseBranch) : 'Not selected'],
+                ['Category', expenseCategoryLabels[expenseForm.category] || expenseForm.category],
+                ['Item Name', expenseForm.itemName || 'Not entered'],
+                ['Supplier', expenseForm.supplier || 'Not entered'],
+                ['Quantity', String(expenseForm.orderQuantity || 0)],
+                ['Price per Item', formatPeso(expenseForm.pricePerItem || 0)],
+              ].map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}>
+                  <span style={{ color: '#64748b' }}>{label}</span>
+                  <strong style={{ color: '#0f172a' }}>{val}</strong>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14 }}>
+                <span style={{ color: '#374151', fontWeight: 700 }}>Total Expense</span>
+                <strong style={{ color: '#2563eb', fontSize: 15 }}>{formatPeso(computedExpense)}</strong>
+              </div>
+            </div>
+            {expenseSaveError && (
+              <p style={{ ...styles.modalText, color: '#dc2626' }}>{expenseSaveError}</p>
+            )}
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                disabled={expenseSaving}
+                onClick={handleConfirmExpenseSave}
+              >
+                {expenseSaving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                disabled={expenseSaving}
+                onClick={closeExpenseConfirmModal}
               >
                 Cancel
               </button>

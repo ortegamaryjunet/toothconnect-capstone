@@ -68,6 +68,7 @@ function mapStaffProfileRow(row) {
     email: row.email || '',
     position: row.position || row.staff_type,
     specialization: row.specialization || '',
+    workDepartment: row.work_department || '',
     serviceNames: row.service_names || '',
     medicalDegree: row.medical_degree || '',
     licenseNumber: row.license_number || '',
@@ -129,6 +130,7 @@ function staffPayloadToDb(payload = {}, { allowStatus = false } = {}) {
     email: normalizeNullable(payload.email),
     position: normalizeNullable(payload.position),
     specialization: normalizeNullable(payload.specialization),
+    work_department: normalizeNullable(payload.work_department ?? payload.workDepartment),
     medical_degree: normalizeNullable(payload.medical_degree ?? payload.medicalDegree),
     license_number: normalizeNullable(payload.license_number ?? payload.licenseNumber),
     years_experience: normalizeInt(payload.years_experience ?? payload.yearsExperience, 0),
@@ -219,6 +221,7 @@ async function updateStaffProfile(profileId, payload, { allowBranch = false, all
     'email = ?',
     'position = ?',
     'specialization = ?',
+    'work_department = ?',
     'medical_degree = ?',
     'license_number = ?',
     'years_experience = ?',
@@ -247,6 +250,7 @@ async function updateStaffProfile(profileId, payload, { allowBranch = false, all
     profile.email,
     profile.position,
     profile.specialization,
+    profile.work_department,
     profile.medical_degree,
     profile.license_number,
     profile.years_experience,
@@ -1456,11 +1460,11 @@ router.post('/staff-profiles', authenticate, requireRole('admin'), async (req, r
          first_name, middle_name, last_name, nickname, suffix,
          birthday, age, gender, civil_status, religion, nationality,
          home_address, contact_number, email,
-         position, specialization, medical_degree, license_number,
+         position, specialization, work_department, medical_degree, license_number,
          years_experience, skills, start_date, employment_type, shift_type,
          work_days, work_start_time, work_end_time, status
        )
-       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
+       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
       [
         branch_id,
         staffProfile.staff_type,
@@ -1480,6 +1484,7 @@ router.post('/staff-profiles', authenticate, requireRole('admin'), async (req, r
         staffProfile.email || null,
         staffProfile.position || staffProfile.staff_type,
         staffProfile.specialization || null,
+        staffProfile.work_department || null,
         staffProfile.medical_degree || null,
         staffProfile.license_number || null,
         staffProfile.years_experience || 0,
@@ -1512,6 +1517,7 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
     branch_ids,
     phone,
     password,
+    department,
     staffProfile = {},
   } = req.body;
   if (!email || !name || !role || !home_branch_id || !branch_ids?.length) {
@@ -1552,11 +1558,11 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
          first_name, middle_name, last_name, nickname, suffix,
          birthday, age, gender, civil_status, religion, nationality,
          home_address, contact_number, email,
-         position, specialization, medical_degree, license_number,
+         position, specialization, work_department, medical_degree, license_number,
          years_experience, skills, start_date, employment_type, shift_type,
          work_days, work_start_time, work_end_time, status
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
       [
         userId,
         home_branch_id,
@@ -1577,6 +1583,7 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
         email,
         staffProfile.position || staffType,
         staffProfile.specialization || null,
+        staffProfile.work_department || null,
         staffProfile.medical_degree || null,
         staffProfile.license_number || null,
         staffProfile.years_experience || 0,
@@ -1589,6 +1596,43 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
         staffProfile.work_end_time || null,
       ]
     );
+
+    if (role === 'dentist') {
+      const DAY_TO_WEEKDAY = {
+        Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+        Thursday: 4, Friday: 5, Saturday: 6,
+      };
+      const days = Array.isArray(staffProfile.work_days)
+        ? staffProfile.work_days
+        : String(staffProfile.work_days || '').split(',').map((d) => d.trim()).filter(Boolean);
+      const workStart = staffProfile.work_start_time || null;
+      const workEnd = staffProfile.work_end_time || null;
+      if (days.length > 0 && workStart && workEnd) {
+        for (const dayName of days) {
+          const weekday = DAY_TO_WEEKDAY[dayName];
+          if (weekday !== undefined) {
+            await pool.query(
+              'INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
+              [userId, home_branch_id, weekday, workStart, workEnd]
+            );
+          }
+        }
+      }
+
+      const serviceCategory = staffProfile.work_department || department;
+      if (serviceCategory) {
+        const [svcRows] = await pool.query(
+          'SELECT id FROM services WHERE category = ? AND status = ?',
+          [serviceCategory, 'Active']
+        );
+        for (const svc of svcRows) {
+          await pool.query(
+            'INSERT IGNORE INTO dentist_services (dentist_id, service_id) VALUES (?, ?)',
+            [userId, svc.id]
+          );
+        }
+      }
+    }
 
     if (!password) {
       await sendTempPasswordEmail({ to: email, name, tempPassword });

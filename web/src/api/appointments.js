@@ -39,3 +39,10 @@ export async function saveAppointmentNote(id, note) {
   const res = await api.patch(`/appointments/${id}/note`, { note });
   return res.data;
 }
+
+export async function getDentistBusySlots(dentistId, date) {
+  const res = await api.get('/appointments/_meta/dentist-busy-slots', {
+    params: { dentist_id: dentistId, date },
+  });
+  return res.data.appointments;
+}

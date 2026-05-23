@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   createAppointment,
   getAppointmentMeta,
+  getDentistBusySlots,
   listAppointments,
 } from '../api/appointments';
 import {
@@ -60,6 +61,9 @@ export default function RecepAppointmentForm() {
   const [services, setServices] = useState([]);
   const [dayAppointments, setDayAppointments] = useState([]);
   const [dayAppointmentsLoading, setDayAppointmentsLoading] = useState(false);
+  const [dentistBranchIds, setDentistBranchIds] = useState({});
+  const [dentistBusySlots, setDentistBusySlots] = useState([]);
+  const [dentistBusySlotsLoading, setDentistBusySlotsLoading] = useState(false);
 
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth());
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
@@ -96,10 +100,18 @@ export default function RecepAppointmentForm() {
   }, [services, formData.serviceId]);
 
   const filteredDentists = useMemo(() => {
-    if (!formData.serviceId) return dentists;
-    const sid = Number(formData.serviceId);
-    return dentists.filter((d) => (dentistsByService[d.id] || []).includes(sid));
-  }, [dentists, dentistsByService, formData.serviceId]);
+    return dentists.filter((d) => {
+      if (formData.serviceId) {
+        const sid = Number(formData.serviceId);
+        if (!(dentistsByService[d.id] || []).includes(sid)) return false;
+      }
+      if (formData.branchId) {
+        const bid = Number(formData.branchId);
+        if (!(dentistBranchIds[d.id] || []).includes(bid)) return false;
+      }
+      return true;
+    });
+  }, [dentists, dentistsByService, dentistBranchIds, formData.serviceId, formData.branchId]);
 
   const estimatedDuration = Number(selectedService?.duration_min || 30);
 
@@ -109,12 +121,13 @@ export default function RecepAppointmentForm() {
   }, [selectedTime, estimatedDuration]);
 
   const availableSlots = useMemo(() => {
+    const appointmentsForSlots = formData.dentistId ? dentistBusySlots : dayAppointments;
     return computeAvailableSlots({
-      appointments: dayAppointments,
+      appointments: appointmentsForSlots,
       dateKey: selectedDate,
       durationMinutes: estimatedDuration,
     });
-  }, [dayAppointments, selectedDate, estimatedDuration]);
+  }, [dentistBusySlots, dayAppointments, formData.dentistId, selectedDate, estimatedDuration]);
 
   const calendarDays = useMemo(() => {
     return buildCalendarDays(calendarYear, calendarMonth, today);
@@ -210,6 +223,36 @@ export default function RecepAppointmentForm() {
     }
   }, [formData.serviceId, dentistsByService]);
 
+  // Reset dentistId when branch changes and the chosen dentist has no schedule there
+  useEffect(() => {
+    if (!formData.branchId || !formData.dentistId) return;
+    const bid = Number(formData.branchId);
+    const assignedBranches = dentistBranchIds[Number(formData.dentistId)] || [];
+    if (!assignedBranches.includes(bid)) {
+      setFormData((current) => ({ ...current, dentistId: '' }));
+    }
+  }, [formData.branchId, dentistBranchIds]);
+
+  // Fetch selected dentist's appointments across all branches for the chosen date
+  useEffect(() => {
+    async function loadDentistBusySlots() {
+      if (!formData.dentistId || !selectedDate) {
+        setDentistBusySlots([]);
+        return;
+      }
+      setDentistBusySlotsLoading(true);
+      try {
+        const slots = await getDentistBusySlots(formData.dentistId, selectedDate);
+        setDentistBusySlots(Array.isArray(slots) ? slots : []);
+      } catch {
+        setDentistBusySlots([]);
+      } finally {
+        setDentistBusySlotsLoading(false);
+      }
+    }
+    loadDentistBusySlots();
+  }, [formData.dentistId, selectedDate]);
+
   // Clear selected slot if it becomes unavailable (date, service, or appointments changed)
   useEffect(() => {
     if (!formData.hour || !formData.minute) return;
@@ -232,17 +275,17 @@ export default function RecepAppointmentForm() {
       const dentistOptions = Array.isArray(meta.dentists) ? meta.dentists : [];
       const serviceOptions = Array.isArray(meta.services) ? meta.services : [];
 
-      // Build dentistId → service_ids[] map from the dentist objects returned by meta
       const serviceMap = {};
+      const branchMap = {};
       for (const d of dentistOptions) {
-        if (Array.isArray(d.service_ids)) {
-          serviceMap[d.id] = d.service_ids;
-        }
+        if (Array.isArray(d.service_ids)) serviceMap[d.id] = d.service_ids;
+        if (Array.isArray(d.branch_ids)) branchMap[d.id] = d.branch_ids;
       }
 
       setBranches(branchOptions);
       setDentists(dentistOptions);
       setDentistsByService(serviceMap);
+      setDentistBranchIds(branchMap);
       setServices(serviceOptions);
       setFormData((current) => ({
         ...current,
@@ -790,7 +833,7 @@ export default function RecepAppointmentForm() {
                     Available Time Slots <span style={styles.required}>*</span>
                   </label>
 
-                  {dayAppointmentsLoading ? (
+                  {(dayAppointmentsLoading || dentistBusySlotsLoading) ? (
                     <p style={styles.slotLoadingText}>Loading available slots...</p>
                   ) : availableSlots.filter((s) => s.available).length === 0 ? (
                     <p style={styles.slotEmptyText}>No available slots on this date.</p>

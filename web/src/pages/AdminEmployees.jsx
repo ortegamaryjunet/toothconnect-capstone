@@ -12,6 +12,44 @@ import doctorIcon from '../assets/adminImages/doctor.png';
 import dentalAssistantIcon from '../assets/adminImages/dental-assistant.png';
 import receptionistIcon from '../assets/adminImages/receptionist.png';
 
+// ─── Edit-modal filter helpers (value → filtered value) ──────────────────────
+
+const EDIT_DAY_OPTIONS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+function filterNameVal(val) {
+  return val.replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
+}
+
+function filterContactVal(val) {
+  let v = val.replace(/[^0-9+]/g, '');
+  v = v.replace(/(.)\+/g, '$1');
+  const maxLen = v.startsWith('+') ? 13 : 11;
+  return v.slice(0, maxLen);
+}
+
+function filterEmailVal(val) {
+  return val.replace(/\s/g, '');
+}
+
+function filterProfTextVal(val) {
+  return val.replace(/[^a-zA-ZÀ-ÿ\s'\-.,()&/:]/g, '');
+}
+
+function getShiftTypeOptions(role) {
+  if (role === 'Dentist') return ['By Appointment'];
+  return ['Day', 'Afternoon', 'Night'];
+}
+
+function parseWorkDays(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try {
+    const parsed = JSON.parse(val);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (_) {}
+  return String(val).split(',').map((d) => d.trim()).filter(Boolean);
+}
+
 export default function AdminEmployees() {
   const { user } = useAuth();
   const adminName = user?.name || 'Admin';
@@ -36,6 +74,7 @@ export default function AdminEmployees() {
   const rowsPerPage = 10;
 
   const [employees, setEmployees] = useState([]);
+  const [branches, setBranches] = useState([]);
 
   const isMobile = screenWidth <= 850;
   const isTablet = screenWidth > 850 && screenWidth <= 1200;
@@ -83,7 +122,17 @@ export default function AdminEmployees() {
       }
     }
 
+    async function loadBranches() {
+      try {
+        const res = await api.get('/auth/branches');
+        setBranches(res.data.branches || []);
+      } catch (err) {
+        console.error('Failed to load branches', err);
+      }
+    }
+
     loadEmployees();
+    loadBranches();
   }, []);
 
   useEffect(() => {
@@ -285,7 +334,7 @@ export default function AdminEmployees() {
     }
   }
 
-  function modalField(label, name, type = 'text') {
+  function modalField(label, name, type = 'text', filterFn = null) {
     const hasError = editErrors.has(name);
     return (
       <div style={styles.employeeModalField}>
@@ -297,7 +346,10 @@ export default function AdminEmployees() {
           type={type}
           name={name}
           value={editedEmployee?.[name] ?? ''}
-          onChange={handleEmployeeInputChange}
+          onChange={(e) => {
+            const val = isEditingEmployee && filterFn ? filterFn(e.target.value) : e.target.value;
+            setEditedEmployee((prev) => ({ ...prev, [name]: val }));
+          }}
           readOnly={!isEditingEmployee}
           style={{
             ...styles.employeeModalInput,
@@ -336,6 +388,97 @@ export default function AdminEmployees() {
             </option>
           ))}
         </select>
+      </div>
+    );
+  }
+
+  function modalBranchSelect() {
+    const hasError = editErrors.has('branchId');
+    if (!isEditingEmployee) {
+      return (
+        <div style={styles.employeeModalField}>
+          <label style={styles.employeeModalLabel}>Assigned Branch</label>
+          <input
+            type="text"
+            value={editedEmployee?.branchAddress || editedEmployee?.branchName || ''}
+            readOnly
+            style={{ ...styles.employeeModalInput, ...styles.employeeModalInputReadOnly }}
+          />
+        </div>
+      );
+    }
+    return (
+      <div style={styles.employeeModalField}>
+        <label style={styles.employeeModalLabel}>
+          Assigned Branch{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+        </label>
+        <select
+          name="branchId"
+          value={editedEmployee?.branchId != null ? String(editedEmployee.branchId) : ''}
+          onChange={(e) => {
+            const selected = branches.find((b) => String(b.id) === e.target.value);
+            setEditedEmployee((prev) => ({
+              ...prev,
+              branchId: e.target.value,
+              branchName: selected?.name || '',
+              branchAddress: selected?.address
+                ? `${selected.name} - ${selected.address}`
+                : selected?.name || '',
+            }));
+            if (e.target.value) setEditErrors((prev) => { const n = new Set(prev); n.delete('branchId'); return n; });
+          }}
+          style={{
+            ...styles.employeeModalInput,
+            ...(hasError ? { borderColor: '#dc2626', borderWidth: '2px' } : {}),
+          }}
+        >
+          <option value="">Select branch</option>
+          {branches.map((branch) => (
+            <option key={branch.id} value={String(branch.id)}>
+              {branch.address ? `${branch.name} - ${branch.address}` : branch.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  function modalWorkDays() {
+    const checkedDays = parseWorkDays(editedEmployee?.workDays);
+    return (
+      <div style={styles.employeeModalField}>
+        <label style={styles.employeeModalLabel}>Work Schedule Days</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginTop: 4 }}>
+          {EDIT_DAY_OPTIONS.map((day) => (
+            <label
+              key={day}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: 13,
+                color: '#334155',
+                cursor: isEditingEmployee ? 'pointer' : 'default',
+                fontFamily: 'Arial, sans-serif',
+              }}
+            >
+              <input
+                type="checkbox"
+                value={day}
+                checked={checkedDays.includes(day)}
+                disabled={!isEditingEmployee}
+                onChange={(e) => {
+                  const newDays = e.target.checked
+                    ? [...checkedDays, day]
+                    : checkedDays.filter((d) => d !== day);
+                  setEditedEmployee((prev) => ({ ...prev, workDays: newDays }));
+                }}
+                style={{ accentColor: '#2563eb', cursor: isEditingEmployee ? 'pointer' : 'default' }}
+              />
+              {day}
+            </label>
+          ))}
+        </div>
       </div>
     );
   }
@@ -658,13 +801,13 @@ export default function AdminEmployees() {
                 </h3>
 
                 <div style={styles.employeeModalGridThree}>
-                  {modalField('First Name', 'firstName')}
-                  {modalField('Middle Name', 'middleName')}
-                  {modalField('Last Name', 'lastName')}
+                  {modalField('First Name', 'firstName', 'text', filterNameVal)}
+                  {modalField('Middle Name', 'middleName', 'text', filterNameVal)}
+                  {modalField('Last Name', 'lastName', 'text', filterNameVal)}
                 </div>
 
                 <div style={styles.employeeModalGridTwo}>
-                  {modalField('Preferred Nickname', 'nickname')}
+                  {modalField('Preferred Nickname', 'nickname', 'text', filterNameVal)}
                   {modalField('Suffix', 'suffix')}
                 </div>
 
@@ -699,8 +842,8 @@ export default function AdminEmployees() {
 
                 <div style={styles.employeeModalGridThree}>
                   {modalField('Home Address', 'homeAddress')}
-                  {modalField('Contact Number', 'contactNumber')}
-                  {modalField('Email Address', 'email', 'email')}
+                  {modalField('Contact Number', 'contactNumber', 'text', filterContactVal)}
+                  {modalField('Email Address', 'email', 'text', filterEmailVal)}
                 </div>
               </div>
 
@@ -710,27 +853,27 @@ export default function AdminEmployees() {
                 </h3>
 
                 <div style={styles.employeeModalGridTwo}>
-                  {modalField('Position', 'position')}
+                  {modalField('Position', 'position', 'text', filterProfTextVal)}
                   {modalField('Years of Experience', 'yearsExperience', 'number')}
                 </div>
 
                 {editedEmployee.role === 'Dentist' && (
                   <>
                     <div style={styles.employeeModalGridTwo}>
-                      {modalField('Medical Degree', 'medicalDegree')}
+                      {modalField('Medical Degree', 'medicalDegree', 'text', filterProfTextVal)}
                       {modalField('Medical License Number', 'licenseNumber')}
                     </div>
 
                     <div style={styles.employeeModalGridTwo}>
-                      {modalField('Specialization', 'specialization')}
-                      {modalField('Skills', 'skills')}
+                      {modalField('Specialization', 'specialization', 'text', filterProfTextVal)}
+                      {modalField('Skills', 'skills', 'text', filterProfTextVal)}
                     </div>
                   </>
                 )}
 
                 {editedEmployee.role !== 'Dentist' && (
                   <div style={styles.employeeModalGridTwo}>
-                    {modalField('Skills', 'skills')}
+                    {modalField('Skills', 'skills', 'text', filterProfTextVal)}
                     {editedEmployee.role === 'Dental Assistant'
                       ? modalField('Assigned Dentist', 'assignedDentist')
                       : modalField('Access Role', 'accessRole')}
@@ -745,8 +888,20 @@ export default function AdminEmployees() {
 
                 <div style={styles.employeeModalGridTwo}>
                   {modalField('Start Date', 'startDate', 'date')}
-                  {modalField('Assigned Branch', 'branchAddress')}
+                  {modalBranchSelect()}
                 </div>
+
+                {(editedEmployee?.role === 'Dentist' || editedEmployee?.role === 'Dental Assistant') && (
+                  <div style={styles.employeeModalGridTwo}>
+                    {modalField(
+                      editedEmployee?.role === 'Dentist' ? 'Specialization / Department' : 'Department',
+                      'specialization',
+                      'text',
+                      filterProfTextVal
+                    )}
+                    {editedEmployee?.role === 'Dental Assistant' && modalField('Assigned Dentist', 'assignedDentist')}
+                  </div>
+                )}
 
                 <div style={styles.employeeModalGridTwo}>
                   {modalSelect('Employment Type', 'employmentType', [
@@ -755,12 +910,10 @@ export default function AdminEmployees() {
                     'Contract',
                     'Intern',
                   ])}
+                  {modalSelect('Shift Type', 'shiftType', getShiftTypeOptions(editedEmployee?.role))}
                 </div>
 
-                <div style={styles.employeeModalGridTwo}>
-                  {modalField('Shift Type', 'shiftType')}
-                  {modalField('Work Schedule Days', 'workDays')}
-                </div>
+                {modalWorkDays()}
 
                 <div style={styles.employeeModalGridTwo}>
                   {modalField('Work Start Time', 'workStartTime', 'time')}

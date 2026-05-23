@@ -670,7 +670,7 @@ export default function ProfileScreen({ navigation }) {
                         style={[
                           styles.sexButton,
                           form.sex === "Male" && styles.sexButtonActive,
-                          !isEditing && styles.disabledChoice,
+                          !isEditing && form.sex !== "Male" && styles.disabledChoice,
                         ]}
                         onPress={() => updateField("sex", "Male")}
                       >
@@ -690,7 +690,7 @@ export default function ProfileScreen({ navigation }) {
                         style={[
                           styles.sexButton,
                           form.sex === "Female" && styles.sexButtonActive,
-                          !isEditing && styles.disabledChoice,
+                          !isEditing && form.sex !== "Female" && styles.disabledChoice,
                         ]}
                         onPress={() => updateField("sex", "Female")}
                       >

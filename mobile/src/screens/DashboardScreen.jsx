@@ -244,6 +244,13 @@ export default function DashboardScreen({ navigation }) {
 
   const greetingName = user?.name ? user.name.split(" ")[0] : "there";
 
+  function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 18) return "Good afternoon";
+    return "Good evening";
+  }
+
   function getBranchTabLabel(branch) {
     return getBranchCity(branch.address, branch.name || "Branch");
   }
@@ -313,7 +320,7 @@ export default function DashboardScreen({ navigation }) {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.greetingSection}>
-              <Text style={styles.greetingText}>Good morning, {greetingName}</Text>
+              <Text style={styles.greetingText}>{getGreeting()}, {greetingName}</Text>
 
               <View style={styles.branchBadge}>
                 <Text style={styles.branchBadgeText}>

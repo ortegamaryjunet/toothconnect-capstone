@@ -116,20 +116,17 @@ async function getDentistSchedule(dentistId, branchId, weekday) {
   return rows[0] || null;
 }
 
-async function getBranchAppointmentsOnDay(branchId, dayStart, dayEnd) {
+async function getDentistAppointmentsOnDay(dentistId, dayStart, dayEnd) {
   const [rows] = await pool.query(
     `SELECT start_time, duration_min FROM appointments
-     WHERE branch_id = ?
-       AND status IN ('scheduled','arrived','completed')
+     WHERE dentist_id = ?
+       AND status IN ('scheduled','arrived')
        AND start_time >= ? AND start_time < ?`,
-    [branchId, toMySQLDateTime(dayStart), toMySQLDateTime(dayEnd)]
+    [dentistId, toMySQLDateTime(dayStart), toMySQLDateTime(dayEnd)]
   );
   return rows.map(r => ({
     start: new Date(r.start_time),
-    end: addMinutes(
-      new Date(r.start_time),
-      r.duration_min + APPOINTMENT_BUFFER_MINUTES
-    ),
+    end: addMinutes(new Date(r.start_time), r.duration_min + APPOINTMENT_BUFFER_MINUTES),
   }));
 }
 
@@ -238,24 +235,6 @@ async function suggestSlots({
   const from = parseISOToDate(fromDate);
   const to = parseISOToDate(toDate);
   const preferredStart = preferredStartDate ? parseISOToDate(preferredStartDate) : null;
-  let selectedSlotBooked = false;
-
-  if (preferredStart) {
-    const preferredBounds = dayBoundsForDate(preferredStart);
-    const existing = await getBranchAppointmentsOnDay(
-      branchId,
-      preferredBounds.start,
-      preferredBounds.end
-    );
-    const preferredEnd = addMinutes(
-      preferredStart,
-      service.duration_min + APPOINTMENT_BUFFER_MINUTES
-    );
-
-    selectedSlotBooked = existing.some(e =>
-      rangesOverlap(preferredStart, preferredEnd, e.start, e.end)
-    );
-  }
 
   const allCandidates = [];
   let dayIndex = 0;
@@ -266,15 +245,27 @@ async function suggestSlots({
     const weekday = jsWeekday(day);
 
     for (const dentist of dentists) {
-      const schedule = await getDentistSchedule(dentist.id, branchId, weekday);
-      if (!schedule) continue;
+      let workStart, workEnd;
 
-      const clinic = clinicBoundsForDay(day);
-      const workStart = maxDate(combineDateAndClinicTime(day, schedule.start_time), clinic.start);
-      const workEnd = minDate(combineDateAndClinicTime(day, schedule.end_time), clinic.end);
+      if (weekday === 0) {
+        // Sunday: dentists are on-call for all assigned branches — no schedule entry required.
+        // Use full clinic hours. getDentistAppointmentsOnDay queries ALL branches,
+        // so a booking at any branch blocks the dentist's Sunday availability everywhere.
+        const clinic = clinicBoundsForDay(day);
+        workStart = clinic.start;
+        workEnd = clinic.end;
+      } else {
+        const schedule = await getDentistSchedule(dentist.id, branchId, weekday);
+        if (!schedule) continue;
+
+        const clinic = clinicBoundsForDay(day);
+        workStart = maxDate(combineDateAndClinicTime(day, schedule.start_time), clinic.start);
+        workEnd = minDate(combineDateAndClinicTime(day, schedule.end_time), clinic.end);
+      }
+
       if (workStart >= workEnd) continue;
 
-      const existing = await getBranchAppointmentsOnDay(branchId, dayStart, dayEnd);
+      const existing = await getDentistAppointmentsOnDay(dentist.id, dayStart, dayEnd);
       const candidates = [];
 
       if (
@@ -353,7 +344,7 @@ async function suggestSlots({
     total_eligible_dentists: dentists.length,
     total_candidates_considered: allCandidates.length,
     preferred_start_time: preferredStart ? toMySQLDateTime(preferredStart) : null,
-    selected_slot_booked: selectedSlotBooked,
+    selected_slot_booked: false,
     suggestions,
   };
 }

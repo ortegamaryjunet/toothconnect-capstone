@@ -248,10 +248,142 @@ async function listInquiries({ search = '' } = {}) {
   return rows;
 }
 
+// ── Website CMS ──────────────────────────────────────────────────────────────
+
+async function getContent() {
+  const [rows] = await db.query('SELECT section, field_key, field_value FROM website_content ORDER BY section, id');
+  const map = {};
+  for (const r of rows) {
+    const k = `${r.section}_${r.field_key}`;
+    map[k] = r.field_value;
+  }
+  return map;
+}
+
+async function upsertContent(fields) {
+  for (const [key, value] of Object.entries(fields)) {
+    const sep = key.indexOf('_');
+    if (sep < 1) continue;
+    const section = key.slice(0, sep);
+    const field_key = key.slice(sep + 1);
+    await db.query(
+      `INSERT INTO website_content (section, field_key, field_value)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE field_value = VALUES(field_value)`,
+      [section, field_key, value]
+    );
+  }
+}
+
+async function listFaqs({ all = false } = {}) {
+  const sql = all
+    ? 'SELECT * FROM website_faqs ORDER BY sort_order ASC, id ASC'
+    : "SELECT * FROM website_faqs WHERE status = 'active' ORDER BY sort_order ASC, id ASC";
+  const [rows] = await db.query(sql);
+  return rows;
+}
+
+async function createFaq({ question, answer, sort_order = 0, status = 'active' }) {
+  const [result] = await db.query(
+    'INSERT INTO website_faqs (question, answer, sort_order, status) VALUES (?, ?, ?, ?)',
+    [question, answer, sort_order, status]
+  );
+  return result.insertId;
+}
+
+async function updateFaq(id, { question, answer, sort_order, status }) {
+  await db.query(
+    'UPDATE website_faqs SET question = ?, answer = ?, sort_order = ?, status = ? WHERE id = ?',
+    [question, answer, sort_order ?? 0, status ?? 'active', id]
+  );
+}
+
+async function deleteFaq(id) {
+  await db.query('DELETE FROM website_faqs WHERE id = ?', [id]);
+}
+
+async function listWebsiteServices({ all = false } = {}) {
+  const sql = all
+    ? 'SELECT * FROM website_services ORDER BY sort_order ASC, id ASC'
+    : "SELECT * FROM website_services WHERE status = 'active' ORDER BY sort_order ASC, id ASC";
+  const [rows] = await db.query(sql);
+  return rows;
+}
+
+async function createWebsiteService({ name, image_path, description, slug, sort_order = 0, status = 'active' }) {
+  const [result] = await db.query(
+    'INSERT INTO website_services (name, image_path, description, slug, sort_order, status) VALUES (?, ?, ?, ?, ?, ?)',
+    [name, image_path || null, description || null, slug || null, sort_order, status]
+  );
+  return result.insertId;
+}
+
+async function updateWebsiteService(id, { name, image_path, description, slug, sort_order, status }) {
+  await db.query(
+    'UPDATE website_services SET name = ?, image_path = ?, description = ?, slug = ?, sort_order = ?, status = ? WHERE id = ?',
+    [name, image_path || null, description || null, slug || null, sort_order ?? 0, status ?? 'active', id]
+  );
+}
+
+async function deleteWebsiteService(id) {
+  await db.query('DELETE FROM website_services WHERE id = ?', [id]);
+}
+
+async function listAnnouncements({ all = false } = {}) {
+  const today = new Date().toISOString().slice(0, 10);
+  let sql, params;
+  if (all) {
+    sql = 'SELECT * FROM website_announcements ORDER BY created_at DESC';
+    params = [];
+  } else {
+    sql = `SELECT * FROM website_announcements
+           WHERE status = 'active'
+             AND (start_date IS NULL OR start_date <= ?)
+             AND (end_date IS NULL OR end_date >= ?)
+           ORDER BY created_at DESC`;
+    params = [today, today];
+  }
+  const [rows] = await db.query(sql, params);
+  return rows;
+}
+
+async function createAnnouncement({ title, message, start_date, end_date, status = 'active' }) {
+  const [result] = await db.query(
+    'INSERT INTO website_announcements (title, message, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)',
+    [title, message, start_date || null, end_date || null, status]
+  );
+  return result.insertId;
+}
+
+async function updateAnnouncement(id, { title, message, start_date, end_date, status }) {
+  await db.query(
+    'UPDATE website_announcements SET title = ?, message = ?, start_date = ?, end_date = ?, status = ? WHERE id = ?',
+    [title, message, start_date || null, end_date || null, status ?? 'active', id]
+  );
+}
+
+async function deleteAnnouncement(id) {
+  await db.query('DELETE FROM website_announcements WHERE id = ?', [id]);
+}
+
 module.exports = {
   saveAppointment,
   saveInquiry,
   listAppointments,
   updateAppointmentStatus,
-  listInquiries
+  listInquiries,
+  getContent,
+  upsertContent,
+  listFaqs,
+  createFaq,
+  updateFaq,
+  deleteFaq,
+  listWebsiteServices,
+  createWebsiteService,
+  updateWebsiteService,
+  deleteWebsiteService,
+  listAnnouncements,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
 };

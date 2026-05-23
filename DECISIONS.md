@@ -533,6 +533,234 @@ The `AdminSettings.jsx` online appointments table shows Full Name, Phone, Date, 
 ### email field not validated on the backend route
 The `POST /saveAppointment` route does not check for a missing or malformed email. Frontend validation ensures it is always sent, but a direct API call bypassing the website can omit it. Consider adding `!email` to the existing required-field check once backward compatibility is no longer a concern.
 
+---
+
+## Dentist Web Features Session (2026-05-17)
+
+### dentist_note stored on appointments, not a separate table
+`appointments.dentist_note TEXT NULL` holds the post-visit note that a dentist writes. Stored on the appointment row itself rather than a separate `notes` table because a note is one-to-one with an appointment and joins would add complexity for zero benefit. Auto-migration (`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS dentist_note TEXT NULL`) runs on server startup.
+
+**Affected files:**
+- `backend/schema.sql` — dentist_note column added to appointments
+- `backend/server.js` — startup ALTER TABLE migration
+- `backend/src/routes/appointments.js` — `PATCH /appointments/:id/note` endpoint (dentist-only, only for completed appointments)
+
+### Service Kit modal: one-time consumption, read-only on re-open
+After a dentist submits inventory consumption for an appointment, re-opening the kit modal shows a read-only view instead of the submission form. The `GET /inventory/appointments/:appointmentId/consumption` endpoint returns any existing consumption record. The backend returns 409 if `POST /inventory/appointments/:id/consumption` is called a second time. This matches clinic practice: you can't un-consume supplies.
+
+**Affected files:**
+- `backend/src/routes/inventory.js` — `GET /inventory/appointments/:appointmentId/consumption`, `POST /inventory/appointments/:id/consumption`
+- `web/src/pages/DentistAppointment.jsx` — Service Kit button + modal, note save via `PATCH /appointments/:id/note`
+
+### DentistSchedule rewrite: self-import circular dependency fixed
+The original `DentistSchedule.jsx` had `import styles from "./DentistSchedule"` which imported itself. The styles file was a plain object export; fixed by converting to `createDentistScheduleStyles()` (exported function) to match the pattern used by other web style files.
+
+**Affected files:**
+- `web/src/pages/DentistSchedule.jsx` — full rewrite
+- `web/src/styles/DentistSchedule.js` — converted to `createDentistScheduleStyles()` factory
+
+### DentistRecords connected to my-patients endpoint
+Previously a static placeholder. Now fetches from `GET /appointments/_meta/my-patients` which returns DISTINCT patient IDs from appointments where `dentist_id = current_user`, with `last_visit` and `total_appointments` computed via MAX/COUNT in the same query.
+
+**Affected files:**
+- `web/src/pages/DentistRecords.jsx`
+
+### My Schedule sidebar link added to all 6 dentist pages
+Added `fi-rr-calendar` sidebar link pointing to `/dentistSchedule` across all dentist-role pages (DentistAppointment, DentistRecords, DentistSchedule, DentistViewProfile, DentistMessages, and the dentist dashboard). Route: `/dentistSchedule`.
+
+### DentistViewProfile: Treatment History from completed appointments
+Treatment History tab now fetches `GET /appointments?patient_id=X&status=completed` and displays date, service, dentist, and note columns. Uses the same endpoint as the rest of the appointment system — no new endpoint needed. `patient_id` query param was added as a filter to the existing `GET /appointments` route, scoped so dentist role still auto-scopes to their own patients.
+
+**Affected files:**
+- `web/src/pages/DentistViewProfile.jsx`
+- `backend/src/routes/appointments.js` — `patient_id` filter added to `GET /appointments`
+
+---
+
+## Mobile — DentalTreatmentPlanScreen (2026-05-22, commit fca2790)
+
+### Dental Treatment Plan extracted to its own screen
+The Dental Treatment Plan section (FDI tooth chart + plan list) was removed from `PatientRecordsScreen` and given its own dedicated screen `DentalTreatmentPlanScreen`. Reason: PatientRecordsScreen was growing too large and the treatment plan feature is navigated to independently from the sidebar.
+
+**Affected files:**
+- `mobile/src/screens/DentalTreatmentPlanScreen.jsx` — new file (269 lines); tooth chart with status colors, plan list, tooth-tap modal, fetches via `getTreatmentPlansByPatient`
+- `mobile/src/screens/PatientRecordsScreen.jsx` — removed `getTreatmentPlansByPatient` import, removed `plans`/`loadingPlans`/`plansFetched`/`toothModal`/`selectedTooth` state, removed `fetchPlans()` function and the treatment plan JSX section
+- `mobile/src/navigation/AppNavigator.js` — `DentalTreatmentPlan` route registered
+- `mobile/src/components/AppSidebar.jsx` — Treatment Plan link added
+- `mobile/src/screens/ProfileScreen.jsx` — Treatment Plan link added to inline sidebar
+- `mobile/src/screens/MessagesListScreen.jsx` — Treatment Plan link added to inline sidebar
+
+### Styles reused from PatientRecordsScreen
+`DentalTreatmentPlanScreen` imports `s from '../styles/PatientRecordsScreen'` rather than defining new styles. Keeps visual consistency with the rest of the patient record screens and avoids duplicating the tooth box, badge, and chart styles.
+
+### Android keyboard: ScrollView wraps KeyboardAvoidingView content
+On Android, `KeyboardAvoidingView` with `behavior='padding'` (iOS default) leaves inputs hidden behind the keyboard. Fixed by switching to `behavior='height'` on Android and wrapping the inner view in a `ScrollView` with `keyboardShouldPersistTaps="handled"`. This lets the user scroll inputs into view when the keyboard appears.
+
+**Affected files (same pattern applied to all auth screens):**
+- `mobile/src/screens/LoginScreen.jsx`
+- `mobile/src/screens/RegisterScreen.jsx`
+- `mobile/src/screens/ForgotPasswordScreen.jsx`
+- `mobile/src/screens/ResetPasswordScreen.jsx`
+- `mobile/src/styles/LoginScreen.js` — added `scrollView` style, changed `inner` from `flex: 1` to `flexGrow: 1`
+- `mobile/src/styles/RegisterScreen.js`, `ForgotPasswordScreen.js`, `ResetPasswordScreen.js` — same pattern
+
+---
+
+## Web — AdminEmployeeForm + AdminEmployees (2026-05-22, commit 4ac8030)
+
+### AdminEmployeeForm: form validation before submit
+Before calling `POST /auth/staff-profiles`, the form now validates required fields per role type. Required fields per role:
+
+- **Dentist:** branchId, department, startDate, employmentType, shiftType + personal fields (firstName, lastName, birthday, gender, contact, email, homeAddress)
+- **Dental Assistant:** branchId, daDepartment, daStartDate, daEmploymentType, daShiftType + personal fields
+- **Receptionist:** branchId, startDate, employmentType, recepShiftType + personal fields
+
+Validation errors are tracked in a `formErrors` Set (field names as keys). Invalid fields get a red border and a `*` asterisk beside the label. A modal with "Please fill in all required fields" appears instead of proceeding to submit. `alert()` replaced throughout with modals (`showSuccessModal`, `showErrorModal`).
+
+**Affected files:**
+- `web/src/pages/AdminEmployeeForm.jsx`
+- `web/src/styles/AdminEmployeeForm.js` — added `workItemHeader` and `removeWorkBtn` styles
+
+### AdminEmployeeForm: branch-filtered specialization dropdown
+When the admin selects a branch, the specialization/department dropdown for dentists now calls `GET /auth/branch-services/:branchId` to load only service categories offered at that branch. Falls back to all active service categories if the branch has no dentists with assigned services yet.
+
+**New backend endpoint:** `GET /auth/branch-services/:branchId` (admin-only)
+- Joins `services → dentist_services → user_branches` filtered by `branch_id`
+- Falls back to `SELECT DISTINCT category FROM services WHERE status = 'Active'` if result is empty
+
+**Affected files:**
+- `backend/src/routes/auth.js` — new route added
+- `web/src/pages/AdminEmployeeForm.jsx` — fetches on branch select
+
+### AdminEmployeeForm: save to database now functional
+`POST /auth/staff-profiles` (existing route) now receives `branch_id` and `staffProfile` correctly for all three role types. On success, navigates to `/adminEmployees` instead of `/adminSettings` (dental assistants previously went to settings). After navigation, the employee list in `AdminEmployees.jsx` reloads to show the new row.
+
+### auth.js: formatMysqlDate helper for date serialization
+`birthday` and `start_date` columns returned by `mapStaffProfileRow` were raw MySQL Date objects, which Express serialized as ISO datetime strings (`2000-01-01T00:00:00.000Z`). The frontend date inputs expected `YYYY-MM-DD` only. Fixed by adding `formatMysqlDate(value)` helper that extracts just the date portion regardless of whether the value is a JS Date or a string.
+
+**Affected file:** `backend/src/routes/auth.js`
+
+### AdminEmployees: edit validation + error modal
+`handleSaveEmployeeChanges` now calls `validateEditFields()` before patching. Required fields for editing: `firstName`, `lastName`, `homeAddress`, `contactNumber`, `email`, `birthday`, `gender`, `startDate`, `employmentType`. Errors tracked in `editErrors` Set; invalid fields get red border and `*` on label. `showEditErrorModal` state replaced the previous `alert()` calls for both validation failures and API errors.
+
+**Affected file:** `web/src/pages/AdminEmployees.jsx`
+
+---
+
+## Web — Inventory Cross-Category Search (2026-05-22, commit 4ac8030)
+
+### Search now spans all three inventory categories simultaneously
+Previously, the search input filtered only the active tab's rows. Now when search is active (`searchValue.trim().length > 0`), a unified `crossCategoryResults` array is computed across all three categories (medicine, equipment, supplies) and a `renderCrossSearchTable()` view replaces the tabbed table. Each result row shows a "Type" badge (Dental Medicine / Dental Equipment / Dental Supplies) alongside the standard item columns.
+
+**Key implementation details:**
+- `crossCategoryResults` — `useMemo` merges filtered rows from all three categories, each tagged with `_type` and `_name`
+- `currentPages.search` — separate pagination counter for cross-search results (reset when `searchValue` changes)
+- `openEditModalCross(item, type)` — opens the existing edit modal for a cross-search result, mapping `_type` to the correct item shape
+- When search is cleared, the tabbed table view restores without losing the current tab or its page position
+- Search placeholder updated to "Search across all inventory categories"
+
+**Affected file:** `web/src/pages/InventoryPage.jsx`
+
+---
+
+## Web — Expense Input Modal in Inventory (this session)
+
+### Expense Input moved from AdminReports to InventoryPage
+The Expense Input form (purchase expenses for inventory items) was previously embedded as a sidebar `<aside>` panel inside the Revenue/Income/Expense report section in `AdminReports.jsx`. It has been moved to `InventoryPage.jsx` as a standalone modal, accessible via an "Expense Input" button beside "View Stock Summary." Button is Admin-only (hidden from `isReceptionist`).
+
+**Decision:** Inventory is the natural home for recording purchases of dental supplies, medicines, and equipment — not a financial report. The report page's job is to display aggregated numbers, not to accept new data.
+
+**Affected files:**
+- `web/src/pages/InventoryPage.jsx` — Expense Input button, Expense Input modal, Expense Confirm modal, all supporting state and helpers
+- `web/src/pages/AdminReports.jsx` — entire Expense Input `<aside>` panel removed; `RevenueReportSection` props and signature simplified; expense-related state/functions/useMemos removed; `useEffect` simplified to load branches only (not inventory rows)
+
+### Expense Input modal: branch scoping is correct end-to-end
+Branch selection in the Expense Input form (`expenseForm.branchId`) is sent as `branch_id` in the POST payload to `POST /inventory/purchase-expenses`. The backend:
+1. Parses `branchId = Number.parseInt(branch_id, 10)`
+2. Validates via `validateBranchAccess(req, branchId)` — returns 403 if user lacks access
+3. Uses `branchId` in all three category INSERT statements (medicine/equipment/supplies)
+4. Uses `branchId` for lookup (`WHERE branch_id = ?`) when checking if an item already exists
+5. Uses `branchId` in `clinic_expenses` and `audit_logs` INSERTs
+
+GET inventory routes use `inventoryBranchFilter(req, req.query.branch_id)` for correctly scoped display. No backend changes were needed — scoping was already correct.
+
+### Expense Input: datalist IDs scoped to avoid conflicts
+The expense modal in InventoryPage uses `datalist` IDs `"inv-expense-item-options"` and `"inv-expense-supplier-options"` — distinct from AdminReports which used `"expense-item-options"` and `"expense-supplier-options"`. This prevents browser autocomplete conflicts if both pages are open in different tabs.
+
+### refreshExpenseFormOptions fetches all branches (not branch-scoped)
+`refreshExpenseFormOptions` loads `listMedicines()`, `listEquipment()`, `listSupplies()`, and `api.get('/auth/branches')` without a branch filter. This is intentional for Admin — the admin selects which branch they're recording the expense for, so all branches must appear in the dropdown. The item name and supplier dropdowns are then filtered client-side by the selected branch using `expenseItemOptions` useMemo.
+
+**Affected files:**
+- `web/src/pages/InventoryPage.jsx`
+- `web/src/pages/AdminReports.jsx`
+
+---
+
+## Pending Issues (updated 2026-05-23)
+
+### API_BASE_URL still set to localhost in website JS
+`website/js/HomePage.js` and `website/js/BookAppointment.js` both have `API_BASE_URL = "http://localhost:4000"`. Must be reverted to the production URL before deploying.
+
+### Email not displayed in AdminSettings.jsx appointments table
+The online appointments table in `AdminSettings.jsx` does not show the `email` column that was added to `online_appointments_tbl`. Should be added so staff can follow up by email.
+
+### email field not validated on the backend saveAppointment route
+`POST /saveAppointment` does not check for a missing or malformed email. Frontend enforces it; consider adding server-side validation once backward compatibility is no longer required.
+
+### Push notifications require EAS dev build
+In-app notifications work fully in Expo Go. Push notifications (lock-screen banners) require an EAS development build — three lines in `mobile/src/auth/AuthContext.js` remain commented out pending the EAS build. No backend changes needed when re-enabling.
+
+### AdminEmployeeForm: Dental Assistant role type not fully wired in form UI
+The form renders a role type selector (Dentist / Dental Assistant / Receptionist) but the Dental Assistant-specific form sections (assigned dentist dropdown, DA-specific department/shift fields) are partially scaffolded. Full DA form fields should be reviewed for completeness before production use.
+
+### cron-admin endpoints should be removed or gated before production
+`POST /api/cron-admin/run-appointment-reminders` and `POST /api/cron-admin/run-recall-reminders` are admin-only but were added for development convenience. Should be removed or moved behind an env-flag before production deployment.
+
+---
+
+## Web — AdminEmployees View/Edit Modal + AdminEmployeeForm Section 3 Audit & Fix (2026-05-23)
+
+### AdminEmployees modal: Section 3 now shows role-specific fields
+The View/Edit employee modal in `AdminEmployees.jsx` was missing two Section 3 fields that exist in the creation form:
+- **Dentist:** "Specialization / Department" — the branch-specific category selected during registration
+- **Dental Assistant:** "Department" + "Assigned Dentist"
+
+Fixed by adding a role-conditional row in the modal's Section 3, right after the Start Date + Assigned Branch row. Uses `modalField('Specialization / Department', 'specialization', ...)` for Dentist and `modalField('Department', 'specialization', ...)` + `modalField('Assigned Dentist', 'assignedDentist')` for Dental Assistant. Receptionist required no change — its Section 3 fields were already complete. No existing fields, routes, API calls, or modal styling were touched.
+
+**Affected file:** `web/src/pages/AdminEmployees.jsx`
+
+### Section 3 audit: what saves correctly vs what was missing
+A full audit of `AdminEmployeeForm.jsx → POST /auth/staff → DB` confirmed:
+
+**All `staff_profile` columns save correctly end-to-end:** `branch_id`, `specialization`, `start_date`, `employment_type`, `shift_type`, `work_days` (array → comma-joined string), `work_start_time`, `work_end_time`. Branch also correctly populates `users.home_branch_id` and `user_branches`.
+
+**Two critical gaps identified — data collected by the form but never written to secondary tables:**
+
+1. **`dentist_schedules` not populated.** `POST /auth/staff` saved work days and times to `staff_profile` but never inserted rows into `dentist_schedules`. New dentists created via the form were invisible to the appointment scheduler.
+
+2. **`dentist_services` not populated.** The Section 3 "Specialization / Department" dropdown selects a `services.category` value. All services under that category should be linked to the new dentist in `dentist_services`, but the backend did nothing with that value after storing it in `staff_profile.specialization`.
+
+**Minor inconsistency (non-blocking):** `GET /auth/staff-profiles` (list endpoint) does not JOIN `dentist_services`, so `serviceNames` is always `''` in the employee list view. `fetchStaffProfileBy` (used for individual/update endpoints) does include the JOIN. Noted but not fixed in this session.
+
+### Section 3 gaps fixed: dentist_schedules and dentist_services now populated on create
+Two-part fix: frontend sends `department` as its own field; backend uses it after the staff_profile INSERT.
+
+**Frontend change (`AdminEmployeeForm.jsx`):** Added `department: isDentist ? (payload.department || null) : null` to the `POST /auth/staff` payload. `payload.department` is the form field name for the Section 3 dropdown — kept separate from `staffProfile.specialization` (which merges Section 2 free-text specialization and Section 3 department). Section 2's `specialization` field is not touched and continues to save to `staff_profile.specialization` only.
+
+**Why `department` is sent separately and not reused from `staffProfile.specialization`:** `staffProfile.specialization` is built as `payload.specialization || payload.department` — if the admin fills in the Section 2 free-text specialization field, that value takes priority and the department category name is lost. Sending `department` as its own top-level field guarantees the backend always receives the exact `services.category` string needed for the `dentist_services` lookup.
+
+**Backend change (`auth.js` — `POST /auth/staff`):** After the `staff_profile` INSERT, a `role === 'dentist'` block runs two operations:
+
+1. **`dentist_schedules`:** Converts the `work_days` array (day names like `"Monday"`) to weekday integers using a `DAY_TO_WEEKDAY` map (`Sunday=0, Monday=1 … Saturday=6`) matching the seed's convention. Inserts one row per selected day with `work_start_time` and `work_end_time`. Only fires when at least one day and both times are present.
+
+2. **`dentist_services`:** Queries `SELECT id FROM services WHERE category = ? AND status = 'Active'` using `department`. Inserts each result via `INSERT IGNORE INTO dentist_services` — safe if a row already exists.
+
+Receptionist creation is unaffected — `department` is `null` for that path and the entire dentist-only block is skipped.
+
+**Affected files:**
+- `web/src/pages/AdminEmployeeForm.jsx` — `department` added to `/auth/staff` payload
+- `backend/src/routes/auth.js` — `department` destructured from `req.body`; `dentist_schedules` and `dentist_services` inserts added after staff_profile INSERT in `POST /staff`
+
 
 
 

@@ -1,3 +1,43 @@
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS
+  appointment_consumption,
+  schedule_requests,
+  service_kit_items,
+  service_kits,
+  clinic_expenses,
+  payments,
+  patient_feedback,
+  treatments,
+  treatment_plans,
+  appointments,
+  dentist_schedules,
+  dentist_services,
+  services,
+  messages,
+  notifications,
+  supplies,
+  medicines,
+  equipment,
+  audit_logs,
+  refresh_tokens,
+  access_grants,
+  user_branches,
+  otp_codes,
+  pending_registrations,
+  patient_profile,
+  staff_previous_work,
+  staff_profile,
+  user_presence,
+  online_appointments_tbl,
+  online_inquiries_tbl,
+  website_content,
+  website_faqs,
+  website_services,
+  website_announcements,
+  users,
+  branches;
+SET FOREIGN_KEY_CHECKS = 1;
+
 CREATE TABLE branches (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -38,14 +78,10 @@ CREATE TABLE user_presence (
 CREATE TABLE patient_profile (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL UNIQUE,
-
-  -- Required fields for a complete patient record
   full_name VARCHAR(100) NOT NULL,
   email VARCHAR(150) NOT NULL,
   contact_number VARCHAR(30) NOT NULL,
   address VARCHAR(255) NOT NULL,
-
-  -- Optional patient details filled from the mobile profile form
   birthday DATE NULL,
   age INT NULL,
   nationality VARCHAR(100) NULL,
@@ -58,116 +94,55 @@ CREATE TABLE patient_profile (
   allergies TEXT NULL,
   medications TEXT NULL,
   dental_history TEXT NULL,
-
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
   INDEX idx_patient_profile_user_id (user_id),
   INDEX idx_patient_profile_email (email)
 );
 
--- =========================================================
--- STAFF PROFILE TABLE
--- Stores employee personal and work information for:
--- Dentist, Dental Assistant, Receptionist, Admin
--- =========================================================
-
-CREATE TABLE IF NOT EXISTS staff_profile (
+CREATE TABLE staff_profile (
   id INT AUTO_INCREMENT PRIMARY KEY,
-
-  -- Nullable because some staff may not have web login accounts
-  -- Example: Dental Assistant can be record-only
   user_id INT NULL,
-
-  -- Branch where the staff is assigned
   branch_id INT NULL,
-
-  -- Employee category
-  staff_type ENUM(
-    'Dentist',
-    'Dental Assistant',
-    'Receptionist',
-    'Admin'
-  ) NOT NULL,
-
-  -- Personal Information
+  staff_type ENUM('Dentist','Dental Assistant','Receptionist','Admin') NOT NULL,
   first_name VARCHAR(100) NOT NULL,
   middle_name VARCHAR(100) NULL,
   last_name VARCHAR(100) NOT NULL,
   nickname VARCHAR(100) NULL,
   suffix VARCHAR(20) NULL,
-
   birthday DATE NULL,
   age INT NULL,
-
   gender ENUM('Female', 'Male') NULL,
   civil_status VARCHAR(50) NULL,
   religion VARCHAR(100) NULL,
   nationality VARCHAR(100) NULL,
-
   home_address VARCHAR(255) NULL,
   contact_number VARCHAR(30) NULL,
   email VARCHAR(150) NULL,
-
-  -- Professional / Job Information
   position VARCHAR(100) NULL,
   specialization VARCHAR(150) NULL,
+  work_department VARCHAR(150) NULL,
   medical_degree VARCHAR(150) NULL,
   license_number VARCHAR(100) NULL,
   years_experience INT DEFAULT 0,
   skills TEXT NULL,
-
-  -- Work Details
   start_date DATE NULL,
-
-  employment_type ENUM(
-    'Full-Time',
-    'Part-Time',
-    'Contract',
-    'Intern'
-  ) NULL,
-
+  employment_type ENUM('Full-Time','Part-Time','Contract','Intern') NULL,
   shift_type VARCHAR(100) NULL,
-
-  -- Example value:
-  -- Monday,Tuesday,Wednesday
   work_days VARCHAR(255) NULL,
-
   work_start_time TIME NULL,
   work_end_time TIME NULL,
-
-  -- For dental assistant assigned to a dentist
   assigned_dentist_profile_id INT NULL,
-
-  -- Status
-  status ENUM(
-    'Active',
-    'Inactive',
-    'Archived'
-  ) NOT NULL DEFAULT 'Active',
-
+  status ENUM('Active','Inactive','Archived') NOT NULL DEFAULT 'Active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
   CONSTRAINT fk_staff_profile_user
-    FOREIGN KEY (user_id)
-    REFERENCES users(id)
-    ON DELETE SET NULL
-    ON UPDATE CASCADE,
-
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_staff_profile_branch
-    FOREIGN KEY (branch_id)
-    REFERENCES branches(id)
-    ON DELETE SET NULL
-    ON UPDATE CASCADE,
-
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_staff_profile_assigned_dentist
-    FOREIGN KEY (assigned_dentist_profile_id)
-    REFERENCES staff_profile(id)
-    ON DELETE SET NULL
-    ON UPDATE CASCADE,
-
+    FOREIGN KEY (assigned_dentist_profile_id) REFERENCES staff_profile(id) ON DELETE SET NULL ON UPDATE CASCADE,
   INDEX idx_staff_profile_user_id (user_id),
   INDEX idx_staff_profile_branch_id (branch_id),
   INDEX idx_staff_profile_staff_type (staff_type),
@@ -175,38 +150,20 @@ CREATE TABLE IF NOT EXISTS staff_profile (
   INDEX idx_staff_profile_assigned_dentist (assigned_dentist_profile_id)
 );
 
--- =========================================================
--- STAFF PREVIOUS WORK TABLE
--- Stores multiple previous work records per staff member
--- =========================================================
-
-CREATE TABLE IF NOT EXISTS staff_previous_work (
+CREATE TABLE staff_previous_work (
   id INT AUTO_INCREMENT PRIMARY KEY,
-
   staff_profile_id INT NOT NULL,
-
   company_name VARCHAR(150) NULL,
   company_address VARCHAR(255) NULL,
-
   position VARCHAR(100) NULL,
   specialization VARCHAR(150) NULL,
-
-  -- For input type="month", save as first day of month
-  -- Example: 2024-05 becomes 2024-05-01
   start_month DATE NULL,
   end_month DATE NULL,
-
   responsibilities TEXT NULL,
   reason_for_leaving TEXT NULL,
-
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT fk_staff_previous_work_profile
-    FOREIGN KEY (staff_profile_id)
-    REFERENCES staff_profile(id)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
-
+    FOREIGN KEY (staff_profile_id) REFERENCES staff_profile(id) ON DELETE CASCADE ON UPDATE CASCADE,
   INDEX idx_staff_previous_work_profile_id (staff_profile_id)
 );
 
@@ -293,9 +250,6 @@ CREATE TABLE appointments (
   FOREIGN KEY (dentist_id) REFERENCES users(id),
   FOREIGN KEY (service_id) REFERENCES services(id)
 );
--- Migration: ALTER TABLE appointments ADD COLUMN IF NOT EXISTS dentist_note TEXT NULL;
--- Migration: ALTER TABLE appointments ADD COLUMN IF NOT EXISTS cancellation_reason TEXT NULL;
--- Migration: ALTER TABLE appointments ADD COLUMN IF NOT EXISTS cancelled_by VARCHAR(30) NULL;
 
 CREATE TABLE treatments (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -320,10 +274,8 @@ CREATE TABLE treatment_plans (
   date_completed DATE NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
   FOREIGN KEY (patient_id) REFERENCES users(id),
   FOREIGN KEY (dentist_id) REFERENCES users(id),
-
   INDEX idx_treatment_plans_patient (patient_id),
   INDEX idx_treatment_plans_dentist (dentist_id),
   INDEX idx_treatment_plans_tooth (patient_id, tooth_number),
@@ -414,7 +366,6 @@ CREATE TABLE messages (
   FOREIGN KEY (sender_id) REFERENCES users(id),
   FOREIGN KEY (receiver_id) REFERENCES users(id)
 );
--- Migration: ALTER TABLE messages ADD COLUMN read_at TIMESTAMP NULL DEFAULT NULL AFTER is_read;
 
 CREATE TABLE notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -562,8 +513,6 @@ CREATE TABLE audit_logs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
--- Migration: ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS device_browser VARCHAR(120) NULL AFTER action;
--- Migration: ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS log_status ENUM('success','failed') NOT NULL DEFAULT 'success' AFTER device_browser;
 
 CREATE TABLE refresh_tokens (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -593,8 +542,7 @@ CREATE TABLE pending_registrations (
   INDEX idx_email_role (email, intended_role)
 );
 
--- Website public booking and inquiry tables (no user account required)
-CREATE TABLE IF NOT EXISTS online_appointments_tbl (
+CREATE TABLE online_appointments_tbl (
   id INT AUTO_INCREMENT PRIMARY KEY,
   appointment_date DATE NOT NULL,
   appointment_time TIME NOT NULL,
@@ -610,7 +558,7 @@ CREATE TABLE IF NOT EXISTS online_appointments_tbl (
   INDEX idx_online_appt_status (status)
 );
 
-CREATE TABLE IF NOT EXISTS online_inquiries_tbl (
+CREATE TABLE online_inquiries_tbl (
   id INT AUTO_INCREMENT PRIMARY KEY,
   full_name VARCHAR(150) NOT NULL,
   phone_number VARCHAR(30) NOT NULL,
@@ -620,3 +568,42 @@ CREATE TABLE IF NOT EXISTS online_inquiries_tbl (
   INDEX idx_online_inquiry_phone (phone_number)
 );
 
+CREATE TABLE website_content (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  section VARCHAR(50) NOT NULL,
+  field_key VARCHAR(100) NOT NULL,
+  field_value TEXT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_wc_section_key (section, field_key)
+);
+
+CREATE TABLE website_faqs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  status ENUM('active','hidden') NOT NULL DEFAULT 'active',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE website_services (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  image_path VARCHAR(255) NULL,
+  description TEXT NULL,
+  slug VARCHAR(100) NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  status ENUM('active','hidden') NOT NULL DEFAULT 'active',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE website_announcements (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  start_date DATE NULL,
+  end_date DATE NULL,
+  status ENUM('active','hidden') NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
