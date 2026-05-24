@@ -299,7 +299,8 @@ document.addEventListener("DOMContentLoaded", function () {
     async function loadServices() {
         try {
             // Use centralized clinic services table (not website CMS services)
-            const res = await fetch(API_BASE_URL + "/api/website/clinic-services");
+            // Avoid conditional-cache 304 responses (no body) which break res.json()
+            const res = await fetch(API_BASE_URL + "/api/website/clinic-services", { cache: "no-store" });
             if (!res.ok) return;
             const data = await res.json();
             const list = data.services || [];
