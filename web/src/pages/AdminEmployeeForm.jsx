@@ -331,11 +331,7 @@ export default function AdminEmployeeForm() {
 
   const dentistOptions = dentists.length > 0 ? dentists : [];
   const specializationOptions =
-    selectedBranchId && branchSpecializationOptions.length > 0
-      ? branchSpecializationOptions
-      : serviceCategories.length > 0
-        ? serviceCategories
-        : DENTIST_SPECIALIZATIONS;
+    serviceCategories.length > 0 ? serviceCategories : DENTIST_SPECIALIZATIONS;
 
   useEffect(() => {
     function handleResize() { setScreenWidth(window.innerWidth); }
@@ -416,24 +412,8 @@ export default function AdminEmployeeForm() {
   }, [employeeType]);
 
   useEffect(() => {
-    setSelectedSpecialization('');
-    if (!selectedBranchId) {
-      setBranchSpecializationOptions([]);
-      return;
-    }
-    let cancelled = false;
-    setSpecializationsLoading(true);
-    api.get(`/auth/branch-services/${selectedBranchId}`)
-      .then((res) => {
-        if (!cancelled) setBranchSpecializationOptions(res.data.categories || []);
-      })
-      .catch(() => {
-        if (!cancelled) setBranchSpecializationOptions([]);
-      })
-      .finally(() => {
-        if (!cancelled) setSpecializationsLoading(false);
-      });
-    return () => { cancelled = true; };
+    setBranchSpecializationOptions([]);
+    setSpecializationsLoading(false);
   }, [selectedBranchId]);
 
   function calculateAge(birthdayStr) {
