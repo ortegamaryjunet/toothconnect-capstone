@@ -1,10 +1,10 @@
 const API_BASE_URL = (() => {
+    const PROD_API = "https://api.smileempressdentalhub.com";
     try {
         const params = new URLSearchParams(window.location.search || "");
         const override = params.get("apiBase") || window.__TOOTHCONNECT_API_BASE_URL__;
         if (override) return String(override).replace(/\/+$/, "");
 
-        const PROD_API = "https://api.smileempressdentalhub.com";
         const hostname = String(window.location.hostname || "").toLowerCase();
         const port = String(window.location.port || "");
 
