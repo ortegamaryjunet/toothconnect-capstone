@@ -260,15 +260,16 @@
 
     receiptTools: {
       display: 'flex',
-      alignItems: isMobile ? 'stretch' : 'center',
+      alignItems: isSmallScreen ? 'stretch' : 'center',
       justifyContent: 'space-between',
       gap: 14,
       marginBottom: 20,
-      flexDirection: isMobile ? 'column' : 'row',
+      flexDirection: isSmallScreen ? 'column' : 'row',
     },
 
     searchBox: {
       flex: 1,
+      minWidth: 0,
       minHeight: 48,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
@@ -296,7 +297,7 @@
     },
 
     statusFilter: {
-      width: isMobile ? '100%' : 210,
+      width: isSmallScreen ? '100%' : 210,
       height: 48,
       border: '1px solid #e5e7eb',
       borderRadius: 16,
