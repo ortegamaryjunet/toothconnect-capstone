@@ -177,9 +177,9 @@
 
     receiptContent: {
       padding: isVerySmall
-        ? '18px 14px 22px'
+        ? '88px 14px 22px'
         : isMobile
-          ? '22px 18px 26px'
+          ? '100px 18px 26px'
           : isTablet
             ? '98px 20px 26px'
             : isSmallScreen
