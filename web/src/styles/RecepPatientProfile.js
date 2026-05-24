@@ -4,7 +4,7 @@ const createRecepPatientProfileStyles = ({
   isVerySmall = false,
 } = {}) => {
   const topHeaderHeight = 64;
-  const sidebarWidth = isMobile ? 78 : 240;
+  const sidebarWidth = isVerySmall ? 70 : isMobile ? 80 : 250;
 
   return {
     page: {

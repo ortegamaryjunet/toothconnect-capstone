@@ -4,7 +4,7 @@
   isSmallScreen = false,
   isTablet = false,
 } = {}) => {
-  const sidebarWidth = isMobile ? 0 : isTablet ? 220 : isSmallScreen ? 230 : 250;
+  const sidebarWidth = isVerySmall ? 70 : isMobile ? 80 : isTablet ? 220 : isSmallScreen ? 230 : 250;
 
   return {
     page: {
@@ -56,7 +56,7 @@
       display: 'flex',
       alignItems: 'center',
       justifyContent: isMobile ? 'center' : 'flex-start',
-      gap: 12,
+      gap: isMobile ? 0 : 12,
       padding: '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
@@ -71,13 +71,13 @@
     },
 
     menuItemIcon: {
-      marginRight: 12,
+      marginRight: isMobile ? 0 : 12,
       fontSize: 18,
       verticalAlign: 'middle',
     },
 
     menuItemText: {
-      display: 'inline',
+      display: isMobile ? 'none' : 'inline',
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
     },
@@ -260,15 +260,16 @@
 
     receiptTools: {
       display: 'flex',
-      alignItems: isMobile ? 'stretch' : 'center',
+      alignItems: isSmallScreen ? 'stretch' : 'center',
       justifyContent: 'space-between',
       gap: 14,
       marginBottom: 20,
-      flexDirection: isMobile ? 'column' : 'row',
+      flexDirection: isSmallScreen ? 'column' : 'row',
     },
 
     searchBox: {
       flex: 1,
+      minWidth: 0,
       minHeight: 48,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
@@ -296,7 +297,7 @@
     },
 
     statusFilter: {
-      width: isMobile ? '100%' : 210,
+      width: isSmallScreen ? '100%' : 210,
       height: 48,
       border: '1px solid #e5e7eb',
       borderRadius: 16,

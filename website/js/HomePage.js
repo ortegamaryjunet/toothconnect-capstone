@@ -134,25 +134,70 @@ function loadWebsiteServices() {
             var grid = document.getElementById("serviceGrid");
             if (!grid) return;
 
+            var imageByName = {
+                "Deep Scaling (Dental Cleaning)": "./images/deep-scaling.webp",
+                "Deep Scaling": "./images/deep-scaling.webp",
+                "Smile Makeovers": "./images/smile-makeover.jpg",
+                "Smile Make-Overs": "./images/smile-makeover.jpg",
+                "Teeth Whitening": "./images/teeth-whitening.jpg",
+                "Veneers (Emax / Zirconia)": "./images/veneers.jpg",
+                "Veneers": "./images/veneers.jpg",
+                "Porcelain Jacket Crowns (PFM or Zirconia)": "./images/crowns.jpeg",
+                "Porcelain Jacket Crowns": "./images/crowns.jpeg",
+                "Porcelain Crowns": "./images/crowns.jpeg",
+                "Complete and Removable Partial Dentures": "./images/dentures.jpg",
+                "Dentures": "./images/dentures.jpg",
+                "Root Canal Treatment": "./images/root-canal.jpg",
+                "Braces": "./images/braces.jpg",
+                "Clear Aligners": "./images/clear-aligner.webp",
+                "Dental Implants": "./images/dental-implant.jpg"
+            };
+
+            var slugByName = {
+                "Deep Scaling (Dental Cleaning)": "scaling",
+                "Deep Scaling": "scaling",
+                "Smile Makeovers": "smilemakeovers",
+                "Smile Make-Overs": "smilemakeovers",
+                "Teeth Whitening": "whitening",
+                "Veneers (Emax / Zirconia)": "veneers",
+                "Veneers": "veneers",
+                "Porcelain Jacket Crowns (PFM or Zirconia)": "crowns",
+                "Porcelain Jacket Crowns": "crowns",
+                "Porcelain Crowns": "crowns",
+                "Complete and Removable Partial Dentures": "dentures",
+                "Dentures": "dentures",
+                "Root Canal Treatment": "rootcanal",
+                "Braces": "braces",
+                "Clear Aligners": "aligners",
+                "Dental Implants": "implants"
+            };
+
             // Remove existing static modals for services
             document.querySelectorAll(".service-modal").forEach(function(m) { m.remove(); });
 
             grid.innerHTML = services.map(function(svc, i) {
                 var modalId = "modal-svc-" + svc.id;
+                var fallbackImage = imageByName[String(svc.name || '').trim()] || "./images/clinic-logo.jpg";
+                var imageSrc = String(svc.image_path || '').trim() || fallbackImage;
                 return '<div class="service-card' + (i < 3 ? ' show' : '') + (i === 2 ? ' active' : '') + '" data-modal="' + modalId + '">' +
-                    '<img src="' + escapeHtml(svc.image_path || '') + '" alt="' + escapeHtml(svc.name) + '">' +
+                    '<img src="' + escapeHtml(imageSrc) + '" alt="' + escapeHtml(svc.name) + '">' +
                     '<span>' + escapeHtml(svc.name) + '</span>' +
                     '</div>';
             }).join('');
 
             var modalsHtml = services.map(function(svc) {
                 var modalId = "modal-svc-" + svc.id;
-                var readMoreHref = svc.slug ? './Services.html?service=' + encodeURIComponent(svc.slug) : './Services.html';
+                var normalizedName = String(svc.name || '').trim();
+                var fallbackSlug = slugByName[normalizedName] || "";
+                var finalSlug = svc.slug || fallbackSlug;
+                var fallbackImage = imageByName[normalizedName] || "./images/clinic-logo.jpg";
+                var imageSrc = String(svc.image_path || '').trim() || fallbackImage;
+                var readMoreHref = finalSlug ? './Services.html?service=' + encodeURIComponent(finalSlug) : './Services.html';
                 return '<div class="service-modal" id="' + modalId + '">' +
                     '<div class="service-modal-card">' +
                     '<button type="button" class="modal-close" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>' +
                     '<h2>' + escapeHtml(svc.name) + '</h2>' +
-                    '<div class="modal-img-box"><img src="' + escapeHtml(svc.image_path || '') + '" alt="' + escapeHtml(svc.name) + '"></div>' +
+                    '<div class="modal-img-box"><img src="' + escapeHtml(imageSrc) + '" alt="' + escapeHtml(svc.name) + '"></div>' +
                     '<p>' + escapeHtml(svc.description || '') + '</p>' +
                     '<a href="' + readMoreHref + '" class="quote-btn">Read More</a>' +
                     '</div></div>';

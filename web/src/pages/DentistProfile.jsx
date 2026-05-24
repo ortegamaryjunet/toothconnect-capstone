@@ -30,6 +30,8 @@ const initialProfile = {
   yearsOfExperience: 'N/A',
 };
 
+const SUFFIX_OPTIONS = ['Jr', 'Sr', 'II', 'III', 'IV'];
+
 export default function DentistProfile() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -68,6 +70,10 @@ export default function DentistProfile() {
 
   const avatarLetter =
     String(profile.fullName || 'D').trim().charAt(0).toUpperCase() || 'D';
+
+  const disabledInputStyle = useMemo(() => {
+    return { ...styles.formInput, opacity: 0.65, cursor: 'not-allowed' };
+  }, [styles.formInput]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -649,16 +655,21 @@ export default function DentistProfile() {
                 </FormGroup>
 
                 <FormGroup styles={styles} label="Suffix">
-                  <input
-                    type="text"
+                  <select
                     name="suffix"
-                    placeholder="N/A"
-                    value={editForm.suffix}
+                    value={String(editForm.suffix || '')}
                     onChange={(event) =>
                       handleEditChange('suffix', event.target.value)
                     }
                     style={styles.formInput}
-                  />
+                  >
+                    <option value="">None</option>
+                    {SUFFIX_OPTIONS.map((suffix) => (
+                      <option key={suffix} value={suffix}>
+                        {suffix}
+                      </option>
+                    ))}
+                  </select>
                 </FormGroup>
 
                 <FormGroup styles={styles} label="Birthday">
@@ -740,7 +751,8 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('medicalDegree', event.target.value)
                     }
-                    style={styles.formInput}
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
 
@@ -755,7 +767,8 @@ export default function DentistProfile() {
                         event.target.value
                       )
                     }
-                    style={styles.formInput}
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
 
@@ -767,7 +780,8 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('specialization', event.target.value)
                     }
-                    style={styles.formInput}
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
 
@@ -779,7 +793,8 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('yearsOfExperience', event.target.value)
                     }
-                    style={styles.formInput}
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
 
@@ -791,7 +806,8 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('startDate', event.target.value)
                     }
-                    style={styles.formInput}
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
 
@@ -803,7 +819,8 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('employmentType', event.target.value)
                     }
-                    style={styles.formInput}
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
 
@@ -815,7 +832,8 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('shiftType', event.target.value)
                     }
-                    style={styles.formInput}
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
 
@@ -827,7 +845,8 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('workHours', event.target.value)
                     }
-                    style={styles.formInput}
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
 
@@ -839,7 +858,8 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('workScheduleDays', event.target.value)
                     }
-                    style={styles.formInput}
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
               </div>
