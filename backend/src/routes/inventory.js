@@ -148,7 +148,7 @@ async function createInventoryStatusNotifications(executor, previousRow, nextRow
   );
 
   if (!admins.length) {
-    return;
+    // Still continue for branch receptionists even if there are no admins.
   }
 
   const statusLabel =
@@ -159,18 +159,46 @@ async function createInventoryStatusNotifications(executor, previousRow, nextRow
     `${nextRow.categoryLabel} "${nextRow.item_name}" at ${nextRow.branch_name} ` +
     `is now ${statusLabel.toLowerCase()} (${Number(nextRow.quantity || 0)} remaining).`;
 
-  await executor.query(
-    `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
-     VALUES ${admins.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`,
-    admins.flatMap((admin) => [
-      admin.id,
-      nextStatus,
-      title,
-      body,
-      'inventory',
-      nextRow.id,
-    ])
+  if (admins.length > 0) {
+    await executor.query(
+      `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
+       VALUES ${admins.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`,
+      admins.flatMap((admin) => [
+        admin.id,
+        nextStatus,
+        title,
+        body,
+        'inventory',
+        nextRow.id,
+      ])
+    );
+  }
+
+  // Branch-scoped receptionists: only notify receptionists assigned to the inventory item's branch.
+  const [receptionists] = await executor.query(
+    `SELECT DISTINCT u.id
+     FROM users u
+     LEFT JOIN user_branches ub ON ub.user_id = u.id
+     WHERE u.role = 'receptionist'
+       AND u.status = 'Active'
+       AND (u.home_branch_id = ? OR ub.branch_id = ?)`,
+    [nextRow.branch_id, nextRow.branch_id]
   );
+
+  if (receptionists.length > 0) {
+    await executor.query(
+      `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
+       VALUES ${receptionists.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`,
+      receptionists.flatMap((r) => [
+        r.id,
+        nextStatus,
+        title,
+        body,
+        'inventory',
+        nextRow.id,
+      ])
+    );
+  }
 }
 
 function validateBranchAccess(req, branchId) {
