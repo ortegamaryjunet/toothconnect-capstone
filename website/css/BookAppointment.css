@@ -575,24 +575,6 @@ body {
     .hero-card h1 {
         font-size: 46px;
     }
-
-    .booking-layout {
-        grid-template-columns: 1fr;
-    }
-
-    .form-card {
-        grid-column: 1;
-        grid-row: 1;
-    }
-
-    .calendar-card {
-        grid-column: 1;
-        grid-row: 2;
-    }
-
-    .form-card {
-        max-width: 100%;
-    }
 }
 
 @media (max-width: 860px) {
@@ -609,7 +591,19 @@ body {
     }
 
     .booking-layout {
+        grid-template-columns: 1fr;
         gap: 30px;
+    }
+
+    .form-card {
+        grid-column: 1;
+        grid-row: 1;
+        max-width: 100%;
+    }
+
+    .calendar-card {
+        grid-column: 1;
+        grid-row: 2;
     }
 
     .time-slots {
