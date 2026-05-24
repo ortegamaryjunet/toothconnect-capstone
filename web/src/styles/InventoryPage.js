@@ -2,8 +2,9 @@
   isMobile = false,
   isTablet = false,
   isSmallScreen = false,
+  desktopSidebarWidth = 230,
 } = {}) => {
-  const sidebarWidth = isMobile ? 80 : 230;
+  const sidebarWidth = isMobile ? 80 : desktopSidebarWidth;
 
   return {
     page: {
