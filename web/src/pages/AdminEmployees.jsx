@@ -573,10 +573,16 @@ export default function AdminEmployees() {
     return (
       <div style={styles.employeeModalField}>
         <label style={styles.employeeModalLabel}>Branch Schedule</label>
-        <div style={{ fontSize: 13, color: '#3f382d', lineHeight: 1.6 }}>
-          {formatted.map((line) => (
-            <div key={line}>{line}</div>
-          ))}
+        <div
+          style={{
+            ...styles.employeeModalInput,
+            ...styles.employeeModalInputReadOnly,
+            whiteSpace: 'pre-line',
+            lineHeight: 1.7,
+            padding: '12px 14px',
+          }}
+        >
+          {formatted.join('\n')}
         </div>
       </div>
     );

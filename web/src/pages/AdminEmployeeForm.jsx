@@ -177,14 +177,21 @@ function GenderFieldRaw({ name, hasError = false, styles }) {
   );
 }
 
-function ScheduleFieldRaw({ name, dayOptions, styles }) {
+function ScheduleFieldRaw({ name, dayOptions, styles, checkedValues = null, onToggle = null }) {
   return (
     <div style={styles.field}>
       <label style={styles.label}>Work Schedule Days</label>
       <div style={styles.scheduleGrid}>
         {dayOptions.map((day) => (
           <label key={day} style={styles.checkboxLabel}>
-            <input type="checkbox" name={name} value={day} style={styles.checkboxInput} />
+            <input
+              type="checkbox"
+              name={name}
+              value={day}
+              style={styles.checkboxInput}
+              checked={Array.isArray(checkedValues) ? checkedValues.includes(day) : undefined}
+              onChange={onToggle ? (e) => onToggle(day, e.target.checked) : undefined}
+            />
             {day}
           </label>
         ))}
@@ -286,6 +293,7 @@ export default function AdminEmployeeForm() {
   const [errorModalMessage, setErrorModalMessage] = useState('');
   const [accessEmail, setAccessEmail] = useState('');
   const [enablePerDayBranch, setEnablePerDayBranch] = useState(false);
+  const [dentistWorkDays, setDentistWorkDays] = useState([]);
 
   const [ageValues, setAgeValues] = useState({
     dentist: '',
@@ -404,6 +412,7 @@ export default function AdminEmployeeForm() {
     setSelectedBranchId('');
     setSelectedSpecialization('');
     setEnablePerDayBranch(false);
+    setDentistWorkDays([]);
   }, [employeeType]);
 
   useEffect(() => {
@@ -571,7 +580,7 @@ export default function AdminEmployeeForm() {
       const lastName = payload[`${prefix}LastName`] || '';
       const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
       const branchId = Number(selectedBranchId);
-      const workDays = formData.getAll('schedule[]');
+      const workDays = isDentist ? dentistWorkDays : formData.getAll('schedule[]');
       const scheduleEntries = [];
 
       if (isDentist && enablePerDayBranch) {
@@ -933,7 +942,20 @@ export default function AdminEmployeeForm() {
               <SelectFieldRaw label="Shift Type" name="shiftType" placeholder="Select Type" options={['By Appointment']} hasError={formErrors.has('shiftType')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>
-              <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
+              <ScheduleFieldRaw
+                name="schedule[]"
+                dayOptions={DAY_OPTIONS}
+                styles={styles}
+                checkedValues={dentistWorkDays}
+                onToggle={(day, checked) => {
+                  setDentistWorkDays((prev) => {
+                    const next = new Set(Array.isArray(prev) ? prev : []);
+                    if (checked) next.add(day);
+                    else next.delete(day);
+                    return Array.from(next);
+                  });
+                }}
+              />
               <TimeRangeFieldRaw startName="docWorkStart" endName="docWorkEnd" styles={styles} />
             </div>
 
@@ -967,7 +989,7 @@ export default function AdminEmployeeForm() {
                         name={`schedule_branch_${day}`}
                         defaultValue={selectedBranchId || ''}
                         style={styles.input}
-                        disabled={!selectedBranchId}
+                        disabled={!selectedBranchId || !dentistWorkDays.includes(day)}
                       >
                         <option value="" disabled>
                           Select branch
