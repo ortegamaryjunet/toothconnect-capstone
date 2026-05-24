@@ -736,10 +736,13 @@ section {
 }
 
 .benefit-img img {
-    height: 560px;
+    width: 100%;
+    max-width: 100%;
+    height: clamp(260px, 42vw, 560px);
     object-fit: cover;
     border-radius: 42px;
     box-shadow: var(--shadow);
+    display: block;
 }
 
 .benefit-content p {
