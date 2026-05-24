@@ -131,6 +131,7 @@ async function listClinicServices() {
     `SELECT id, name, duration_min, price
      FROM services
      WHERE status = 'Active'
+       AND LOWER(name) <> 'consultation'
      ORDER BY name ASC`
   );
   return rows;
