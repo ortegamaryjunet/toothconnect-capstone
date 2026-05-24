@@ -57,18 +57,19 @@ export default function DentistSchedule() {
   const styles = createDentistScheduleStyles({ isMobile, isTablet, isSmallScreen });
 
   const [weeklySchedule, setWeeklySchedule] = useState([
-    { day: 'Sunday', status: 'Off', time: '-' },
-    { day: 'Monday', status: 'Off', time: '-' },
-    { day: 'Tuesday', status: 'Off', time: '-' },
-    { day: 'Wednesday', status: 'Off', time: '-' },
-    { day: 'Thursday', status: 'Off', time: '-' },
-    { day: 'Friday', status: 'Off', time: '-' },
-    { day: 'Saturday', status: 'Off', time: '-' },
+    { day: 'Sunday', status: 'Off', time: '-', branchAddress: null },
+    { day: 'Monday', status: 'Off', time: '-', branchAddress: null },
+    { day: 'Tuesday', status: 'Off', time: '-', branchAddress: null },
+    { day: 'Wednesday', status: 'Off', time: '-', branchAddress: null },
+    { day: 'Thursday', status: 'Off', time: '-', branchAddress: null },
+    { day: 'Friday', status: 'Off', time: '-', branchAddress: null },
+    { day: 'Saturday', status: 'Off', time: '-', branchAddress: null },
   ]);
   const [scheduleInfo, setScheduleInfo] = useState({
     branchName: '-',
     workingDays: '-',
     workingTime: '-',
+    todayBranchAddress: 'Off',
   });
   const [requestHistory, setRequestHistory] = useState([]);
   const [requestLoading, setRequestLoading] = useState(false);
@@ -103,6 +104,7 @@ export default function DentistSchedule() {
           branchName: d.branchName || '-',
           workingDays: d.workingDays || '-',
           workingTime: d.workingTime || '-',
+          todayBranchAddress: d.todayBranchAddress || 'Off',
         });
       })
       .catch(() => {});
@@ -317,6 +319,11 @@ export default function DentistSchedule() {
               <p style={styles.infoLabel}>Current Branch</p>
               <h3 style={styles.infoValue}>{scheduleInfo.branchName}</h3>
             </div>
+
+            <div style={styles.infoCard}>
+              <p style={styles.infoLabel}>Today's Branch</p>
+              <h3 style={styles.infoValue}>{scheduleInfo.todayBranchAddress || 'Off'}</h3>
+            </div>
             
             <section style={styles.actionCard}>
               <div style={styles.actionRow}>
@@ -359,12 +366,12 @@ export default function DentistSchedule() {
                         <td
                           style={{
                             ...styles.td,
-                            ...(item.status === 'Working'
+                            ...(item.branchAddress
                               ? styles.workingText
                               : styles.offText),
                           }}
                         >
-                          {item.status}
+                          {item.branchAddress || 'Off'}
                         </td>
                         <td style={styles.td}>{item.time}</td>
                       </tr>

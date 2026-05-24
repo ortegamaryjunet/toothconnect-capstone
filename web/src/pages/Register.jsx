@@ -13,8 +13,26 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const passwordInputStyle = { ...styles.input, paddingRight: 74 };
+  const toggleBtnStyle = {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    height: 54,
+    display: 'flex',
+    alignItems: 'center',
+    border: 'none',
+    background: 'transparent',
+    color: '#8b6508',
+    fontWeight: 900,
+    cursor: 'pointer',
+    padding: '6px 8px',
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -24,7 +42,7 @@ export default function Register() {
       return setError('Passwords do not match.');
     }
     if (!/^[a-zA-Z0-9]+$/.test(password)) {
-      return setError('Password must not contain special characters.');
+      return setError('Password must not contain spaces or special characters.');
     }
     if (password.length < 8) {
       return setError('Password must be at least 8 characters.');
@@ -78,24 +96,46 @@ export default function Register() {
         />
 
         <label style={styles.label}>Password</label>
-        <input
-          type="password"
-          placeholder="At least 8 characters, letters and numbers only"
-          style={styles.input}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div style={{ position: 'relative', width: '100%' }}>
+          <input
+            type={showPassword ? 'text' : 'password'}
+            placeholder="At least 8 characters, letters and numbers only"
+            style={passwordInputStyle}
+            value={password}
+            onChange={(e) => setPassword(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+            required
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            style={toggleBtnStyle}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
 
         <label style={styles.label}>Confirm Password</label>
-        <input
-          type="password"
-          placeholder="Confirm password"
-          style={styles.input}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-        />
+        <div style={{ position: 'relative', width: '100%' }}>
+          <input
+            type={showConfirmPassword ? 'text' : 'password'}
+            placeholder="Confirm password"
+            style={passwordInputStyle}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+            required
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword((v) => !v)}
+            style={toggleBtnStyle}
+            aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+          >
+            {showConfirmPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
 
         <button
           type="submit"

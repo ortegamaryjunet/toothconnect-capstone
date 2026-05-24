@@ -8,6 +8,8 @@ const {
   addMinutes,
   startOfUTCDay,
 } = require('../utils/scheduling');
+const { clinicDateKeyFromUtcDate } = require('../utils/clinic');
+const { getApprovedLeaveForDentistOnDate } = require('../utils/leaves');
 const { sendPushToUser } = require('../services/push');
 const { suggestSlots } = require('../services/scheduler');
 
@@ -362,6 +364,13 @@ router.get('/_meta/dentist-busy-slots', async (req, res) => {
   const dayEnd = new Date(y, mo - 1, d + 1, 0, 0, 0, 0);
 
   try {
+    let leave = null;
+    try {
+      leave = await getApprovedLeaveForDentistOnDate(pool, dentistId, String(date).slice(0, 10));
+    } catch (_) {
+      leave = null;
+    }
+
     const [rows] = await pool.query(
       `SELECT start_time, duration_min, status FROM appointments
        WHERE dentist_id = ?
@@ -369,7 +378,18 @@ router.get('/_meta/dentist-busy-slots', async (req, res) => {
          AND start_time >= ? AND start_time < ?`,
       [dentistId, toMySQLDateTime(dayStart), toMySQLDateTime(dayEnd)]
     );
-    res.json({ appointments: rows });
+    res.json({
+      appointments: rows,
+      on_leave: !!leave,
+      leave: leave
+        ? {
+            id: leave.id,
+            date_from: String(leave.date_from).slice(0, 10),
+            date_to: String(leave.date_to).slice(0, 10),
+            reason: leave.reason || null,
+          }
+        : null,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -512,7 +532,7 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, res) => {
-  const { branch_id, patient_id, dentist_id, service_id, start_time, reschedule_appointment_id, initial_status } = req.body;
+  const { branch_id, patient_id, dentist_id, service_id, start_time, reschedule_appointment_id, initial_status, note } = req.body;
   const role = req.user.role;
   const userId = req.user.user_id;
   const userBranches = req.user.branches || [];
@@ -551,15 +571,57 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     }
 
     const start = parseISOToDate(start_time);
+    const clinicDateKey = clinicDateKeyFromUtcDate(start);
+    if (!clinicDateKey) {
+      return res.status(400).json({ message: 'Invalid start_time' });
+    }
+
+    // Block scheduling a dentist who is on an approved leave for the requested clinic date.
+    const leave = await getApprovedLeaveForDentistOnDate(pool, Number(dentist_id), clinicDateKey);
+    if (leave) {
+      return res.status(409).json({
+        message: `This dentist is on approved leave on ${clinicDateKey}. Please choose another date or dentist.`,
+        leave: { from: String(leave.date_from).slice(0, 10), to: String(leave.date_to).slice(0, 10) },
+      });
+    }
+
     const blockedEnd = addMinutes(
       start,
       service.duration_min + APPOINTMENT_BUFFER_MINUTES
     );
 
+    // Block conflicts with website-submitted (online) holds for the same branch + time window
+    try {
+      const [onlineConflicts] = await pool.query(
+        `SELECT o.id
+         FROM online_appointments_tbl o
+         JOIN branches b ON b.id = ?
+         WHERE TRIM(REPLACE(o.location, ' Branch', '')) = b.address
+           AND o.status IN ('Pending', 'Confirmed')
+           AND TIMESTAMP(o.appointment_date, o.appointment_time) < ?
+           AND TIMESTAMPADD(MINUTE, IFNULL(o.duration_minutes, 30) + ?, TIMESTAMP(o.appointment_date, o.appointment_time)) > ?
+         LIMIT 1`,
+        [
+          effectiveBranchId,
+          toMySQLDateTime(blockedEnd),
+          APPOINTMENT_BUFFER_MINUTES,
+          toMySQLDateTime(start),
+        ]
+      );
+      if (onlineConflicts.length > 0) {
+        return res.status(409).json({ message: 'This time slot is already reserved by an online booking request' });
+      }
+    } catch (onlineErr) {
+      // If the online table doesn't exist in a local/dev DB, ignore rather than breaking appointment creation.
+      if (onlineErr?.code !== 'ER_NO_SUCH_TABLE') {
+        console.error('Online booking conflict check failed:', onlineErr);
+      }
+    }
+
     const [conflicts] = await pool.query(
       `SELECT id FROM appointments
        WHERE dentist_id = ? AND status IN ('scheduled','arrived')
-         AND start_time < ?
+          AND start_time < ?
          AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?`,
       [
         dentist_id,
@@ -597,10 +659,18 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
         ? 'arrived'
         : 'scheduled';
 
+    const insertColumns = ['branch_id', 'patient_id', 'dentist_id', 'service_id', 'start_time', 'duration_min', 'status'];
+    const insertValues = [effectiveBranchId, effectivePatientId, dentist_id, service_id, toMySQLDateTime(start), service.duration_min, effectiveStatus];
+    const normalizedNote = typeof note === 'string' ? note.trim() : '';
+    if (normalizedNote) {
+      insertColumns.push('dentist_note');
+      insertValues.push(normalizedNote);
+    }
+
     const [result] = await pool.query(
-      `INSERT INTO appointments (branch_id, patient_id, dentist_id, service_id, start_time, duration_min, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [effectiveBranchId, effectivePatientId, dentist_id, service_id, toMySQLDateTime(start), service.duration_min, effectiveStatus]
+      `INSERT INTO appointments (${insertColumns.join(', ')})
+       VALUES (${insertColumns.map(() => '?').join(', ')})`,
+      insertValues
     );
 
     await pool.query(

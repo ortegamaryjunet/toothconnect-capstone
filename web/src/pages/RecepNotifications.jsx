@@ -259,6 +259,11 @@ export default function RecepNotifications() {
       return;
     }
 
+    if (notification.relatedType === 'inquiry') {
+      navigate('/receptionistInquiries');
+      return;
+    }
+
     if (notification.relatedType === 'message') {
       navigate('/receptionistMessage');
     }
@@ -318,6 +323,11 @@ export default function RecepNotifications() {
             ></i>
             <span style={styles.menuItemText}>Messages</span>
             <MessageUnreadBadge />
+          </Link>
+
+          <Link to="/receptionistInquiries" style={styles.menuItem}>
+            <i className="fi fi-rr-inbox-in" style={styles.menuItemIcon}></i>
+            <span style={styles.menuItemText}>Online Inquiries</span>
           </Link>
 
           <Link

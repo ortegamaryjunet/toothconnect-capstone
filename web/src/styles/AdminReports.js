@@ -811,7 +811,7 @@
 
     revenueLayout: {
       display: 'grid',
-      gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 340px',
+      gridTemplateColumns: '1fr',
       gap: 20,
       alignItems: 'start',
     },

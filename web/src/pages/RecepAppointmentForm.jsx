@@ -31,6 +31,8 @@ const months = [
 
 const clinicStartMinutes = 10 * 60;
 const clinicEndMinutes = 19 * 60;
+const lunchStartMinutes = 12 * 60;
+const lunchEndMinutes = 13 * 60 + 30; // next slot is 1:30 PM
 const appointmentBufferMinutes = 15;
 
 const currentYear = new Date().getFullYear();
@@ -64,6 +66,8 @@ export default function RecepAppointmentForm() {
   const [dentistBranchIds, setDentistBranchIds] = useState({});
   const [dentistBusySlots, setDentistBusySlots] = useState([]);
   const [dentistBusySlotsLoading, setDentistBusySlotsLoading] = useState(false);
+  const [dentistOnLeave, setDentistOnLeave] = useState(false);
+  const [dentistLeaveInfo, setDentistLeaveInfo] = useState(null);
 
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth());
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
@@ -122,12 +126,18 @@ export default function RecepAppointmentForm() {
 
   const availableSlots = useMemo(() => {
     const appointmentsForSlots = formData.dentistId ? dentistBusySlots : dayAppointments;
-    return computeAvailableSlots({
+    const slots = computeAvailableSlots({
       appointments: appointmentsForSlots,
       dateKey: selectedDate,
       durationMinutes: estimatedDuration,
     });
-  }, [dentistBusySlots, dayAppointments, formData.dentistId, selectedDate, estimatedDuration]);
+
+    if (formData.dentistId && dentistOnLeave) {
+      return slots.map((s) => ({ ...s, available: false }));
+    }
+
+    return slots;
+  }, [dentistBusySlots, dayAppointments, formData.dentistId, selectedDate, estimatedDuration, dentistOnLeave]);
 
   const calendarDays = useMemo(() => {
     return buildCalendarDays(calendarYear, calendarMonth, today);
@@ -238,14 +248,20 @@ export default function RecepAppointmentForm() {
     async function loadDentistBusySlots() {
       if (!formData.dentistId || !selectedDate) {
         setDentistBusySlots([]);
+        setDentistOnLeave(false);
+        setDentistLeaveInfo(null);
         return;
       }
       setDentistBusySlotsLoading(true);
       try {
-        const slots = await getDentistBusySlots(formData.dentistId, selectedDate);
-        setDentistBusySlots(Array.isArray(slots) ? slots : []);
+        const data = await getDentistBusySlots(formData.dentistId, selectedDate);
+        setDentistBusySlots(Array.isArray(data?.appointments) ? data.appointments : []);
+        setDentistOnLeave(!!data?.on_leave);
+        setDentistLeaveInfo(data?.leave || null);
       } catch {
         setDentistBusySlots([]);
+        setDentistOnLeave(false);
+        setDentistLeaveInfo(null);
       } finally {
         setDentistBusySlotsLoading(false);
       }
@@ -499,14 +515,12 @@ export default function RecepAppointmentForm() {
         });
       }
 
-      const isSameDay = selectedDate === toDateKey(today);
       await createAppointment({
         patient_id: Number(patient.id),
         dentist_id: Number(formData.dentistId),
         service_id: Number(formData.serviceId),
         start_time: buildAppointmentStartISO(selectedDate, selectedTime),
         note: formData.note,
-        ...(isSameDay ? { initial_status: 'arrived' } : {}),
       });
 
       navigate('/receptionistAppointments');
@@ -832,6 +846,16 @@ export default function RecepAppointmentForm() {
                   <label style={styles.label}>
                     Available Time Slots <span style={styles.required}>*</span>
                   </label>
+
+                  {formData.dentistId && dentistOnLeave && (
+                    <p style={styles.slotEmptyText}>
+                      This dentist is on approved leave
+                      {dentistLeaveInfo?.date_from && dentistLeaveInfo?.date_to
+                        ? ` (${dentistLeaveInfo.date_from} to ${dentistLeaveInfo.date_to})`
+                        : ''}
+                      . Please choose another date or dentist.
+                    </p>
+                  )}
 
                   {(dayAppointmentsLoading || dentistBusySlotsLoading) ? (
                     <p style={styles.slotLoadingText}>Loading available slots...</p>
@@ -1180,6 +1204,7 @@ function computeAvailableSlots({ appointments, dateKey, durationMinutes }) {
   const slots = [];
 
   for (let m = clinicStartMinutes; m < clinicEndMinutes; m += 30) {
+    if (m >= lunchStartMinutes && m < lunchEndMinutes) continue;
     const h24 = Math.floor(m / 60);
     const min = m % 60;
     const slotDate = new Date(year, month - 1, day, h24, min, 0, 0);

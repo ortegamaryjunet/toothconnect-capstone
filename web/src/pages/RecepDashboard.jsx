@@ -393,6 +393,11 @@ export default function RecepDashboard() {
             <MessageUnreadBadge />
           </Link>
 
+          <Link to="/receptionistInquiries" style={styles.menuItem}>
+            <i className="fi fi-rr-inbox-in" style={styles.menuItemIcon}></i>
+            <span style={styles.menuItemText}>Online Inquiries</span>
+          </Link>
+
           <Link to="/receptionistNotif" style={styles.menuItem}>
             <i className="fi fi-rr-bell" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Notification</span>

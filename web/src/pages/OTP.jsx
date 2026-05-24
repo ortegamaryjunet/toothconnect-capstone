@@ -80,7 +80,11 @@ export default function OTP() {
         await api.post('/auth/admin-register/verify', { email, code, platform: 'web' });
         navigate('/login', {
           replace: true,
-          state: { message: 'Registration successful! You may now sign in.' },
+          state: {
+            message: 'Registration successful! You may now sign in.',
+            messageType: 'success',
+            email: String(email || '').trim(),
+          },
         });
       } else {
         navigate('/resetpassword', { state: { email, code } });

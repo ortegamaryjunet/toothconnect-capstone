@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../auth/AuthContext';
@@ -20,6 +20,7 @@ const queuePerPage = 3;
 
 export default function RecepAppointments() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [activeView, setActiveView] = useState('queue');
 
@@ -159,6 +160,7 @@ export default function RecepAppointments() {
   useEffect(() => {
     fetchCalendarAppointments(currentDate);
   }, [currentDate]);
+
 
   const filteredPending = useMemo(() => {
     return filterAppointments(
@@ -532,6 +534,11 @@ export default function RecepAppointments() {
             <MessageUnreadBadge />
           </Link>
 
+          <Link to="/receptionistInquiries" style={styles.menuItem}>
+            <i className="fi fi-rr-inbox-in" style={styles.menuItemIcon}></i>
+            <span style={styles.menuItemText}>Online Inquiries</span>
+          </Link>
+
           <Link to="/receptionistNotif" style={styles.menuItem}>
             <i className="fi fi-rr-bell" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Notification</span>
@@ -645,6 +652,7 @@ export default function RecepAppointments() {
               <i className="fi fi-rr-list-check"></i>
               Queue View
             </button>
+
           </section>
 
           {activeView === 'calendar' && (
@@ -1206,7 +1214,10 @@ function PendingAppointmentCard({
   const isOpen = String(openDropdownId) === String(appointment.id);
 
   return (
-    <div style={{ ...styles.appointment, ...styles.pendingStyle }}>
+    <div style={{
+      ...styles.appointment,
+      ...styles.pendingStyle,
+    }}>
       <div style={styles.appointmentInfo}>
         <div style={styles.dateBox}>
           <div style={styles.week}>{appointment.date}</div>
@@ -1214,7 +1225,9 @@ function PendingAppointmentCard({
         </div>
 
         <div style={styles.infoContent}>
-          <span style={styles.appointmentType}>{appointment.type}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={styles.appointmentType}>{appointment.type}</span>
+          </div>
 
           <strong style={styles.patientName}>{appointment.name}</strong>
 

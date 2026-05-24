@@ -614,6 +614,7 @@
 
     queueContent: {
       marginBottom: 14,
+      overflowWrap: 'anywhere',
     },
 
     queueSub: {
@@ -625,6 +626,9 @@
     actions: {
       display: 'flex',
       gap: 10,
+      flexDirection: isMobile ? 'column' : 'row',
+      alignItems: 'stretch',
+      width: '100%',
     },
 
     btn: {
@@ -634,6 +638,9 @@
       border: 'none',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       cursor: 'pointer',
+      width: isMobile ? '100%' : 'auto',
+      boxSizing: 'border-box',
+      whiteSpace: isVerySmall ? 'normal' : 'nowrap',
     },
 
     btnPay: {

@@ -44,5 +44,9 @@ export async function getDentistBusySlots(dentistId, date) {
   const res = await api.get('/appointments/_meta/dentist-busy-slots', {
     params: { dentist_id: dentistId, date },
   });
-  return res.data.appointments;
+  return {
+    appointments: res.data.appointments,
+    on_leave: !!res.data.on_leave,
+    leave: res.data.leave || null,
+  };
 }

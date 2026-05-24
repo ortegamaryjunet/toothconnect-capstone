@@ -39,6 +39,7 @@ import RecepNotifications from '../pages/RecepNotifications';
 import RecepPatientProfile from '../pages/RecepPatientProfile';
 import RecepPatientForm from '../pages/RecepPatientForm';
 import RecepProfile from '../pages/RecepProfile';
+import RecepInquiries from '../pages/RecepInquiries';
 
 function RootRedirect() {
   const { user, loading } = useAuth();
@@ -194,6 +195,11 @@ export default function AppRouter() {
         <Route
           path="/receptionistProfile"
           element={<ProtectedRoute allowedRoles={['receptionist']}><RecepProfile /></ProtectedRoute>}
+        />
+
+        <Route
+          path="/receptionistInquiries"
+          element={<ProtectedRoute allowedRoles={['receptionist']}><RecepInquiries /></ProtectedRoute>}
         />
         
         <Route path="*" element={<Navigate to="/" replace />} />

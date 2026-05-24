@@ -10,6 +10,8 @@ const {
   eachUTCDayInRange,
   toMySQLDateTime,
 } = require('../utils/scheduling');
+const { clinicDateKeyFromUtcDate } = require('../utils/clinic');
+const { getApprovedLeavesForDentistsInRange, isDateKeyWithinRanges } = require('../utils/leaves');
 
 const SCORE_WEIGHTS = {
   PREFERRED_TIME_OF_DAY: 3,
@@ -27,6 +29,8 @@ const TIME_BUCKETS = {
 const CLINIC_START_HOUR = 10;
 const CLINIC_END_HOUR = 19;
 const CLINIC_TIMEZONE_OFFSET_MINUTES = 8 * 60;
+const LUNCH_START_MINUTES = 12 * 60;
+const LUNCH_END_MINUTES = 13 * 60 + 30; // next start is 1:30 PM
 
 function bucketForHour(hour) {
   if (hour < 12) return 'morning';
@@ -36,6 +40,17 @@ function bucketForHour(hour) {
 
 function getClinicHour(date) {
   return (date.getUTCHours() + CLINIC_TIMEZONE_OFFSET_MINUTES / 60) % 24;
+}
+
+function getClinicMinutes(date) {
+  const localHour = getClinicHour(date);
+  return localHour * 60 + date.getUTCMinutes();
+}
+
+function isInsideLunchLocal(slotStart, slotEnd) {
+  const startMin = getClinicMinutes(slotStart);
+  const endMin = getClinicMinutes(slotEnd);
+  return startMin < LUNCH_END_MINUTES && endMin > LUNCH_START_MINUTES;
 }
 
 function clinicBoundsForDay(day) {
@@ -99,6 +114,7 @@ async function getEligibleDentists(serviceId, branchId) {
      JOIN dentist_services dsv ON dsv.dentist_id = u.id
      JOIN dentist_schedules dsch ON dsch.dentist_id = u.id
      WHERE u.role = 'dentist'
+       AND u.status = 'Active'
        AND dsv.service_id = ?
        AND dsch.branch_id = ?`,
     [serviceId, branchId]
@@ -236,6 +252,16 @@ async function suggestSlots({
   const to = parseISOToDate(toDate);
   const preferredStart = preferredStartDate ? parseISOToDate(preferredStartDate) : null;
 
+  const dentistIds = dentists.map((d) => Number(d.id)).filter(Boolean);
+  const fromKey = clinicDateKeyFromUtcDate(from);
+  const toKey = clinicDateKeyFromUtcDate(to);
+  const approvedLeavesByDentist = await getApprovedLeavesForDentistsInRange(
+    pool,
+    dentistIds,
+    fromKey,
+    toKey
+  );
+
   const allCandidates = [];
   let dayIndex = 0;
 
@@ -243,8 +269,14 @@ async function suggestSlots({
     const dayStart = day;
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
     const weekday = jsWeekday(day);
+    const dayKey = clinicDateKeyFromUtcDate(dayStart);
 
     for (const dentist of dentists) {
+      const leaveRanges = approvedLeavesByDentist.get(Number(dentist.id)) || null;
+      if (dayKey && isDateKeyWithinRanges(dayKey, leaveRanges)) {
+        continue;
+      }
+
       let workStart, workEnd;
 
       if (weekday === 0) {
@@ -288,6 +320,7 @@ async function suggestSlots({
 
       for (const slot of candidates) {
         if (slot.start <= new Date()) continue;
+        if (isInsideLunchLocal(slot.start, slot.end)) continue;
 
         const conflict = existing.some(e =>
           rangesOverlap(slot.start, slot.end, e.start, e.end)

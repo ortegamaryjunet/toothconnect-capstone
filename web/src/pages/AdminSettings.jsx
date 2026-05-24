@@ -142,9 +142,8 @@ export default function AdminSettings() {
 
   const [branches, setBranches] = useState([]);
   const [services, setServices] = useState([]);
-  const [onlineAppointments, setOnlineAppointments] = useState([]);
   const [onlineInquiries, setOnlineInquiries] = useState([]);
-  const [websiteTab, setWebsiteTab] = useState('appointments');
+  const [websiteTab, setWebsiteTab] = useState('content');
 
   const [websiteContent, setWebsiteContent] = useState({});
   const [websiteFaqs, setWebsiteFaqs] = useState([]);
@@ -153,6 +152,7 @@ export default function AdminSettings() {
   const [websiteContentSection, setWebsiteContentSection] = useState('hero');
   const [websiteContentForm, setWebsiteContentForm] = useState({});
   const [websiteContentSaving, setWebsiteContentSaving] = useState(false);
+  const [websiteContentEditing, setWebsiteContentEditing] = useState(false);
   const [websiteContentMsg, setWebsiteContentMsg] = useState({ text: '', type: '' });
   const [websiteFaqOverlay, setWebsiteFaqOverlay] = useState(null);
   const [websiteServiceOverlay, setWebsiteServiceOverlay] = useState(null);
@@ -266,8 +266,6 @@ export default function AdminSettings() {
     loadServices();
     loadUsers();
     loadAdminAccount();
-    loadOnlineAppointments();
-    loadOnlineInquiries();
     loadWebsiteContent();
     loadWebsiteFaqs();
     loadWebsiteServices();
@@ -302,16 +300,6 @@ export default function AdminSettings() {
     } catch (err) {
       console.error('Failed to load services', err);
       setServices([]);
-    }
-  }
-
-  async function loadOnlineAppointments() {
-    try {
-      const res = await api.get('/website/appointments');
-      setOnlineAppointments(res.data.appointments || []);
-    } catch (err) {
-      console.error('Failed to load online appointments', err);
-      setOnlineAppointments([]);
     }
   }
 
@@ -451,15 +439,6 @@ export default function AdminSettings() {
       setWebsiteAnnouncements(res.data.announcements || []);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to delete announcement.');
-    }
-  }
-
-  async function updateOnlineAppointmentStatus(id, status) {
-    try {
-      await api.patch(`/website/appointments/${id}/status`, { status });
-      await loadOnlineAppointments();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update appointment status.');
     }
   }
 
@@ -932,20 +911,6 @@ export default function AdminSettings() {
   }
 
   function renderWebsitePanel() {
-    const apptStatusOptions = ['Pending', 'Confirmed', 'Cancelled', 'Completed'];
-    const filteredAppts = onlineAppointments.filter((a) => {
-      const s = filters.websiteSearch.toLowerCase();
-      return !s || a.full_name?.toLowerCase().includes(s) || a.phone_number?.toLowerCase().includes(s) || a.location?.toLowerCase().includes(s);
-    });
-    const filteredInqs = onlineInquiries.filter((a) => {
-      const s = filters.websiteSearch.toLowerCase();
-      return !s || a.full_name?.toLowerCase().includes(s) || a.phone_number?.toLowerCase().includes(s) || a.concern?.toLowerCase().includes(s);
-    });
-
-    const tabBtnStyle = (active) => ({
-      ...styles.settingsTab,
-      ...(active ? styles.settingsTabActive : {}),
-    });
 
     const contentSectionBtnStyle = (active) => ({
       padding: '6px 14px',
@@ -961,20 +926,26 @@ export default function AdminSettings() {
     const fieldRow = (label, key, type = 'text') => (
       <div key={key} style={{ marginBottom: 14 }}>
         <label style={{ display: 'block', fontSize: 13, color: '#64748b', marginBottom: 4 }}>{label}</label>
-        {type === 'textarea' ? (
-          <textarea
-            value={websiteContentForm[key] || ''}
-            onChange={(e) => setWebsiteContentForm((prev) => ({ ...prev, [key]: e.target.value }))}
-            rows={3}
-            style={{ ...styles.formInput, resize: 'vertical', width: '100%', boxSizing: 'border-box' }}
-          />
+        {websiteContentEditing ? (
+          type === 'textarea' ? (
+            <textarea
+              value={websiteContentForm[key] || ''}
+              onChange={(e) => setWebsiteContentForm((prev) => ({ ...prev, [key]: e.target.value }))}
+              rows={3}
+              style={{ ...styles.formInput, resize: 'vertical', width: '100%', boxSizing: 'border-box' }}
+            />
+          ) : (
+            <input
+              type="text"
+              value={websiteContentForm[key] || ''}
+              onChange={(e) => setWebsiteContentForm((prev) => ({ ...prev, [key]: e.target.value }))}
+              style={{ ...styles.formInput, width: '100%', boxSizing: 'border-box' }}
+            />
+          )
         ) : (
-          <input
-            type="text"
-            value={websiteContentForm[key] || ''}
-            onChange={(e) => setWebsiteContentForm((prev) => ({ ...prev, [key]: e.target.value }))}
-            style={{ ...styles.formInput, width: '100%', boxSizing: 'border-box' }}
-          />
+          <div style={{ ...styles.formInput, ...styles.readOnlyInput, minHeight: type === 'textarea' ? 72 : undefined, whiteSpace: type === 'textarea' ? 'pre-wrap' : 'normal', lineHeight: 1.5 }}>
+            {websiteContentForm[key] || <span style={{ color: '#94a3b8' }}>—</span>}
+          </div>
         )}
       </div>
     );
@@ -994,16 +965,18 @@ export default function AdminSettings() {
             {fieldRow('Stat 3 Label', 'hero_stat3_label')}
             {fieldRow('Featured Dentist Name', 'hero_dentist_name')}
             {fieldRow('Featured Dentist Title', 'hero_dentist_title')}
-            <button
-              type="button"
-              style={styles.saveBtn}
-              disabled={websiteContentSaving}
-              onClick={() => saveWebsiteContent(Object.fromEntries(
-                Object.entries(websiteContentForm).filter(([k]) => k.startsWith('hero_'))
-              ))}
-            >
-              {websiteContentSaving ? 'Saving…' : 'Save Hero Content'}
-            </button>
+            {websiteContentEditing && (
+              <button
+                type="button"
+                style={styles.saveBtn}
+                disabled={websiteContentSaving}
+                onClick={() => saveWebsiteContent(Object.fromEntries(
+                  Object.entries(websiteContentForm).filter(([k]) => k.startsWith('hero_'))
+                ))}
+              >
+                {websiteContentSaving ? 'Saving…' : 'Save Hero Content'}
+              </button>
+            )}
           </div>
         );
       }
@@ -1013,16 +986,18 @@ export default function AdminSettings() {
             {fieldRow('Paragraph 1', 'about_paragraph1', 'textarea')}
             {fieldRow('Paragraph 2', 'about_paragraph2', 'textarea')}
             {fieldRow('Paragraph 3', 'about_paragraph3', 'textarea')}
-            <button
-              type="button"
-              style={styles.saveBtn}
-              disabled={websiteContentSaving}
-              onClick={() => saveWebsiteContent(Object.fromEntries(
-                Object.entries(websiteContentForm).filter(([k]) => k.startsWith('about_'))
-              ))}
-            >
-              {websiteContentSaving ? 'Saving…' : 'Save About Content'}
-            </button>
+            {websiteContentEditing && (
+              <button
+                type="button"
+                style={styles.saveBtn}
+                disabled={websiteContentSaving}
+                onClick={() => saveWebsiteContent(Object.fromEntries(
+                  Object.entries(websiteContentForm).filter(([k]) => k.startsWith('about_'))
+                ))}
+              >
+                {websiteContentSaving ? 'Saving…' : 'Save About Content'}
+              </button>
+            )}
           </div>
         );
       }
@@ -1038,16 +1013,18 @@ export default function AdminSettings() {
             {fieldRow('Weekday Hours (e.g. 10:00 AM - 7:00 PM)', 'hours_weekday_time')}
             {fieldRow('Sunday Label', 'hours_sunday')}
             {fieldRow('Sunday Note (e.g. By Appointment)', 'hours_sunday_note')}
-            <button
-              type="button"
-              style={styles.saveBtn}
-              disabled={websiteContentSaving}
-              onClick={() => saveWebsiteContent(Object.fromEntries(
-                Object.entries(websiteContentForm).filter(([k]) => k.startsWith('contact_') || k.startsWith('hours_'))
-              ))}
-            >
-              {websiteContentSaving ? 'Saving…' : 'Save Contact & Hours'}
-            </button>
+            {websiteContentEditing && (
+              <button
+                type="button"
+                style={styles.saveBtn}
+                disabled={websiteContentSaving}
+                onClick={() => saveWebsiteContent(Object.fromEntries(
+                  Object.entries(websiteContentForm).filter(([k]) => k.startsWith('contact_') || k.startsWith('hours_'))
+                ))}
+              >
+                {websiteContentSaving ? 'Saving…' : 'Save Contact & Hours'}
+              </button>
+            )}
           </div>
         );
       }
@@ -1056,16 +1033,18 @@ export default function AdminSettings() {
           <div>
             {fieldRow('Brand Name', 'footer_brand_name')}
             {fieldRow('Team / Subtitle', 'footer_team_name')}
-            <button
-              type="button"
-              style={styles.saveBtn}
-              disabled={websiteContentSaving}
-              onClick={() => saveWebsiteContent(Object.fromEntries(
-                Object.entries(websiteContentForm).filter(([k]) => k.startsWith('footer_'))
-              ))}
-            >
-              {websiteContentSaving ? 'Saving…' : 'Save Footer Content'}
-            </button>
+            {websiteContentEditing && (
+              <button
+                type="button"
+                style={styles.saveBtn}
+                disabled={websiteContentSaving}
+                onClick={() => saveWebsiteContent(Object.fromEntries(
+                  Object.entries(websiteContentForm).filter(([k]) => k.startsWith('footer_'))
+                ))}
+              >
+                {websiteContentSaving ? 'Saving…' : 'Save Footer Content'}
+              </button>
+            )}
           </div>
         );
       }
@@ -1255,73 +1234,14 @@ export default function AdminSettings() {
     return (
       <>
         <section style={styles.tableCard}>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="button" onClick={() => setWebsiteTab('appointments')} style={tabBtnStyle(websiteTab === 'appointments')}>
-              Online Appointments ({filteredAppts.length})
-            </button>
-            <button type="button" onClick={() => setWebsiteTab('content')} style={tabBtnStyle(websiteTab === 'content')}>
-              Website Content
-            </button>
-            {websiteTab === 'appointments' && (
-              <input
-                type="text"
-                placeholder="Search name, phone, location…"
-                value={filters.websiteSearch}
-                onChange={(e) => updateFilter('websiteSearch', e.target.value)}
-                style={{ ...styles.formInput, maxWidth: 280, margin: 0 }}
-              />
-            )}
-          </div>
-
-          {websiteTab === 'appointments' && (
-            <div style={styles.tableWrapper}>
-              <table style={styles.branchTable}>
-                <thead>
-                  <tr>
-                    {['Full Name', 'Phone', 'Date', 'Time', 'Location', 'Reason', 'Status', 'Action'].map((col) => (
-                      <th key={col} style={styles.tableHead}>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAppts.length === 0 ? (
-                    <tr><td colSpan={8} style={styles.emptyRow}>No online appointment submissions found.</td></tr>
-                  ) : filteredAppts.map((appt) => (
-                    <tr key={appt.id} style={styles.tableRow}>
-                      <td style={styles.tableCell}>{appt.full_name}</td>
-                      <td style={styles.tableCell}>{appt.phone_number}</td>
-                      <td style={styles.tableCell}>{String(appt.appointment_date || '').slice(0, 10)}</td>
-                      <td style={styles.tableCell}>{String(appt.appointment_time || '').slice(0, 5)}</td>
-                      <td style={styles.tableCell}>{appt.location}</td>
-                      <td style={styles.tableCell}>{appt.reason_for_booking || '—'}</td>
-                      <td style={styles.tableCell}>
-                        <span style={getStatusStyle(appt.status)}>{appt.status}</span>
-                      </td>
-                      <td style={styles.tableCell}>
-                        <select
-                          value={appt.status}
-                          onChange={(e) => updateOnlineAppointmentStatus(appt.id, e.target.value)}
-                          style={{ ...styles.formInput, margin: 0, padding: '4px 8px', fontSize: 13 }}
-                        >
-                          {apptStatusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {websiteTab === 'content' && (
-            <div>
+          <div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
                 {contentSections.map((sec) => (
                   <button
                     key={sec.key}
                     type="button"
                     style={contentSectionBtnStyle(websiteContentSection === sec.key)}
-                    onClick={() => setWebsiteContentSection(sec.key)}
+                    onClick={() => { setWebsiteContentSection(sec.key); setWebsiteContentEditing(false); setWebsiteContentMsg({ text: '', type: '' }); }}
                   >
                     {sec.label}
                   </button>
@@ -1341,9 +1261,30 @@ export default function AdminSettings() {
                 </p>
               )}
 
+              {['hero', 'about', 'contact', 'footer'].includes(websiteContentSection) && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                  {!websiteContentEditing ? (
+                    <button
+                      type="button"
+                      style={styles.primaryBtn}
+                      onClick={() => setWebsiteContentEditing(true)}
+                    >
+                      <i className="fi fi-rr-edit"></i> <span>Edit Content</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      style={styles.secondaryBtn}
+                      onClick={() => { setWebsiteContentEditing(false); setWebsiteContentForm(websiteContent); setWebsiteContentMsg({ text: '', type: '' }); }}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              )}
+
               {getContentSectionFields()}
             </div>
-          )}
         </section>
 
         {websiteFaqOverlay && (

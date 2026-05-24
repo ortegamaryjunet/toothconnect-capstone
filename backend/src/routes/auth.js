@@ -353,23 +353,17 @@ async function loadBranchesWithStats() {
        b.operating_hours,
        b.years_active,
        b.status,
-       COUNT(DISTINCT d.id) AS dentist_count,
-       COUNT(DISTINCT s.id) AS service_count
+       (
+         SELECT COUNT(*)
+         FROM users u
+         WHERE u.role = 'dentist'
+           AND u.home_branch_id = b.id
+       ) AS dentist_count,
+       (
+         SELECT COUNT(*)
+         FROM services s
+       ) AS service_count
      FROM branches b
-     LEFT JOIN user_branches ub ON ub.branch_id = b.id
-     LEFT JOIN users d ON d.id = ub.user_id AND d.role = 'dentist'
-     LEFT JOIN dentist_services ds ON ds.dentist_id = d.id
-     LEFT JOIN services s ON s.id = ds.service_id
-     GROUP BY
-       b.id,
-       b.name,
-       b.address,
-       b.phone,
-       b.contact_person,
-       b.date_opened,
-       b.operating_hours,
-       b.years_active,
-       b.status
      ORDER BY b.name ASC`
   );
 
@@ -640,7 +634,7 @@ router.post('/register/start', async (req, res) => {
   }
 
   if (!branch_id) {
-     res.status(400).json({ message: 'branch_id is required' });
+    return res.status(400).json({ message: 'branch_id is required' });
   }
 
   const [branchCheck] = await pool.query('SELECT id FROM branches WHERE id = ?', [branch_id]);

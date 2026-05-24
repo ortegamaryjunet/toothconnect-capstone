@@ -11,8 +11,10 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState('');
+  const prefillEmail = String(location.state?.email ?? '').trim();
+  const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -22,10 +24,32 @@ export default function Login() {
   const [bannerType, setBannerType] = useState(stateMessageType);
 
   useEffect(() => {
+    if (prefillEmail) {
+      setEmail(prefillEmail);
+    }
+  }, [prefillEmail]);
+
+  useEffect(() => {
     if (!banner) return;
     const t = setTimeout(() => setBanner(''), 5000);
     return () => clearTimeout(t);
   }, [banner]);
+
+  const passwordInputStyle = { ...styles.input, paddingRight: 74 };
+  const toggleBtnStyle = {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    height: 54,
+    display: 'flex',
+    alignItems: 'center',
+    border: 'none',
+    background: 'transparent',
+    color: '#8b6508',
+    fontWeight: 900,
+    cursor: 'pointer',
+    padding: '6px 8px',
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -66,14 +90,24 @@ export default function Login() {
         />
 
         <label style={styles.label}>Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={styles.input}
-          autoComplete="current-password"
-        />
+        <div style={{ position: 'relative', width: '100%' }}>
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={passwordInputStyle}
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            style={toggleBtnStyle}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
 
         <p style={{ margin: '0 0 18px', textAlign: 'right' }}>
           <span style={styles.link} onClick={() => navigate('/forgotpassword')}>

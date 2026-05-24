@@ -404,7 +404,7 @@ async function seed() {
       (2, 'Orthodontic Brackets',      'DentalPro',  'Las Piñas Dental Supply', 'Orthodontics',      'box',   20, 2500.00, 5),
       (2, 'Orthodontic Archwires',     'DentalPro',  'Las Piñas Dental Supply', 'Orthodontics',      'pack',  20, 1200.00, 5),
       (2, 'Elastic Ligature Ties',     'OrthoFlex',  'Las Piñas Dental Supply', 'Orthodontics',      'pack',  20,  350.00, 5),
-      (2, 'Clear Aligner Case',        'AlignCare',  'Las Piñas Dental Supply', 'Orthodontics',      'piece', 10,  120.00, 5),
+      (2, 'Clear Aligner Case',        'AlignCare',  'Las Piñas Dental Supply', 'Orthodontics',      'piece', 20,  120.00, 5),
 
       -- Cosmetic Dentistry supplies for Branch 2
       (2, 'Composite Veneer Kit',      'VitaDent',   'Las Piñas Dental Supply', 'Cosmetic Dentistry','kit',   20, 4500.00, 5),

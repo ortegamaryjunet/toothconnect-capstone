@@ -520,7 +520,7 @@ export default function AdminEmployees() {
             <span style={styles.menuItemText}>Inventory</span>
           </Link>
 
-          <Link to="/adminAudit" style={styles.menuItem}>
+          <Link to="/adminLogs" style={styles.menuItem}>
             <i
               className="fi fi-rr-clipboard-list"
               style={styles.menuItemIcon}

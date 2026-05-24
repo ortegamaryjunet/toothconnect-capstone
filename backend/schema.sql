@@ -29,6 +29,7 @@ DROP TABLE IF EXISTS
   staff_profile,
   user_presence,
   online_appointments_tbl,
+  inquiry_replies,
   online_inquiries_tbl,
   website_content,
   website_faqs,
@@ -552,20 +553,37 @@ CREATE TABLE online_appointments_tbl (
   phone_number VARCHAR(30) NOT NULL,
   location VARCHAR(255) NOT NULL,
   reason_for_booking TEXT NULL,
+  assigned_dentist_id INT NULL,
   status VARCHAR(50) NOT NULL DEFAULT 'Pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_online_appt_date (appointment_date),
-  INDEX idx_online_appt_status (status)
+  INDEX idx_online_appt_status (status),
+  FOREIGN KEY (assigned_dentist_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE online_inquiries_tbl (
   id INT AUTO_INCREMENT PRIMARY KEY,
   full_name VARCHAR(150) NOT NULL,
+  email_address VARCHAR(150) NOT NULL,
   phone_number VARCHAR(30) NOT NULL,
+  branch VARCHAR(150) NOT NULL DEFAULT '',
   concern VARCHAR(255) NOT NULL,
   message TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_online_inquiry_phone (phone_number)
+  INDEX idx_online_inquiry_phone (phone_number),
+  INDEX idx_online_inquiry_branch (branch)
+);
+
+CREATE TABLE inquiry_replies (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  inquiry_id INT NOT NULL,
+  replied_by INT NOT NULL,
+  reply_message TEXT NOT NULL,
+  sent_to_email VARCHAR(150) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (inquiry_id) REFERENCES online_inquiries_tbl(id) ON DELETE CASCADE,
+  FOREIGN KEY (replied_by) REFERENCES users(id),
+  INDEX idx_inquiry_replies_inquiry_id (inquiry_id)
 );
 
 CREATE TABLE website_content (

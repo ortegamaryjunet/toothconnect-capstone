@@ -209,15 +209,15 @@ const reportData = {
     mainChartTitle: 'Audit Activity Overview',
     statusChartTitle: 'Audit Status',
     summary: {
-      totalRecords: 4,
-      activeData: 3,
-      thisMonth: 4,
-      attention: 1,
+      totalRecords: 0,
+      activeData: 0,
+      thisMonth: 0,
+      attention: 0,
     },
-    labels: ['Login', 'Inventory', 'Patients', 'Appointments'],
-    mainData: [12, 6, 9, 7],
+    labels: [],
+    mainData: [],
     statusLabels: ['Success', 'Failed'],
-    statusData: [3, 1],
+    statusData: [0, 0],
     headers: [
       'ID',
       'Timestamp',
@@ -228,12 +228,7 @@ const reportData = {
       'IP Address',
       'Status',
     ],
-    rows: [
-      ['AU-001', '2026-05-14 09:15 AM', 'Admin', 'Admin Full Name', 'Viewed report', 'Reports', '192.168.1.10', 'Success'],
-      ['AU-002', '2026-05-14 10:05 AM', 'Receptionist', 'Maria Santos', 'Updated appointment', 'Appointments', '192.168.1.15', 'Success'],
-      ['AU-003', '2026-05-13 02:30 PM', 'Dentist', 'Dr. Miguel Reyes', 'Viewed patient record', 'Patient Records', '192.168.1.21', 'Success'],
-      ['AU-004', '2026-05-13 04:20 PM', 'Admin', 'Admin Full Name', 'Failed login attempt', 'Login', '192.168.1.30', 'Failed'],
-    ],
+    rows: [],
   },
 };
 

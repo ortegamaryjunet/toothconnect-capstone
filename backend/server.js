@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 console.log(
   `[email] Mode: ${process.env.MOCK_EMAIL === 'true' ? 'MOCK (console only)' : 'REAL (Resend)'}`
@@ -13,16 +14,59 @@ const { authenticate, requireRole } = require('./src/middleware/auth');
 const { loginLimiter, registerLimiter, passwordResetLimiter } = require('./src/middleware/rateLimiter');
 
 //FOR WEBSITE
-const path = require('path');
 const websiteRoutes = require('./src/routes/websiteRoutes');
 
 const app = express();
 
-const allowedOrigins = (process.env.WEB_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+const allowedOrigins = [
+  ...(process.env.WEB_ORIGIN      || '').split(','),
+  ...(process.env.WEBSITE_ORIGIN  || '').split(','),
+  ...(process.env.WEBSITE_ORIGIN_2|| '').split(','),
+].map(s => s.trim()).filter(Boolean);
+
+function originHostname(origin) {
+  try {
+    return new URL(origin).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function originPort(origin) {
+  try {
+    const url = new URL(origin);
+    return url.port || (url.protocol === 'https:' ? '443' : '80');
+  } catch {
+    return '';
+  }
+}
+
+function isEquivalentLocalhost(a, b) {
+  const hostA = originHostname(a);
+  const hostB = originHostname(b);
+  const portA = originPort(a);
+  const portB = originPort(b);
+
+  const localhostSet = new Set(['localhost', '127.0.0.1']);
+  return localhostSet.has(hostA) && localhostSet.has(hostB) && portA && portA === portB;
+}
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+
+    // Dev convenience: allow any localhost origin (Live Server ports vary)
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        const { hostname } = new URL(origin);
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          return callback(null, true);
+        }
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    if (allowedOrigins.some(allowed => origin.startsWith(allowed) || isEquivalentLocalhost(origin, allowed))) {
       return callback(null, true);
     }
     callback(new Error('CORS not allowed for this origin'));
@@ -393,6 +437,8 @@ pool.query(`
   )
 `).catch(err => console.error('[migration] website_announcements:', err.message));
 
+const { startCronJobs } = require('./src/services/cron');
+
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
@@ -404,4 +450,5 @@ app.listen(PORT, () => {
         : 'OFF (using Resend)'
     }`
   );
+  startCronJobs();
 });

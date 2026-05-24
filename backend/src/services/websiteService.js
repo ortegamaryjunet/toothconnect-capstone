@@ -1,4 +1,30 @@
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../config/db');
+const { APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime } = require('../utils/scheduling');
+
+let cachedOnlineAppointmentsHasAssignedDentistId = null;
+async function onlineAppointmentsHasAssignedDentistId() {
+  if (cachedOnlineAppointmentsHasAssignedDentistId !== null) {
+    return cachedOnlineAppointmentsHasAssignedDentistId;
+  }
+
+  try {
+    const [rows] = await db.query(
+      `SELECT 1 AS ok
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'online_appointments_tbl'
+         AND COLUMN_NAME = 'assigned_dentist_id'
+       LIMIT 1`
+    );
+    cachedOnlineAppointmentsHasAssignedDentistId = rows.length > 0;
+  } catch (_) {
+    cachedOnlineAppointmentsHasAssignedDentistId = false;
+  }
+
+  return cachedOnlineAppointmentsHasAssignedDentistId;
+}
 
 async function createNotification({
   userId = null,
@@ -8,6 +34,10 @@ async function createNotification({
   relatedType,
   relatedId
 }) {
+  if (userId === null || userId === undefined) {
+    // Some DB schemas disallow NULL user_id. Treat as "no direct recipient".
+    return;
+  }
   await db.query(
     `INSERT INTO notifications (
       user_id,
@@ -22,6 +52,895 @@ async function createNotification({
     VALUES (?, ?, ?, ?, ?, ?, 0, NOW())`,
     [userId, type, title, body, relatedType, relatedId]
   );
+}
+
+async function notifyBranchReceptionists(branchId, notification) {
+  if (!branchId) return;
+
+  const [receptionists] = await db.query(
+    `SELECT DISTINCT u.id
+     FROM users u
+     LEFT JOIN user_branches ub ON ub.user_id = u.id
+     WHERE u.role = 'receptionist'
+       AND u.status = 'Active'
+       AND (u.home_branch_id = ? OR ub.branch_id = ?)`,
+    [branchId, branchId]
+  );
+
+  if (receptionists.length === 0) return;
+
+  await db.query(
+    `INSERT INTO notifications (user_id, type, title, body, related_type, related_id, is_read, created_at)
+     VALUES ${receptionists.map(() => '(?, ?, ?, ?, ?, ?, 0, NOW())').join(', ')}`,
+    receptionists.flatMap((r) => [
+      r.id,
+      notification.type,
+      notification.title,
+      notification.body,
+      notification.relatedType || null,
+      notification.relatedId || null,
+    ])
+  );
+}
+
+async function resolveBranchIdFromText(text) {
+  const cleaned = String(text || '').trim().replace(/ Branch$/i, '').trim();
+  if (!cleaned) return null;
+
+  const wanted = canonicalizeBranchText(cleaned);
+
+  const [rows] = await db.query(`SELECT id, name, address FROM branches`);
+  for (const b of rows) {
+    const addr = canonicalizeBranchText(b.address);
+    const name = canonicalizeBranchText(b.name);
+    if (wanted && (wanted === addr || wanted === name)) {
+      return b.id;
+    }
+  }
+
+  return null;
+}
+
+function canonicalizeBranchText(value) {
+  if (value === undefined || value === null) return '';
+  // Handle common mojibake for ñ (PiÃ±as) and similar cases.
+  let s = String(value).trim();
+  s = s.replace(/Ã±/g, 'ñ').replace(/Ã‘/g, 'Ñ');
+
+  // Lowercase + remove diacritics (ñ -> n) for stable matching.
+  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  s = s.toLowerCase();
+
+  // Keep alphanumerics only.
+  s = s.replace(/[^a-z0-9]+/g, '');
+  return s;
+}
+
+async function listClinicServices() {
+  const [rows] = await db.query(
+    `SELECT id, name, duration_min, price
+     FROM services
+     WHERE status = 'Active'
+     ORDER BY name ASC`
+  );
+  return rows;
+}
+
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+async function findUserByEmail(email) {
+  const cleanedEmail = normalizeEmail(email);
+  if (!cleanedEmail) return null;
+  const [rows] = await db.query(
+    `SELECT id, role
+     FROM users
+     WHERE LOWER(email) = LOWER(?)
+     LIMIT 1`,
+    [cleanedEmail]
+  );
+  return rows[0] || null;
+}
+
+async function getOrCreateWebsitePatient({ fullName, email, phoneNumber, homeBranchId = null }) {
+  const cleanedEmail = normalizeEmail(email);
+  if (!cleanedEmail) {
+    const err = new Error('Email is required.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const existingUser = await findUserByEmail(cleanedEmail);
+  if (existingUser && existingUser.role !== 'patient') {
+    const err = new Error('EMAIL_ALREADY_USED_NON_PATIENT');
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const [existing] = await db.query(
+    `SELECT u.id
+     FROM users u
+     LEFT JOIN patient_profile pp ON pp.user_id = u.id
+     WHERE u.role = 'patient'
+       AND (LOWER(u.email) = LOWER(?) OR LOWER(pp.email) = LOWER(?))
+     ORDER BY u.id ASC
+     LIMIT 1`,
+    [cleanedEmail, cleanedEmail]
+  );
+
+  if (existing.length > 0) {
+    const patientId = existing[0].id;
+    // best-effort update basic contact fields
+    try {
+      await db.query('UPDATE users SET name = COALESCE(?, name), phone = COALESCE(?, phone) WHERE id = ?', [
+        fullName || null,
+        phoneNumber || null,
+        patientId,
+      ]);
+      await db.query(
+        `INSERT INTO patient_profile (user_id, full_name, email, contact_number, address)
+         VALUES (?, ?, ?, ?, 'Not provided')
+         ON DUPLICATE KEY UPDATE
+           full_name = VALUES(full_name),
+           email = VALUES(email),
+           contact_number = VALUES(contact_number)`,
+        [patientId, fullName || null, cleanedEmail, phoneNumber || null]
+      );
+      if (homeBranchId) {
+        await db.query(
+          `INSERT IGNORE INTO user_branches (user_id, branch_id, is_primary)
+           VALUES (?, ?, TRUE)`,
+          [patientId, homeBranchId]
+        );
+      }
+    } catch (_) {
+      // ignore profile update failures
+    }
+    return patientId;
+  }
+
+  const password = crypto.randomBytes(18).toString('hex');
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  const [result] = await db.query(
+    `INSERT INTO users (role, home_branch_id, name, email, password_hash, phone, email_verified, must_change_password)
+     VALUES ('patient', ?, ?, ?, ?, ?, TRUE, TRUE)`,
+    [homeBranchId, fullName || 'Website Patient', cleanedEmail, passwordHash, phoneNumber || null]
+  );
+
+  await db.query(
+    `INSERT INTO patient_profile (user_id, full_name, email, contact_number, address)
+     VALUES (?, ?, ?, ?, 'Not provided')`,
+    [result.insertId, fullName || 'Website Patient', cleanedEmail, phoneNumber || '',]
+  );
+
+  if (homeBranchId) {
+    await db.query(
+      `INSERT IGNORE INTO user_branches (user_id, branch_id, is_primary)
+       VALUES (?, ?, TRUE)`,
+      [result.insertId, homeBranchId]
+    );
+  }
+
+  return result.insertId;
+}
+
+async function findServiceByReason(reasonForBooking) {
+  const reason = String(reasonForBooking || '').trim();
+  if (!reason) return null;
+
+  const [rows] = await db.query(
+    `SELECT id, name, duration_min
+     FROM services
+     WHERE status = 'Active'
+       AND (
+         LOWER(name) = LOWER(?)
+         OR LOWER(name) LIKE CONCAT('%', LOWER(?), '%')
+         OR LOWER(?) LIKE CONCAT('%', LOWER(name), '%')
+       )
+     ORDER BY (LOWER(name) = LOWER(?)) DESC, name ASC
+     LIMIT 1`,
+    [reason, reason, reason, reason]
+  );
+
+  return rows[0] || null;
+}
+
+function parseDateParts(appointmentDate) {
+  const m = String(appointmentDate || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) };
+}
+
+function parseTimeParts(appointmentTime) {
+  const m = String(appointmentTime || '').trim().match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  return { hh: Number(m[1]), mm: Number(m[2]), ss: Number(m[3] || 0) };
+}
+
+function parseTimePartsFlexible(value) {
+  if (!value) return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return { hh: value.getUTCHours(), mm: value.getUTCMinutes(), ss: value.getUTCSeconds() };
+  }
+  return parseTimeParts(String(value));
+}
+
+function clinicLocalToUtcDate({ year, month, day, hh, mm, ss }) {
+  // Clinic is Philippines (UTC+8). Store UTC in DB.
+  return new Date(Date.UTC(year, month - 1, day, hh - 8, mm, ss || 0, 0));
+}
+
+function clinicLocalDayBoundsToUtc(dateKey) {
+  const parts = parseDateParts(dateKey);
+  if (!parts) return null;
+  const start = clinicLocalToUtcDate({ ...parts, hh: 0, mm: 0, ss: 0 });
+  const end = clinicLocalToUtcDate({ ...parts, hh: 24, mm: 0, ss: 0 });
+  return { start, end, parts };
+}
+
+function clinicSlotTimes() {
+  // Mirror the website’s UI slots.
+  return [
+    '10:00:00',
+    '10:30:00',
+    '11:00:00',
+    '11:30:00',
+    '12:00:00',
+    '13:30:00',
+    '14:00:00',
+    '14:30:00',
+    '15:00:00',
+    '15:30:00',
+    '16:00:00',
+    '16:30:00',
+    '17:00:00',
+    '17:30:00',
+    '18:00:00',
+    '18:30:00',
+  ];
+}
+
+function toMinutesFrom12h({ hh, mm, period }) {
+  let h = Number(hh);
+  const m = Number(mm);
+  const p = String(period || '').toUpperCase();
+  if (p === 'PM' && h !== 12) h += 12;
+  if (p === 'AM' && h === 12) h = 0;
+  return h * 60 + m;
+}
+
+function parseOperatingHoursToMinutes(operatingHours) {
+  const raw = String(operatingHours || '').trim();
+  const m = raw.match(
+    /(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i
+  );
+  if (!m) return null;
+  const startMin = toMinutesFrom12h({ hh: m[1], mm: m[2], period: m[3] });
+  const endMin = toMinutesFrom12h({ hh: m[4], mm: m[5], period: m[6] });
+  if (!Number.isFinite(startMin) || !Number.isFinite(endMin) || endMin <= startMin) return null;
+  return { startMin, endMin };
+}
+
+function minutesToTimeString(min) {
+  const hh = Math.floor(min / 60);
+  const mm = min % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`;
+}
+
+function generateSlots30Min({ startMin, endMin }) {
+  const slots = [];
+
+  // Keep the legacy lunch gap to avoid surprising existing clients.
+  // Still 30-minute intervals as required.
+  const lunchStart = 12 * 60;
+  const lunchEnd = 13 * 60 + 30;
+
+  for (let t = startMin; t + 30 <= endMin; t += 30) {
+    if (t >= lunchStart && t < lunchEnd) continue;
+    slots.push(minutesToTimeString(t));
+  }
+  return slots;
+}
+
+function timeToMinutes(timeStr) {
+  const t = parseTimePartsFlexible(timeStr);
+  if (!t) return null;
+  return t.hh * 60 + t.mm;
+}
+
+function weekdayForClinicDate(dateKey) {
+  const parts = parseDateParts(dateKey);
+  if (!parts) return null;
+  // UTC midnight of the local date represents the local calendar date for weekday purposes here.
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
+}
+
+function alternateWeekday(weekday) {
+  // Some databases store weekday as 1-7 (Sun=7) instead of 0-6 (Sun=0).
+  if (weekday === 0) return 7;
+  return weekday;
+}
+
+async function listAvailableSlots({ date, branch, serviceName }) {
+  const bounds = clinicLocalDayBoundsToUtc(date);
+  if (!bounds) {
+    const err = new Error('date must be YYYY-MM-DD');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const branchId = await resolveBranchIdFromText(branch);
+  if (!branchId) {
+    const err = new Error('Invalid branch');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const service = await findServiceByReason(serviceName);
+  if (!service) {
+    const err = new Error('Invalid service');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const weekday = weekdayForClinicDate(date);
+  const weekdayAlt = alternateWeekday(weekday);
+  const isSunday = weekday === 0 || weekdayAlt === 7;
+
+  const [branchRows] = await db.query(
+    `SELECT operating_hours FROM branches WHERE id = ? LIMIT 1`,
+    [branchId]
+  );
+  const parsedHours = parseOperatingHoursToMinutes(branchRows[0]?.operating_hours);
+  const slotTimes = parsedHours ? generateSlots30Min(parsedHours) : clinicSlotTimes();
+
+  let dentistRows = [];
+
+  if (!isSunday) {
+    // Use service.category to narrow dentists, then require the exact service_id for safety.
+    const [rows] = await db.query(
+      `SELECT DISTINCT u.id AS dentist_id, dsch.start_time, dsch.end_time
+       FROM users u
+       JOIN dentist_schedules dsch
+         ON dsch.dentist_id = u.id
+        AND dsch.branch_id = ?
+        AND dsch.weekday IN (?, ?)
+       JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+       JOIN services s ON s.id = dsv.service_id AND s.category = ?
+       WHERE u.role = 'dentist' AND u.status = 'Active'
+         AND NOT EXISTS (
+           SELECT 1 FROM schedule_requests sr
+           WHERE sr.dentist_id = u.id
+             AND sr.request_type = 'leave'
+             AND sr.status = 'approved'
+             AND ? BETWEEN sr.date_from AND sr.date_to
+         )`,
+      [branchId, weekday, weekdayAlt, service.id, service.category, date]
+    );
+    dentistRows = rows;
+
+    if (dentistRows.length === 0) {
+      // Fallback: allow exact service match even if category strings differ in DB.
+      const [fallbackRows] = await db.query(
+        `SELECT DISTINCT u.id AS dentist_id, dsch.start_time, dsch.end_time
+         FROM users u
+         JOIN dentist_schedules dsch
+           ON dsch.dentist_id = u.id
+          AND dsch.branch_id = ?
+          AND dsch.weekday IN (?, ?)
+         JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+         WHERE u.role = 'dentist' AND u.status = 'Active'
+           AND NOT EXISTS (
+             SELECT 1 FROM schedule_requests sr
+             WHERE sr.dentist_id = u.id
+               AND sr.request_type = 'leave'
+               AND sr.status = 'approved'
+               AND ? BETWEEN sr.date_from AND sr.date_to
+           )`,
+        [branchId, weekday, weekdayAlt, service.id, date]
+      );
+      dentistRows = fallbackRows;
+    }
+  } else {
+    // Sunday special: first-come, first-served across branches.
+    // Any active dentist offering the service is eligible; conflicts are checked globally via appointments.
+    const [rows] = await db.query(
+      `SELECT DISTINCT u.id AS dentist_id
+       FROM users u
+       JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+       JOIN services s ON s.id = dsv.service_id AND s.category = ?
+       WHERE u.role = 'dentist' AND u.status = 'Active'
+         AND NOT EXISTS (
+           SELECT 1 FROM schedule_requests sr
+           WHERE sr.dentist_id = u.id
+             AND sr.request_type = 'leave'
+             AND sr.status = 'approved'
+             AND ? BETWEEN sr.date_from AND sr.date_to
+         )`,
+      [service.id, service.category, date]
+    );
+    dentistRows = rows.map((r) => ({
+      dentist_id: r.dentist_id,
+      start_time: minutesToTimeString(parsedHours?.startMin ?? 10 * 60),
+      end_time: minutesToTimeString(parsedHours?.endMin ?? 19 * 60),
+    }));
+
+    if (dentistRows.length === 0) {
+      const [fallbackRows] = await db.query(
+        `SELECT DISTINCT u.id AS dentist_id
+         FROM users u
+         JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+         WHERE u.role = 'dentist' AND u.status = 'Active'
+           AND NOT EXISTS (
+             SELECT 1 FROM schedule_requests sr
+             WHERE sr.dentist_id = u.id
+               AND sr.request_type = 'leave'
+               AND sr.status = 'approved'
+               AND ? BETWEEN sr.date_from AND sr.date_to
+           )`,
+        [service.id, date]
+      );
+      dentistRows = fallbackRows.map((r) => ({
+        dentist_id: r.dentist_id,
+        start_time: minutesToTimeString(parsedHours?.startMin ?? 10 * 60),
+        end_time: minutesToTimeString(parsedHours?.endMin ?? 19 * 60),
+      }));
+    }
+  }
+
+  if (dentistRows.length === 0) return [];
+
+  const dentistIds = dentistRows.map((r) => r.dentist_id);
+  const placeholders = dentistIds.map(() => '?').join(',');
+
+  const [apptRows] = await db.query(
+    `SELECT dentist_id, start_time, duration_min
+     FROM appointments
+     WHERE dentist_id IN (${placeholders})
+       AND status IN ('scheduled','arrived')
+       AND start_time >= ? AND start_time < ?`,
+    [...dentistIds, toMySQLDateTime(bounds.start), toMySQLDateTime(bounds.end)]
+  );
+
+  // Availability rule for website UI:
+  // - Block overlaps using existing appointment duration + buffer (prevents double-booking)
+  // - Do NOT require the selected service to "fit" within the dentist's schedule end time
+  const busyByDentist = {};
+  for (const id of dentistIds) busyByDentist[id] = [];
+  for (const a of apptRows) {
+    const startMs = new Date(a.start_time).getTime();
+    const endMs =
+      startMs +
+      (Number(a.duration_min || 30) + APPOINTMENT_BUFFER_MINUTES) * 60 * 1000;
+    busyByDentist[a.dentist_id]?.push({ startMs, endMs });
+  }
+
+  const requiredMinutes = Number(service.duration_min || 30) + APPOINTMENT_BUFFER_MINUTES;
+
+  const result = [];
+  for (const slot of slotTimes) {
+    const slotMinutes = timeToMinutes(slot);
+    if (slotMinutes === null) continue;
+
+    const slotStartUtc = clinicLocalToUtcDate({ ...bounds.parts, ...parseTimeParts(slot) });
+    const slotStartMs = slotStartUtc.getTime();
+    const slotEndMs = slotStartMs + requiredMinutes * 60 * 1000;
+
+    let hasDentist = false;
+    for (const d of dentistRows) {
+      const schedStartMin = timeToMinutes(String(d.start_time));
+      const schedEndMin = timeToMinutes(String(d.end_time));
+      if (schedStartMin === null || schedEndMin === null) continue;
+
+      // Must start within dentist schedule window (in local minutes)
+      if (slotMinutes < schedStartMin) continue;
+      if (slotMinutes >= schedEndMin) continue;
+
+      const busy = busyByDentist[d.dentist_id] || [];
+      const overlaps = busy.some((b) => slotStartMs < b.endMs && slotEndMs > b.startMs);
+      if (!overlaps) {
+        hasDentist = true;
+        break;
+      }
+    }
+
+    if (hasDentist) result.push(slot);
+  }
+
+  return result;
+}
+
+function parseMonthKey(month) {
+  const m = String(month || '').trim().match(/^(\d{4})-(\d{2})$/);
+  if (!m) return null;
+  return { year: Number(m[1]), month: Number(m[2]) };
+}
+
+async function listAvailableDays({ month, branch, serviceName }) {
+  const monthParts = parseMonthKey(month);
+  if (!monthParts) {
+    const err = new Error('month must be YYYY-MM');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const { year, month: mo } = monthParts;
+  const first = new Date(year, mo - 1, 1);
+  const next = new Date(year, mo, 1);
+  const lastDay = new Date(next.getTime() - 24 * 60 * 60 * 1000).getDate();
+
+  const branchId = await resolveBranchIdFromText(branch);
+  if (!branchId) {
+    const err = new Error('Invalid branch');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const service = await findServiceByReason(serviceName);
+  if (!service) {
+    const err = new Error('Invalid service');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const days = [];
+  for (let day = 1; day <= lastDay; day += 1) {
+    const dateKey = `${year}-${String(mo).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const weekday = weekdayForClinicDate(dateKey);
+    const weekdayAlt = alternateWeekday(weekday);
+    const isSunday = weekday === 0 || weekdayAlt === 7;
+
+    if (isSunday) {
+      // Sunday special: dentists are first-come-first-served across branches.
+      // Enable the date if at least one active dentist offers the service.
+      const [rows] = await db.query(
+        `SELECT 1
+         FROM users u
+         JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+         WHERE u.role = 'dentist' AND u.status = 'Active'
+           AND NOT EXISTS (
+             SELECT 1 FROM schedule_requests sr
+             WHERE sr.dentist_id = u.id
+               AND sr.request_type = 'leave'
+               AND sr.status = 'approved'
+               AND ? BETWEEN sr.date_from AND sr.date_to
+           )
+         LIMIT 1`,
+        [service.id, dateKey]
+      );
+      if (rows.length > 0) days.push(dateKey);
+      continue;
+    }
+
+    // Weekdays/ Saturdays: enable the date if at least one dentist offering the service
+    // is scheduled in the selected branch for that weekday.
+    let [rows] = await db.query(
+      `SELECT 1
+       FROM users u
+       JOIN dentist_schedules dsch
+         ON dsch.dentist_id = u.id
+        AND dsch.branch_id = ?
+        AND dsch.weekday IN (?, ?)
+       JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+       JOIN services s ON s.id = dsv.service_id AND s.category = ?
+       WHERE u.role = 'dentist' AND u.status = 'Active'
+         AND NOT EXISTS (
+           SELECT 1 FROM schedule_requests sr
+           WHERE sr.dentist_id = u.id
+             AND sr.request_type = 'leave'
+             AND sr.status = 'approved'
+             AND ? BETWEEN sr.date_from AND sr.date_to
+         )
+       LIMIT 1`,
+      [branchId, weekday, weekdayAlt, service.id, service.category, dateKey]
+    );
+
+    if (rows.length === 0) {
+      // Fallback: allow exact service match even if category strings differ.
+      [rows] = await db.query(
+        `SELECT 1
+         FROM users u
+         JOIN dentist_schedules dsch
+           ON dsch.dentist_id = u.id
+          AND dsch.branch_id = ?
+          AND dsch.weekday IN (?, ?)
+         JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+         WHERE u.role = 'dentist' AND u.status = 'Active'
+           AND NOT EXISTS (
+             SELECT 1 FROM schedule_requests sr
+             WHERE sr.dentist_id = u.id
+               AND sr.request_type = 'leave'
+               AND sr.status = 'approved'
+               AND ? BETWEEN sr.date_from AND sr.date_to
+           )
+         LIMIT 1`,
+        [branchId, weekday, weekdayAlt, service.id, dateKey]
+      );
+    }
+
+    if (rows.length > 0) days.push(dateKey);
+  }
+  return days;
+}
+
+async function autoBookAppointment(appointmentData) {
+  const {
+    appointmentDate,
+    appointmentTime,
+    durationMinutes,
+    fullName,
+    email,
+    phoneNumber,
+    location,
+    reasonForBooking,
+  } = appointmentData || {};
+
+  const dateParts = parseDateParts(appointmentDate);
+  const timeParts = parseTimeParts(appointmentTime);
+  if (!dateParts || !timeParts) {
+    const err = new Error('Invalid appointment date/time.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const branchId = await resolveBranchIdFromText(location);
+  if (!branchId) {
+    const err = new Error('Invalid branch location.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const service = await findServiceByReason(reasonForBooking);
+  if (!service) {
+    const err = new Error('Invalid service. Please pick a valid reason for booking.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const patientId = await getOrCreateWebsitePatient({
+    fullName,
+    email,
+    phoneNumber,
+    homeBranchId: branchId,
+  });
+
+  // Validate requested slot against the same logic used by the website UI
+  // (branch + service dentist matching, operating hours, and global dentist conflicts).
+  const uiSlots = await listAvailableSlots({
+    date: appointmentDate,
+    branch: location,
+    serviceName: reasonForBooking,
+  });
+  const wantedKey = String(appointmentTime).slice(0, 5);
+  const allowed = Array.isArray(uiSlots) && uiSlots.some((s) => String(s).slice(0, 5) === wantedKey);
+  if (!allowed) {
+    const err = new Error('No available dentist for the selected service and time.');
+    err.statusCode = 409;
+    throw err;
+  }
+
+  // Prevent duplicate active bookings for the same email + reason(service)
+  const [dupActive] = await db.query(
+    `SELECT 1
+     FROM appointments a
+     JOIN users u ON u.id = a.patient_id
+     WHERE LOWER(u.email) = LOWER(?)
+       AND a.service_id = ?
+       AND a.status IN ('scheduled','arrived')
+     LIMIT 1`,
+    [normalizeEmail(email), service.id]
+  );
+  if (dupActive.length > 0) {
+    const err = new Error('DUPLICATE_ACTIVE_REASON');
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const startUtc = clinicLocalToUtcDate({ ...dateParts, ...timeParts });
+  const blockedEndUtc = new Date(startUtc.getTime() + (Number(service.duration_min || 30) + APPOINTMENT_BUFFER_MINUTES) * 60 * 1000);
+
+  const weekday = new Date(Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day)).getUTCDay();
+  const weekdayAlt = alternateWeekday(weekday);
+  const isSunday = weekday === 0 || weekdayAlt === 7;
+
+  const [candidateRows] = await db.query(
+    isSunday
+      ? `SELECT DISTINCT u.id
+         FROM users u
+         JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+         JOIN services s ON s.id = dsv.service_id AND s.category = ?
+         WHERE u.role = 'dentist'
+           AND u.status = 'Active'
+           AND NOT EXISTS (
+             SELECT 1 FROM schedule_requests sr
+             WHERE sr.dentist_id = u.id
+               AND sr.request_type = 'leave'
+               AND sr.status = 'approved'
+               AND ? BETWEEN sr.date_from AND sr.date_to
+           )
+         ORDER BY u.id ASC`
+      : `SELECT DISTINCT u.id
+         FROM users u
+         JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+         JOIN dentist_schedules dsch ON dsch.dentist_id = u.id AND dsch.branch_id = ? AND dsch.weekday IN (?, ?)
+         JOIN services s ON s.id = dsv.service_id AND s.category = ?
+         WHERE u.role = 'dentist'
+           AND u.status = 'Active'
+           AND NOT EXISTS (
+             SELECT 1 FROM schedule_requests sr
+             WHERE sr.dentist_id = u.id
+               AND sr.request_type = 'leave'
+               AND sr.status = 'approved'
+               AND ? BETWEEN sr.date_from AND sr.date_to
+           )
+         ORDER BY u.id ASC`,
+    isSunday
+      ? [service.id, service.category, appointmentDate]
+      : [service.id, branchId, weekday, weekdayAlt, service.category, appointmentDate]
+  );
+
+  let dentistCandidates = candidateRows;
+  if (dentistCandidates.length === 0) {
+    const [fallbackCandidates] = await db.query(
+      isSunday
+        ? `SELECT DISTINCT u.id
+           FROM users u
+           JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+           WHERE u.role = 'dentist'
+             AND u.status = 'Active'
+             AND NOT EXISTS (
+               SELECT 1 FROM schedule_requests sr
+               WHERE sr.dentist_id = u.id
+                 AND sr.request_type = 'leave'
+                 AND sr.status = 'approved'
+                 AND ? BETWEEN sr.date_from AND sr.date_to
+             )
+           ORDER BY u.id ASC`
+        : `SELECT DISTINCT u.id
+           FROM users u
+           JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+           JOIN dentist_schedules dsch ON dsch.dentist_id = u.id AND dsch.branch_id = ? AND dsch.weekday IN (?, ?)
+           WHERE u.role = 'dentist'
+             AND u.status = 'Active'
+             AND NOT EXISTS (
+               SELECT 1 FROM schedule_requests sr
+               WHERE sr.dentist_id = u.id
+                 AND sr.request_type = 'leave'
+                 AND sr.status = 'approved'
+                 AND ? BETWEEN sr.date_from AND sr.date_to
+             )
+           ORDER BY u.id ASC`,
+      isSunday ? [service.id, appointmentDate] : [service.id, branchId, weekday, weekdayAlt, appointmentDate]
+    );
+    dentistCandidates = fallbackCandidates;
+  }
+
+  let selectedDentistId = null;
+  for (const row of dentistCandidates) {
+    const dentistId = row.id;
+    const [conflicts] = await db.query(
+      `SELECT id
+       FROM appointments
+       WHERE dentist_id = ?
+         AND status IN ('scheduled','arrived')
+         AND start_time < ?
+         AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
+       LIMIT 1`,
+      [dentistId, toMySQLDateTime(blockedEndUtc), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(startUtc)]
+    );
+    if (conflicts.length === 0) {
+      selectedDentistId = dentistId;
+      break;
+    }
+  }
+
+  if (!selectedDentistId) {
+    const err = new Error('No available dentist for the selected service and time.');
+    err.statusCode = 409;
+    throw err;
+  }
+
+  // Ensure no duplicate appointment for the same patient + time + branch
+  const [existing] = await db.query(
+    `SELECT id
+     FROM appointments
+     WHERE branch_id = ? AND patient_id = ?
+       AND start_time = ?
+       AND status IN ('scheduled','arrived','completed')
+     LIMIT 1`,
+    [branchId, patientId, toMySQLDateTime(startUtc)]
+  );
+  if (existing.length > 0) {
+    throw new Error('APPOINTMENT_ALREADY_EXISTS');
+  }
+
+  const [result] = await db.query(
+    `INSERT INTO appointments (branch_id, patient_id, dentist_id, service_id, start_time, duration_min, status, dentist_note)
+     VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?)`,
+    [
+      branchId,
+      patientId,
+      selectedDentistId,
+      service.id,
+      toMySQLDateTime(startUtc),
+      service.duration_min || Number(durationMinutes) || 30,
+      reasonForBooking ? `Website reason: ${String(reasonForBooking).trim()}` : null,
+    ]
+  );
+
+  // Log to online_appointments_tbl as Converted (optional) without blocking timeslots.
+  try {
+    const [onlineResult] = await db.query(
+      `INSERT INTO online_appointments_tbl (
+        appointment_date, appointment_time, duration_minutes, full_name, email, phone_number, location, reason_for_booking, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Converted', NOW())`,
+      [
+        appointmentDate,
+        appointmentTime,
+        service.duration_min || Number(durationMinutes) || 30,
+        fullName,
+        email || null,
+        phoneNumber,
+        location,
+        reasonForBooking || null,
+      ]
+    );
+
+    // best-effort: store dentist assignment if column exists
+    if (await onlineAppointmentsHasAssignedDentistId()) {
+      await db.query('UPDATE online_appointments_tbl SET assigned_dentist_id = ? WHERE id = ?', [
+        selectedDentistId,
+        onlineResult.insertId,
+      ]);
+    }
+  } catch (_) {
+    // ignore if online table doesn't exist in a local/dev DB
+  }
+
+  await notifyBranchReceptionists(branchId, {
+    type: 'Appointment',
+    title: 'New Website Appointment',
+    body: `${fullName} booked ${service.name} on ${appointmentDate} at ${appointmentTime}.`,
+    relatedType: 'appointment',
+    relatedId: result.insertId,
+  });
+
+  return { appointmentId: result.insertId, dentistId: selectedDentistId, serviceId: service.id };
+}
+
+async function assignDentist(appointmentId, reasonForBooking, location) {
+  if (!reasonForBooking || !location) return;
+  if (!(await onlineAppointmentsHasAssignedDentistId())) return;
+  try {
+    const [rows] = await db.query(
+      `SELECT ds.dentist_id
+       FROM services s
+       JOIN dentist_services ds ON ds.service_id = s.id
+       JOIN user_branches ub ON ub.user_id = ds.dentist_id
+       JOIN branches b ON b.id = ub.branch_id
+       JOIN users u ON u.id = ds.dentist_id
+       WHERE (
+         LOWER(s.name) = LOWER(?)
+         OR LOWER(s.name) LIKE CONCAT('%', LOWER(?), '%')
+         OR LOWER(?) LIKE CONCAT('%', LOWER(s.name), '%')
+       )
+       AND b.address = TRIM(REPLACE(?, ' Branch', ''))
+       AND u.status = 'Active'
+       ORDER BY (LOWER(s.name) = LOWER(?)) DESC
+       LIMIT 1`,
+      [reasonForBooking, reasonForBooking, reasonForBooking, location, reasonForBooking]
+    );
+    if (rows.length > 0) {
+      await db.query(
+        'UPDATE online_appointments_tbl SET assigned_dentist_id = ? WHERE id = ?',
+        [rows[0].dentist_id, appointmentId]
+      );
+    }
+  } catch (_) {
+    // best-effort; never fail the appointment save
+  }
 }
 
 async function saveAppointment(appointmentData) {
@@ -77,14 +996,16 @@ async function saveAppointment(appointmentData) {
     ]
   );
 
-  await createNotification({
-    userId: null,
+  const branchId = await resolveBranchIdFromText(location);
+  await notifyBranchReceptionists(branchId, {
     type: 'Appointment',
     title: 'New Appointment Request',
     body: `${fullName} requested an appointment on ${appointmentDate} at ${appointmentTime}.`,
     relatedType: 'appointment',
-    relatedId: result.insertId
+    relatedId: result.insertId,
   });
+
+  await assignDentist(result.insertId, reasonForBooking, location);
 
   return result;
 }
@@ -138,55 +1059,46 @@ async function saveInquiry(inquiryData) {
 
   const inquiryId = result.insertId;
 
-  await createNotification({
-    userId: null,
+  const branchId = await resolveBranchIdFromText(branch);
+  await notifyBranchReceptionists(branchId, {
     type: 'Inquiry',
     title: 'New Online Inquiry',
     body: `${fullName} sent an inquiry for ${branch} about ${concern}.`,
     relatedType: 'inquiry',
-    relatedId: inquiryId
+    relatedId: inquiryId,
   });
-
-  await db.query(
-    `INSERT INTO messages (
-      inquiry_id,
-      sender_id,
-      receiver_id,
-      content,
-      is_read,
-      created_at
-    )
-    VALUES (?, NULL, NULL, ?, 0, NOW())`,
-    [
-      inquiryId,
-      `Name: ${fullName}
-Email: ${emailAddress}
-Phone: ${phoneNumber}
-Branch: ${branch}
-Concern: ${concern}
-Message: ${message}`
-    ]
-  );
 
   return result;
 }
 
-async function listAppointments({ search = '', status = '' } = {}) {
+async function listAppointments({ search = '', status = '', branchNames = null } = {}) {
+  if (branchNames !== null && branchNames.length === 0) return [];
+
+  const hasAssigned = await onlineAppointmentsHasAssignedDentistId();
+
   let sql = `
-    SELECT *
-    FROM online_appointments_tbl
+    SELECT
+      o.*,
+      ${hasAssigned ? 'u.name' : 'NULL'} AS assigned_dentist_name
+    FROM online_appointments_tbl o
+    ${hasAssigned ? 'LEFT JOIN users u ON u.id = o.assigned_dentist_id' : ''}
     WHERE 1 = 1
   `;
 
   const params = [];
 
+  if (branchNames && branchNames.length > 0) {
+    sql += ` AND TRIM(REPLACE(o.location, ' Branch', '')) IN (${branchNames.map(() => '?').join(',')})`;
+    params.push(...branchNames);
+  }
+
   if (search) {
     sql += `
       AND (
-        full_name LIKE ?
-        OR email LIKE ?
-        OR phone_number LIKE ?
-        OR location LIKE ?
+        o.full_name LIKE ?
+        OR o.email LIKE ?
+        OR o.phone_number LIKE ?
+        OR o.location LIKE ?
       )
     `;
 
@@ -195,15 +1107,53 @@ async function listAppointments({ search = '', status = '' } = {}) {
   }
 
   if (status) {
-    sql += ' AND status = ?';
+    sql += ' AND o.status = ?';
     params.push(status);
   }
 
-  sql += ' ORDER BY created_at DESC';
+  sql += ' ORDER BY o.created_at DESC';
 
   const [rows] = await db.query(sql, params);
 
   return rows;
+}
+
+async function getBookedSlots(date, branch) {
+  // Website online appointments for this date + branch
+  const [onlineRows] = await db.query(
+    `SELECT TIME_FORMAT(appointment_time, '%H:%i:%s') AS booked_time
+     FROM online_appointments_tbl
+     WHERE appointment_date = ? AND location = ? AND status IN ('Pending','Confirmed')`,
+    [date, branch]
+  );
+
+  // Shared appointments table (web walk-ins, mobile bookings)
+  // branch param is e.g. "Makati Branch" — strip " Branch" to match branches.address ("Makati")
+  const [apptRows] = await db.query(
+    `SELECT TIME_FORMAT(TIME(a.start_time), '%H:%i:%s') AS booked_time
+     FROM appointments a
+     JOIN branches b ON a.branch_id = b.id
+     WHERE DATE(a.start_time) = ?
+       AND b.address = TRIM(REPLACE(?, ' Branch', ''))
+       AND a.status IN ('scheduled', 'arrived')`,
+    [date, branch]
+  );
+
+  // Operating hours for this branch
+  const [branchRows] = await db.query(
+    `SELECT operating_hours FROM branches WHERE address = TRIM(REPLACE(?, ' Branch', '')) LIMIT 1`,
+    [branch]
+  );
+
+  const bookedSlots = [
+    ...onlineRows.map(r => r.booked_time),
+    ...apptRows.map(r => r.booked_time)
+  ];
+
+  return {
+    bookedSlots,
+    operatingHours: branchRows[0]?.operating_hours || null
+  };
 }
 
 async function updateAppointmentStatus(id, status) {
@@ -217,23 +1167,66 @@ async function updateAppointmentStatus(id, status) {
   return result;
 }
 
-async function listInquiries({ search = '' } = {}) {
+async function getBranchNamesByIds(branchIds) {
+  if (!branchIds || branchIds.length === 0) return [];
+  const [rows] = await db.query(
+    `SELECT address FROM branches WHERE id IN (${branchIds.map(() => '?').join(',')})`,
+    branchIds
+  );
+  return rows.map(r => r.address).filter(Boolean);
+}
+
+async function getInquiryById(id) {
+  const [rows] = await db.query(
+    'SELECT * FROM online_inquiries_tbl WHERE id = ? LIMIT 1',
+    [id]
+  );
+  return rows[0] || null;
+}
+
+async function saveInquiryReply(inquiryId, { replyMessage, repliedBy, sentToEmail }) {
+  const [result] = await db.query(
+    `INSERT INTO inquiry_replies (inquiry_id, replied_by, reply_message, sent_to_email, created_at)
+     VALUES (?, ?, ?, ?, NOW())`,
+    [inquiryId, repliedBy, replyMessage, sentToEmail]
+  );
+  return result.insertId;
+}
+
+async function getInquiryReplies(inquiryId) {
+  const [rows] = await db.query(
+    `SELECT ir.id, ir.inquiry_id, ir.reply_message, ir.sent_to_email, ir.created_at,
+            u.name AS replied_by_name
+     FROM inquiry_replies ir
+     JOIN users u ON u.id = ir.replied_by
+     WHERE ir.inquiry_id = ?
+     ORDER BY ir.created_at ASC`,
+    [inquiryId]
+  );
+  return rows;
+}
+
+async function listInquiries({ search = '', branchNames = [] } = {}) {
+  if (branchNames.length === 0) return [];
+
   let sql = `
-    SELECT *
-    FROM online_inquiries_tbl
-    WHERE 1 = 1
+    SELECT oi.*,
+      (SELECT COUNT(*) FROM inquiry_replies ir WHERE ir.inquiry_id = oi.id) AS reply_count,
+      (SELECT MAX(ir.created_at) FROM inquiry_replies ir WHERE ir.inquiry_id = oi.id) AS last_replied_at
+    FROM online_inquiries_tbl oi
+    WHERE oi.branch IN (${branchNames.map(() => '?').join(',')})
   `;
 
-  const params = [];
+  const params = [...branchNames];
 
   if (search) {
     sql += `
       AND (
-        full_name LIKE ?
-        OR email_address LIKE ?
-        OR phone_number LIKE ?
-        OR branch LIKE ?
-        OR concern LIKE ?
+        oi.full_name LIKE ?
+        OR oi.email_address LIKE ?
+        OR oi.phone_number LIKE ?
+        OR oi.branch LIKE ?
+        OR oi.concern LIKE ?
       )
     `;
 
@@ -241,7 +1234,7 @@ async function listInquiries({ search = '' } = {}) {
     params.push(like, like, like, like, like);
   }
 
-  sql += ' ORDER BY created_at DESC';
+  sql += ' ORDER BY oi.created_at DESC';
 
   const [rows] = await db.query(sql, params);
 
@@ -368,10 +1361,19 @@ async function deleteAnnouncement(id) {
 
 module.exports = {
   saveAppointment,
+  autoBookAppointment,
   saveInquiry,
   listAppointments,
+  getBookedSlots,
   updateAppointmentStatus,
+  getBranchNamesByIds,
+  getInquiryById,
+  saveInquiryReply,
+  getInquiryReplies,
   listInquiries,
+  listClinicServices,
+  listAvailableSlots,
+  listAvailableDays,
   getContent,
   upsertContent,
   listFaqs,

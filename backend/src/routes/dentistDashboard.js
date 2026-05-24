@@ -156,7 +156,7 @@ router.get('/schedule', requireRole('dentist'), async (req, res) => {
   const dentistId = req.user.user_id;
   try {
     const [scheduleRows] = await pool.query(
-      `SELECT ds.weekday, ds.start_time, ds.end_time, b.name AS branchName
+      `SELECT ds.weekday, ds.start_time, ds.end_time, b.name AS branchName, b.address AS branchAddress
        FROM dentist_schedules ds
        JOIN branches b ON b.id = ds.branch_id
        WHERE ds.dentist_id = ?
@@ -178,7 +178,11 @@ router.get('/schedule', requireRole('dentist'), async (req, res) => {
     const scheduleMap = {};
     for (const row of scheduleRows) {
       if (!scheduleMap[row.weekday]) {
-        scheduleMap[row.weekday] = { startTime: row.start_time, endTime: row.end_time };
+        scheduleMap[row.weekday] = {
+          startTime: row.start_time,
+          endTime: row.end_time,
+          branchAddress: row.branchAddress || null,
+        };
       }
     }
 
@@ -189,9 +193,10 @@ router.get('/schedule', requireRole('dentist'), async (req, res) => {
           day,
           status: 'Working',
           time: `${formatTime12h(entry.startTime)} – ${formatTime12h(entry.endTime)}`,
+          branchAddress: entry.branchAddress,
         };
       }
-      return { day, status: 'Off', time: '—' };
+      return { day, status: 'Off', time: '—', branchAddress: null };
     });
 
     const workingDays = DAY_NAMES.filter((_, idx) => scheduleMap[idx]).join(', ') || 'N/A';
@@ -200,7 +205,16 @@ router.get('/schedule', requireRole('dentist'), async (req, res) => {
       ? `${formatTime12h(firstRow.start_time)} – ${formatTime12h(firstRow.end_time)}`
       : 'N/A';
 
-    res.json({ branchName, workingDays, workingTime, weeklySchedule });
+    const todayWeekday = new Date().getDay();
+    const todayBranchAddress = scheduleMap[todayWeekday]?.branchAddress || null;
+
+    res.json({
+      branchName,
+      workingDays,
+      workingTime,
+      weeklySchedule,
+      todayBranchAddress: todayBranchAddress || 'Off',
+    });
   } catch (err) {
     console.error('[dentist-schedule]', err);
     res.status(500).json({ message: 'Server error' });
