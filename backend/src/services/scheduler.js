@@ -32,6 +32,22 @@ const CLINIC_TIMEZONE_OFFSET_MINUTES = 8 * 60;
 const LUNCH_START_MINUTES = 12 * 60;
 const LUNCH_END_MINUTES = 13 * 60 + 30; // next start is 1:30 PM
 
+function hash32FNV1a(input) {
+  const str = String(input ?? '');
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function pickRoundRobinCandidate(candidates, key) {
+  if (!Array.isArray(candidates) || candidates.length <= 1) return candidates?.[0] || null;
+  const idx = hash32FNV1a(key) % candidates.length;
+  return candidates[idx] || candidates[0] || null;
+}
+
 function bucketForHour(hour) {
   if (hour < 12) return 'morning';
   if (hour < 16) return 'afternoon';
@@ -365,7 +381,10 @@ async function suggestSlots({
     return a.start_time.localeCompare(b.start_time);
   });
 
-  const suggestions = pickTopSuggestions(allCandidates, limit);
+  const suggestions = pickTopSuggestions(allCandidates, limit, {
+    branchId,
+    serviceId: service.id,
+  });
 
   return {
     service: { id: service.id, name: service.name, duration_min: service.duration_min },
@@ -382,15 +401,48 @@ async function suggestSlots({
   };
 }
 
-function pickTopSuggestions(sortedCandidates, limit) {
+function pickTopSuggestions(sortedCandidates, limit, { branchId, serviceId } = {}) {
   const picked = [];
   const seenKeys = new Set();
+  const byStartTime = new Map();
+
+  for (const c of sortedCandidates) {
+    const k = c.start_time;
+    if (!k) continue;
+    const existing = byStartTime.get(k);
+    if (existing) existing.push(c);
+    else byStartTime.set(k, [c]);
+  }
 
   for (const candidate of sortedCandidates) {
     if (picked.length >= limit) break;
     const key = candidate.start_time;
     if (seenKeys.has(key)) continue;
-    picked.push(candidate);
+
+    // Tie-breaker: if multiple dentists share the same start_time and are otherwise
+    // equally ranked, pick one deterministically using a round-robin-like rotation.
+    const sameTime = byStartTime.get(key) || [];
+    if (sameTime.length === 1) {
+      picked.push(candidate);
+      seenKeys.add(key);
+      continue;
+    }
+
+    const top = sameTime[0];
+    const tied = sameTime.filter((c) => {
+      return (
+        c.start_time === top.start_time &&
+        (c.distance_to_preferred_minutes ?? null) === (top.distance_to_preferred_minutes ?? null) &&
+        Number(c.score ?? 0) === Number(top.score ?? 0)
+      );
+    });
+
+    const chosen = pickRoundRobinCandidate(
+      tied.sort((a, b) => Number(a.dentist_id) - Number(b.dentist_id)),
+      `${branchId || ''}:${serviceId || ''}:${key}`
+    );
+
+    picked.push(chosen || candidate);
     seenKeys.add(key);
   }
   return picked;

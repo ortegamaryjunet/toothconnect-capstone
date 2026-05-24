@@ -3,6 +3,16 @@ const crypto = require('crypto');
 const db = require('../config/db');
 const { APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime } = require('../utils/scheduling');
 
+function hash32FNV1a(input) {
+  const str = String(input ?? '');
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 let cachedOnlineAppointmentsHasAssignedDentistId = null;
 async function onlineAppointmentsHasAssignedDentistId() {
   if (cachedOnlineAppointmentsHasAssignedDentistId !== null) {
@@ -817,7 +827,7 @@ async function autoBookAppointment(appointmentData) {
     dentistCandidates = fallbackCandidates;
   }
 
-  let selectedDentistId = null;
+  const availableDentists = [];
   for (const row of dentistCandidates) {
     const dentistId = row.id;
     const [conflicts] = await db.query(
@@ -831,9 +841,19 @@ async function autoBookAppointment(appointmentData) {
       [dentistId, toMySQLDateTime(blockedEndUtc), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(startUtc)]
     );
     if (conflicts.length === 0) {
-      selectedDentistId = dentistId;
-      break;
+      availableDentists.push(dentistId);
     }
+  }
+
+  let selectedDentistId = null;
+  if (availableDentists.length === 1) {
+    selectedDentistId = availableDentists[0];
+  } else if (availableDentists.length > 1) {
+    // Round-robin-style tie-breaker: when multiple dentists are free for the exact
+    // same service + branch + datetime, rotate deterministically by slot key.
+    const sorted = availableDentists.slice().sort((a, b) => Number(a) - Number(b));
+    const rrKey = `${branchId || ''}:${service.id || ''}:${appointmentDate}:${appointmentTime}`;
+    selectedDentistId = sorted[hash32FNV1a(rrKey) % sorted.length];
   }
 
   if (!selectedDentistId) {
