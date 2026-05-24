@@ -1,4 +1,20 @@
-const API_BASE_URL = "http://localhost:4000";
+const API_BASE_URL = (() => {
+    try {
+        const params = new URLSearchParams(window.location.search || "");
+        const override = params.get("apiBase") || window.__TOOTHCONNECT_API_BASE_URL__;
+        if (override) return String(override).replace(/\/+$/, "");
+
+        const PROD_API = "https://api.smileempressdentalhub.com";
+        const hostname = String(window.location.hostname || "").toLowerCase();
+        const port = String(window.location.port || "");
+
+        if (hostname === "localhost" || hostname === "127.0.0.1") {
+            if (port === "4000") return window.location.origin;
+            return "http://localhost:4000";
+        }
+    } catch (_) { /* ignore */ }
+    return PROD_API;
+})();
 
 // ── CMS helpers ───────────────────────────────────────────────────────────────
 
@@ -108,7 +124,8 @@ function loadWebsiteFaqs() {
 }
 
 function loadWebsiteServices() {
-    fetch(API_BASE_URL + "/api/website/services")
+    // Use centralized clinic services table (not website CMS services)
+    fetch(API_BASE_URL + "/api/website/clinic-services")
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var services = data.services || [];
@@ -556,7 +573,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             try {
-                const response = await fetch("http://localhost:4000/api/website/saveInquiry", {
+                const response = await fetch(`${API_BASE_URL}/api/website/saveInquiry`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"

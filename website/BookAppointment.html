@@ -49,7 +49,7 @@
         <div class="calendar-card">
             <div class="card-heading">
                 <div>
-                    <span>Step 1 · Appointment Date</span>
+                    <span>Step 2 · Appointment Date</span>
 
                     <h2>
                         Select your preferred date.
@@ -72,6 +72,11 @@
 
             </div>
 
+            <div class="step-lock-notice" id="stepDateNotice">
+                <i class="fa-solid fa-lock"></i>
+                <span>Select your branch and reason in <strong>Step 1</strong> to unlock date selection.</span>
+            </div>
+
             <div class="weekdays">
                 <span>Sun</span>
                 <span>Mon</span>
@@ -88,7 +93,7 @@
 
                 <div class="step-lock-notice" id="step3Notice">
                     <i class="fa-solid fa-lock"></i>
-                    <span>Select a branch in <strong>Step 2</strong> to unlock time slots.</span>
+                    <span>Select a date in <strong>Step 2</strong> to unlock time slots.</span>
                 </div>
 
                 <div id="step3Content">
@@ -121,14 +126,14 @@
 
             <div class="step-lock-notice" id="step2Notice">
                 <i class="fa-solid fa-lock"></i>
-                <span>Select a date in <strong>Step 1</strong> to continue.</span>
+                <span>Complete required details in <strong>Step 1</strong> to unlock date selection.</span>
             </div>
 
             <div id="step2Content">
 
                 <div class="summary-box">
                     <div class="step-box">
-                        <span>Step 2 · Complete Your Appointment Details</span>
+                        <span>Step 1 · Complete Your Appointment Details</span>
                         <h2>Complete your appointment details.</h2>
                     </div>
 
@@ -273,6 +278,20 @@
             </div>
         </div>
     </section>
+</div>
+
+<div class="message-modal" id="messageModal">
+    <div class="message-box">
+        <button type="button" class="message-close" id="closeMessageModal">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="message-icon" id="messageIcon">
+            <i class="fa-solid fa-circle-exclamation"></i>
+        </div>
+        <h3 id="messageTitle">Error</h3>
+        <p id="messageText">Please complete all required fields.</p>
+        <button type="button" class="message-btn" id="messageBtn">Okay</button>
+    </div>
 </div>
 
 <script src="./js/BookAppointment.js" defer></script>

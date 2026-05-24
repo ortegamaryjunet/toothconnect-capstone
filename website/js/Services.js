@@ -1,5 +1,23 @@
+const API_BASE_URL = (() => {
+    try {
+        const params = new URLSearchParams(window.location.search || "");
+        const override = params.get("apiBase") || window.__TOOTHCONNECT_API_BASE_URL__;
+        if (override) return String(override).replace(/\/+$/, "");
+
+        const PROD_API = "https://api.smileempressdentalhub.com";
+        const hostname = String(window.location.hostname || "").toLowerCase();
+        const port = String(window.location.port || "");
+
+        if (hostname === "localhost" || hostname === "127.0.0.1") {
+            if (port === "4000") return window.location.origin;
+            return "http://localhost:4000";
+        }
+    } catch (_) { /* ignore */ }
+    return PROD_API;
+})();
+
 document.addEventListener("DOMContentLoaded", function () {
-    const services = {
+    var services = {
         scaling: {
             title: "Deep Scaling",
             image: "./images/deep-scaling.webp",
@@ -10,7 +28,6 @@ document.addEventListener("DOMContentLoaded", function () {
             process: "The dentist carefully cleans around the teeth and gumline using dental tools to remove hardened deposits.",
             care: "Brush gently, floss daily, use mouthwash if advised, and follow your dentist's cleaning schedule."
         },
-
         smilemakeovers: {
             title: "Smile Make-Overs",
             image: "./images/smile-makeover.jpg",
@@ -21,7 +38,6 @@ document.addEventListener("DOMContentLoaded", function () {
             process: "The dentist checks your teeth, gums, and smile goals before creating a treatment plan. It may include whitening, veneers, crowns, restorations, or orthodontic treatment.",
             care: "Brush and floss daily, avoid biting hard objects, limit stain-causing food and drinks, and visit your dentist regularly."
         },
-
         whitening: {
             title: "Teeth Whitening",
             image: "./images/teeth-whitening.jpg",
@@ -32,7 +48,6 @@ document.addEventListener("DOMContentLoaded", function () {
             process: "A whitening solution is applied to the teeth to help break down stains and improve tooth color.",
             care: "Avoid dark drinks, smoking, and stain-causing food after treatment. Brush regularly and follow your dentist's advice."
         },
-
         veneers: {
             title: "Veneers",
             image: "./images/veneers.jpg",
@@ -43,7 +58,6 @@ document.addEventListener("DOMContentLoaded", function () {
             process: "The tooth surface is prepared, impressions are taken, and the veneer is bonded to the front of the tooth.",
             care: "Brush and floss daily, avoid biting hard objects, and visit your dentist regularly."
         },
-
         crowns: {
             title: "Porcelain Jacket Crowns",
             image: "./images/crowns.jpeg",
@@ -54,7 +68,6 @@ document.addEventListener("DOMContentLoaded", function () {
             process: "The dentist prepares the tooth, takes impressions, and places a custom crown over the tooth.",
             care: "Brush and floss daily, avoid biting hard objects, and visit your dentist for regular checkups."
         },
-
         dentures: {
             title: "Dentures",
             image: "./images/dentures.jpg",
@@ -65,7 +78,6 @@ document.addEventListener("DOMContentLoaded", function () {
             process: "The dentist takes impressions, creates custom dentures, and adjusts them for comfort and fit.",
             care: "Clean dentures daily, store them properly, and visit your dentist for adjustments when needed."
         },
-
         rootcanal: {
             title: "Root Canal Treatment",
             image: "./images/root-canal.jpg",
@@ -76,7 +88,6 @@ document.addEventListener("DOMContentLoaded", function () {
             process: "The infected pulp is removed, the inside of the tooth is cleaned, filled, and sealed.",
             care: "Avoid hard foods until the tooth is fully restored. Brush, floss, and attend follow-up visits."
         },
-
         braces: {
             title: "Braces",
             image: "./images/braces.jpg",
@@ -87,7 +98,6 @@ document.addEventListener("DOMContentLoaded", function () {
             process: "The dentist attaches brackets and wires to guide teeth into better positions over time.",
             care: "Brush carefully around brackets and wires, floss daily, avoid sticky or hard foods, and attend adjustment appointments."
         },
-
         aligners: {
             title: "Clear Aligners",
             image: "./images/clear-aligner.webp",
@@ -98,7 +108,6 @@ document.addEventListener("DOMContentLoaded", function () {
             process: "A series of custom aligners is made for the patient and worn daily based on the dentist's schedule.",
             care: "Clean aligners daily, remove them when eating, and keep them in their case when not in use."
         },
-
         implants: {
             title: "Dental Implants",
             image: "./images/dental-implant.jpg",
@@ -111,70 +120,81 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
-    const aliases = {
-        "deep-scaling": "scaling",
-        "scaling": "scaling",
-
-        "smile-makeovers": "smilemakeovers",
-        "smilemakeovers": "smilemakeovers",
-        "smile": "smilemakeovers",
-
-        "teeth-whitening": "whitening",
-        "whitening": "whitening",
-
+    var aliases = {
+        "deep-scaling": "scaling",      "scaling": "scaling",
+        "smile-makeovers": "smilemakeovers", "smilemakeovers": "smilemakeovers", "smile": "smilemakeovers",
+        "teeth-whitening": "whitening", "whitening": "whitening",
         "veneers": "veneers",
-
-        "porcelain-crowns": "crowns",
-        "porcelain-jacket-crowns": "crowns",
-        "crowns": "crowns",
-
+        "porcelain-crowns": "crowns",   "porcelain-jacket-crowns": "crowns", "crowns": "crowns",
         "dentures": "dentures",
-
-        "root-canal": "rootcanal",
-        "rootcanal": "rootcanal",
-
+        "root-canal": "rootcanal",      "rootcanal": "rootcanal",
         "braces": "braces",
-
-        "clear-aligners": "aligners",
-        "aligners": "aligners",
-
-        "dental-implants": "implants",
-        "implants": "implants"
+        "clear-aligners": "aligners",   "aligners": "aligners",
+        "dental-implants": "implants",  "implants": "implants"
     };
 
-    const params = new URLSearchParams(window.location.search);
-    let serviceKey = params.get("service");
-
-    if (!serviceKey) {
-        serviceKey = "braces";
-    }
-
-    serviceKey = serviceKey.trim().toLowerCase();
+    var params = new URLSearchParams(window.location.search);
+    var serviceKey = (params.get("service") || "braces").trim().toLowerCase();
     serviceKey = aliases[serviceKey] || serviceKey;
-
-    const service = services[serviceKey] || services.braces;
+    var fallback = services[serviceKey] || services.braces;
 
     function setText(id, value) {
-        const element = document.getElementById(id);
+        var el = document.getElementById(id);
+        if (el && value) el.textContent = value;
+    }
 
-        if (element) {
-            element.textContent = value;
+    function applyToPage(title, image, intro, heading, overview, benefits, process, care) {
+        setText("serviceTitle",  title);
+        setText("serviceCrumb",  title);
+        setText("serviceIntro",  intro);
+        setText("mainHeading",   heading);
+        setText("overview",      overview);
+        setText("benefitsText",  benefits);
+        setText("processText",   process);
+        setText("careText",      care);
+
+        var hero = document.getElementById("serviceHero");
+        if (hero && image) {
+            hero.style.backgroundImage =
+                "linear-gradient(rgba(15, 23, 42, 0.35), rgba(15, 23, 42, 0.35)), url(\"" + image + "\")";
         }
     }
 
-    setText("serviceTitle", service.title);
-    setText("serviceCrumb", service.title);
-    setText("serviceIntro", service.intro);
-    setText("mainHeading", service.heading);
-    setText("overview", service.overview);
-    setText("benefitsText", service.benefits);
-    setText("processText", service.process);
-    setText("careText", service.care);
+    // Render from hardcoded fallback immediately (no flash of empty content)
+    applyToPage(
+        fallback.title, fallback.image, fallback.intro,
+        fallback.heading, fallback.overview,
+        fallback.benefits, fallback.process, fallback.care
+    );
 
-    const hero = document.getElementById("serviceHero");
+    // Override with database data where available
+    // Use centralized clinic services table (not website CMS services)
+    fetch(API_BASE_URL + "/api/website/clinic-services")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            var list = data.services || [];
 
-    if (hero) {
-        hero.style.backgroundImage =
-            `linear-gradient(rgba(15, 23, 42, 0.35), rgba(15, 23, 42, 0.35)), url("${service.image}")`;
-    }
+            // Match by slug first, then by normalised name
+            var dbSvc = list.find(function (s) { return s.slug === serviceKey; });
+            if (!dbSvc) {
+                dbSvc = list.find(function (s) {
+                    return (s.name || "").toLowerCase().replace(/[\s\-]/g, "") ===
+                           serviceKey.replace(/[\s\-]/g, "");
+                });
+            }
+
+            if (!dbSvc) return; // keep hardcoded entirely
+
+            applyToPage(
+                dbSvc.name        || fallback.title,
+                dbSvc.image_path  || fallback.image,
+                dbSvc.description || fallback.intro,
+                "A Comprehensive Guide to " + (dbSvc.name || fallback.title),
+                dbSvc.description || fallback.overview,
+                fallback.benefits,  // DB has no separate benefits field
+                fallback.process,   // DB has no separate process field
+                fallback.care       // DB has no separate care field
+            );
+        })
+        .catch(function () { /* keep hardcoded fallback */ });
 });
