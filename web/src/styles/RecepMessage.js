@@ -21,7 +21,7 @@ const createRecepMessageStyles = ({
     chatSidebar: {
       width: isMobile ? '100%' : isTablet ? 300 : isSmallScreen ? 320 : 350,
       height: isMobile ? 'auto' : '100vh',
-      maxHeight: isMobile ? '48vh' : 'none',
+      maxHeight: isMobile ? '52vh' : 'none',
       background: 'rgba(255, 255, 255, 0.96)',
       borderRight: isMobile ? 'none' : '1px solid #dbeafe',
       borderBottom: isMobile ? '1px solid #dbeafe' : 'none',
@@ -204,7 +204,6 @@ const createRecepMessageStyles = ({
       flex: 1,
       overflowY: 'auto',
       padding: isVerySmall ? '0 8px 12px' : '0 10px 16px',
-      maxHeight: isMobile ? 220 : 'none',
       boxSizing: 'border-box',
     },
 

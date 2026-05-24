@@ -426,8 +426,9 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
     },
 
     actionRow: {
-      alignItems: 'column',
-      textAlign: 'left'
+      display: 'flex',
+      flexDirection: 'column',
+      textAlign: 'left',
     },
 
     actionCard: {
@@ -437,11 +438,12 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       padding: '10px 14px',
       boxShadow: '0 6px 18px rgba(15,23,42,0.04)',
       display: 'flex',
-      flexDirection: 'row',
-      justifyContent: 'space-between' ,
-      alignItems: 'center',
-      textAlign: 'center',
+      flexDirection: isMobile ? 'column' : 'row',
+      justifyContent: 'space-between',
+      alignItems: isMobile ? 'stretch' : 'center',
+      textAlign: 'left',
       minHeight: '50px',
+      gap: isMobile ? '10px' : 0,
     },
 
     actionTitle: {

@@ -455,7 +455,15 @@ export default function DentistSchedule() {
 
       {showLeaveModal && (
         <div style={styles.modal} onClick={handleLeaveOverlayClick}>
-          <div style={{ ...styles.modalContent, width: '420px', textAlign: 'left' }}>
+          <div
+            style={{
+              ...styles.modalContent,
+              width: isMobile ? '92vw' : '420px',
+              maxWidth: isMobile ? '92vw' : '90vw',
+              textAlign: 'left',
+              padding: isMobile ? '22px 18px' : undefined,
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h2 style={{ ...styles.modalTitle, margin: 0 }}>Leave Request</h2>
               <button
@@ -467,7 +475,7 @@ export default function DentistSchedule() {
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '12px', marginBottom: '14px' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#0f1b3d', marginBottom: '6px' }}>
                   From Date

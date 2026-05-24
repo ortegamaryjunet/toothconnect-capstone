@@ -4,7 +4,7 @@
   isSmallScreen = false,
   isTablet = false,
 } = {}) => {
-  const sidebarWidth = isMobile ? 0 : isTablet ? 220 : isSmallScreen ? 230 : 250;
+  const sidebarWidth = isVerySmall ? 70 : isMobile ? 80 : isTablet ? 220 : isSmallScreen ? 230 : 250;
 
   return {
     page: {
