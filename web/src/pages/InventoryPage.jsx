@@ -300,7 +300,7 @@ export default function InventoryPage() {
       { label: 'Patient Account', path: '/receptionistPatientAcc', icon: 'fi fi-rr-id-badge' },
       { label: 'Inventory', path: '/receptionistInventory', icon: 'fi fi-rr-boxes' },
       { label: 'Messages', path: '/receptionistMessage', icon: 'fi fi-rr-comment-alt' },
-      { label: 'Online Inquiries', path: '/receptionistInquiries', icon: 'fi fi-rr-comments-question' },
+      { label: 'Online Inquiries', path: '/receptionistInquiries', icon: 'fi fi-rr-inbox-in' },
       { label: 'Notifications', path: '/receptionistNotif', icon: 'fi fi-rr-bell', badge: notificationCount },
     ],
   };
