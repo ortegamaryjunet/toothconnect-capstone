@@ -739,7 +739,8 @@ section {
     width: 100%;
     max-width: 100%;
     height: clamp(260px, 42vw, 560px);
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     border-radius: 42px;
     box-shadow: var(--shadow);
     display: block;
