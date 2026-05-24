@@ -34,14 +34,25 @@ const fallbackServices = [
 let cachedServices = null;
 
 document.addEventListener("DOMContentLoaded", function () {
-    // Layout tweak: keep Step 1 beside Step 2 on wide screens by placing
-    // Step 3 (time slots) below both columns.
+    // Layout tweak:
+    // - Ensure Step 1 (form-card) is the left column
+    // - Ensure Step 2 (calendar-card) is the right column
+    // - Move Step 3 (time-card) below both columns
     try {
         const bookingLayout = document.querySelector(".booking-layout");
-        const timeCard = document.querySelector('[data-move="step3"]') || document.querySelector(".calendar-card .time-card");
-        if (bookingLayout && timeCard) {
-            bookingLayout.appendChild(timeCard);
-            timeCard.classList.add("time-card-wide");
+        if (bookingLayout) {
+            const formCard = bookingLayout.querySelector(".form-card");
+            const calendarCard = bookingLayout.querySelector(".calendar-card");
+            const timeCard =
+                bookingLayout.querySelector('[data-move="step3"]') ||
+                bookingLayout.querySelector(".time-card") ||
+                document.querySelector(".calendar-card .time-card");
+
+            if (timeCard) timeCard.classList.add("time-card-wide");
+
+            if (formCard) bookingLayout.appendChild(formCard);
+            if (calendarCard) bookingLayout.appendChild(calendarCard);
+            if (timeCard) bookingLayout.appendChild(timeCard);
         }
     } catch (_) { /* ignore */ }
 
