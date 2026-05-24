@@ -242,7 +242,7 @@ async function findServiceByReason(reasonForBooking) {
   if (!reason) return null;
 
   const [rows] = await db.query(
-    `SELECT id, name, duration_min
+    `SELECT id, name, category, duration_min, price
      FROM services
      WHERE status = 'Active'
        AND (
