@@ -139,9 +139,7 @@ body {
     grid-template-columns: minmax(360px, 0.95fr) minmax(520px, 1.25fr);
     gap: 36px;
     align-items: flex-start;
-    max-width: 1180px;
-    margin-left: auto;
-    margin-right: auto;
+    width: 100%;
 }
 
 .form-card {
@@ -585,7 +583,7 @@ body {
     }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 720px) {
     .page-wrapper {
         padding: 82px 24px 30px;
     }
@@ -619,7 +617,7 @@ body {
     }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 640px) {
     .back-home-btn {
         top: 14px;
         left: 16px;

@@ -89,6 +89,120 @@ function mapStaffProfileRow(row) {
   };
 }
 
+async function loadDentistScheduleEntriesByDentistIds(dentistIds = []) {
+  const ids = (Array.isArray(dentistIds) ? dentistIds : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+
+  if (ids.length === 0) return new Map();
+
+  const placeholders = ids.map(() => '?').join(',');
+  const [rows] = await pool.query(
+    `SELECT
+       ds.dentist_id,
+       ds.branch_id,
+       b.name AS branch_name,
+       b.address AS branch_address,
+       ds.weekday,
+       ds.start_time,
+       ds.end_time
+     FROM dentist_schedules ds
+     LEFT JOIN branches b ON b.id = ds.branch_id
+     WHERE ds.dentist_id IN (${placeholders})
+     ORDER BY ds.dentist_id ASC, ds.weekday ASC, ds.branch_id ASC`,
+    ids
+  );
+
+  const byDentist = new Map();
+  for (const row of rows) {
+    const dentistId = Number(row.dentist_id);
+    if (!byDentist.has(dentistId)) byDentist.set(dentistId, []);
+    byDentist.get(dentistId).push({
+      branch_id: Number(row.branch_id),
+      branch_name: row.branch_name || null,
+      branch_address: row.branch_address || null,
+      weekday: Number(row.weekday),
+      start_time: row.start_time ? String(row.start_time).slice(0, 8) : null,
+      end_time: row.end_time ? String(row.end_time).slice(0, 8) : null,
+    });
+  }
+
+  return byDentist;
+}
+
+async function replaceDentistSchedules(dentistId, scheduleEntries = []) {
+  const id = Number(dentistId);
+  if (!Number.isInteger(id) || id <= 0) {
+    const err = new Error('Invalid dentist id');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const entries = Array.isArray(scheduleEntries) ? scheduleEntries : [];
+  const cleaned = [];
+
+  for (const entry of entries) {
+    const branchId = Number(entry?.branch_id);
+    const weekday = Number(entry?.weekday);
+    const startTime = entry?.start_time ? String(entry.start_time).slice(0, 8) : null;
+    const endTime = entry?.end_time ? String(entry.end_time).slice(0, 8) : null;
+
+    if (!Number.isInteger(branchId) || branchId <= 0) continue;
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) continue;
+    if (!startTime || !endTime) continue;
+
+    cleaned.push({ branchId, weekday, startTime, endTime });
+  }
+
+  if (entries.length > 0 && cleaned.length === 0) {
+    const err = new Error('Invalid schedule_entries');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const [[dentist]] = await pool.query(
+    'SELECT id, role, home_branch_id FROM users WHERE id = ? LIMIT 1',
+    [id]
+  );
+  if (!dentist || dentist.role !== 'dentist') {
+    const err = new Error('Dentist not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    await conn.query('DELETE FROM dentist_schedules WHERE dentist_id = ?', [id]);
+
+    if (cleaned.length > 0) {
+      await conn.query(
+        `INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time)
+         VALUES ${cleaned.map(() => '(?, ?, ?, ?, ?)').join(', ')}`,
+        cleaned.flatMap((row) => [id, row.branchId, row.weekday, row.startTime, row.endTime])
+      );
+
+      const extraBranches = [...new Set(cleaned.map((row) => row.branchId))].filter(
+        (b) => Number(b) !== Number(dentist.home_branch_id)
+      );
+      for (const branchId of extraBranches) {
+        await conn.query(
+          'INSERT IGNORE INTO user_branches (user_id, branch_id, is_primary) VALUES (?, ?, FALSE)',
+          [id, branchId]
+        );
+      }
+    }
+
+    await conn.commit();
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
 function extractCity(address) {
   if (!address) return null;
   const parts = String(address).split(',').map((p) => p.trim()).filter(Boolean);
@@ -166,7 +280,19 @@ async function fetchStaffProfileBy(whereClause, params) {
     params
   );
 
-  return rows[0] ? mapStaffProfileRow(rows[0]) : null;
+  if (!rows[0]) return null;
+
+  const mapped = mapStaffProfileRow(rows[0]);
+  if (rows[0].user_role === 'dentist' && mapped.userId) {
+    try {
+      const schedulesByDentist = await loadDentistScheduleEntriesByDentistIds([mapped.userId]);
+      mapped.scheduleEntries = schedulesByDentist.get(Number(mapped.userId)) || [];
+    } catch (_) {
+      mapped.scheduleEntries = [];
+    }
+  }
+
+  return mapped;
 }
 
 async function updateStaffProfile(profileId, payload, { allowBranch = false, allowStatus = false } = {}) {
@@ -1380,7 +1506,21 @@ router.get('/staff-profiles', authenticate, requireRole('admin'), async (req, re
        ORDER BY sp.created_at DESC`
     );
 
-    res.json({ employees: rows.map(mapStaffProfileRow) });
+    const dentistUserIds = rows
+      .filter((row) => row.user_role === 'dentist' && row.user_id)
+      .map((row) => row.user_id);
+
+    const schedulesByDentist = await loadDentistScheduleEntriesByDentistIds(dentistUserIds);
+
+    res.json({
+      employees: rows.map((row) => {
+        const mapped = mapStaffProfileRow(row);
+        if (row.user_role === 'dentist') {
+          mapped.scheduleEntries = schedulesByDentist.get(Number(row.user_id)) || [];
+        }
+        return mapped;
+      }),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -1424,10 +1564,36 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
   }
 
   try {
+    const wantsScheduleUpdate = Array.isArray(req.body?.schedule_entries);
+    let linkedUserIdForSchedule = null;
+
+    if (wantsScheduleUpdate) {
+      const [urows] = await pool.query(
+        `SELECT u.id, u.role
+         FROM staff_profile sp
+         JOIN users u ON u.id = sp.user_id
+         WHERE sp.id = ?
+         LIMIT 1`,
+        [profileId]
+      );
+      const u = urows[0] || null;
+      if (!u) {
+        return res.status(404).json({ message: 'Staff profile not found' });
+      }
+      if (u.role !== 'dentist') {
+        return res.status(400).json({ message: 'Only dentists have schedules' });
+      }
+      linkedUserIdForSchedule = u.id;
+    }
+
     await updateStaffProfile(profileId, req.body, {
       allowBranch: true,
       allowStatus: true,
     });
+
+    if (wantsScheduleUpdate && linkedUserIdForSchedule) {
+      await replaceDentistSchedules(linkedUserIdForSchedule, req.body.schedule_entries);
+    }
 
     const profile = await fetchStaffProfileBy('sp.id = ?', [profileId]);
     res.json({ message: 'Staff profile updated.', profile });
@@ -1596,19 +1762,55 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
         Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
         Thursday: 4, Friday: 5, Saturday: 6,
       };
-      const days = Array.isArray(staffProfile.work_days)
-        ? staffProfile.work_days
-        : String(staffProfile.work_days || '').split(',').map((d) => d.trim()).filter(Boolean);
-      const workStart = staffProfile.work_start_time || null;
-      const workEnd = staffProfile.work_end_time || null;
-      if (days.length > 0 && workStart && workEnd) {
-        for (const dayName of days) {
-          const weekday = DAY_TO_WEEKDAY[dayName];
-          if (weekday !== undefined) {
+
+      const scheduleEntries = Array.isArray(staffProfile.schedule_entries)
+        ? staffProfile.schedule_entries
+        : [];
+
+      // New path: optional per-day branch schedules.
+      if (scheduleEntries.length > 0) {
+        for (const entry of scheduleEntries) {
+          const branchId = Number(entry.branch_id || home_branch_id);
+          const weekday =
+            Number.isInteger(entry.weekday)
+              ? entry.weekday
+              : DAY_TO_WEEKDAY[String(entry.day || '').trim()];
+          const startTime = entry.start_time || staffProfile.work_start_time || null;
+          const endTime = entry.end_time || staffProfile.work_end_time || null;
+
+          if (!branchId || weekday === undefined || !startTime || !endTime) {
+            continue;
+          }
+
+          await pool.query(
+            'INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
+            [userId, branchId, weekday, startTime, endTime]
+          );
+
+          // Ensure the dentist is associated with any additional branches used in schedules.
+          if (branchId !== Number(home_branch_id)) {
             await pool.query(
-              'INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
-              [userId, home_branch_id, weekday, workStart, workEnd]
+              'INSERT IGNORE INTO user_branches (user_id, branch_id, is_primary) VALUES (?, ?, FALSE)',
+              [userId, branchId]
             );
+          }
+        }
+      } else {
+        // Backward-compatible path: all selected days use the home branch.
+        const days = Array.isArray(staffProfile.work_days)
+          ? staffProfile.work_days
+          : String(staffProfile.work_days || '').split(',').map((d) => d.trim()).filter(Boolean);
+        const workStart = staffProfile.work_start_time || null;
+        const workEnd = staffProfile.work_end_time || null;
+        if (days.length > 0 && workStart && workEnd) {
+          for (const dayName of days) {
+            const weekday = DAY_TO_WEEKDAY[dayName];
+            if (weekday !== undefined) {
+              await pool.query(
+                'INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
+                [userId, home_branch_id, weekday, workStart, workEnd]
+              );
+            }
           }
         }
       }

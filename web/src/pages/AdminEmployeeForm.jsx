@@ -285,6 +285,7 @@ export default function AdminEmployeeForm() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
   const [accessEmail, setAccessEmail] = useState('');
+  const [enablePerDayBranch, setEnablePerDayBranch] = useState(false);
 
   const [ageValues, setAgeValues] = useState({
     dentist: '',
@@ -402,6 +403,7 @@ export default function AdminEmployeeForm() {
   useEffect(() => {
     setSelectedBranchId('');
     setSelectedSpecialization('');
+    setEnablePerDayBranch(false);
   }, [employeeType]);
 
   useEffect(() => {
@@ -570,6 +572,20 @@ export default function AdminEmployeeForm() {
       const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
       const branchId = Number(selectedBranchId);
       const workDays = formData.getAll('schedule[]');
+      const scheduleEntries = [];
+
+      if (isDentist && enablePerDayBranch) {
+        for (const day of workDays) {
+          const raw = formData.get(`schedule_branch_${day}`);
+          const dayBranchId = Number(raw || branchId);
+          scheduleEntries.push({
+            day,
+            branch_id: dayBranchId || branchId,
+            start_time: payload.docWorkStart,
+            end_time: payload.docWorkEnd,
+          });
+        }
+      }
 
       const commonStaffProfile = {
         first_name: firstName,
@@ -611,6 +627,9 @@ export default function AdminEmployeeForm() {
         work_days: workDays,
         work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : payload.recepWorkStart,
         work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : payload.recepWorkEnd,
+        ...(isDentist && enablePerDayBranch && scheduleEntries.length > 0
+          ? { schedule_entries: scheduleEntries }
+          : {}),
       };
 
       if (isDentalAssistant) {
@@ -917,6 +936,51 @@ export default function AdminEmployeeForm() {
               <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
               <TimeRangeFieldRaw startName="docWorkStart" endName="docWorkEnd" styles={styles} />
             </div>
+
+            <div style={styles.rowTwo}>
+              <div style={styles.field}>
+                <label style={styles.label}>Per-day branch (Optional)</label>
+                <label style={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={enablePerDayBranch}
+                    onChange={(e) => setEnablePerDayBranch(e.target.checked)}
+                    style={styles.checkboxInput}
+                  />
+                  Assign different branch per day
+                </label>
+              </div>
+              <div />
+            </div>
+
+            {enablePerDayBranch && (
+              <div style={styles.field}>
+                <label style={styles.label}>Branch per selected day</label>
+                <p style={{ margin: '6px 0 12px', color: '#6f675b', fontSize: 12 }}>
+                  Only the days checked in "Work Schedule Days" will be saved.
+                </p>
+                <div style={styles.scheduleGrid}>
+                  {DAY_OPTIONS.map((day) => (
+                    <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ minWidth: 90, fontWeight: 600 }}>{day}</span>
+                      <select
+                        name={`schedule_branch_${day}`}
+                        defaultValue={selectedBranchId || ''}
+                        style={styles.input}
+                        disabled={!selectedBranchId}
+                      >
+                        <option value="" disabled>
+                          Select branch
+                        </option>
+                        {branchOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
 

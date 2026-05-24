@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Step 3 (time slots) below both columns.
     try {
         const bookingLayout = document.querySelector(".booking-layout");
-        const timeCard = document.querySelector(".calendar-card .time-card");
+        const timeCard = document.querySelector('[data-move="step3"]') || document.querySelector(".calendar-card .time-card");
         if (bookingLayout && timeCard) {
             bookingLayout.appendChild(timeCard);
             timeCard.classList.add("time-card-wide");

@@ -15,6 +15,16 @@ import receptionistIcon from '../assets/adminImages/receptionist.png';
 // ─── Edit-modal filter helpers (value → filtered value) ──────────────────────
 
 const EDIT_DAY_OPTIONS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_TO_WEEKDAY = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
 
 function filterNameVal(val) {
   return val.replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
@@ -50,6 +60,18 @@ function parseWorkDays(val) {
   return String(val).split(',').map((d) => d.trim()).filter(Boolean);
 }
 
+function formatScheduleEntries(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) return [];
+  return entries.map((e) => {
+    const day = WEEKDAY_LABELS[Number(e.weekday)] || `Day ${String(e.weekday)}`;
+    const branch = e.branch_address || e.branch_name || `Branch #${e.branch_id}`;
+    const start = e.start_time ? String(e.start_time).slice(0, 5) : '';
+    const end = e.end_time ? String(e.end_time).slice(0, 5) : '';
+    const hours = start && end ? `${start} - ${end}` : '';
+    return `${day}: ${branch}${hours ? ` (${hours})` : ''}`;
+  });
+}
+
 export default function AdminEmployees() {
   const { user } = useAuth();
   const adminName = user?.name || 'Admin';
@@ -62,6 +84,8 @@ export default function AdminEmployees() {
   const [editErrors, setEditErrors] = useState(new Set());
   const [showEditErrorModal, setShowEditErrorModal] = useState(false);
   const [editErrorMessage, setEditErrorMessage] = useState('');
+  const [usePerDayBranchSchedule, setUsePerDayBranchSchedule] = useState(false);
+  const [scheduleDraft, setScheduleDraft] = useState({});
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -253,6 +277,22 @@ export default function AdminEmployees() {
     setSelectedEmployee(employee);
     setEditedEmployee({ ...employee });
     setIsEditingEmployee(false);
+
+    const hasSchedule = Array.isArray(employee?.scheduleEntries) && employee.scheduleEntries.length > 0;
+    setUsePerDayBranchSchedule(hasSchedule);
+
+    const draft = {};
+    for (const entry of employee?.scheduleEntries || []) {
+      const weekday = Number(entry.weekday);
+      if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) continue;
+      draft[weekday] = {
+        branch_id: entry.branch_id,
+        start_time: entry.start_time || '',
+        end_time: entry.end_time || '',
+      };
+    }
+    setScheduleDraft(draft);
+
     setShowEmployeeModal(true);
   }
 
@@ -262,6 +302,8 @@ export default function AdminEmployees() {
     setEditedEmployee(null);
     setIsEditingEmployee(false);
     setEditErrors(new Set());
+    setUsePerDayBranchSchedule(false);
+    setScheduleDraft({});
   }
 
   function handleEmployeeModalOverlayClick(event) {
@@ -298,6 +340,14 @@ export default function AdminEmployees() {
     required.forEach((name) => {
       if (!editedEmployee?.[name]) errors.add(name);
     });
+
+    if (editedEmployee?.role === 'Dentist') {
+      if (!editedEmployee?.branchId) errors.add('branchId');
+      if (!editedEmployee?.workStartTime) errors.add('workStartTime');
+      if (!editedEmployee?.workEndTime) errors.add('workEndTime');
+      const days = parseWorkDays(editedEmployee?.workDays);
+      if (days.length === 0) errors.add('workDays');
+    }
     return errors;
   }
 
@@ -312,9 +362,41 @@ export default function AdminEmployees() {
     setEditErrors(new Set());
 
     try {
+      let nextEmployee = editedEmployee;
+
+      if (editedEmployee?.role === 'Dentist') {
+        const checkedDays = parseWorkDays(editedEmployee?.workDays);
+        const assignedBranchId = Number(editedEmployee?.branchId);
+
+        const scheduleEntries = checkedDays
+          .map((day) => {
+            const weekday = DAY_TO_WEEKDAY[day];
+            const draft = scheduleDraft?.[weekday] || {};
+            const branchId = usePerDayBranchSchedule
+              ? Number(draft.branch_id || assignedBranchId)
+              : assignedBranchId;
+            const startTime = (usePerDayBranchSchedule ? draft.start_time : '') || editedEmployee?.workStartTime || '';
+            const endTime = (usePerDayBranchSchedule ? draft.end_time : '') || editedEmployee?.workEndTime || '';
+
+            if (!Number.isInteger(weekday)) return null;
+            if (!Number.isInteger(branchId) || branchId <= 0) return null;
+            if (!startTime || !endTime) return null;
+
+            return {
+              weekday,
+              branch_id: branchId,
+              start_time: startTime,
+              end_time: endTime,
+            };
+          })
+          .filter(Boolean);
+
+        nextEmployee = { ...editedEmployee, scheduleEntries };
+      }
+
       const res = await api.patch(
         `/auth/staff-profiles/${editedEmployee.profileId}`,
-        employeeToStaffPayload(editedEmployee)
+        employeeToStaffPayload(nextEmployee)
       );
       const savedEmployee = res.data.profile;
 
@@ -327,6 +409,7 @@ export default function AdminEmployees() {
       setSelectedEmployee(savedEmployee);
       setEditedEmployee(savedEmployee);
       setIsEditingEmployee(false);
+      setUsePerDayBranchSchedule(Array.isArray(savedEmployee?.scheduleEntries) && savedEmployee.scheduleEntries.length > 0);
     } catch (err) {
       console.error('Failed to update employee', err);
       setEditErrorMessage(err.response?.data?.message || 'Failed to update employee.');
@@ -479,6 +562,127 @@ export default function AdminEmployees() {
             </label>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  function modalScheduleEntries() {
+    const formatted = formatScheduleEntries(editedEmployee?.scheduleEntries);
+    if (editedEmployee?.role !== 'Dentist' || formatted.length === 0) return null;
+
+    return (
+      <div style={styles.employeeModalField}>
+        <label style={styles.employeeModalLabel}>Branch Schedule</label>
+        <div style={{ fontSize: 13, color: '#3f382d', lineHeight: 1.6 }}>
+          {formatted.map((line) => (
+            <div key={line}>{line}</div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function modalScheduleEditor() {
+    if (editedEmployee?.role !== 'Dentist') return null;
+    if (!isEditingEmployee) return null;
+
+    const checkedDays = parseWorkDays(editedEmployee?.workDays);
+    const assignedBranchId = Number(editedEmployee?.branchId);
+
+    return (
+      <div style={styles.employeeModalField}>
+        <label style={styles.employeeModalLabel}>Per-day Branch Schedule (Optional)</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+          <input
+            type="checkbox"
+            checked={usePerDayBranchSchedule}
+            onChange={(e) => setUsePerDayBranchSchedule(e.target.checked)}
+            style={{ accentColor: '#2563eb' }}
+          />
+          <span style={{ fontSize: 13, color: '#334155' }}>
+            Enable different branch per day
+          </span>
+        </div>
+
+        {usePerDayBranchSchedule && (
+          <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+            {EDIT_DAY_OPTIONS.map((day) => {
+              const weekday = DAY_TO_WEEKDAY[day];
+              const isChecked = checkedDays.includes(day);
+              const draft = scheduleDraft?.[weekday] || {};
+              const branchValue = draft.branch_id ?? assignedBranchId ?? '';
+              const startValue = draft.start_time ?? editedEmployee?.workStartTime ?? '';
+              const endValue = draft.end_time ?? editedEmployee?.workEndTime ?? '';
+
+              return (
+                <div
+                  key={day}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '100px 1fr 1fr 1fr',
+                    gap: 10,
+                    alignItems: 'center',
+                    opacity: isChecked ? 1 : 0.5,
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                    {day}
+                  </div>
+
+                  <select
+                    value={branchValue}
+                    disabled={!isChecked}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setScheduleDraft((prev) => ({
+                        ...prev,
+                        [weekday]: { ...(prev?.[weekday] || {}), branch_id: v },
+                      }));
+                    }}
+                    style={styles.employeeModalInput}
+                  >
+                    <option value="">Select branch</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={String(branch.id)}>
+                        {branch.address ? `${branch.name} - ${branch.address}` : branch.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="time"
+                    value={startValue}
+                    disabled={!isChecked}
+                    onChange={(e) => {
+                      setScheduleDraft((prev) => ({
+                        ...prev,
+                        [weekday]: { ...(prev?.[weekday] || {}), start_time: e.target.value },
+                      }));
+                    }}
+                    style={styles.employeeModalInput}
+                  />
+
+                  <input
+                    type="time"
+                    value={endValue}
+                    disabled={!isChecked}
+                    onChange={(e) => {
+                      setScheduleDraft((prev) => ({
+                        ...prev,
+                        [weekday]: { ...(prev?.[weekday] || {}), end_time: e.target.value },
+                      }));
+                    }}
+                    style={styles.employeeModalInput}
+                  />
+                </div>
+              );
+            })}
+
+            <div style={{ fontSize: 12, color: '#6f675b', marginTop: 4 }}>
+              Only checked days in "Work Schedule Days" will be saved.
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -913,6 +1117,9 @@ export default function AdminEmployees() {
                   {modalSelect('Shift Type', 'shiftType', getShiftTypeOptions(editedEmployee?.role))}
                 </div>
 
+                {modalScheduleEntries()}
+                {modalScheduleEditor()}
+
                 {modalWorkDays()}
 
                 <div style={styles.employeeModalGridTwo}>
@@ -1034,7 +1241,7 @@ export default function AdminEmployees() {
 }
 
 function employeeToStaffPayload(employee) {
-  return {
+  const payload = {
     branchId: employee.branchId,
     firstName: employee.firstName,
     middleName: employee.middleName,
@@ -1064,4 +1271,10 @@ function employeeToStaffPayload(employee) {
     workEndTime: employee.workEndTime,
     status: employee.status,
   };
+
+  if (employee?.role === 'Dentist' && Array.isArray(employee?.scheduleEntries) && employee.scheduleEntries.length > 0) {
+    payload.schedule_entries = employee.scheduleEntries;
+  }
+
+  return payload;
 }
