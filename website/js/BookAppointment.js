@@ -34,6 +34,17 @@ const fallbackServices = [
 let cachedServices = null;
 
 document.addEventListener("DOMContentLoaded", function () {
+    // Layout tweak: keep Step 1 beside Step 2 on wide screens by placing
+    // Step 3 (time slots) below both columns.
+    try {
+        const bookingLayout = document.querySelector(".booking-layout");
+        const timeCard = document.querySelector(".calendar-card .time-card");
+        if (bookingLayout && timeCard) {
+            bookingLayout.appendChild(timeCard);
+            timeCard.classList.add("time-card-wide");
+        }
+    } catch (_) { /* ignore */ }
+
     const messageModal = document.getElementById("messageModal");
     const messageTitle = document.getElementById("messageTitle");
     const messageText  = document.getElementById("messageText");
