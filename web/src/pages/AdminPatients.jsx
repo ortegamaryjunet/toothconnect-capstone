@@ -479,14 +479,20 @@ function splitName(name = '') {
 }
 
 function mapPatientRow(row) {
-  const nameParts = splitName(row.name);
+  const fullName = row.full_name || row.fullName || row.name || '';
+  const nameParts = splitName(fullName);
+
+  const firstName = row.first_name || row.firstName || nameParts.firstName;
+  const middleName = row.middle_name || row.middleName || nameParts.middleName;
+  const lastName = row.last_name || row.lastName || nameParts.lastName;
+  const userId = row.user_id || row.userId || row.id;
 
   return {
     id: `P-${String(row.id).padStart(4, '0')}`,
-    userId: row.id,
-    lastName: nameParts.lastName,
-    firstName: nameParts.firstName,
-    middleName: nameParts.middleName,
+    userId,
+    lastName,
+    firstName,
+    middleName,
     age: row.age || '',
     gender: row.gender || '',
   };
