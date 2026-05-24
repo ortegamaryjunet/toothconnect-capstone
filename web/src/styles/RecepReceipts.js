@@ -4,7 +4,7 @@
   isSmallScreen = false,
   isTablet = false,
 } = {}) => {
-  const sidebarWidth = isVerySmall ? 70 : isMobile ? 80 : isTablet ? 220 : isSmallScreen ? 230 : 250;
+  const sidebarWidth = isVerySmall ? 70 : isMobile ? 80 : 250;
 
   return {
     page: {
@@ -99,10 +99,10 @@
     },
 
     mainContainer: {
-      marginLeft: isMobile ? 0 : sidebarWidth,
+      marginLeft: sidebarWidth,
       minHeight: '100vh',
-      width: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`,
-      maxWidth: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`,
+      width: `calc(100% - ${sidebarWidth}px)`,
+      maxWidth: `calc(100% - ${sidebarWidth}px)`,
       overflowX: 'hidden',
       boxSizing: 'border-box',
     },
