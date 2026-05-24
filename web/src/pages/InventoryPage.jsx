@@ -273,6 +273,7 @@ export default function InventoryPage() {
     isMobile,
     isTablet,
     isSmallScreen,
+    desktopSidebarWidth: isReceptionist ? 250 : 230,
   });
 
   const receptionistHeaderStyle = isReceptionist
