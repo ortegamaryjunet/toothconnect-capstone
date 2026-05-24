@@ -152,14 +152,29 @@ async function getDentistAppointmentsOnDay(dentistId, dayStart, dayEnd) {
   const [rows] = await pool.query(
     `SELECT start_time, duration_min FROM appointments
      WHERE dentist_id = ?
-       AND status IN ('scheduled','arrived')
-       AND start_time >= ? AND start_time < ?`,
+        AND status IN ('scheduled','arrived')
+        AND start_time >= ? AND start_time < ?`,
     [dentistId, toMySQLDateTime(dayStart), toMySQLDateTime(dayEnd)]
   );
   return rows.map(r => ({
     start: new Date(r.start_time),
     end: addMinutes(new Date(r.start_time), r.duration_min + APPOINTMENT_BUFFER_MINUTES),
   }));
+}
+
+async function getBranchBookedStartTimesOnDay(branchId, dayStart, dayEnd) {
+  const [rows] = await pool.query(
+    `SELECT start_time FROM appointments
+     WHERE branch_id = ?
+       AND status IN ('scheduled','arrived')
+       AND start_time >= ? AND start_time < ?`,
+    [branchId, toMySQLDateTime(dayStart), toMySQLDateTime(dayEnd)]
+  );
+  const booked = new Set();
+  for (const r of rows) {
+    booked.add(toMySQLDateTime(parseISOToDate(r.start_time)));
+  }
+  return booked;
 }
 
 async function getPatientPreferences(patientId) {
@@ -286,6 +301,7 @@ async function suggestSlots({
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
     const weekday = jsWeekday(day);
     const dayKey = clinicDateKeyFromUtcDate(dayStart);
+    const branchBookedStartTimes = await getBranchBookedStartTimesOnDay(branchId, dayStart, dayEnd);
 
     for (const dentist of dentists) {
       const leaveRanges = approvedLeavesByDentist.get(Number(dentist.id)) || null;
@@ -337,6 +353,7 @@ async function suggestSlots({
       for (const slot of candidates) {
         if (slot.start <= new Date()) continue;
         if (isInsideLunchLocal(slot.start, slot.end)) continue;
+        if (branchBookedStartTimes.has(toMySQLDateTime(slot.start))) continue;
 
         const conflict = existing.some(e =>
           rangesOverlap(slot.start, slot.end, e.start, e.end)

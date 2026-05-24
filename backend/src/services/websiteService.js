@@ -827,6 +827,22 @@ async function autoBookAppointment(appointmentData) {
     dentistCandidates = fallbackCandidates;
   }
 
+  // Branch-wide rule: only one appointment per exact start_time slot per branch.
+  const [branchSlotConflicts] = await db.query(
+    `SELECT id
+     FROM appointments
+     WHERE branch_id = ?
+       AND status IN ('scheduled','arrived')
+       AND start_time = ?
+     LIMIT 1`,
+    [branchId, toMySQLDateTime(startUtc)]
+  );
+  if (branchSlotConflicts.length > 0) {
+    const err = new Error('This time slot is already taken at this branch.');
+    err.statusCode = 409;
+    throw err;
+  }
+
   const availableDentists = [];
   for (const row of dentistCandidates) {
     const dentistId = row.id;

@@ -125,7 +125,9 @@ export default function RecepAppointmentForm() {
   }, [selectedTime, estimatedDuration]);
 
   const availableSlots = useMemo(() => {
-    const appointmentsForSlots = formData.dentistId ? dentistBusySlots : dayAppointments;
+    const appointmentsForSlots = formData.dentistId
+      ? [...dentistBusySlots, ...dayAppointments]
+      : dayAppointments;
     const slots = computeAvailableSlots({
       appointments: appointmentsForSlots,
       dateKey: selectedDate,
@@ -515,13 +517,23 @@ export default function RecepAppointmentForm() {
         });
       }
 
-      await createAppointment({
+      const appointmentPayload = {
+        branch_id: Number(formData.branchId),
         patient_id: Number(patient.id),
         dentist_id: Number(formData.dentistId),
         service_id: Number(formData.serviceId),
         start_time: buildAppointmentStartISO(selectedDate, selectedTime),
         note: formData.note,
-      });
+      };
+
+      // Only same-day receptionist appointments should go directly to the queue (arrived).
+      // Future-day appointments should remain scheduled (pending list).
+      const todayKey = toDateKey(new Date());
+      if (selectedDate === todayKey) {
+        appointmentPayload.initial_status = 'arrived';
+      }
+
+      await createAppointment(appointmentPayload);
 
       navigate('/receptionistAppointments');
     } catch (err) {
