@@ -287,7 +287,7 @@ export default function DentistProfile() {
 
         <nav style={styles.menu}>
           <Link to="/dentist" style={styles.menuItem}>
-            <i className="fi fi-rr-apps" style={styles.menuItemIcon}></i>
+            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
@@ -566,7 +566,7 @@ export default function DentistProfile() {
                 <button
                   type="button"
                   onClick={openWorkModal}
-                  style={{ fontSize: 13, padding: '6px 14px', borderRadius: 10, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontWeight: 600 }}
+                  style={{ fontSize: 13, padding: '6px 14px', borderRadius: 10, border: 'none', background: '#b8860b', color: '#fff', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontWeight: 600 }}
                 >
                   + Add
                 </button>

@@ -25,7 +25,7 @@
       height: '100vh',
       background: '#ffffff',
       borderRight: '1px solid #e5e7eb',
-      padding: isMobile ? '16px 8px' : isTablet ? '18px 10px' : '22px 16px',
+      padding: isMobile ? '18px 10px' : '22px 16px',
       zIndex: 200,
       display: 'flex',
       flexDirection: 'column',
@@ -34,29 +34,29 @@
 
     logo: {
       textAlign: 'center',
-      paddingBottom: isMobile ? 16 : isTablet ? 18 : 22,
-      marginBottom: isMobile ? 12 : 14,
+      paddingBottom: 22,
+      marginBottom: 14,
       borderBottom: '1px solid #e5e7eb',
     },
 
     logoImg: {
-      width: isMobile ? 46 : isTablet ? 54 : 125,
+      width: isMobile ? 55 : 125,
       height: 'auto',
     },
 
     menu: {
       display: 'flex',
       flexDirection: 'column',
-      gap: isTablet ? 10 : 8,
+      gap: 8,
       flex: 1,
     },
 
     menuItem: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isMobile || isTablet ? 'center' : 'flex-start',
-      gap: isMobile || isTablet ? 0 : 12,
-      padding: isMobile ? '13px 8px' : isTablet ? '14px 10px' : '13px 14px',
+      justifyContent: isMobile ? 'center' : 'flex-start',
+      gap: 12,
+      padding: '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
@@ -70,13 +70,13 @@
     },
 
     menuItemIcon: {
-      marginRight: isMobile || isTablet ? 0 : 12,
-      fontSize: isTablet ? 20 : 18,
+      marginRight: isMobile ? 0 : 12,
+      fontSize: 18,
       verticalAlign: 'middle',
     },
 
     menuItemText: {
-      display: isMobile || isTablet ? 'none' : 'inline',
+      display: isMobile ? 'none' : 'inline',
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
     },
@@ -111,13 +111,13 @@
       top: 0,
       left: sidebarWidth,
       right: 0,
-      height: isMobile ? 70 : 78,
+      height: 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: isMobile ? '0 14px' : isTablet ? '0 18px' : '0 28px',
+      padding: isMobile ? '0 14px' : '0 28px',
       zIndex: 150,
       boxSizing: 'border-box',
     },
@@ -130,27 +130,25 @@
     },
 
     doctorProfile: {
-      display: 'inline-flex',
+      display: 'flex',
       alignItems: 'center',
       gap: 10,
-      minHeight: isTablet ? 'auto' : 52,
-      padding: isTablet ? 8 : '8px 18px',
-      borderRadius: isMobile ? 14 : 16,
+      height: 52,
+      padding: '0 12px',
+      borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
-      boxSizing: 'border-box',
     },
 
     avatarSmall: {
-      width: isMobile ? 34 : 40,
-      height: isMobile ? 34 : 40,
-      borderRadius: isMobile ? 12 : 13,
+      width: 40,
+      height: 40,
+      borderRadius: 13,
       background: '#eff6ff',
       color: '#2563eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      flexShrink: 0,
     },
 
     avatarIcon: {
@@ -158,34 +156,25 @@
     },
 
     doctorInfo: {
-      display: isMobile || isTablet ? 'none' : 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      lineHeight: 1.2,
+      display: isMobile ? 'none' : 'block',
     },
 
     doctorName: {
-      fontSize: 15,
-      fontWeight: 700,
-      color: '#0f172a',
       fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 600,
+      color: '#0f172a',
     },
 
     doctorSpecialization: {
-      marginTop: 2,
-      fontSize: 13,
+      fontSize: 12,
+      textAlign: 'left',
       color: '#64748b',
-      fontFamily: 'Arial, sans-serif',
+      marginTop: 2,
     },
 
     mainContent: {
-      padding: isMobile
-        ? '84px 14px 18px'
-        : isTablet
-          ? '94px 18px 22px'
-          : isSmallScreen
-            ? '98px 22px 24px'
-            : '104px 28px 28px',
+      padding: isMobile ? '96px 14px 22px' : '104px 28px 28px',
       boxSizing: 'border-box',
       width: '100%',
       maxWidth: '100%',
@@ -195,18 +184,20 @@
     heroCard: {
       position: 'relative',
       width: '100%',
-      minHeight: isMobile ? 'auto' : 190,
-      borderRadius: isMobile ? 22 : isTablet ? 24 : 28,
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
-      padding: isMobile ? 20 : isTablet ? 22 : isSmallScreen ? 26 : 30,
+      minHeight: isMobile ? 170 : 225,
+      borderRadius: isMobile ? 22 : 28,
+      background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
+      padding: isMobile ? 20 : 30,
       marginBottom: 22,
       overflow: 'hidden',
       display: 'flex',
-      alignItems: isSmallScreen ? 'flex-start' : 'center',
+      alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'space-between',
-      gap: isTablet ? 18 : 24,
-      flexDirection: isSmallScreen ? 'column' : 'row',
+      gap: 24,
+      flexDirection: isMobile ? 'column' : 'row',
+      textAlign: 'left',
       boxSizing: 'border-box',
+      boxShadow: '0 18px 40px rgba(185, 140, 20, 0.22)',
     },
 
     errorBanner: {
@@ -223,48 +214,45 @@
     heroBadge: {
       display: 'inline-flex',
       alignItems: 'center',
-      padding: isMobile ? '5px 12px' : '6px 14px',
+      padding: '6px 14px',
       borderRadius: 50,
       background: 'rgba(255, 255, 255, 0.16)',
       color: '#ffffff',
-      fontSize: isMobile ? 11 : 12,
+      fontSize: 12,
       fontWeight: 600,
       marginBottom: 16,
     },
 
     heroTitle: {
       maxWidth: 760,
-      fontSize: isMobile ? 20 : isTablet ? 24 : isSmallScreen ? 28 : 31,
+      fontSize: isMobile ? 23 : 31,
       color: '#ffffff',
       marginBottom: 12,
       marginTop: 0,
-      lineHeight: isSmallScreen ? 1.4 : 1.2,
-      fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.2,
     },
 
     heroText: {
       marginTop: 10,
       color: '#ffffff',
-      fontSize: isMobile ? 12 : 14,
-      lineHeight: isSmallScreen ? 1.6 : 1.5,
-      marginBottom: 0,
-      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      lineHeight: 1.5,
     },
 
     heroIcon: {
-      width: isSmallScreen ? 78 : 90,
-      height: isSmallScreen ? 78 : 90,
-      minWidth: isSmallScreen ? 78 : 90,
+      width: isMobile ? 70 : 90,
+      height: isMobile ? 70 : 90,
       borderRadius: 24,
-      background: 'rgba(255, 255, 255, 0.18)',
-      display: isTablet || isMobile ? 'none' : 'flex',
+      background: 'rgba(255, 255, 255, 0.22)',
+      display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      color: '#ffffff',
       flexShrink: 0,
     },
 
     heroIconText: {
-      fontSize: isSmallScreen ? 36 : 42,
+      fontSize: isMobile ? 32 : 42,
       color: '#ffffff',
       verticalAlign: 'middle',
     },
@@ -294,7 +282,7 @@
       width: isMobile ? 60 : 72,
       height: isMobile ? 60 : 72,
       borderRadius: isMobile ? 18 : 20,
-      background: '#2563eb',
+      background: 'linear-gradient(135deg, #b8860b, #d4af37)',
       color: '#ffffff',
       display: 'flex',
       alignItems: 'center',
@@ -303,6 +291,7 @@
       fontWeight: 700,
       flexShrink: 0,
       fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 10px 24px rgba(212, 175, 55, 0.35)',
     },
 
     profileName: {
@@ -322,7 +311,7 @@
 
     editBtn: {
       border: 'none',
-      background: '#2563eb',
+      background: '#b8860b',
       color: '#ffffff',
       padding: '13px 18px',
       borderRadius: 14,
@@ -563,7 +552,7 @@
       borderRadius: 14,
       fontSize: 14,
       cursor: 'pointer',
-      background: '#2563eb',
+      background: '#b8860b',
       color: '#ffffff',
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',

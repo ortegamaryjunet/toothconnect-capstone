@@ -304,7 +304,7 @@ export default function DentistDashboard() {
             to="/dentist"
             style={{ ...styles.menuItem, ...styles.menuItemActive }}
           >
-            <i className="fi fi-rr-apps" style={styles.menuItemIcon}></i>
+            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
@@ -388,7 +388,7 @@ export default function DentistDashboard() {
             </div>
 
             <div style={styles.heroIcon}>
-              <i className="fi fi-sr-tooth" style={styles.heroIconText}></i>
+              <i className="fi fi-rr-chart-histogram" style={styles.heroIconText}></i>
             </div>
           </section>
 

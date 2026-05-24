@@ -224,7 +224,7 @@ export default function DentistSchedule() {
 
         <nav style={styles.menu}>
           <Link to="/dentist" style={styles.menuItem}>
-            <i className="fi fi-rr-apps" style={styles.menuItemIcon}></i>
+            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
@@ -520,7 +520,7 @@ export default function DentistSchedule() {
               </button>
               <button
                 type="button"
-                style={{ ...styles.modalButton, backgroundColor: '#0f62f1', color: '#ffffff' }}
+                style={{ ...styles.modalButton, background: 'linear-gradient(135deg, #8b6508, #d4af37)', color: '#ffffff' }}
                 onClick={handleLeaveSubmit}
               >
                 Submit Request
