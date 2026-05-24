@@ -124,8 +124,8 @@ function loadWebsiteFaqs() {
 }
 
 function loadWebsiteServices() {
-    // Use centralized clinic services table (not website CMS services)
-    fetch(API_BASE_URL + "/api/website/clinic-services")
+    // Use Website CMS services (admin-editable via website_services table)
+    fetch(API_BASE_URL + "/api/website/services")
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var services = data.services || [];
