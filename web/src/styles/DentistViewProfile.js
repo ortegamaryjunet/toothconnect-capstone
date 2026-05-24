@@ -3,7 +3,7 @@
   isSmallScreen = false,
 } = {}) => {
   const topHeaderHeight = isMobile ? 68 : 72;
-  const sidebarWidth = isMobile ? 82 : 245;
+  const sidebarWidth = isMobile ? 74 : 230;
 
   return {
     page: {

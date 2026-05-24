@@ -56,7 +56,7 @@
       display: 'flex',
       alignItems: 'center',
       justifyContent: isMobile ? 'center' : 'flex-start',
-      gap: 12,
+      gap: isMobile ? 0 : 12,
       padding: '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
@@ -71,13 +71,13 @@
     },
 
     menuItemIcon: {
-      marginRight: 12,
+      marginRight: isMobile ? 0 : 12,
       fontSize: 18,
       verticalAlign: 'middle',
     },
 
     menuItemText: {
-      display: 'inline',
+      display: isMobile ? 'none' : 'inline',
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
     },
