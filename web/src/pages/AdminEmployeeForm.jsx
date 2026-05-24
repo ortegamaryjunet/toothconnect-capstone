@@ -983,13 +983,22 @@ export default function AdminEmployeeForm() {
                 </p>
                 <div style={styles.scheduleGrid}>
                   {DAY_OPTIONS.map((day) => (
-                    <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div
+                      key={day}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        opacity: dentistWorkDays.includes(day) ? 1 : 0.5,
+                      }}
+                    >
                       <span style={{ minWidth: 90, fontWeight: 600 }}>{day}</span>
                       <select
                         name={`schedule_branch_${day}`}
                         defaultValue={selectedBranchId || ''}
                         style={styles.input}
                         disabled={!selectedBranchId || !dentistWorkDays.includes(day)}
+                        aria-disabled={!selectedBranchId || !dentistWorkDays.includes(day)}
                       >
                         <option value="" disabled>
                           Select branch
