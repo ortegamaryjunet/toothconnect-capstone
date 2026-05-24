@@ -128,10 +128,16 @@ function canonicalizeBranchText(value) {
 
 async function listClinicServices() {
   const [rows] = await db.query(
-    `SELECT id, name, duration_min, price
+    `SELECT
+       id,
+       CASE
+         WHEN LOWER(name) = 'consultation' THEN 'General Dentistry Consultation'
+         ELSE name
+       END AS name,
+       duration_min,
+       price
      FROM services
      WHERE status = 'Active'
-       AND LOWER(name) <> 'consultation'
      ORDER BY name ASC`
   );
   return rows;
