@@ -174,24 +174,6 @@ function mapProfile(row) {
     created_at: row.profile_created_at,
     updated_at: row.profile_updated_at,
     patient_since: row.patient_since || row.created_at,
-    nickname: row.nickname,
-    suffix: row.suffix,
-    religion: row.religion,
-    dental_insurance: row.dental_insurance,
-    effective_date: row.effective_date,
-    office_number: row.office_number,
-    fax_number: row.fax_number,
-    is_minor: row.is_minor,
-    guardian_name: row.guardian_name,
-    guardian_occupation: row.guardian_occupation,
-    referral: row.referral,
-    consultation_reason: row.consultation_reason,
-    physician_name: row.physician_name,
-    physician_specialty: row.physician_specialty,
-    physician_office_address: row.physician_office_address,
-    physician_office_number: row.physician_office_number,
-    previous_dentist: row.previous_dentist,
-    last_dental_visit: row.last_dental_visit,
   };
 }
 
@@ -204,12 +186,7 @@ async function getPatientProfile(userId) {
        pp.occupation, pp.sex, pp.civil_status, pp.emergency_contact_name,
        pp.emergency_contact_number, pp.medical_conditions, pp.allergies,
        pp.medications, pp.dental_history, pp.created_at AS profile_created_at,
-       pp.updated_at AS profile_updated_at,
-       pp.nickname, pp.suffix, pp.religion, pp.dental_insurance, pp.effective_date,
-       pp.office_number, pp.fax_number, pp.is_minor, pp.guardian_name, pp.guardian_occupation,
-       pp.referral, pp.consultation_reason, pp.physician_name, pp.physician_specialty,
-       pp.physician_office_address, pp.physician_office_number,
-       pp.previous_dentist, pp.last_dental_visit
+       pp.updated_at AS profile_updated_at
      FROM users u
      LEFT JOIN patient_profile pp ON pp.user_id = u.id
      WHERE u.id = ? AND u.role = 'patient'`,
@@ -662,14 +639,9 @@ async function savePatientProfile(patientId, profile) {
        user_id, full_name, email, contact_number, address,
        birthday, age, nationality, occupation, sex, civil_status,
        emergency_contact_name, emergency_contact_number,
-       medical_conditions, allergies, medications, dental_history,
-       nickname, suffix, religion, dental_insurance, effective_date,
-       office_number, fax_number, is_minor, guardian_name, guardian_occupation,
-       referral, consultation_reason, physician_name, physician_specialty,
-       physician_office_address, physician_office_number,
-       previous_dentist, last_dental_visit
+       medical_conditions, allergies, medications, dental_history
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        full_name = VALUES(full_name),
        email = VALUES(email),
@@ -686,40 +658,14 @@ async function savePatientProfile(patientId, profile) {
        medical_conditions = VALUES(medical_conditions),
        allergies = VALUES(allergies),
        medications = VALUES(medications),
-       dental_history = VALUES(dental_history),
-       nickname = VALUES(nickname),
-       suffix = VALUES(suffix),
-       religion = VALUES(religion),
-       dental_insurance = VALUES(dental_insurance),
-       effective_date = VALUES(effective_date),
-       office_number = VALUES(office_number),
-       fax_number = VALUES(fax_number),
-       is_minor = VALUES(is_minor),
-       guardian_name = VALUES(guardian_name),
-       guardian_occupation = VALUES(guardian_occupation),
-       referral = VALUES(referral),
-       consultation_reason = VALUES(consultation_reason),
-       physician_name = VALUES(physician_name),
-       physician_specialty = VALUES(physician_specialty),
-       physician_office_address = VALUES(physician_office_address),
-       physician_office_number = VALUES(physician_office_number),
-       previous_dentist = VALUES(previous_dentist),
-       last_dental_visit = VALUES(last_dental_visit)`,
+       dental_history = VALUES(dental_history)`,
     [
       patientId,
-      profile.full_name, profile.email, profile.contact_number, profile.address,
+      profile.full_name, profile.email, profile.contact_number, profile.address || 'Not provided',
       profile.birthday, profile.age, profile.nationality, profile.occupation,
       profile.sex, profile.civil_status,
       profile.emergency_contact_name, profile.emergency_contact_number,
       profile.medical_conditions, profile.allergies, profile.medications, profile.dental_history,
-      profile.nickname, profile.suffix, profile.religion,
-      profile.dental_insurance, profile.effective_date,
-      profile.office_number, profile.fax_number, profile.is_minor ?? null,
-      profile.guardian_name, profile.guardian_occupation,
-      profile.referral, profile.consultation_reason,
-      profile.physician_name, profile.physician_specialty,
-      profile.physician_office_address, profile.physician_office_number,
-      profile.previous_dentist, profile.last_dental_visit,
     ]
   );
 }

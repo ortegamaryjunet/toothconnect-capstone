@@ -4,9 +4,13 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
+    "start:offline": "expo start --offline",
     "android": "expo start --android",
+    "android:offline": "expo start --android --offline",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "ios:offline": "expo start --ios --offline",
+    "web": "expo start --web",
+    "web:offline": "expo start --web --offline"
   },
   "dependencies": {
     "@react-navigation/native": "^7.2.4",
