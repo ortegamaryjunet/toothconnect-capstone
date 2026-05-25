@@ -45,19 +45,20 @@ a {
     border-radius: 8px;
     background: #ffffff;
     color: var(--dark);
-    text-decoration: none;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     display: inline-flex;
     align-items: center;
     gap: 8px;
     border: 1px solid var(--line);
     box-shadow: 0 6px 18px rgba(63, 56, 45, 0.08);
+    transition: 0.25s ease;
 }
 
 .back-home-btn:hover {
     color: var(--gold-dark);
     border-color: var(--gold);
+    transform: translateY(-2px);
 }
 
 .service-hero {
@@ -69,8 +70,8 @@ a {
     align-items: center;
     justify-content: center;
     background:
-        linear-gradient(135deg, rgba(16, 24, 39, 0.70), rgba(180, 134, 22, 0.38)),
-        var(--gold-light);
+        linear-gradient(135deg, rgba(16, 24, 39, 0.72), rgba(180, 138, 44, 0.38)),
+        var(--gold-soft);
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
@@ -85,7 +86,7 @@ a {
     content: "";
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.32) 0 2px, transparent 2px);
+    background-image: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.34) 0 2px, transparent 2px);
     background-size: 28px 28px;
     opacity: 0.35;
 }
@@ -93,12 +94,11 @@ a {
 .hero-box {
     position: relative;
     z-index: 2;
-    width: min(740px, 100%);
+    width: min(760px, 100%);
     padding: 42px;
     border-radius: 30px;
-    background: rgba(255, 255, 255, 0.90);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(14px);
-    color: var(--dark);
     border: 1px solid rgba(255, 255, 255, 0.78);
     box-shadow: 0 24px 70px rgba(16, 24, 39, 0.18);
 }
@@ -119,8 +119,19 @@ a {
     color: var(--gold-dark);
 }
 
-.breadcrumb a:hover {
-    color: var(--dark);
+.hero-label {
+    width: fit-content;
+    margin-bottom: 14px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--gold-soft);
+    color: var(--gold-dark);
+    border: 1px solid #ead28f;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
 }
 
 .hero-box h1 {
@@ -152,7 +163,7 @@ a {
     height: fit-content;
     padding: 30px;
     border-radius: 30px;
-    background: rgba(255, 255, 255, 0.90);
+    background: rgba(255, 255, 255, 0.92);
     border: 1px solid var(--line);
     box-shadow: var(--shadow);
     position: sticky;
@@ -188,7 +199,7 @@ a {
 
 .summary-card a:hover {
     color: var(--gold-dark);
-    background: var(--gold-light);
+    background: var(--gold-soft);
     transform: translateX(5px);
 }
 
@@ -200,9 +211,20 @@ a {
 .detail-section {
     padding: 38px;
     border-radius: 32px;
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(255, 255, 255, 0.96);
     border: 1px solid var(--line);
-    box-shadow: 0 18px 50px rgba(180, 134, 22, 0.10);
+    box-shadow: 0 18px 50px rgba(180, 138, 44, 0.10);
+}
+
+.info-section {
+    background:
+        radial-gradient(circle at top right, rgba(217, 184, 95, 0.13), transparent 36%),
+        rgba(255, 255, 255, 0.96);
+}
+
+.reminder-section {
+    border-color: #f1dfaa;
+    background: #fffaf0;
 }
 
 .section-label {
@@ -210,7 +232,7 @@ a {
     margin-bottom: 16px;
     padding: 8px 15px;
     border-radius: 999px;
-    background: var(--gold-light);
+    background: var(--gold-soft);
     color: var(--gold-dark);
     border: 1px solid #ead28f;
     display: inline-flex;
@@ -239,63 +261,6 @@ a {
     line-height: 1.95;
     font-weight: 500;
     white-space: pre-line;
-}
-
-.appointment-cta {
-    width: min(1180px, calc(100% - 40px));
-    margin: 0 auto 74px;
-    padding: 38px;
-    border-radius: 32px;
-    background:
-        linear-gradient(135deg, rgba(16, 24, 39, 0.12), rgba(255, 255, 255, 0.08)),
-        linear-gradient(135deg, #d9b957, #b8891d);
-    color: var(--white);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 28px;
-    box-shadow: var(--shadow);
-}
-
-.appointment-cta span {
-    font-size: 13px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-}
-
-.appointment-cta h2 {
-    margin: 10px 0;
-    font-size: clamp(28px, 4vw, 42px);
-    line-height: 1.15;
-    letter-spacing: -1px;
-}
-
-.appointment-cta p {
-    color: rgba(255, 255, 255, 0.88);
-    font-size: 15px;
-    line-height: 1.7;
-}
-
-.cta-btn {
-    flex: 0 0 auto;
-    min-height: 54px;
-    padding: 0 24px;
-    border-radius: 999px;
-    background: var(--white);
-    color: var(--gold-dark);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    font-weight: 900;
-    box-shadow: 0 16px 40px rgba(16, 24, 39, 0.18);
-    transition: 0.25s ease;
-}
-
-.cta-btn:hover {
-    transform: translateY(-3px);
-    color: var(--dark);
 }
 
 footer {
@@ -371,5 +336,28 @@ footer {
 
     .cta-btn {
         width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .hero-box h1 {
+        font-size: 31px;
+    }
+
+    .hero-box p,
+    .content p {
+        font-size: 14px;
+    }
+
+    .summary-card h2 {
+        font-size: 24px;
+    }
+
+    .content h3 {
+        font-size: 21px;
+    }
+
+    .detail-section {
+        padding: 22px;
     }
 }
