@@ -170,15 +170,22 @@ export default function BookAIAssistantScreen({ navigation }) {
     setInputError('');
   }
 
-  function proceedToAnalysis() {
+  function proceedToAnalysis(parsedPreference = null) {
     const finalConcern = selectedQuick ? selectedQuick.name : concern.trim();
     const branch = branches.find(b => b.id === selectedBranch);
-    navigation.navigate('AIAnalysis', {
+    const params = {
       concern: finalConcern,
       services: getFilteredServices(),
       branchId: selectedBranch,
       branchName: getBranchCity(branch),
-    });
+    };
+
+    if (parsedPreference) {
+      params.overridePreferredDate = parsedPreference.date;
+      params.overridePreferredTime = parsedPreference.time;
+    }
+
+    navigation.navigate('AIAnalysis', params);
   }
 
   async function handleContinue() {
@@ -234,7 +241,7 @@ export default function BookAIAssistantScreen({ navigation }) {
       }
     }
 
-    proceedToAnalysis();
+    proceedToAnalysis(parsed);
   }
 
   function handleUseConflictSuggestion() {
