@@ -274,7 +274,11 @@ export default function DentistAppointment() {
   }
 
   async function openKitModal(appointment) {
-    if (appointment.rawStatus !== 'completed') return;
+    const cleanStatus = String(appointment?.rawStatus || '')
+      .toLowerCase()
+      .replace(/[\s_]+/g, '');
+
+    if (cleanStatus !== 'completed') return;
 
     setSelectedKitAppointment(appointment);
     setKitItems([]);
@@ -851,7 +855,9 @@ export default function DentistAppointment() {
                       ) : (
                         paginatedAppointments.map((appointment) => {
                           const isCompleted =
-                            appointment.rawStatus === 'completed';
+                            String(appointment?.rawStatus || '')
+                              .toLowerCase()
+                              .replace(/[\s_]+/g, '') === 'completed';
                           const hasNote = Boolean(appointment.note);
 
                           return (
