@@ -549,6 +549,14 @@ export default function InventoryPage() {
         const startDate = usageHistoryFilters.startDate || '';
         const endDate = usageHistoryFilters.endDate || '';
 
+        if (startDate && endDate && startDate > endDate) {
+          if (!cancelled) {
+            setUsageHistoryRows([]);
+            setUsageHistoryError('Invalid date range. "From" must be on or before "To".');
+          }
+          return;
+        }
+
         if (startDate) params.start_date = startDate;
         if (endDate) params.end_date = endDate;
         if (scopedBranchId) params.branch_id = scopedBranchId;
@@ -2063,9 +2071,16 @@ export default function InventoryPage() {
                 <input
                   type="date"
                   value={usageHistoryFilters.startDate}
-                  onChange={(e) =>
-                    setUsageHistoryFilters((prev) => ({ ...prev, startDate: e.target.value }))
-                  }
+                  max={usageHistoryFilters.endDate || undefined}
+                  onChange={(e) => {
+                    const nextStartDate = e.target.value;
+                    setUsageHistoryFilters((prev) => {
+                      if (prev.endDate && nextStartDate && nextStartDate > prev.endDate) {
+                        return prev;
+                      }
+                      return { ...prev, startDate: nextStartDate };
+                    });
+                  }}
                   style={styles.formInput}
                 />
               </label>
@@ -2075,9 +2090,16 @@ export default function InventoryPage() {
                 <input
                   type="date"
                   value={usageHistoryFilters.endDate}
-                  onChange={(e) =>
-                    setUsageHistoryFilters((prev) => ({ ...prev, endDate: e.target.value }))
-                  }
+                  min={usageHistoryFilters.startDate || undefined}
+                  onChange={(e) => {
+                    const nextEndDate = e.target.value;
+                    setUsageHistoryFilters((prev) => {
+                      if (prev.startDate && nextEndDate && nextEndDate < prev.startDate) {
+                        return prev;
+                      }
+                      return { ...prev, endDate: nextEndDate };
+                    });
+                  }}
                   style={styles.formInput}
                 />
               </label>
