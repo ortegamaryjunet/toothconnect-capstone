@@ -1018,6 +1018,21 @@
       color: '#475569',
     },
 
+    serviceKitCalendarButton: {
+      marginTop: 6,
+      marginBottom: 6,
+      height: 28,
+      padding: '0 10px',
+      borderRadius: 9,
+      border: '1px solid #86efac',
+      background: '#f0fdf4',
+      color: '#166534',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 11,
+      textTransform: 'none',
+      cursor: 'pointer',
+    },
+
     scheduleName: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
       color: '#0f172a',

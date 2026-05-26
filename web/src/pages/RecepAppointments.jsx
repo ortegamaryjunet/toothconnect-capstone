@@ -791,7 +791,10 @@ export default function RecepAppointments() {
                           </p>
                         </div>
                       ) : (
-                        selectedDateSchedules.map((appointment) => (
+                        selectedDateSchedules.map((appointment) => {
+                          const calendarStatus = getAppointmentCalendarStatus(appointment);
+
+                          return (
                           <div
                             key={appointment.id}
                             style={styles.scheduleItem}
@@ -807,9 +810,18 @@ export default function RecepAppointments() {
                                   ...getAppointmentStatusStyle(styles, appointment),
                                 }}
                               >
-                                {getAppointmentCalendarStatus(appointment)}
+                                {calendarStatus}
                               </span>
                             </div>
+
+                            {calendarStatus === 'Done' && (
+                              <button
+                                type="button"
+                                style={styles.serviceKitCalendarButton}
+                              >
+                                service_kit
+                              </button>
+                            )}
 
                             <div style={styles.scheduleName}>
                               {appointment.name}
@@ -823,7 +835,8 @@ export default function RecepAppointments() {
                               {appointment.treatment}
                             </div>
                           </div>
-                        ))
+                        );
+                        })
                       )}
                     </div>
                   </div>
