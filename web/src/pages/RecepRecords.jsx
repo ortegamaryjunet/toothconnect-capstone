@@ -10,6 +10,21 @@ import createRecepRecordsStyles from '../styles/RecepRecords';
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
 
 const rowsPerPage = 10;
+const CIVIL_STATUS_OPTIONS = ['Single', 'Married', 'Widowed', 'Separated', 'Divorced'];
+const NATIONALITY_OPTIONS = [
+  'Afghan', 'Albanian', 'Algerian', 'American', 'Andorran', 'Angolan',
+  'Argentine', 'Armenian', 'Australian', 'Austrian', 'Bangladeshi',
+  'Belgian', 'Brazilian', 'British', 'Bulgarian', 'Cambodian', 'Canadian',
+  'Chilean', 'Chinese', 'Colombian', 'Croatian', 'Czech', 'Danish', 'Dutch',
+  'Egyptian', 'Emirati', 'Filipino', 'Finnish', 'French', 'German', 'Greek',
+  'Hungarian', 'Icelandic', 'Indian', 'Indonesian', 'Irish', 'Israeli',
+  'Italian', 'Japanese', 'Jordanian', 'Kenyan', 'Korean', 'Kuwaiti',
+  'Malaysian', 'Mexican', 'Moroccan', 'Nepalese', 'New Zealander',
+  'Nigerian', 'Norwegian', 'Pakistani', 'Peruvian', 'Polish', 'Portuguese',
+  'Qatari', 'Romanian', 'Russian', 'Saudi', 'Singaporean', 'South African',
+  'Spanish', 'Swedish', 'Swiss', 'Thai', 'Turkish', 'Ukrainian', 'Vietnamese',
+];
+const PH_PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 
 export default function RecepRecords() {
   const navigate = useNavigate();
@@ -25,6 +40,7 @@ export default function RecepRecords() {
   const [editPatient, setEditPatient] = useState(null);
   const [editModalReadOnly, setEditModalReadOnly] = useState(true);
   const [editProfileLoading, setEditProfileLoading] = useState(false);
+  const [editErrors, setEditErrors] = useState({});
 
   const [searchText, setSearchText] = useState('');
   const [genderFilter, setGenderFilter] = useState('all');
@@ -215,6 +231,7 @@ export default function RecepRecords() {
       dentalHistory: '',
     });
     setEditModalReadOnly(true);
+    setEditErrors({});
     setShowEditModal(true);
     hydrateEditPatientProfile(patient.infoId);
   }
@@ -229,6 +246,7 @@ export default function RecepRecords() {
     setEditPatient(null);
     setEditModalReadOnly(true);
     setEditProfileLoading(false);
+    setEditErrors({});
   }
 
   async function hydrateEditPatientProfile(patientId) {
@@ -270,17 +288,77 @@ export default function RecepRecords() {
   }
 
   function handleEditChange(field, value) {
+    let sanitized = value;
+
+    if (['firstName', 'middleName', 'lastName'].includes(field)) {
+      sanitized = String(value || '').replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
+    }
+
+    if (field === 'contactNumber' || field === 'emergencyContactNumber') {
+      const digitsOnly = String(value || '').replace(/[^0-9]/g, '');
+      sanitized = String(value || '').startsWith('+') ? `+${digitsOnly}` : digitsOnly;
+      const maxLen = sanitized.startsWith('+') ? 13 : 11;
+      sanitized = sanitized.slice(0, maxLen);
+    }
+
     setEditPatient((current) => ({
       ...current,
-      [field]: value,
-      age: field === 'dateOfBirth' ? calculateAge(value) : current.age,
+      [field]: sanitized,
+      age: field === 'dateOfBirth' ? calculateAge(sanitized) : current.age,
     }));
+
+    setEditErrors((current) => ({ ...current, [field]: '' }));
   }
 
   async function savePatientChanges(event) {
     event.preventDefault();
 
     if (!editPatient || editModalReadOnly) {
+      return;
+    }
+
+    const requiredFieldChecks = [
+      ['firstName', editPatient.firstName],
+      ['lastName', editPatient.lastName],
+      ['dateOfBirth', editPatient.dateOfBirth],
+      ['gender', editPatient.gender],
+      ['address', editPatient.address],
+      ['nationality', editPatient.nationality],
+      ['occupation', editPatient.occupation],
+      ['civilStatus', editPatient.civilStatus],
+      ['contactNumber', editPatient.contactNumber],
+      ['email', editPatient.email],
+    ];
+    const nextErrors = {};
+
+    requiredFieldChecks.forEach(([key, value]) => {
+      if (!String(value || '').trim()) {
+        nextErrors[key] = 'This field is required.';
+      }
+    });
+
+    if (editPatient.dateOfBirth) {
+      const dobDate = new Date(editPatient.dateOfBirth);
+      const todayDate = new Date();
+      todayDate.setHours(0, 0, 0, 0);
+      if (Number.isNaN(dobDate.getTime()) || dobDate > todayDate) {
+        nextErrors.dateOfBirth = 'Date of birth cannot be in the future.';
+      }
+    }
+
+    if (editPatient.contactNumber && !PH_PHONE_REGEX.test(String(editPatient.contactNumber).trim())) {
+      nextErrors.contactNumber = 'Use 09XXXXXXXXX or +639XXXXXXXXX format.';
+    }
+
+    if (editPatient.emergencyContactNumber) {
+      const emergencyNumber = String(editPatient.emergencyContactNumber).trim();
+      if (!PH_PHONE_REGEX.test(emergencyNumber)) {
+        nextErrors.emergencyContactNumber = 'Use 09XXXXXXXXX or +639XXXXXXXXX format.';
+      }
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setEditErrors(nextErrors);
       return;
     }
 
@@ -716,8 +794,16 @@ export default function RecepRecords() {
                     handleEditChange('lastName', event.target.value)
                   }
                   readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.lastName ? { borderColor: '#dc2626' } : {}),
+                  }}
                 />
+                {editErrors.lastName && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.lastName}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
@@ -729,8 +815,16 @@ export default function RecepRecords() {
                     handleEditChange('firstName', event.target.value)
                   }
                   readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.firstName ? { borderColor: '#dc2626' } : {}),
+                  }}
                 />
+                {editErrors.firstName && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.firstName}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
@@ -755,8 +849,16 @@ export default function RecepRecords() {
                     handleEditChange('dateOfBirth', event.target.value)
                   }
                   disabled={editModalReadOnly}
-                  style={styles.fieldInput}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.dateOfBirth ? { borderColor: '#dc2626' } : {}),
+                  }}
                 />
+                {editErrors.dateOfBirth && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.dateOfBirth}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
@@ -768,8 +870,16 @@ export default function RecepRecords() {
                     handleEditChange('email', event.target.value)
                   }
                   readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.email ? { borderColor: '#dc2626' } : {}),
+                  }}
                 />
+                {editErrors.email && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.email}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
@@ -781,8 +891,16 @@ export default function RecepRecords() {
                     handleEditChange('contactNumber', event.target.value)
                   }
                   readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.contactNumber ? { borderColor: '#dc2626' } : {}),
+                  }}
                 />
+                {editErrors.contactNumber && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.contactNumber}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
@@ -803,12 +921,20 @@ export default function RecepRecords() {
                     handleEditChange('gender', event.target.value)
                   }
                   disabled={editModalReadOnly}
-                  style={styles.fieldInput}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.gender ? { borderColor: '#dc2626' } : {}),
+                  }}
                 >
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                 </select>
+                {editErrors.gender && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.gender}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
@@ -818,19 +944,41 @@ export default function RecepRecords() {
                   value={editPatient.address || ''}
                   onChange={(event) => handleEditChange('address', event.target.value)}
                   readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.address ? { borderColor: '#dc2626' } : {}),
+                  }}
                 />
+                {editErrors.address && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.address}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
                 <label style={styles.fieldLabel}>Nationality</label>
-                <input
-                  type="text"
+                <select
                   value={editPatient.nationality || ''}
                   onChange={(event) => handleEditChange('nationality', event.target.value)}
-                  readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
-                />
+                  disabled={editModalReadOnly}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.nationality ? { borderColor: '#dc2626' } : {}),
+                  }}
+                >
+                  <option value="">Select Nationality</option>
+                  {NATIONALITY_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                {editErrors.nationality && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.nationality}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
@@ -840,19 +988,41 @@ export default function RecepRecords() {
                   value={editPatient.occupation || ''}
                   onChange={(event) => handleEditChange('occupation', event.target.value)}
                   readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.occupation ? { borderColor: '#dc2626' } : {}),
+                  }}
                 />
+                {editErrors.occupation && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.occupation}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
                 <label style={styles.fieldLabel}>Civil Status</label>
-                <input
-                  type="text"
+                <select
                   value={editPatient.civilStatus || ''}
                   onChange={(event) => handleEditChange('civilStatus', event.target.value)}
-                  readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
-                />
+                  disabled={editModalReadOnly}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.civilStatus ? { borderColor: '#dc2626' } : {}),
+                  }}
+                >
+                  <option value="">Select Civil Status</option>
+                  {CIVIL_STATUS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                {editErrors.civilStatus && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.civilStatus}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
@@ -872,9 +1042,18 @@ export default function RecepRecords() {
                   type="text"
                   value={editPatient.emergencyContactNumber || ''}
                   onChange={(event) => handleEditChange('emergencyContactNumber', event.target.value)}
+                  maxLength={13}
                   readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.emergencyContactNumber ? { borderColor: '#dc2626' } : {}),
+                  }}
                 />
+                {editErrors.emergencyContactNumber && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.emergencyContactNumber}
+                  </p>
+                )}
               </div>
 
               <div style={styles.formSectionTitle}>Medical Assessment</div>
