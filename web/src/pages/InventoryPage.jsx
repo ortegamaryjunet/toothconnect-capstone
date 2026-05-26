@@ -2045,7 +2045,7 @@ export default function InventoryPage() {
               </div>
 
               <button type="button" onClick={closeUsageHistoryModal} style={styles.closeBtn}>
-                Ã—
+                X
               </button>
             </div>
 
@@ -2109,18 +2109,19 @@ export default function InventoryPage() {
                     <th style={styles.tableHead}>Appointment Date</th>
                     <th style={styles.tableHead}>Branch</th>
                     <th style={styles.tableHead}>Deducted Date</th>
+                    <th style={styles.tableHead}>Deducted By</th>
                   </tr>
                 </thead>
                 <tbody>
                   {usageHistoryLoading ? (
                     <tr>
-                      <td colSpan={8} style={styles.emptyRow}>
+                      <td colSpan={9} style={styles.emptyRow}>
                         Loading usage history...
                       </td>
                     </tr>
                   ) : usageHistoryRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={styles.emptyRow}>
+                      <td colSpan={9} style={styles.emptyRow}>
                         No usage history records found.
                       </td>
                     </tr>
@@ -2139,6 +2140,17 @@ export default function InventoryPage() {
                             : fallback(row.branch_name)}
                         </td>
                         <td style={styles.tableCell}>{formatDateTime(row.deducted_at)}</td>
+                        <td style={styles.tableCell}>
+                          {fallback(
+                            row.deducted_by_role ||
+                              row.deductedByRole ||
+                              row.recorded_by_role ||
+                              row.recordedByRole ||
+                              row.recorded_by ||
+                              row.recordedBy ||
+                              'Dentist'
+                          )}
+                        </td>
                       </tr>
                     ))
                   )}
