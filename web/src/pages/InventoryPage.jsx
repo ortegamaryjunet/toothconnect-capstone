@@ -1455,7 +1455,7 @@ export default function InventoryPage() {
 
         <p style={styles.helperText}>
           Item name, branch, supplier, quantity, and price are managed through
-          expense input and stock activity.
+          expense input.
         </p>
 
         {editError && (
