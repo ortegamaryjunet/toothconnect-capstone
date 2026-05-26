@@ -212,7 +212,12 @@ export default function RecepRecords() {
     navigate(`/receptionistPatientProfile?patientId=${patient.infoId}`);
   }
 
-  function openEditPatient(patient) {
+  function openEditPatient(patient, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
     setEditPatient({
       ...patient,
       fullName: [patient.firstName, patient.middleName, patient.lastName]
@@ -631,7 +636,7 @@ export default function RecepRecords() {
                             <button
                               type="button"
                               style={{ ...styles.actionBtn, ...styles.editBtn }}
-                              onClick={() => openEditPatient(patient)}
+                              onClick={(event) => openEditPatient(patient, event)}
                               title="Edit Patient"
                             >
                               <i className="fi fi-rr-edit"></i>
@@ -757,6 +762,7 @@ export default function RecepRecords() {
         >
           <form
             style={{ ...styles.modalContent, ...styles.largeModal }}
+            onClick={(event) => event.stopPropagation()}
             onSubmit={savePatientChanges}
           >
             <div style={styles.modalHeader}>
