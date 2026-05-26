@@ -342,6 +342,8 @@ export default function InventoryPage() {
   };
 
   const isSearchActive = searchValue.trim().length > 0;
+  const isStockFilterActive = Boolean(stockStatusFilter);
+  const isCrossCategoryActive = isSearchActive || isStockFilterActive;
 
   const activeRows = inventoryMap[activeTab].rows;
 
@@ -369,10 +371,11 @@ export default function InventoryPage() {
 
   const crossCategoryResults = useMemo(() => {
     const search = searchValue.toLowerCase().trim();
-    if (!search) return [];
+    if (!search && !stockStatusFilter) return [];
 
     function matchItem(item) {
       if (!matchesStockStatusFilter(item)) return false;
+      if (!search) return true;
       return Object.values(item).join(' ').toLowerCase().includes(search);
     }
 
@@ -1578,7 +1581,7 @@ export default function InventoryPage() {
           </section>
 
           <section style={styles.tableCard}>
-            {isSearchActive ? renderCrossSearchTable() : (
+            {isCrossCategoryActive ? renderCrossSearchTable() : (
               <>
                 <div style={styles.tableHeaderRow}>
                   <div>
