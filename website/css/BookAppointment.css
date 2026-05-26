@@ -102,7 +102,7 @@ body {
     align-items: center;
     background: #fff4d6;
     color: var(--gold-dark);
-    padding: 10px 16px;
+    padding: 10px 14px;
     border-radius: 999px;
     font-size: 13px;
     font-weight: 600;
@@ -117,7 +117,7 @@ body {
 
 .hero-card h1 {
     max-width: 700px;
-    margin: 8px 0 10px;
+    margin: 10px 0 10px;
     font-size: 36px;
     line-height: 1.05;
     font-weight: 800;
@@ -197,6 +197,7 @@ body {
     font-weight: 800;
 }
 
+/* STEP 2 CALENDAR */
 .calendar-nav {
     margin-top: 12px;
     width: fit-content;
@@ -275,6 +276,7 @@ body {
     pointer-events: none;
 }
 
+/* STEP 3 TIME SLOTS */
 .time-card {
     margin-top: 30px;
     padding: 0;
@@ -328,6 +330,7 @@ body {
     color: #ffffff;
 }
 
+/* STEP 1 FORM */
 .form-card {
     padding: 34px;
     border-radius: 6px;
@@ -399,8 +402,7 @@ body {
     box-shadow: 0 0 0 3px rgba(217, 184, 95, 0.18);
 }
 
-.phone-field,
-.phone-field .iti {
+.phone-field {
     width: 100%;
 }
 
@@ -408,22 +410,6 @@ body {
     width: 100%;
     height: 50px;
     padding-left: 92px !important;
-}
-
-.phone-field .iti__selected-flag {
-    height: 50px;
-    padding: 0 10px;
-    background: #faf7f1;
-    border-right: 1px solid var(--line);
-    border-radius: 10px 0 0 10px;
-}
-
-.phone-field .iti__country-list {
-    width: 360px !important;
-    max-height: 210px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    box-shadow: var(--shadow);
 }
 
 .location-grid {
@@ -565,24 +551,191 @@ body {
     background: var(--gold-dark);
 }
 
+/* INLINE ERROR STATES */
+.input-error,
+.input-error:focus {
+    border-color: #dc2626 !important;
+    background: #fff7f7 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.field-error-text {
+    display: none;
+    margin: 6px 0 0;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.field-error-text.active {
+    display: block;
+}
+
+/* STEP LOCK STATES */
+.step-lock-notice {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: #fafaf9;
+    border: 1px dashed var(--line);
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.step-lock-notice.visible {
+    display: flex;
+}
+
+.step-lock-notice i {
+    color: var(--gold-dark);
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.step-lock-notice strong {
+    color: var(--dark);
+}
+
+/* MESSAGE MODAL */
+.message-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.48);
+}
+
+.message-modal.show {
+    display: flex;
+}
+
+.message-box {
+    width: 100%;
+    max-width: 460px;
+    padding: 32px 30px 30px;
+    background: #fff;
+    border-radius: 18px;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+    animation: modalPop 0.25s ease;
+}
+
+.message-close,
+.message-icon {
+    display: none;
+}
+
+.message-box h3 {
+    color: #050505;
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 0;
+    margin-bottom: 18px;
+}
+
+.message-box p {
+    padding-top: 20px;
+    border-top: 1px solid #d6d6d6;
+    color: #5f5f5f;
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+    margin-bottom: 27px;
+}
+
+.message-btn {
+    width: 100%;
+    height: 37px;
+    border: none;
+    border-radius: 8px;
+    background: var(--gold);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+}
+
+.message-btn:hover {
+    filter: brightness(0.95);
+}
+
+/* DISABLED TIME SLOTS */
+.time-slot.disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+    pointer-events: none;
+    text-decoration: line-through;
+}
+
+#step2Content.locked,
+#step3Content.locked {
+    opacity: 0.4;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* ANIMATION */
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.94); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* RESPONSIVE */
 @media (max-width: 1200px) {
     .page-wrapper {
         padding: 42px 5%;
     }
 
     .hero-card h1 {
-        font-size: 52px;
+        font-size: 34px;
     }
 
     .booking-layout {
-        grid-template-columns: 0.85fr 1.15fr;
+        grid-template-columns: minmax(330px, 0.95fr) minmax(480px, 1.15fr);
         gap: 28px;
+    }
+
+    .form-card {
+        padding: 28px;
+    }
+
+    .time-slots {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media (max-width: 1024px) {
-    .hero-card h1 {
-        font-size: 46px;
+    .booking-layout {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "form"
+            "calendar";
+        gap: 30px;
+    }
+
+    .hero-card {
+        justify-content: flex-start;
+    }
+
+    .hero-card > div:first-child {
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .calendar-card {
+        width: 100%;
+    }
+
+    .time-card {
+        margin-top: 28px;
     }
 }
 
@@ -592,35 +745,19 @@ body {
     }
 
     .hero-card h1 {
-        font-size: 40px;
+        font-size: 36px;
     }
 
     .hero-card p {
         font-size: 14px;
     }
 
-    .booking-layout {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-            "calendar"
-            "form"
-            "time";
-        gap: 30px;
-    }
-
-    .form-card {
-        grid-column: 1;
-        grid-row: 1;
-        max-width: 100%;
-    }
-
-    .calendar-card {
-        grid-column: 1;
-        grid-row: 2;
-    }
-
     .time-slots {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .location-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -638,13 +775,8 @@ body {
     }
 
     .hero-card h1 {
-        font-size: 34px;
+        font-size: 32px;
         letter-spacing: -1px;
-    }
-
-    .hero-card p {
-        font-size: 13px;
-        line-height: 1.7;
     }
 
     .calendar-nav {
@@ -657,8 +789,7 @@ body {
         flex: 1;
     }
 
-    .time-slots,
-    .location-grid {
+    .time-slots {
         grid-template-columns: 1fr;
     }
 
@@ -716,133 +847,6 @@ body {
         padding: 14px;
     }
 
-}
-
-/* ---- Inline error states ---- */
-
-.input-error,
-.input-error:focus {
-    border-color: #dc2626 !important;
-    background: #fff7f7 !important;
-    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
-}
-
-.field-error-text {
-    display: none;
-    margin: 6px 0 0;
-    color: #dc2626;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.4;
-}
-
-.field-error-text.active {
-    display: block;
-}
-
-/* ---- Step lock states ---- */
-
-.step-lock-notice {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
-    padding: 12px 16px;
-    border-radius: 8px;
-    background: #fafaf9;
-    border: 1px dashed var(--line);
-    color: var(--muted);
-    font-size: 13px;
-}
-
-.step-lock-notice.visible {
-    display: flex;
-}
-
-.step-lock-notice i {
-    color: var(--gold-dark);
-    font-size: 13px;
-    flex-shrink: 0;
-}
-
-.step-lock-notice strong {
-    color: var(--dark);
-}
-
-/* ---- Message modal ---- */
-
-.message-modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 99999;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.48);
-}
-
-.message-modal.show {
-    display: flex;
-}
-
-.message-box {
-    width: 100%;
-    max-width: 460px;
-    padding: 32px 30px 30px;
-    background: #fff;
-    border-radius: 18px;
-    text-align: center;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
-    animation: modalPop 0.25s ease;
-}
-
-@keyframes modalPop {
-    from { opacity: 0; transform: scale(0.94); }
-    to   { opacity: 1; transform: scale(1); }
-}
-
-.message-close,
-.message-icon {
-    display: none;
-}
-
-.message-box h3 {
-    color: #050505;
-    font-size: 22px;
-    font-weight: 800;
-    margin: 0 0 0;
-    margin-bottom: 18px;
-}
-
-.message-box p {
-    padding-top: 20px;
-    border-top: 1px solid #d6d6d6;
-    color: #5f5f5f;
-    font-size: 15px;
-    line-height: 1.6;
-    margin: 0;
-    margin-bottom: 27px;
-}
-
-.message-btn {
-    width: 100%;
-    height: 37px;
-    border: none;
-    border-radius: 8px;
-    background: var(--gold);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: 'Poppins', sans-serif;
-}
-
-.message-btn:hover {
-    filter: brightness(0.95);
-}
-
-@media (max-width: 560px) {
     .message-box {
         max-width: 94%;
         padding: 24px 18px;
@@ -855,20 +859,4 @@ body {
     .message-box p {
         font-size: 13px;
     }
-}
-
-/* ---- Disabled time slot ---- */
-
-.time-slot.disabled {
-    opacity: 0.38;
-    cursor: not-allowed;
-    pointer-events: none;
-    text-decoration: line-through;
-}
-
-#step2Content.locked,
-#step3Content.locked {
-    opacity: 0.4;
-    pointer-events: none;
-    user-select: none;
 }

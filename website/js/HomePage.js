@@ -17,7 +17,6 @@ const API_BASE_URL = (() => {
 })();
 
 // ── CMS helpers ───────────────────────────────────────────────────────────────
-
 function setText(id, value) {
     var el = document.getElementById(id);
     if (el && value != null) el.textContent = value;
@@ -321,6 +320,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const messageTitle = document.getElementById("messageTitle");
     const messageText = document.getElementById("messageText");
     const messageIcon = document.getElementById("messageIcon");
+
+    const stepButtons = document.querySelectorAll(".step-icon-btn");
+    const stepModals = document.querySelectorAll(".step-modal");
+    const stepCloseButtons = document.querySelectorAll(".step-modal-close");
 
     function showMessage(title, text, type = "error") {
         if (!messageModal || !messageTitle || !messageText || !messageIcon) {
@@ -654,4 +657,56 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+
+    function closeStepModal(element) {
+        const modal = element.closest(".step-modal");
+
+        if (modal) {
+            modal.classList.remove("show");
+            document.body.style.overflow = "";
+        }
+    }
+
+    stepButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            const modalId = button.getAttribute("data-modal");
+            const modal = document.getElementById(modalId);
+
+            if (modal) {
+                modal.classList.add("show");
+                document.body.style.overflow = "hidden";
+            }
+        });
+    });
+
+    stepCloseButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeStepModal(button);
+        });
+    });
+
+    stepModals.forEach(function (modal) {
+        modal.addEventListener("click", function (event) {
+            if (event.target === modal) {
+                modal.classList.remove("show");
+                document.body.style.overflow = "";
+            }
+        });
+    });
+
+    document.querySelectorAll(".step-modal-btn").forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeStepModal(button);
+        });
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            stepModals.forEach(function (modal) {
+                modal.classList.remove("show");
+            });
+
+            document.body.style.overflow = "";
+        }
+    });
 });
