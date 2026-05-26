@@ -307,6 +307,16 @@
       boxSizing: 'border-box',
     },
 
+    searchFilterRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      width: '100%',
+      justifyContent: 'space-between',
+      flexWrap: isSmallScreen ? 'wrap' : 'nowrap',
+      boxSizing: 'border-box',
+    },
+
     searchBox: {
       width: isSmallScreen ? '100%' : 330,
       height: 43,
@@ -334,6 +344,36 @@
       fontFamily: 'Arial, sans-serif',
       fontSize: 14,
       color: '#172033',
+    },
+
+    stockFilterBox: {
+      height: 43,
+      minWidth: isSmallScreen ? '100%' : 200,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      background: '#f8fafc',
+      border: '1px solid #dbe3ef',
+      borderRadius: 14,
+      padding: '0 13px',
+      boxSizing: 'border-box',
+    },
+
+    stockFilterIcon: {
+      color: '#2563eb',
+      fontSize: 15,
+    },
+
+    stockFilterSelect: {
+      flex: 1,
+      minWidth: 0,
+      border: 'none',
+      outline: 'none',
+      background: 'transparent',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      color: '#172033',
+      cursor: 'pointer',
     },
 
     tableCard: {

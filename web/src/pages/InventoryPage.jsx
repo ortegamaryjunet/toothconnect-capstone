@@ -224,6 +224,7 @@ export default function InventoryPage() {
 
   const [activeTab, setActiveTab] = useState('medicine');
   const [searchValue, setSearchValue] = useState('');
+  const [stockStatusFilter, setStockStatusFilter] = useState('');
   const [selectedStockCategory, setSelectedStockCategory] = useState('medicine');
 
   const [currentPages, setCurrentPages] = useState({
@@ -344,21 +345,34 @@ export default function InventoryPage() {
 
   const activeRows = inventoryMap[activeTab].rows;
 
+  function matchesStockStatusFilter(item) {
+    if (!stockStatusFilter) return true;
+    const status = getSummaryStatus(item);
+
+    if (stockStatusFilter === 'in_stock') return status === 'Healthy';
+    if (stockStatusFilter === 'low_stock') return status === 'Low Stock';
+    if (stockStatusFilter === 'out_of_stock') return status === 'Out of Stock';
+
+    return true;
+  }
+
   const filteredRows = useMemo(() => {
     const search = searchValue.toLowerCase().trim();
 
     return activeRows.filter((item) => {
+      if (!matchesStockStatusFilter(item)) return false;
       const rowText = Object.values(item).join(' ').toLowerCase();
       const matchesSearch = rowText.includes(search);
       return matchesSearch;
     });
-  }, [activeRows, searchValue]);
+  }, [activeRows, searchValue, stockStatusFilter]);
 
   const crossCategoryResults = useMemo(() => {
     const search = searchValue.toLowerCase().trim();
     if (!search) return [];
 
     function matchItem(item) {
+      if (!matchesStockStatusFilter(item)) return false;
       return Object.values(item).join(' ').toLowerCase().includes(search);
     }
 
@@ -367,7 +381,7 @@ export default function InventoryPage() {
       ...equipment.filter(matchItem).map((item) => ({ ...item, _type: 'equipment', _name: item.equipmentName })),
       ...supplies.filter(matchItem).map((item) => ({ ...item, _type: 'supplies', _name: item.supplyName })),
     ];
-  }, [medicines, equipment, supplies, searchValue]);
+  }, [medicines, equipment, supplies, searchValue, stockStatusFilter]);
 
   const searchTotalPages = Math.ceil(crossCategoryResults.length / rowsPerPage);
 
@@ -1529,16 +1543,36 @@ export default function InventoryPage() {
           </section>
 
           <section style={styles.filterCard}>
-            <div style={styles.searchBox}>
-              <i className="fi fi-rr-search" style={styles.searchIcon}></i>
+            <div style={styles.searchFilterRow}>
+              <div style={styles.searchBox}>
+                <i className="fi fi-rr-search" style={styles.searchIcon}></i>
 
-              <input
-                type="text"
-                placeholder="Search across all inventory categories"
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                style={styles.searchInput}
-              />
+                <input
+                  type="text"
+                  placeholder="Search across all inventory categories"
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  style={styles.searchInput}
+                />
+              </div>
+
+              <div style={styles.stockFilterBox}>
+                <i className="fi fi-rr-filter" style={styles.stockFilterIcon}></i>
+                <select
+                  value={stockStatusFilter}
+                  onChange={(event) => {
+                    setStockStatusFilter(event.target.value);
+                    setCurrentPages((prev) => ({ ...prev, medicine: 1, equipment: 1, supplies: 1, search: 1 }));
+                  }}
+                  style={styles.stockFilterSelect}
+                  aria-label="Filter inventory by stock status"
+                >
+                  <option value="">All</option>
+                  <option value="in_stock">In Stock</option>
+                  <option value="low_stock">Low Stock</option>
+                  <option value="out_of_stock">Out of Stock</option>
+                </select>
+              </div>
             </div>
 
           </section>
