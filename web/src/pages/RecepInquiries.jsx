@@ -24,6 +24,7 @@ export default function RecepInquiries() {
   const [rangeFromDate, setRangeFromDate] = useState('');
   const [rangeToDate, setRangeToDate] = useState('');
   const [appliedRange, setAppliedRange] = useState({ from: '', to: '' });
+  const [isClearRangePressed, setIsClearRangePressed] = useState(false);
 
   const [replyModal, setReplyModal] = useState(null);
   const [replyText, setReplyText] = useState('');
@@ -133,11 +134,6 @@ export default function RecepInquiries() {
   const unansweredCount = useMemo(() => {
     return inquiries.filter((inq) => Number(inq.reply_count || 0) === 0).length;
   }, [inquiries]);
-
-  function handleApplyDateRange() {
-    if (rangeFromDate && rangeToDate && rangeFromDate > rangeToDate) return;
-    setAppliedRange({ from: rangeFromDate, to: rangeToDate });
-  }
 
   function handleClearDateRange() {
     setRangeFromDate('');
@@ -370,55 +366,65 @@ export default function RecepInquiries() {
               </button>
             </div>
 
-            <div style={s.searchBox}>
-              <i className="fi fi-rr-search" style={s.searchIcon}></i>
-              <input
-                type="text"
-                placeholder="Search name, phone, or concern…"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={s.searchInput}
-              />
-            </div>
-
-            <div style={s.dateRangeRow}>
-              <label style={s.dateRangeGroup}>
-                <span style={s.dateRangeLabel}>From Date</span>
+            <div style={s.filterRow}>
+              <div style={s.searchBox}>
+                <i className="fi fi-rr-search" style={s.searchIcon}></i>
                 <input
-                  type="date"
-                  value={rangeFromDate}
-                  max={rangeToDate || ''}
-                  onChange={(e) => {
-                    const nextFrom = e.target.value;
-                    if (rangeToDate && nextFrom && nextFrom > rangeToDate) return;
-                    setRangeFromDate(nextFrom);
-                  }}
-                  style={s.dateRangeInput}
+                  type="text"
+                  placeholder="Search name, phone, or concern..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  style={s.searchInput}
                 />
-              </label>
+              </div>
 
-              <label style={s.dateRangeGroup}>
-                <span style={s.dateRangeLabel}>To Date</span>
-                <input
-                  type="date"
-                  value={rangeToDate}
-                  min={rangeFromDate || ''}
-                  onChange={(e) => {
-                    const nextTo = e.target.value;
-                    if (rangeFromDate && nextTo && nextTo < rangeFromDate) return;
-                    setRangeToDate(nextTo);
+              <div style={s.dateRangeRow}>
+                <label style={s.dateRangeGroup}>
+                  <span style={s.dateRangeLabel}>From Date</span>
+                  <input
+                    type="date"
+                    value={rangeFromDate}
+                    max={rangeToDate || ''}
+                    onChange={(e) => {
+                      const nextFrom = e.target.value;
+                      if (rangeToDate && nextFrom && nextFrom > rangeToDate) return;
+                      setRangeFromDate(nextFrom);
+                      setAppliedRange((prev) => ({ ...prev, from: nextFrom }));
+                    }}
+                    style={s.dateRangeInput}
+                  />
+                </label>
+
+                <label style={s.dateRangeGroup}>
+                  <span style={s.dateRangeLabel}>To Date</span>
+                  <input
+                    type="date"
+                    value={rangeToDate}
+                    min={rangeFromDate || ''}
+                    onChange={(e) => {
+                      const nextTo = e.target.value;
+                      if (rangeFromDate && nextTo && nextTo < rangeFromDate) return;
+                      setRangeToDate(nextTo);
+                      setAppliedRange((prev) => ({ ...prev, to: nextTo }));
+                    }}
+                    style={s.dateRangeInput}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  style={{
+                    ...s.dateRangeClearBtn,
+                    ...(isClearRangePressed ? s.dateRangeClearBtnPressed : {}),
                   }}
-                  style={s.dateRangeInput}
-                />
-              </label>
-
-              <button type="button" style={s.dateRangeApplyBtn} onClick={handleApplyDateRange}>
-                Apply
-              </button>
-
-              <button type="button" style={s.dateRangeClearBtn} onClick={handleClearDateRange}>
-                Clear
-              </button>
+                  onMouseDown={() => setIsClearRangePressed(true)}
+                  onMouseUp={() => setIsClearRangePressed(false)}
+                  onMouseLeave={() => setIsClearRangePressed(false)}
+                  onClick={handleClearDateRange}
+                >
+                  Clear Range
+                </button>
+              </div>
             </div>
 
             {loading ? (

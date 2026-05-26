@@ -232,6 +232,7 @@ export default function InventoryPage() {
   const [usageHistoryLoading, setUsageHistoryLoading] = useState(false);
   const [usageHistoryError, setUsageHistoryError] = useState('');
   const [usageHistoryRows, setUsageHistoryRows] = useState([]);
+  const [isUsageClearRangePressed, setIsUsageClearRangePressed] = useState(false);
   const [usageHistoryFilters, setUsageHistoryFilters] = useState({
     startDate: '',
     endDate: '',
@@ -2116,13 +2117,24 @@ export default function InventoryPage() {
 
               <button
                 type="button"
-                style={{ ...styles.stockSummaryBtn, height: 42 }}
+                style={{
+                  ...styles.stockSummaryBtn,
+                  height: 42,
+                  transition: 'transform 120ms ease, box-shadow 120ms ease',
+                  boxShadow: isUsageClearRangePressed
+                    ? '0 0 0 rgba(15, 23, 42, 0)'
+                    : '0 1px 0 rgba(15, 23, 42, 0.04)',
+                  transform: isUsageClearRangePressed ? 'scale(0.97)' : 'scale(1)',
+                }}
+                onMouseDown={() => setIsUsageClearRangePressed(true)}
+                onMouseUp={() => setIsUsageClearRangePressed(false)}
+                onMouseLeave={() => setIsUsageClearRangePressed(false)}
                 onClick={() => {
                   setUsageHistoryFilters({ startDate: '', endDate: '' });
                   setUsageHistoryError('');
                 }}
               >
-                Clear Filters
+                Clear Range
               </button>
             </div>
 

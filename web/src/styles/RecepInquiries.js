@@ -377,6 +377,15 @@ const createRecepInquiriesStyles = ({
       fontFamily: 'Arial, sans-serif',
     },
 
+    filterRow: {
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: 12,
+      flexWrap: isSmallScreen ? 'wrap' : 'nowrap',
+      marginBottom: 16,
+    },
+
     searchBox: {
       width: isSmallScreen ? '100%' : 350,
       height: isVerySmall ? 42 : 43,
@@ -387,7 +396,7 @@ const createRecepInquiriesStyles = ({
       border: '1px solid #dbe3ef',
       borderRadius: isVerySmall ? 12 : 14,
       padding: '0 13px',
-      marginBottom: 16,
+      marginBottom: 0,
       boxSizing: 'border-box',
     },
 
@@ -412,7 +421,9 @@ const createRecepInquiriesStyles = ({
       flexWrap: 'wrap',
       alignItems: 'flex-end',
       gap: 10,
-      marginBottom: 16,
+      marginBottom: 0,
+      justifyContent: isSmallScreen ? 'flex-start' : 'flex-end',
+      flex: 1,
     },
 
     dateRangeGroup: {
@@ -441,19 +452,6 @@ const createRecepInquiriesStyles = ({
       boxSizing: 'border-box',
     },
 
-    dateRangeApplyBtn: {
-      height: 40,
-      padding: '0 16px',
-      border: '1px solid #1d4ed8',
-      borderRadius: 12,
-      background: '#2563eb',
-      color: '#ffffff',
-      cursor: 'pointer',
-      fontSize: 13,
-      fontFamily: 'Arial, sans-serif',
-      fontWeight: 700,
-    },
-
     dateRangeClearBtn: {
       height: 40,
       padding: '0 16px',
@@ -465,6 +463,13 @@ const createRecepInquiriesStyles = ({
       fontSize: 13,
       fontFamily: 'Arial, sans-serif',
       fontWeight: 700,
+      transition: 'transform 120ms ease, box-shadow 120ms ease',
+      boxShadow: '0 1px 0 rgba(15, 23, 42, 0.04)',
+    },
+
+    dateRangeClearBtnPressed: {
+      transform: 'scale(0.97)',
+      boxShadow: '0 0 0 rgba(15, 23, 42, 0)',
     },
 
     loadingText: {
