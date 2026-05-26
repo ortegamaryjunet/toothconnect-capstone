@@ -407,6 +407,66 @@ const createRecepInquiriesStyles = ({
       minWidth: 0,
     },
 
+    dateRangeRow: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      alignItems: 'flex-end',
+      gap: 10,
+      marginBottom: 16,
+    },
+
+    dateRangeGroup: {
+      display: 'flex',
+      flexDirection: 'column',
+      minWidth: isVerySmall ? '100%' : 170,
+      flex: isMobile ? '1 1 100%' : '0 0 auto',
+      gap: 6,
+    },
+
+    dateRangeLabel: {
+      fontSize: 12,
+      color: '#64748b',
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    dateRangeInput: {
+      height: 40,
+      border: '1px solid #dbe3ef',
+      borderRadius: 12,
+      padding: '0 12px',
+      background: '#ffffff',
+      color: '#172033',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+    },
+
+    dateRangeApplyBtn: {
+      height: 40,
+      padding: '0 16px',
+      border: '1px solid #1d4ed8',
+      borderRadius: 12,
+      background: '#2563eb',
+      color: '#ffffff',
+      cursor: 'pointer',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
+    },
+
+    dateRangeClearBtn: {
+      height: 40,
+      padding: '0 16px',
+      border: '1px solid #dbe3ef',
+      borderRadius: 12,
+      background: '#f8fafc',
+      color: '#475569',
+      cursor: 'pointer',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
+    },
+
     loadingText: {
       textAlign: 'center',
       color: '#94a3b8',

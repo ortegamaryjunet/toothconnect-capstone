@@ -21,6 +21,9 @@ export default function RecepInquiries() {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [rangeFromDate, setRangeFromDate] = useState('');
+  const [rangeToDate, setRangeToDate] = useState('');
+  const [appliedRange, setAppliedRange] = useState({ from: '', to: '' });
 
   const [replyModal, setReplyModal] = useState(null);
   const [replyText, setReplyText] = useState('');
@@ -79,7 +82,7 @@ export default function RecepInquiries() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchText]);
+  }, [searchText, appliedRange.from, appliedRange.to]);
 
   async function loadInquiries() {
     setLoading(true);
@@ -93,17 +96,32 @@ export default function RecepInquiries() {
     }
   }
 
+  const selectedPeriodInquiries = useMemo(() => {
+    const from = appliedRange.from;
+    const to = appliedRange.to;
+
+    if (!from && !to) return inquiries;
+
+    return inquiries.filter((inq) => {
+      const dateText = String(inq.created_at || '').slice(0, 10);
+      if (!dateText) return false;
+      if (from && dateText < from) return false;
+      if (to && dateText > to) return false;
+      return true;
+    });
+  }, [inquiries, appliedRange.from, appliedRange.to]);
+
   const filteredInquiries = useMemo(() => {
     const q = searchText.trim().toLowerCase();
-    if (!q) return inquiries;
-    return inquiries.filter(
+    if (!q) return selectedPeriodInquiries;
+    return selectedPeriodInquiries.filter(
       (inq) =>
         (inq.full_name || '').toLowerCase().includes(q) ||
         (inq.phone_number || '').toLowerCase().includes(q) ||
         (inq.concern || '').toLowerCase().includes(q) ||
         (inq.branch || '').toLowerCase().includes(q)
     );
-  }, [inquiries, searchText]);
+  }, [selectedPeriodInquiries, searchText]);
 
   const totalPages = Math.ceil(filteredInquiries.length / rowsPerPage) || 0;
 
@@ -112,13 +130,20 @@ export default function RecepInquiries() {
     return filteredInquiries.slice(start, start + rowsPerPage);
   }, [filteredInquiries, currentPage]);
 
-  const thisMonthCount = useMemo(() => {
-    const now = new Date();
-    return inquiries.filter((inq) => {
-      const d = new Date(inq.created_at);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).length;
+  const unansweredCount = useMemo(() => {
+    return inquiries.filter((inq) => Number(inq.reply_count || 0) === 0).length;
   }, [inquiries]);
+
+  function handleApplyDateRange() {
+    if (rangeFromDate && rangeToDate && rangeFromDate > rangeToDate) return;
+    setAppliedRange({ from: rangeFromDate, to: rangeToDate });
+  }
+
+  function handleClearDateRange() {
+    setRangeFromDate('');
+    setRangeToDate('');
+    setAppliedRange({ from: '', to: '' });
+  }
 
   function handleLogout() {
     window.location.href = '/login';
@@ -311,8 +336,8 @@ export default function RecepInquiries() {
                 <i className="fi fi-rr-calendar" style={{ fontSize: 20, color: '#ca8a04' }}></i>
               </div>
               <div>
-                <div style={s.summaryLabel}>This Month</div>
-                <div style={s.summaryValue}>{thisMonthCount}</div>
+                <div style={s.summaryLabel}>Selected Period</div>
+                <div style={s.summaryValue}>{selectedPeriodInquiries.length}</div>
               </div>
             </div>
 
@@ -321,8 +346,8 @@ export default function RecepInquiries() {
                 <i className="fi fi-rr-building" style={{ fontSize: 20, color: '#16a34a' }}></i>
               </div>
               <div>
-                <div style={s.summaryLabel}>Filtered Results</div>
-                <div style={s.summaryValue}>{filteredInquiries.length}</div>
+                <div style={s.summaryLabel}>Unanswered</div>
+                <div style={s.summaryValue}>{unansweredCount}</div>
               </div>
             </div>
           </section>
@@ -354,6 +379,46 @@ export default function RecepInquiries() {
                 onChange={(e) => setSearchText(e.target.value)}
                 style={s.searchInput}
               />
+            </div>
+
+            <div style={s.dateRangeRow}>
+              <label style={s.dateRangeGroup}>
+                <span style={s.dateRangeLabel}>From Date</span>
+                <input
+                  type="date"
+                  value={rangeFromDate}
+                  max={rangeToDate || ''}
+                  onChange={(e) => {
+                    const nextFrom = e.target.value;
+                    if (rangeToDate && nextFrom && nextFrom > rangeToDate) return;
+                    setRangeFromDate(nextFrom);
+                  }}
+                  style={s.dateRangeInput}
+                />
+              </label>
+
+              <label style={s.dateRangeGroup}>
+                <span style={s.dateRangeLabel}>To Date</span>
+                <input
+                  type="date"
+                  value={rangeToDate}
+                  min={rangeFromDate || ''}
+                  onChange={(e) => {
+                    const nextTo = e.target.value;
+                    if (rangeFromDate && nextTo && nextTo < rangeFromDate) return;
+                    setRangeToDate(nextTo);
+                  }}
+                  style={s.dateRangeInput}
+                />
+              </label>
+
+              <button type="button" style={s.dateRangeApplyBtn} onClick={handleApplyDateRange}>
+                Apply
+              </button>
+
+              <button type="button" style={s.dateRangeClearBtn} onClick={handleClearDateRange}>
+                Clear
+              </button>
             </div>
 
             {loading ? (
