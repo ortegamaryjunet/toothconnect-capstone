@@ -272,9 +272,9 @@ export default function RecepRecords() {
         dateOfBirth: profile.birthday || current?.dateOfBirth || '',
         age: profile.age || calculateAge(profile.birthday) || current?.age || '',
         gender: profile.sex || current?.gender || '',
-        lastName: nameParts.lastName || current?.lastName || '',
-        firstName: nameParts.firstName || current?.firstName || '',
-        middleName: nameParts.middleName || current?.middleName || '',
+        lastName: current?.lastName || nameParts.lastName || '',
+        firstName: current?.firstName || nameParts.firstName || '',
+        middleName: current?.middleName || nameParts.middleName || '',
         nationality: profile.nationality || '',
         occupation: profile.occupation || '',
         civilStatus: profile.civil_status || '',
@@ -297,6 +297,10 @@ export default function RecepRecords() {
 
     if (['firstName', 'middleName', 'lastName'].includes(field)) {
       sanitized = String(value || '').replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
+    }
+
+    if (['occupation', 'emergencyContactName'].includes(field)) {
+      sanitized = String(value || '').replace(/[0-9]/g, '');
     }
 
     if (field === 'contactNumber' || field === 'emergencyContactNumber') {
