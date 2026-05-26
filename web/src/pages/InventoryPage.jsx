@@ -443,6 +443,11 @@ export default function InventoryPage() {
       );
   }, [equipment, medicines, selectedStockCategory, supplies]);
 
+  const displayedStockSummaryRows = useMemo(() => {
+    if (!stockStatusFilter) return stockSummaryDetailRows;
+    return stockSummaryDetailRows.filter((row) => matchesStockStatusFilter(row));
+  }, [stockSummaryDetailRows, stockStatusFilter]);
+
   const stockSummary = useMemo(() => {
     return stockSummaryDetailRows.reduce(
       (summary, item) => {
@@ -1686,7 +1691,27 @@ export default function InventoryPage() {
             </div>
 
             <div style={styles.stockSummaryGrid}>
-              <div style={{ ...styles.stockMetricCard, ...styles.stockMetricBlue }}>
+              <div
+                style={{
+                  ...styles.stockMetricCard,
+                  ...styles.stockMetricBlue,
+                  ...styles.stockMetricClickable,
+                  ...(stockStatusFilter ? {} : styles.stockMetricSelected),
+                }}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setStockStatusFilter('');
+                  setCurrentPages((prev) => ({ ...prev, medicine: 1, equipment: 1, supplies: 1, search: 1 }));
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setStockStatusFilter('');
+                    setCurrentPages((prev) => ({ ...prev, medicine: 1, equipment: 1, supplies: 1, search: 1 }));
+                  }
+                }}
+              >
                 <span style={styles.stockMetricLabel}>Total Items</span>
                 <strong style={{ ...styles.stockMetricValue, color: '#1d4ed8' }}>
                   {stockSummary.totalItems}
@@ -1700,14 +1725,54 @@ export default function InventoryPage() {
                 </strong>
               </div>
 
-              <div style={{ ...styles.stockMetricCard, ...styles.stockMetricOrange }}>
+              <div
+                style={{
+                  ...styles.stockMetricCard,
+                  ...styles.stockMetricOrange,
+                  ...styles.stockMetricClickable,
+                  ...(stockStatusFilter === 'low_stock' ? styles.stockMetricSelected : {}),
+                }}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setStockStatusFilter('low_stock');
+                  setCurrentPages((prev) => ({ ...prev, medicine: 1, equipment: 1, supplies: 1, search: 1 }));
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setStockStatusFilter('low_stock');
+                    setCurrentPages((prev) => ({ ...prev, medicine: 1, equipment: 1, supplies: 1, search: 1 }));
+                  }
+                }}
+              >
                 <span style={styles.stockMetricLabel}>Low Stock</span>
                 <strong style={{ ...styles.stockMetricValue, color: '#f97316' }}>
                   {stockSummary.lowStock}
                 </strong>
               </div>
 
-              <div style={{ ...styles.stockMetricCard, ...styles.stockMetricRed }}>
+              <div
+                style={{
+                  ...styles.stockMetricCard,
+                  ...styles.stockMetricRed,
+                  ...styles.stockMetricClickable,
+                  ...(stockStatusFilter === 'out_of_stock' ? styles.stockMetricSelected : {}),
+                }}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setStockStatusFilter('out_of_stock');
+                  setCurrentPages((prev) => ({ ...prev, medicine: 1, equipment: 1, supplies: 1, search: 1 }));
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setStockStatusFilter('out_of_stock');
+                    setCurrentPages((prev) => ({ ...prev, medicine: 1, equipment: 1, supplies: 1, search: 1 }));
+                  }
+                }}
+              >
                 <span style={styles.stockMetricLabel}>Out of Stock</span>
                 <strong style={{ ...styles.stockMetricValue, color: '#dc2626' }}>
                   {stockSummary.outOfStock}
@@ -1767,7 +1832,7 @@ export default function InventoryPage() {
                 </thead>
 
                 <tbody>
-                  {stockSummaryDetailRows.length === 0 ? (
+                  {displayedStockSummaryRows.length === 0 ? (
                     <tr>
                       <td
                         colSpan={
@@ -1785,7 +1850,7 @@ export default function InventoryPage() {
                       </td>
                     </tr>
                   ) : (
-                    stockSummaryDetailRows.map((item) => (
+                    displayedStockSummaryRows.map((item) => (
                       <tr key={item.id} style={styles.tableRow}>
                         {selectedStockCategory === 'all' && (
                           <td style={styles.tableCell}>{item.category}</td>

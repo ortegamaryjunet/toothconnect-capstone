@@ -684,6 +684,17 @@
       boxSizing: 'border-box',
     },
 
+    stockMetricClickable: {
+      cursor: 'pointer',
+      userSelect: 'none',
+      transition: '0.15s ease',
+    },
+
+    stockMetricSelected: {
+      boxShadow: '0 10px 22px rgba(15, 23, 42, 0.10)',
+      transform: 'translateY(-1px)',
+    },
+
     stockMetricBlue: {
       background: '#f8fbff',
       borderColor: '#dbeafe',
