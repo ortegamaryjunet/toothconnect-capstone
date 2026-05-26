@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../auth/AuthContext';
-import { listPatients, updateStaffPatientProfile } from '../api/patients';
+import { getPatientProfile, listPatients, updateStaffPatientProfile } from '../api/patients';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createRecepRecordsStyles from '../styles/RecepRecords';
@@ -23,6 +23,8 @@ export default function RecepRecords() {
 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [editPatient, setEditPatient] = useState(null);
+  const [editModalReadOnly, setEditModalReadOnly] = useState(true);
+  const [editProfileLoading, setEditProfileLoading] = useState(false);
 
   const [searchText, setSearchText] = useState('');
   const [genderFilter, setGenderFilter] = useState('all');
@@ -195,8 +197,26 @@ export default function RecepRecords() {
   }
 
   function openEditPatient(patient) {
-    setEditPatient({ ...patient });
+    setEditPatient({
+      ...patient,
+      fullName: [patient.firstName, patient.middleName, patient.lastName]
+        .filter(Boolean)
+        .join(' ')
+        .trim(),
+      address: patient.address || '',
+      nationality: '',
+      occupation: '',
+      civilStatus: '',
+      emergencyContactName: '',
+      emergencyContactNumber: '',
+      medicalConditions: '',
+      allergies: '',
+      medications: '',
+      dentalHistory: '',
+    });
+    setEditModalReadOnly(true);
     setShowEditModal(true);
+    hydrateEditPatientProfile(patient.infoId);
   }
 
   function closePatientDetails() {
@@ -207,6 +227,46 @@ export default function RecepRecords() {
   function closeEditPatient() {
     setShowEditModal(false);
     setEditPatient(null);
+    setEditModalReadOnly(true);
+    setEditProfileLoading(false);
+  }
+
+  async function hydrateEditPatientProfile(patientId) {
+    setEditProfileLoading(true);
+    try {
+      const profile = await getPatientProfile(patientId);
+      if (!profile) return;
+
+      const nameParts = splitFullName(profile.full_name || '');
+
+      setEditPatient((current) => ({
+        ...(current || {}),
+        infoId: patientId,
+        fullName: profile.full_name || current?.fullName || '',
+        email: profile.email || current?.email || '',
+        contactNumber: profile.contact_number || current?.contactNumber || '',
+        address: profile.address || current?.address || '',
+        dateOfBirth: profile.birthday || current?.dateOfBirth || '',
+        age: profile.age || calculateAge(profile.birthday) || current?.age || '',
+        gender: profile.sex || current?.gender || '',
+        lastName: nameParts.lastName || current?.lastName || '',
+        firstName: nameParts.firstName || current?.firstName || '',
+        middleName: nameParts.middleName || current?.middleName || '',
+        nationality: profile.nationality || '',
+        occupation: profile.occupation || '',
+        civilStatus: profile.civil_status || '',
+        emergencyContactName: profile.emergency_contact_name || '',
+        emergencyContactNumber: profile.emergency_contact_number || '',
+        medicalConditions: profile.medical_conditions || '',
+        allergies: profile.allergies || '',
+        medications: profile.medications || '',
+        dentalHistory: profile.dental_history || '',
+      }));
+    } catch {
+      // Keep fallback list data in the edit modal when profile fetch fails.
+    } finally {
+      setEditProfileLoading(false);
+    }
   }
 
   function handleEditChange(field, value) {
@@ -220,7 +280,7 @@ export default function RecepRecords() {
   async function savePatientChanges(event) {
     event.preventDefault();
 
-    if (!editPatient) {
+    if (!editPatient || editModalReadOnly) {
       return;
     }
 
@@ -238,6 +298,15 @@ export default function RecepRecords() {
         age: calculateAge(editPatient.dateOfBirth) || editPatient.age,
         sex: editPatient.gender,
         address: editPatient.address || 'Not provided',
+        nationality: editPatient.nationality || '',
+        occupation: editPatient.occupation || '',
+        civil_status: editPatient.civilStatus || '',
+        emergency_contact_name: editPatient.emergencyContactName || '',
+        emergency_contact_number: editPatient.emergencyContactNumber || '',
+        medical_conditions: editPatient.medicalConditions || '',
+        allergies: editPatient.allergies || '',
+        medications: editPatient.medications || '',
+        dental_history: editPatient.dentalHistory || '',
       });
 
       const [normalized] = normalizePatients([saved]);
@@ -249,6 +318,10 @@ export default function RecepRecords() {
             : patient
         )
       );
+
+      if (selectedPatient && String(selectedPatient.infoId) === String(editPatient.infoId)) {
+        setSelectedPatient(normalized);
+      }
 
       closeEditPatient();
     } catch (err) {
@@ -612,7 +685,7 @@ export default function RecepRecords() {
               <div>
                 <h2 style={styles.modalHeaderTitle}>Edit Patient</h2>
                 <p style={styles.modalHeaderText}>
-                  Update patient information and save changes.
+                  Review patient profile details, then click Edit to enable fields.
                 </p>
               </div>
 
@@ -625,7 +698,15 @@ export default function RecepRecords() {
               </button>
             </div>
 
+            {editProfileLoading && (
+              <p style={{ ...styles.modalHeaderText, marginTop: 0, marginBottom: 16 }}>
+                Loading patient profile...
+              </p>
+            )}
+
             <div style={styles.formGrid}>
+              <div style={styles.formSectionTitle}>Personal Information</div>
+
               <div style={styles.field}>
                 <label style={styles.fieldLabel}>Last Name</label>
                 <input
@@ -634,6 +715,7 @@ export default function RecepRecords() {
                   onChange={(event) =>
                     handleEditChange('lastName', event.target.value)
                   }
+                  readOnly={editModalReadOnly}
                   style={styles.fieldInput}
                 />
               </div>
@@ -646,6 +728,7 @@ export default function RecepRecords() {
                   onChange={(event) =>
                     handleEditChange('firstName', event.target.value)
                   }
+                  readOnly={editModalReadOnly}
                   style={styles.fieldInput}
                 />
               </div>
@@ -658,6 +741,7 @@ export default function RecepRecords() {
                   onChange={(event) =>
                     handleEditChange('middleName', event.target.value)
                   }
+                  readOnly={editModalReadOnly}
                   style={styles.fieldInput}
                 />
               </div>
@@ -670,6 +754,7 @@ export default function RecepRecords() {
                   onChange={(event) =>
                     handleEditChange('dateOfBirth', event.target.value)
                   }
+                  disabled={editModalReadOnly}
                   style={styles.fieldInput}
                 />
               </div>
@@ -682,6 +767,7 @@ export default function RecepRecords() {
                   onChange={(event) =>
                     handleEditChange('email', event.target.value)
                   }
+                  readOnly={editModalReadOnly}
                   style={styles.fieldInput}
                 />
               </div>
@@ -694,6 +780,7 @@ export default function RecepRecords() {
                   onChange={(event) =>
                     handleEditChange('contactNumber', event.target.value)
                   }
+                  readOnly={editModalReadOnly}
                   style={styles.fieldInput}
                 />
               </div>
@@ -715,6 +802,7 @@ export default function RecepRecords() {
                   onChange={(event) =>
                     handleEditChange('gender', event.target.value)
                   }
+                  disabled={editModalReadOnly}
                   style={styles.fieldInput}
                 >
                   <option value="">Select Gender</option>
@@ -722,20 +810,153 @@ export default function RecepRecords() {
                   <option value="Female">Female</option>
                 </select>
               </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Address</label>
+                <input
+                  type="text"
+                  value={editPatient.address || ''}
+                  onChange={(event) => handleEditChange('address', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={styles.fieldInput}
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Nationality</label>
+                <input
+                  type="text"
+                  value={editPatient.nationality || ''}
+                  onChange={(event) => handleEditChange('nationality', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={styles.fieldInput}
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Occupation</label>
+                <input
+                  type="text"
+                  value={editPatient.occupation || ''}
+                  onChange={(event) => handleEditChange('occupation', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={styles.fieldInput}
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Civil Status</label>
+                <input
+                  type="text"
+                  value={editPatient.civilStatus || ''}
+                  onChange={(event) => handleEditChange('civilStatus', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={styles.fieldInput}
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Emergency Contact Name</label>
+                <input
+                  type="text"
+                  value={editPatient.emergencyContactName || ''}
+                  onChange={(event) => handleEditChange('emergencyContactName', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={styles.fieldInput}
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Emergency Contact Number</label>
+                <input
+                  type="text"
+                  value={editPatient.emergencyContactNumber || ''}
+                  onChange={(event) => handleEditChange('emergencyContactNumber', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={styles.fieldInput}
+                />
+              </div>
+
+              <div style={styles.formSectionTitle}>Medical Assessment</div>
+
+              <div style={{ ...styles.field, gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+                <label style={styles.fieldLabel}>Dental History (Medical Assessment)</label>
+                <textarea
+                  value={editPatient.dentalHistory || ''}
+                  onChange={(event) => handleEditChange('dentalHistory', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={{ ...styles.fieldInput, height: 96, padding: '10px 12px' }}
+                />
+              </div>
+
+              <div style={styles.formSectionTitle}>Health Condition</div>
+
+              <div style={{ ...styles.field, gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+                <label style={styles.fieldLabel}>Medical Conditions (Health Condition)</label>
+                <textarea
+                  value={editPatient.medicalConditions || ''}
+                  onChange={(event) => handleEditChange('medicalConditions', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={{ ...styles.fieldInput, height: 96, padding: '10px 12px' }}
+                />
+              </div>
+
+              <div style={{ ...styles.field, gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+                <label style={styles.fieldLabel}>Allergies</label>
+                <textarea
+                  value={editPatient.allergies || ''}
+                  onChange={(event) => handleEditChange('allergies', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={{ ...styles.fieldInput, height: 96, padding: '10px 12px' }}
+                />
+              </div>
+
+              <div style={{ ...styles.field, gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+                <label style={styles.fieldLabel}>Medications</label>
+                <textarea
+                  value={editPatient.medications || ''}
+                  onChange={(event) => handleEditChange('medications', event.target.value)}
+                  readOnly={editModalReadOnly}
+                  style={{ ...styles.fieldInput, height: 96, padding: '10px 12px' }}
+                />
+              </div>
             </div>
 
             <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={styles.cancelModalBtn}
-                onClick={closeEditPatient}
-              >
-                Cancel
-              </button>
+              {editModalReadOnly ? (
+                <>
+                  <button
+                    type="button"
+                    style={styles.cancelModalBtn}
+                    onClick={closeEditPatient}
+                  >
+                    Close
+                  </button>
 
-              <button type="submit" style={styles.saveBtn}>
-                Save Changes
-              </button>
+                  <button
+                    type="button"
+                    style={styles.saveBtn}
+                    onClick={() => setEditModalReadOnly(false)}
+                    disabled={editProfileLoading}
+                  >
+                    Edit
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    style={styles.cancelModalBtn}
+                    onClick={() => setEditModalReadOnly(true)}
+                  >
+                    Cancel Edit
+                  </button>
+
+                  <button type="submit" style={styles.saveBtn}>
+                    Save Changes
+                  </button>
+                </>
+              )}
             </div>
           </form>
         </div>
@@ -842,6 +1063,7 @@ function normalizePatients(items) {
     return {
       id: item.id || item.user_id ? `P${item.id || item.user_id}` : item.patientId || item.userId || index + 1,
       infoId: item.infoId || item.userInfoId || item.id || item.user_id || index + 1,
+      fullName: item.full_name || item.name || '',
       email: item.email || '',
       contactNumber: item.contact_number || item.contactNumber || '',
       address: item.address || '',
@@ -851,6 +1073,17 @@ function normalizePatients(items) {
       dateOfBirth,
       age,
       gender: item.gender || item.sex || '',
+      nationality: item.nationality || '',
+      occupation: item.occupation || '',
+      civilStatus: item.civil_status || item.civilStatus || '',
+      emergencyContactName:
+        item.emergency_contact_name || item.emergencyContactName || '',
+      emergencyContactNumber:
+        item.emergency_contact_number || item.emergencyContactNumber || '',
+      medicalConditions: item.medical_conditions || item.medicalConditions || '',
+      allergies: item.allergies || '',
+      medications: item.medications || '',
+      dentalHistory: item.dental_history || item.dentalHistory || '',
     };
   });
 }

@@ -603,6 +603,16 @@
       color: '#475569',
     },
 
+    formSectionTitle: {
+      gridColumn: '1 / -1',
+      margin: '2px 0 4px',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 13,
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+      color: '#1e3a8a',
+    },
+
     fieldInput: {
       height: 44,
       border: '1px solid #cbd5e1',
