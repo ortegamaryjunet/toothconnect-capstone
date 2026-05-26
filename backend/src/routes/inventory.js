@@ -290,7 +290,7 @@ router.post('/supplies', requireRole('receptionist', 'admin'), async (req, res) 
 
 router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { supply_name, brand, supplier, category, unit, quantity, price_per_item } = req.body;
+  const { supply_name, brand, supplier, category, unit, quantity, price_per_item, low_stock_threshold } = req.body;
 
   try {
     const existing = await fetchInventoryAlertRow(pool, 'supply', id);
@@ -307,7 +307,8 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
         category = COALESCE(?, category),
         unit = COALESCE(?, unit),
         quantity = COALESCE(?, quantity),
-       price_per_item = COALESCE(?, price_per_item)
+       price_per_item = COALESCE(?, price_per_item),
+       low_stock_threshold = COALESCE(?, low_stock_threshold)
        WHERE id = ?`,
       [
         optionalDbValue(supply_name),
@@ -317,6 +318,7 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
         optionalDbValue(unit),
         optionalDbValue(quantity),
         optionalDbValue(price_per_item),
+        optionalDbValue(low_stock_threshold),
         id,
       ]
     );
@@ -422,7 +424,7 @@ router.post('/medicines', requireRole('receptionist', 'admin'), async (req, res)
 
 router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item } = req.body;
+  const { medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item, low_stock_threshold } = req.body;
 
   try {
     const existing = await fetchInventoryAlertRow(pool, 'medicine', id);
@@ -442,7 +444,8 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
         supplier = COALESCE(?, supplier),
         unit = COALESCE(?, unit),
         quantity = COALESCE(?, quantity),
-       price_per_item = COALESCE(?, price_per_item)
+       price_per_item = COALESCE(?, price_per_item),
+       low_stock_threshold = COALESCE(?, low_stock_threshold)
        WHERE id = ?`,
       [
         optionalDbValue(medicine_name),
@@ -455,6 +458,7 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
         optionalDbValue(unit),
         optionalDbValue(quantity),
         optionalDbValue(price_per_item),
+        optionalDbValue(low_stock_threshold),
         id,
       ]
     );
@@ -584,6 +588,7 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
     equipment_name, brand, supplier, category, model_number, serial_number,
     location, purchase_date, warranty_date, last_maintenance, next_maintenance,
     maintenance_status, assigned_to, quantity, price_per_item,
+    low_stock_threshold,
   } = req.body;
 
   try {
@@ -609,7 +614,8 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
         maintenance_status = COALESCE(?, maintenance_status),
         assigned_to = COALESCE(?, assigned_to),
         quantity = COALESCE(?, quantity),
-        price_per_item = COALESCE(?, price_per_item)
+        price_per_item = COALESCE(?, price_per_item),
+        low_stock_threshold = COALESCE(?, low_stock_threshold)
        WHERE id = ?`,
       [
         optionalDbValue(equipment_name),
@@ -627,6 +633,7 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
         optionalDbValue(assigned_to),
         optionalDbValue(quantity),
         optionalDbValue(price_per_item),
+        optionalDbValue(low_stock_threshold),
         id,
       ]
     );

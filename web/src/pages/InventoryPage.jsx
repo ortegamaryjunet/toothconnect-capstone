@@ -197,6 +197,7 @@ export default function InventoryPage() {
     supplier: '',
     orderQuantity: '',
     pricePerItem: '',
+    threshold: '',
   });
   const [expenseInventoryRows, setExpenseInventoryRows] = useState(emptyExpenseInventoryRows);
   const [expenseBranchOptions, setExpenseBranchOptions] = useState([]);
@@ -211,6 +212,7 @@ export default function InventoryPage() {
     form: '',
     dosage: '',
     unit: '',
+    threshold: '',
     maintenanceStatus: '',
   });
   const [editSaving, setEditSaving] = useState(false);
@@ -724,6 +726,7 @@ export default function InventoryPage() {
       form: item.form === 'N/A' ? '' : item.form || '',
       dosage: item.dosage === 'N/A' ? '' : item.dosage || '',
       unit: item.unit === 'N/A' ? '' : item.unit || '',
+      threshold: Number.isFinite(Number(item.threshold)) ? String(Number(item.threshold)) : '',
       maintenanceStatus:
         item.maintenanceStatus === 'N/A'
           ? 'Available'
@@ -750,6 +753,11 @@ export default function InventoryPage() {
     if (!selectedInventoryItem) return;
 
     const type = selectedInventoryItem.type;
+    const thresholdValue =
+      editForm.threshold === '' || editForm.threshold === null || typeof editForm.threshold === 'undefined'
+        ? undefined
+        : Math.max(0, Number(editForm.threshold) || 0);
+
     const payload =
       type === 'medicine'
         ? {
@@ -758,16 +766,19 @@ export default function InventoryPage() {
             form: editForm.form,
             dosage: editForm.dosage,
             unit: editForm.unit,
+            ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
           }
         : type === 'supplies'
         ? {
             brand: editForm.brand,
             category: editForm.category,
             unit: editForm.unit,
+            ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
           }
         : {
             category: editForm.category,
             maintenance_status: editForm.maintenanceStatus,
+            ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
           };
 
     setEditSaving(true);
@@ -830,6 +841,7 @@ export default function InventoryPage() {
       form: item.form === 'N/A' ? '' : item.form || '',
       dosage: item.dosage === 'N/A' ? '' : item.dosage || '',
       unit: item.unit === 'N/A' ? '' : item.unit || '',
+      threshold: Number.isFinite(Number(item.threshold)) ? String(Number(item.threshold)) : '',
       maintenanceStatus:
         item.maintenanceStatus === 'N/A' ? 'Available' : item.maintenanceStatus || 'Available',
     });
@@ -878,6 +890,9 @@ export default function InventoryPage() {
       if (field === 'category' || field === 'branchId') {
         updatedForm.itemName = '';
         updatedForm.supplier = '';
+        updatedForm.orderQuantity = '';
+        updatedForm.pricePerItem = '';
+        updatedForm.threshold = '';
       }
       if (field === 'itemName') {
         const matchingItem = selectedExpenseInventoryRows.find(
@@ -889,6 +904,12 @@ export default function InventoryPage() {
         updatedForm.supplier = matchingItem?.supplier || '';
         if (matchingItem) {
           updatedForm.pricePerItem = Number(matchingItem.price_per_item || 0);
+          updatedForm.threshold =
+            matchingItem?.low_stock_threshold != null
+              ? String(matchingItem.low_stock_threshold)
+              : '';
+        } else {
+          updatedForm.threshold = '';
         }
       }
       return updatedForm;
@@ -906,7 +927,7 @@ export default function InventoryPage() {
     setExpenseSaving(true);
     setExpenseSaveError('');
     try {
-      await createInventoryPurchaseExpense({
+      const expenseRes = await createInventoryPurchaseExpense({
         branch_id: expenseForm.branchId,
         date: expenseForm.date,
         category: expenseForm.category,
@@ -915,6 +936,25 @@ export default function InventoryPage() {
         orderQuantity: expenseForm.orderQuantity,
         pricePerItem: expenseForm.pricePerItem,
       });
+
+      const thresholdValue =
+        expenseForm.threshold === '' || expenseForm.threshold === null || typeof expenseForm.threshold === 'undefined'
+          ? undefined
+          : Math.max(0, Number(expenseForm.threshold) || 0);
+
+      if (typeof thresholdValue === 'number' && expenseRes?.inventory_id) {
+        const inventoryId = expenseRes.inventory_id;
+        const thresholdPayload = { low_stock_threshold: thresholdValue };
+
+        if (expenseForm.category === 'medicine') {
+          await updateMedicine(inventoryId, thresholdPayload);
+        } else if (expenseForm.category === 'equipment') {
+          await updateEquipment(inventoryId, thresholdPayload);
+        } else {
+          await updateSupply(inventoryId, thresholdPayload);
+        }
+      }
+
       setShowExpenseConfirmModal(false);
       await refreshExpenseFormOptions();
       await loadInventory();
@@ -924,6 +964,7 @@ export default function InventoryPage() {
         supplier: '',
         orderQuantity: '',
         pricePerItem: '',
+        threshold: '',
       }));
     } catch (err) {
       setExpenseSaveError(err.response?.data?.message || 'Failed to save expense.');
@@ -1359,6 +1400,21 @@ export default function InventoryPage() {
               value={editForm.category}
               onChange={(event) =>
                 handleEditFormChange('category', event.target.value)
+              }
+              style={styles.formInput}
+            />
+          </label>
+
+          <label style={styles.formGroup}>
+            <span style={styles.formLabel}>Low Stock Threshold</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              step="1"
+              value={editForm.threshold}
+              onChange={(event) =>
+                handleEditFormChange('threshold', event.target.value)
               }
               style={styles.formInput}
             />
@@ -1868,7 +1924,7 @@ export default function InventoryPage() {
                         </td>
                         <td style={styles.tableCell}>
                           <span style={getStatusBadgeStyle(item.status)}>
-                            {item.status}
+                            {item.status === 'Healthy' ? 'In Stock' : item.status}
                           </span>
                         </td>
                         <td style={styles.tableCell}>{item.lastUpdated}</td>
@@ -2029,6 +2085,20 @@ export default function InventoryPage() {
               />
             </label>
 
+            <label style={styles.formGroup}>
+              <span style={styles.formLabel}>Low Stock Threshold</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="0"
+                step="1"
+                value={expenseForm.threshold}
+                placeholder={!expenseForm.itemName ? 'Select item first' : ''}
+                onChange={(e) => handleExpenseChange('threshold', e.target.value)}
+                style={styles.formInput}
+              />
+            </label>
+
             <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '12px 14px', fontFamily: 'Arial, sans-serif' }}>
               <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Total Expense</p>
               <h4 style={{ margin: '4px 0 0', fontSize: 15, color: '#0f172a', fontWeight: 700 }}>
@@ -2078,6 +2148,7 @@ export default function InventoryPage() {
                 ['Supplier', expenseForm.supplier || 'Not entered'],
                 ['Quantity', String(expenseForm.orderQuantity || 0)],
                 ['Price per Item', formatPeso(expenseForm.pricePerItem || 0)],
+                ['Low Stock Threshold', expenseForm.threshold === '' ? 'Not set' : String(expenseForm.threshold)],
               ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}>
                   <span style={{ color: '#64748b' }}>{label}</span>
