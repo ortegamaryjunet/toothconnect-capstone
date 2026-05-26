@@ -796,27 +796,6 @@ export default function RecepRecords() {
               <div style={styles.formSectionTitle}>Personal Information</div>
 
               <div style={styles.field}>
-                <label style={styles.fieldLabel}>Last Name</label>
-                <input
-                  type="text"
-                  value={editPatient.lastName}
-                  onChange={(event) =>
-                    handleEditChange('lastName', event.target.value)
-                  }
-                  readOnly={editModalReadOnly}
-                  style={{
-                    ...styles.fieldInput,
-                    ...(editErrors.lastName ? { borderColor: '#dc2626' } : {}),
-                  }}
-                />
-                {editErrors.lastName && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.lastName}
-                  </p>
-                )}
-              </div>
-
-              <div style={styles.field}>
                 <label style={styles.fieldLabel}>First Name</label>
                 <input
                   type="text"
@@ -848,6 +827,27 @@ export default function RecepRecords() {
                   readOnly={editModalReadOnly}
                   style={styles.fieldInput}
                 />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Last Name</label>
+                <input
+                  type="text"
+                  value={editPatient.lastName}
+                  onChange={(event) =>
+                    handleEditChange('lastName', event.target.value)
+                  }
+                  readOnly={editModalReadOnly}
+                  style={{
+                    ...styles.fieldInput,
+                    ...(editErrors.lastName ? { borderColor: '#dc2626' } : {}),
+                  }}
+                />
+                {editErrors.lastName && (
+                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                    {editErrors.lastName}
+                  </p>
+                )}
               </div>
 
               <div style={styles.field}>
