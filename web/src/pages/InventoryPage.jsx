@@ -1339,6 +1339,22 @@ export default function InventoryPage() {
     return (
       <>
         <div style={styles.formGrid}>
+          <label style={styles.formGroup}>
+            <span style={styles.formLabel}>Branch</span>
+            <input
+              type="text"
+              value={selectedInventoryItem.branchName || 'N/A'}
+              readOnly
+              style={{
+                ...styles.formInput,
+                background: '#f8fafc',
+                color: '#475569',
+                cursor: 'not-allowed',
+              }}
+              aria-readonly="true"
+            />
+          </label>
+
           {selectedInventoryItem.type === 'medicine' && (
             <>
               <label style={styles.formGroup}>
