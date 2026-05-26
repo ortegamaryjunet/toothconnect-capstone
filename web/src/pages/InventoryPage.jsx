@@ -237,6 +237,32 @@ export default function InventoryPage() {
     endDate: '',
   });
 
+  function handleUsageHistoryStartDateChange(nextStartDate) {
+    setUsageHistoryFilters((prev) => {
+      if (prev.endDate && nextStartDate && nextStartDate > prev.endDate) {
+        setUsageHistoryError('Invalid date range. "From" must be on or before "To".');
+        return prev;
+      }
+      if (usageHistoryError) {
+        setUsageHistoryError('');
+      }
+      return { ...prev, startDate: nextStartDate };
+    });
+  }
+
+  function handleUsageHistoryEndDateChange(nextEndDate) {
+    setUsageHistoryFilters((prev) => {
+      if (prev.startDate && nextEndDate && nextEndDate < prev.startDate) {
+        setUsageHistoryError('Invalid date range. "To" must be on or after "From".');
+        return prev;
+      }
+      if (usageHistoryError) {
+        setUsageHistoryError('');
+      }
+      return { ...prev, endDate: nextEndDate };
+    });
+  }
+
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
@@ -2071,16 +2097,8 @@ export default function InventoryPage() {
                 <input
                   type="date"
                   value={usageHistoryFilters.startDate}
-                  max={usageHistoryFilters.endDate || undefined}
-                  onChange={(e) => {
-                    const nextStartDate = e.target.value;
-                    setUsageHistoryFilters((prev) => {
-                      if (prev.endDate && nextStartDate && nextStartDate > prev.endDate) {
-                        return prev;
-                      }
-                      return { ...prev, startDate: nextStartDate };
-                    });
-                  }}
+                  max={usageHistoryFilters.endDate || ''}
+                  onChange={(e) => handleUsageHistoryStartDateChange(e.target.value)}
                   style={styles.formInput}
                 />
               </label>
@@ -2090,16 +2108,8 @@ export default function InventoryPage() {
                 <input
                   type="date"
                   value={usageHistoryFilters.endDate}
-                  min={usageHistoryFilters.startDate || undefined}
-                  onChange={(e) => {
-                    const nextEndDate = e.target.value;
-                    setUsageHistoryFilters((prev) => {
-                      if (prev.startDate && nextEndDate && nextEndDate < prev.startDate) {
-                        return prev;
-                      }
-                      return { ...prev, endDate: nextEndDate };
-                    });
-                  }}
+                  min={usageHistoryFilters.startDate || ''}
+                  onChange={(e) => handleUsageHistoryEndDateChange(e.target.value)}
                   style={styles.formInput}
                 />
               </label>
@@ -2107,7 +2117,10 @@ export default function InventoryPage() {
               <button
                 type="button"
                 style={{ ...styles.stockSummaryBtn, height: 42 }}
-                onClick={() => setUsageHistoryFilters({ startDate: '', endDate: '' })}
+                onClick={() => {
+                  setUsageHistoryFilters({ startDate: '', endDate: '' });
+                  setUsageHistoryError('');
+                }}
               >
                 Clear Filters
               </button>
