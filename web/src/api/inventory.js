@@ -87,3 +87,8 @@ export async function submitConsumption(appointmentId, items) {
   const res = await api.post(`/inventory/appointments/${appointmentId}/consumption`, { items });
   return res.data;
 }
+
+export async function listInventoryUsageHistory(params = {}) {
+  const res = await api.get('/inventory/usage-history', { params });
+  return res.data.records || [];
+}

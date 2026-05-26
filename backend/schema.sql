@@ -481,6 +481,29 @@ CREATE TABLE appointment_consumption (
   INDEX idx_consumption_item (category, item_id)
 );
 
+CREATE TABLE inventory_usage_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  appointment_id INT NOT NULL,
+  branch_id INT NOT NULL,
+  inventory_type ENUM('medicine','equipment','supply') NOT NULL,
+  item_id INT NOT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  item_category VARCHAR(255) NULL,
+  quantity_deducted INT NOT NULL,
+  service_id INT NULL,
+  service_name VARCHAR(255) NULL,
+  appointment_start_time DATETIME NULL,
+  deducted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deducted_by INT NOT NULL,
+  FOREIGN KEY (appointment_id) REFERENCES appointments(id),
+  FOREIGN KEY (branch_id) REFERENCES branches(id),
+  FOREIGN KEY (deducted_by) REFERENCES users(id),
+  FOREIGN KEY (service_id) REFERENCES services(id),
+  INDEX idx_usage_branch_date (branch_id, deducted_at),
+  INDEX idx_usage_appt (appointment_id),
+  INDEX idx_usage_item (inventory_type, item_id)
+);
+
 CREATE TABLE schedule_requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   dentist_id INT NOT NULL,

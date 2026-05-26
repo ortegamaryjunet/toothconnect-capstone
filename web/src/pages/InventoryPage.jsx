@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import {
   createInventoryPurchaseExpense,
   listEquipment,
+  listInventoryUsageHistory,
   listMedicines,
   listSupplies,
   updateEquipment,
@@ -20,6 +21,13 @@ import clinicLogo from '../assets/adminImages/clinic-logo.png';
 function formatDateOnly(value) {
   if (!value) return 'N/A';
   return String(value).slice(0, 10);
+}
+
+function formatDateTime(value) {
+  if (!value) return 'N/A';
+  const text = String(value);
+  if (text.includes('T')) return text.replace('T', ' ').slice(0, 19);
+  return text.slice(0, 19);
 }
 
 function fallback(value) {
@@ -187,6 +195,7 @@ export default function InventoryPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStockSummaryModal, setShowStockSummaryModal] = useState(false);
+  const [showUsageHistoryModal, setShowUsageHistoryModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showExpenseConfirmModal, setShowExpenseConfirmModal] = useState(false);
   const [expenseForm, setExpenseForm] = useState({
@@ -219,6 +228,14 @@ export default function InventoryPage() {
   const [editError, setEditError] = useState('');
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryError, setInventoryError] = useState('');
+
+  const [usageHistoryLoading, setUsageHistoryLoading] = useState(false);
+  const [usageHistoryError, setUsageHistoryError] = useState('');
+  const [usageHistoryRows, setUsageHistoryRows] = useState([]);
+  const [usageHistoryFilters, setUsageHistoryFilters] = useState({
+    startDate: '',
+    endDate: '',
+  });
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -522,6 +539,39 @@ export default function InventoryPage() {
   useEffect(() => {
     let cancelled = false;
 
+    async function loadUsageHistory() {
+      if (!showUsageHistoryModal) return;
+
+      setUsageHistoryLoading(true);
+      setUsageHistoryError('');
+      try {
+        const params = {};
+        const startDate = usageHistoryFilters.startDate || '';
+        const endDate = usageHistoryFilters.endDate || '';
+
+        if (startDate) params.start_date = startDate;
+        if (endDate) params.end_date = endDate;
+        if (scopedBranchId) params.branch_id = scopedBranchId;
+
+        const records = await listInventoryUsageHistory(params);
+        if (!cancelled) setUsageHistoryRows(records);
+      } catch (err) {
+        if (!cancelled) setUsageHistoryError(err.response?.data?.message || 'Failed to load usage history.');
+      } finally {
+        if (!cancelled) setUsageHistoryLoading(false);
+      }
+    }
+
+    loadUsageHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showUsageHistoryModal, scopedBranchId, usageHistoryFilters.endDate, usageHistoryFilters.startDate]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function fetchUnreadNotifications() {
       try {
         const count = await getUnreadNotificationCount();
@@ -561,7 +611,7 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showEditModal || showStockSummaryModal || showExpenseModal || showExpenseConfirmModal) {
+    if (showLogoutModal || showEditModal || showStockSummaryModal || showUsageHistoryModal || showExpenseModal || showExpenseConfirmModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -570,7 +620,7 @@ export default function InventoryPage() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showEditModal, showStockSummaryModal, showExpenseModal, showExpenseConfirmModal]);
+  }, [showLogoutModal, showEditModal, showStockSummaryModal, showUsageHistoryModal, showExpenseModal, showExpenseConfirmModal]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -578,6 +628,7 @@ export default function InventoryPage() {
         closeLogoutModal();
         closeEditModal();
         closeStockSummaryModal();
+        closeUsageHistoryModal();
         closeExpenseModal();
         closeExpenseConfirmModal();
       }
@@ -686,6 +737,22 @@ export default function InventoryPage() {
 
   function closeStockSummaryModal() {
     setShowStockSummaryModal(false);
+  }
+
+  function openUsageHistoryModal() {
+    setUsageHistoryError('');
+    setShowUsageHistoryModal(true);
+  }
+
+  function closeUsageHistoryModal() {
+    setShowUsageHistoryModal(false);
+    setUsageHistoryError('');
+  }
+
+  function handleUsageHistoryOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeUsageHistoryModal();
+    }
   }
 
   function handleLogout() {
@@ -1161,6 +1228,9 @@ export default function InventoryPage() {
                 Expense Input
               </button>
             )}
+            <button type="button" style={styles.stockSummaryBtn} onClick={openUsageHistoryModal}>
+              View Usage History
+            </button>
             <button type="button" style={styles.stockSummaryBtn} onClick={openStockSummaryModal}>
               View Stock Summary
             </button>
@@ -1684,6 +1754,13 @@ export default function InventoryPage() {
                     <button
                       type="button"
                       style={styles.stockSummaryBtn}
+                      onClick={openUsageHistoryModal}
+                    >
+                      View Usage History
+                    </button>
+                    <button
+                      type="button"
+                      style={styles.stockSummaryBtn}
                       onClick={openStockSummaryModal}
                     >
                       View Stock Summary
@@ -1944,6 +2021,124 @@ export default function InventoryPage() {
                           </span>
                         </td>
                         <td style={styles.tableCell}>{item.lastUpdated}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUsageHistoryModal && (
+        <div style={styles.modal} onClick={handleUsageHistoryOverlayClick}>
+          <div style={styles.stockSummaryModalContent}>
+            <div style={styles.stockSummaryModalHeader}>
+              <div>
+                <h2 style={styles.stockSummaryModalTitle}>Usage History</h2>
+                <p style={styles.stockSummaryModalText}>
+                  {isReceptionist
+                    ? 'Inventory deductions for your assigned branch.'
+                    : 'Inventory deductions across all accessible branches.'}
+                </p>
+              </div>
+
+              <button type="button" onClick={closeUsageHistoryModal} style={styles.closeBtn}>
+                Ã—
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                gap: 12,
+                flexWrap: 'wrap',
+                alignItems: 'flex-end',
+                marginBottom: 12,
+              }}
+            >
+              <label style={{ ...styles.formGroup, marginBottom: 0, minWidth: 180, flex: 1 }}>
+                <span style={styles.formLabel}>From</span>
+                <input
+                  type="date"
+                  value={usageHistoryFilters.startDate}
+                  onChange={(e) =>
+                    setUsageHistoryFilters((prev) => ({ ...prev, startDate: e.target.value }))
+                  }
+                  style={styles.formInput}
+                />
+              </label>
+
+              <label style={{ ...styles.formGroup, marginBottom: 0, minWidth: 180, flex: 1 }}>
+                <span style={styles.formLabel}>To</span>
+                <input
+                  type="date"
+                  value={usageHistoryFilters.endDate}
+                  onChange={(e) =>
+                    setUsageHistoryFilters((prev) => ({ ...prev, endDate: e.target.value }))
+                  }
+                  style={styles.formInput}
+                />
+              </label>
+
+              <button
+                type="button"
+                style={{ ...styles.stockSummaryBtn, height: 42 }}
+                onClick={() => setUsageHistoryFilters({ startDate: '', endDate: '' })}
+              >
+                Clear Filters
+              </button>
+            </div>
+
+            {usageHistoryError && (
+              <p style={{ ...styles.tableSubtitle, color: '#b91c1c', marginBottom: 10 }}>
+                {usageHistoryError}
+              </p>
+            )}
+
+            <div style={{ ...styles.stockSummaryTableWrapper, flex: 1 }}>
+              <table style={styles.inventoryTable}>
+                <thead>
+                  <tr>
+                    <th style={styles.tableHead}>Type</th>
+                    <th style={styles.tableHead}>Item Name</th>
+                    <th style={styles.tableHead}>Category</th>
+                    <th style={styles.tableHead}>Qty Deducted</th>
+                    <th style={styles.tableHead}>Service</th>
+                    <th style={styles.tableHead}>Appointment Date</th>
+                    <th style={styles.tableHead}>Branch</th>
+                    <th style={styles.tableHead}>Deducted Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usageHistoryLoading ? (
+                    <tr>
+                      <td colSpan={8} style={styles.emptyRow}>
+                        Loading usage history...
+                      </td>
+                    </tr>
+                  ) : usageHistoryRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={styles.emptyRow}>
+                        No usage history records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    usageHistoryRows.map((row) => (
+                      <tr key={row.id} style={styles.tableRow}>
+                        <td style={styles.tableCell}>{String(row.type || '').toUpperCase()}</td>
+                        <td style={{ ...styles.tableCell, fontWeight: 700 }}>{fallback(row.item_name)}</td>
+                        <td style={styles.tableCell}>{fallback(row.category)}</td>
+                        <td style={styles.tableCell}>{Number(row.qty_deducted || 0)}</td>
+                        <td style={styles.tableCell}>{fallback(row.service)}</td>
+                        <td style={styles.tableCell}>{formatDateTime(row.appointment_date)}</td>
+                        <td style={styles.tableCell}>
+                          {row.branch_address
+                            ? getBranchCity({ branch_address: row.branch_address, branch_name: row.branch_name })
+                            : fallback(row.branch_name)}
+                        </td>
+                        <td style={styles.tableCell}>{formatDateTime(row.deducted_at)}</td>
                       </tr>
                     ))
                   )}

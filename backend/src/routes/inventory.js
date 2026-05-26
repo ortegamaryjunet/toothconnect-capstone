@@ -241,6 +241,40 @@ function inventoryBranchFilter(req, requestedBranchId) {
   };
 }
 
+function usageHistoryBranchFilter(req, requestedBranchId) {
+  const userBranches = req.user.branches || [];
+
+  if (requestedBranchId) {
+    const branchId = parseInt(requestedBranchId, 10);
+    if (!branchId) {
+      const err = new Error('Invalid branch_id');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!validateBranchAccess(req, branchId)) {
+      const err = new Error('No access to this branch');
+      err.statusCode = 403;
+      throw err;
+    }
+    return { clause: 'h.branch_id = ?', params: [branchId] };
+  }
+
+  if (req.user.role === 'admin') {
+    return { clause: '1 = 1', params: [] };
+  }
+
+  if (userBranches.length === 0) {
+    const err = new Error('No branch access');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  return {
+    clause: `h.branch_id IN (${userBranches.map(() => '?').join(',')})`,
+    params: userBranches,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────
 // SUPPLIES
 // ─────────────────────────────────────────────────────────────
@@ -864,6 +898,67 @@ router.get('/low-stock-summary', async (req, res) => {
 // SERVICE KIT LOOKUP — what should we pre-fill?
 // ─────────────────────────────────────────────────────────────
 
+router.get('/usage-history', requireRole('admin', 'receptionist'), async (req, res) => {
+  try {
+    const branch = usageHistoryBranchFilter(req, req.query.branch_id);
+
+    const startDate = req.query.start_date ? String(req.query.start_date).slice(0, 10) : '';
+    const endDate = req.query.end_date ? String(req.query.end_date).slice(0, 10) : '';
+
+    if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
+      return res.status(400).json({ message: 'Invalid start_date or end_date (expected YYYY-MM-DD)' });
+    }
+
+    const whereParts = [branch.clause];
+    const params = [...branch.params];
+
+    if (startDate && endDate) {
+      whereParts.push('h.deducted_at >= ? AND h.deducted_at < DATE_ADD(?, INTERVAL 1 DAY)');
+      params.push(`${startDate} 00:00:00`, `${endDate} 00:00:00`);
+    } else if (startDate) {
+      whereParts.push('h.deducted_at >= ? AND h.deducted_at < DATE_ADD(?, INTERVAL 1 DAY)');
+      params.push(`${startDate} 00:00:00`, `${startDate} 00:00:00`);
+    }
+
+    const [rows] = await pool.query(
+      `SELECT h.id,
+              h.inventory_type,
+              h.item_name,
+              h.item_category,
+              h.quantity_deducted,
+              h.service_name,
+              h.appointment_start_time,
+              h.deducted_at,
+              b.name AS branch_name,
+              b.address AS branch_address
+       FROM inventory_usage_history h
+       JOIN branches b ON b.id = h.branch_id
+       WHERE ${whereParts.join(' AND ')}
+       ORDER BY h.deducted_at DESC
+       LIMIT 1000`,
+      params
+    );
+
+    res.json({
+      records: rows.map((r) => ({
+        id: r.id,
+        type: r.inventory_type,
+        item_name: r.item_name,
+        category: r.item_category,
+        qty_deducted: Number(r.quantity_deducted || 0),
+        service: r.service_name || null,
+        appointment_date: r.appointment_start_time,
+        branch_name: r.branch_name,
+        branch_address: r.branch_address,
+        deducted_at: r.deducted_at,
+      })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(err.statusCode || 500).json({ message: err.message || 'Server error' });
+  }
+});
+
 router.get('/service-kits/:serviceId', async (req, res) => {
   const serviceId = parseInt(req.params.serviceId, 10);
   const branchId = parseInt(req.query.branch_id, 10);
@@ -1008,7 +1103,8 @@ router.post('/appointments/:appointmentId/consumption', requireRole('dentist'), 
     await conn.beginTransaction();
 
     const [apptRows] = await conn.query(
-      `SELECT id, dentist_id, branch_id, status FROM appointments WHERE id = ? FOR UPDATE`,
+      `SELECT id, dentist_id, branch_id, service_id, start_time, status
+       FROM appointments WHERE id = ? FOR UPDATE`,
       [appointmentId]
     );
     if (apptRows.length === 0) {
@@ -1036,6 +1132,15 @@ router.post('/appointments/:appointmentId/consumption', requireRole('dentist'), 
       return res.status(409).json({ message: 'Consumption already recorded for this appointment' });
     }
 
+    const serviceId = appt.service_id || null;
+    let serviceName = null;
+    try {
+      const [serviceRows] = await conn.query(`SELECT name FROM services WHERE id = ?`, [serviceId]);
+      serviceName = serviceRows.length ? serviceRows[0].name : null;
+    } catch {
+      serviceName = null;
+    }
+
     const decrementResults = [];
     for (const item of items) {
       const { category, inventory_id, quantity_used } = item;
@@ -1059,7 +1164,7 @@ router.post('/appointments/:appointmentId/consumption', requireRole('dentist'), 
       const nameCol = nameColumns[category];
 
       const [invRows] = await conn.query(
-        `SELECT id, branch_id, ${nameCol} AS name, quantity
+        `SELECT id, branch_id, ${nameCol} AS name, category AS item_category, quantity
          FROM ${table} WHERE id = ? FOR UPDATE`,
         [inventory_id]
       );
@@ -1095,6 +1200,29 @@ router.post('/appointments/:appointmentId/consumption', requireRole('dentist'), 
         `INSERT INTO appointment_consumption (appointment_id, category, item_id, item_name, quantity_used, recorded_by)
          VALUES (?, ?, ?, ?, ?, ?)`,
         [appointmentId, category, inventory_id, invItem.name, quantity_used, userId]
+      );
+
+      const inventoryType =
+        category === 'medicine' ? 'medicine' : category === 'equipment' ? 'equipment' : 'supply';
+
+      await conn.query(
+        `INSERT INTO inventory_usage_history
+         (appointment_id, branch_id, inventory_type, item_id, item_name, item_category, quantity_deducted,
+          service_id, service_name, appointment_start_time, deducted_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          appointmentId,
+          appt.branch_id,
+          inventoryType,
+          inventory_id,
+          invItem.name,
+          invItem.item_category || null,
+          quantity_used,
+          serviceId,
+          serviceName,
+          appt.start_time || null,
+          userId,
+        ]
       );
 
       decrementResults.push({
