@@ -936,7 +936,11 @@ export default function RecepRecords() {
                   <button
                     type="button"
                     style={styles.saveBtn}
-                    onClick={() => setEditModalReadOnly(false)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setEditModalReadOnly(false);
+                    }}
                     disabled={editProfileLoading}
                   >
                     Edit
@@ -949,11 +953,11 @@ export default function RecepRecords() {
                     style={styles.cancelModalBtn}
                     onClick={() => setEditModalReadOnly(true)}
                   >
-                    Cancel Edit
+                    Cancel
                   </button>
 
                   <button type="submit" style={styles.saveBtn}>
-                    Save Changes
+                    Save
                   </button>
                 </>
               )}
