@@ -18,6 +18,15 @@ import clinicLogo from '../assets/adminImages/clinic-logo.png';
 const pendingPerPage = 4;
 const queuePerPage = 3;
 
+const paymentMethodLabels = {
+  cash: 'Cash',
+  ewallet: 'E-Wallet',
+  bank_transfer: 'Bank',
+};
+
+const ewalletProviders = ['GCash', 'Maya'];
+const bankProviders = ['Metrobank', 'BDO', 'BPI', 'GoTyme', 'UnionBank', 'RCBC'];
+
 export default function RecepAppointments() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -53,6 +62,7 @@ export default function RecepAppointments() {
     show: false,
     appointment: null,
     method: 'cash',
+    provider: '',
     amount: '',
     saving: false,
   });
@@ -425,6 +435,7 @@ export default function RecepAppointments() {
       show: true,
       appointment,
       method: 'cash',
+      provider: '',
       amount: String(Number(appointment.servicePrice || 0).toFixed(0)),
       saving: false,
     });
@@ -435,6 +446,7 @@ export default function RecepAppointments() {
       show: false,
       appointment: null,
       method: 'cash',
+      provider: '',
       amount: '',
       saving: false,
     });
@@ -457,6 +469,7 @@ export default function RecepAppointments() {
         appointment_id: paymentModal.appointment.id,
         amount,
         payment_method: paymentModal.method,
+        ewallet_provider: paymentModal.provider?.trim() || null,
       });
 
       setQueueAppointments((currentQueue) =>
@@ -1056,18 +1069,81 @@ export default function RecepAppointments() {
             <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
               <select
                 value={paymentModal.method}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const method = event.target.value;
+
                   setPaymentModal((current) => ({
                     ...current,
-                    method: event.target.value,
-                  }))
-                }
+                    method,
+                    provider: method === 'cash' ? '' : current.provider,
+                  }));
+                }}
                 style={styles.select}
               >
-                <option value="cash">Cash</option>
-                <option value="ewallet">E-wallet</option>
-                <option value="bank_transfer">Bank</option>
+                <option value="cash">{paymentMethodLabels.cash}</option>
+                <option value="ewallet">{paymentMethodLabels.ewallet}</option>
+                <option value="bank_transfer">{paymentMethodLabels.bank_transfer}</option>
               </select>
+
+              {paymentModal.method === 'ewallet' && (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <input
+                    list="payment-provider-ewallet"
+                    value={paymentModal.provider}
+                    onChange={(event) =>
+                      setPaymentModal((current) => ({
+                        ...current,
+                        provider: event.target.value,
+                      }))
+                    }
+                    placeholder="E-Wallet provider (e.g. GCash)"
+                    style={{
+                      ...styles.searchInput,
+                      width: '100%',
+                      height: 43,
+                      border: '1px solid #dbe3ef',
+                      borderRadius: 14,
+                      padding: '0 13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <datalist id="payment-provider-ewallet">
+                    {ewalletProviders.map((provider) => (
+                      <option key={provider} value={provider} />
+                    ))}
+                  </datalist>
+                </div>
+              )}
+
+              {paymentModal.method === 'bank_transfer' && (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <input
+                    list="payment-provider-bank"
+                    value={paymentModal.provider}
+                    onChange={(event) =>
+                      setPaymentModal((current) => ({
+                        ...current,
+                        provider: event.target.value,
+                      }))
+                    }
+                    placeholder="Bank (e.g. BDO)"
+                    style={{
+                      ...styles.searchInput,
+                      width: '100%',
+                      height: 43,
+                      border: '1px solid #dbe3ef',
+                      borderRadius: 14,
+                      padding: '0 13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <datalist id="payment-provider-bank">
+                    {bankProviders.map((provider) => (
+                      <option key={provider} value={provider} />
+                    ))}
+                  </datalist>
+                </div>
+              )}
 
               <input
                 type="number"
