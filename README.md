@@ -1,6 +1,6 @@
 # Dental Clinic Management System
 
-Capstone project. Multi-branch dental clinic with web (admin/dentist/receptionist) and mobile (patient) apps, AI-assisted appointment scheduling, and CAMBRA-based risk assessment.
+Capstone project. Multi-branch dental clinic with web (admin/dentist/receptionist) and mobile (patient) apps, AI-assisted appointment scheduling, using OpenAI for input analysis.
 
 ## Stack
 - Backend: Node.js + Express + MySQL
