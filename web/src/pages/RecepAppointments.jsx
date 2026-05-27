@@ -1836,7 +1836,8 @@ function PendingAppointmentCard({
 }) {
   const isOpen = String(openDropdownId) === String(appointment.id);
   const todayDateKey = toDateKey(new Date());
-  const canMarkArrivedToday = appointment.fullDate === todayDateKey;
+  const scheduleDateKey = appointment.sourceDateKey || appointment.fullDate;
+  const canMarkArrivedToday = scheduleDateKey === todayDateKey;
 
   return (
     <div style={{
@@ -2109,6 +2110,7 @@ function normalizeAppointments(items) {
       day: displayDate.day,
       time: displayDate.time,
       fullDate: displayDate.fullDate,
+      sourceDateKey: extractDateKey(rawDateTime),
       status: item.status || 'scheduled',
       type: item.type || item.bookingType || formatStatus(item.status || 'scheduled'),
       notes: item.notes || item.note || '',
@@ -2442,6 +2444,12 @@ function parseTimeToMinutes(timeString) {
   }
 
   return hour * 60 + (Number(minuteValue) || 0);
+}
+
+function extractDateKey(rawDateTime) {
+  const value = String(rawDateTime || '').trim();
+  const matched = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  return matched ? matched[1] : '';
 }
 
 function getEstimatedTimeRange(startTime, durationMinutes) {
