@@ -18,6 +18,29 @@ import clinicLogo from '../assets/adminImages/clinic-logo.png';
 const pendingPerPage = 4;
 const queuePerPage = 3;
 
+const paymentMethodLabels = {
+  cash: 'Cash',
+  ewallet: 'E-Wallet',
+  bank_transfer: 'Bank',
+};
+
+const ewalletProviders = ['GCash', 'Maya'];
+const bankProviders = ['Metrobank', 'BDO', 'BPI', 'GoTyme', 'UnionBank', 'RCBC'];
+
+function normalizePaymentMethodInput(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+
+  if (normalized === 'cash') return 'cash';
+  if (normalized === 'e-wallet' || normalized === 'ewallet' || normalized === 'e wallet') return 'ewallet';
+  if (normalized === 'bank' || normalized === 'bank transfer' || normalized === 'bank_transfer') return 'bank_transfer';
+
+  return '';
+}
+
+function toPaymentMethodInputValue(method) {
+  return paymentMethodLabels[method] || '';
+}
+
 export default function RecepAppointments() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -53,6 +76,8 @@ export default function RecepAppointments() {
     show: false,
     appointment: null,
     method: 'cash',
+    methodInput: toPaymentMethodInputValue('cash'),
+    provider: '',
     amount: '',
     saving: false,
   });
@@ -425,6 +450,8 @@ export default function RecepAppointments() {
       show: true,
       appointment,
       method: 'cash',
+      methodInput: toPaymentMethodInputValue('cash'),
+      provider: '',
       amount: String(Number(appointment.servicePrice || 0).toFixed(0)),
       saving: false,
     });
@@ -435,6 +462,8 @@ export default function RecepAppointments() {
       show: false,
       appointment: null,
       method: 'cash',
+      methodInput: toPaymentMethodInputValue('cash'),
+      provider: '',
       amount: '',
       saving: false,
     });
@@ -449,6 +478,12 @@ export default function RecepAppointments() {
       return;
     }
 
+    const method = paymentModal.method || normalizePaymentMethodInput(paymentModal.methodInput);
+    if (!method) {
+      setAppointmentsError('Please choose a valid payment method (Cash, E-Wallet, or Bank).');
+      return;
+    }
+
     setPaymentModal((current) => ({ ...current, saving: true }));
     setAppointmentsError('');
 
@@ -456,7 +491,8 @@ export default function RecepAppointments() {
       await createStaffPayment({
         appointment_id: paymentModal.appointment.id,
         amount,
-        payment_method: paymentModal.method,
+        payment_method: method,
+        ewallet_provider: paymentModal.provider?.trim() || null,
       });
 
       setQueueAppointments((currentQueue) =>
@@ -1054,20 +1090,99 @@ export default function RecepAppointments() {
             </p>
 
             <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
-              <select
-                value={paymentModal.method}
-                onChange={(event) =>
-                  setPaymentModal((current) => ({
-                    ...current,
-                    method: event.target.value,
-                  }))
-                }
-                style={styles.select}
-              >
-                <option value="cash">Cash</option>
-                <option value="ewallet">E-wallet</option>
-                <option value="bank_transfer">Bank</option>
-              </select>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <input
+                  list="payment-method-options"
+                  value={paymentModal.methodInput}
+                  onChange={(event) => {
+                    const methodInput = event.target.value;
+                    const method = normalizePaymentMethodInput(methodInput);
+
+                    setPaymentModal((current) => ({
+                      ...current,
+                      methodInput,
+                      method: method || current.method,
+                      provider: method === 'cash' ? '' : current.provider,
+                    }));
+                  }}
+                  placeholder="Payment method (Cash, E-Wallet, Bank)"
+                  style={{
+                    ...styles.searchInput,
+                    width: '100%',
+                    height: 43,
+                    border: '1px solid #dbe3ef',
+                    borderRadius: 14,
+                    padding: '0 13px',
+                    boxSizing: 'border-box',
+                  }}
+                />
+
+                <datalist id="payment-method-options">
+                  <option value="Cash" />
+                  <option value="E-Wallet" />
+                  <option value="Bank" />
+                </datalist>
+              </div>
+
+              {(paymentModal.method === 'ewallet' || normalizePaymentMethodInput(paymentModal.methodInput) === 'ewallet') && (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <input
+                    list="payment-provider-ewallet"
+                    value={paymentModal.provider}
+                    onChange={(event) =>
+                      setPaymentModal((current) => ({
+                        ...current,
+                        provider: event.target.value,
+                      }))
+                    }
+                    placeholder="E-Wallet provider (e.g. GCash)"
+                    style={{
+                      ...styles.searchInput,
+                      width: '100%',
+                      height: 43,
+                      border: '1px solid #dbe3ef',
+                      borderRadius: 14,
+                      padding: '0 13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <datalist id="payment-provider-ewallet">
+                    {ewalletProviders.map((provider) => (
+                      <option key={provider} value={provider} />
+                    ))}
+                  </datalist>
+                </div>
+              )}
+
+              {(paymentModal.method === 'bank_transfer' || normalizePaymentMethodInput(paymentModal.methodInput) === 'bank_transfer') && (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <input
+                    list="payment-provider-bank"
+                    value={paymentModal.provider}
+                    onChange={(event) =>
+                      setPaymentModal((current) => ({
+                        ...current,
+                        provider: event.target.value,
+                      }))
+                    }
+                    placeholder="Bank (e.g. BDO)"
+                    style={{
+                      ...styles.searchInput,
+                      width: '100%',
+                      height: 43,
+                      border: '1px solid #dbe3ef',
+                      borderRadius: 14,
+                      padding: '0 13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <datalist id="payment-provider-bank">
+                    {bankProviders.map((provider) => (
+                      <option key={provider} value={provider} />
+                    ))}
+                  </datalist>
+                </div>
+              )}
 
               <input
                 type="number"
