@@ -945,24 +945,27 @@ section {
 }
 
 .step-modal-info {
-    margin: 20px 0;
+    margin: 18px 0;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 10px 24px;
 }
 
 .step-modal-info span {
-    min-height: 48px;
-    padding: 12px 14px;
-    border-radius: 16px;
-    background: #fffaf0;
-    border: 1px solid #f1dfaa;
-    color: var(--dark);
-    font-size: 13px;
-    font-weight: 700;
     display: flex;
     align-items: center;
     gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--dark);
+    line-height: 1.5;
+}
+
+.step-modal-info span i {
+    width: 18px;
+    color: var(--gold-dark);
+    font-size: 15px;
+    flex-shrink: 0;
 }
 
 .step-modal-info i {
