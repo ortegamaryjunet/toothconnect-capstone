@@ -1852,10 +1852,10 @@ function PendingAppointmentCard({
 
           <strong style={styles.patientName}>{appointment.name}</strong>
 
-          {appointment.originalSchedule && appointment.rescheduledSchedule && (
+          {(appointment.originalSchedule || appointment.rescheduledSchedule) && (
             <div style={{ marginBottom: 10, fontSize: 12, color: '#475569', lineHeight: 1.35 }}>
               <div>
-                <strong>Original Schedule:</strong> {appointment.originalSchedule}
+                <strong>Original Schedule:</strong> {appointment.originalSchedule || 'Not recorded'}
               </div>
               <div>
                 <strong>Rescheduled:</strong> {appointment.rescheduledSchedule}
@@ -2088,9 +2088,10 @@ function normalizeAppointments(items) {
       item.notes ||
       '';
     const scheduleMeta = extractRescheduleScheduleMeta(unifiedNote);
+    const hasRescheduleText = /reschedul/i.test(unifiedNote);
     const isRescheduledPending =
       String(item.status || '').toLowerCase() === 'scheduled' &&
-      Boolean(scheduleMeta.rescheduledSchedule);
+      (Boolean(scheduleMeta.rescheduledSchedule) || hasRescheduleText);
 
     return {
       id: item.id || item.appointmentId || index + 1,
@@ -2133,7 +2134,9 @@ function normalizeAppointments(items) {
         ? 'Rescheduled'
         : (item.type || item.bookingType || formatStatus(item.status || 'scheduled')),
       originalSchedule: scheduleMeta.originalSchedule,
-      rescheduledSchedule: scheduleMeta.rescheduledSchedule,
+      rescheduledSchedule:
+        scheduleMeta.rescheduledSchedule ||
+        `${displayDate.fullDate || '-'} ${displayDate.time || '-'}`,
       notes: unifiedNote,
       note: unifiedNote,
     };
@@ -2479,9 +2482,9 @@ function extractRescheduleScheduleMeta(noteText) {
     return { originalSchedule: '', rescheduledSchedule: '' };
   }
 
-  const originalMatch = note.match(/^Original Schedule:\s*(.+)$/im);
-  const rescheduledMatch = note.match(/^Rescheduled:\s*(.+)$/im);
-  const legacyMatch = note.match(/^Rescheduled to\s+(.+)$/im);
+  const originalMatch = note.match(/^\s*Original\s*Schedule\s*:\s*(.+)$/im);
+  const rescheduledMatch = note.match(/^\s*Rescheduled\s*:\s*(.+)$/im);
+  const legacyMatch = note.match(/^\s*Rescheduled\s+to\s+(.+)$/im);
 
   return {
     originalSchedule: originalMatch?.[1]?.trim() || '',
