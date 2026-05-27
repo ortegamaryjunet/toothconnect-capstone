@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
+import jsPDF from 'jspdf';
 
 import api from '../api/axios';
 import { useAuth } from '../auth/AuthContext';
@@ -78,6 +79,7 @@ export default function AdminEmployees() {
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [editedEmployee, setEditedEmployee] = useState(null);
   const [isEditingEmployee, setIsEditingEmployee] = useState(false);
@@ -176,7 +178,7 @@ export default function AdminEmployees() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showEmployeeModal || showEditErrorModal) {
+    if (showLogoutModal || showEmployeeModal || showEditErrorModal || showExportModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -185,13 +187,14 @@ export default function AdminEmployees() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showEmployeeModal, showEditErrorModal]);
+  }, [showLogoutModal, showEmployeeModal, showEditErrorModal, showExportModal]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
         closeEmployeeModal();
+        setShowExportModal(false);
       }
     }
 
@@ -259,6 +262,108 @@ export default function AdminEmployees() {
     if (event.target === event.currentTarget) {
       closeLogoutModal();
     }
+  }
+
+  function handleExportModalOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      setShowExportModal(false);
+    }
+  }
+
+  function exportEmployeesToCSV() {
+    if (filteredEmployees.length === 0) {
+      setShowExportModal(true);
+      return;
+    }
+
+    const headers = [
+      'Employee ID',
+      'Clinic Position',
+      'Last Name',
+      'First Name',
+      'Middle Name',
+      'Branch',
+      'Age',
+      'Gender',
+    ];
+
+    const rows = filteredEmployees.map((employee) => [
+      employee.id,
+      employee.role,
+      employee.lastName,
+      employee.firstName,
+      employee.middleName,
+      employee.branchAddress || employee.branchName || '-',
+      employee.age,
+      employee.gender,
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map(formatCSVValue).join(','))
+      .join('\n');
+
+    const blob = new Blob([`\uFEFF${csvContent}`], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'employee_records.csv';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }
+
+  function exportEmployeeToPDF(employee) {
+    const doc = new jsPDF();
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('Smile Empress Dental Hub', 20, 20);
+
+    doc.setFontSize(14);
+    doc.text('Employee Record', 20, 32);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text(`Generated Date: ${new Date().toLocaleDateString()}`, 20, 42);
+
+    doc.setLineWidth(0.3);
+    doc.line(20, 48, 190, 48);
+
+    const employeeDetails = [
+      ['Employee ID', employee.id],
+      ['Clinic Position', employee.role || 'N/A'],
+      ['Last Name', employee.lastName || 'N/A'],
+      ['First Name', employee.firstName || 'N/A'],
+      ['Middle Name', employee.middleName || 'N/A'],
+      ['Branch', employee.branchAddress || employee.branchName || 'N/A'],
+      ['Age', employee.age || 'N/A'],
+      ['Gender', employee.gender || 'N/A'],
+      ['Email Address', employee.email || 'N/A'],
+      ['Contact Number', employee.contactNumber || 'N/A'],
+      ['Employment Type', employee.employmentType || 'N/A'],
+      ['Status', employee.status || 'N/A'],
+    ];
+
+    let yPosition = 62;
+
+    employeeDetails.forEach(([label, value]) => {
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${label}:`, 20, yPosition);
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(String(value), 70, yPosition);
+
+      yPosition += 9;
+    });
+
+    doc.save(`${employee.id}_employee_record.pdf`);
   }
 
   function nextPage() {
@@ -892,6 +997,15 @@ export default function AdminEmployees() {
           <section style={styles.tableCard}>
             <div style={styles.tableHeader}>
               <h3 style={styles.tableTitle}>Employee List</h3>
+
+              <button
+                type="button"
+                style={styles.exportBtn}
+                onClick={exportEmployeesToCSV}
+              >
+                <i className="fi fi-rr-file-csv" style={styles.exportIcon}></i>
+                CSV
+              </button>
             </div>
 
             <div style={styles.tableWrapper}>
@@ -929,13 +1043,24 @@ export default function AdminEmployees() {
                         <td style={styles.tableCell}>{employee.age}</td>
                         <td style={styles.tableCell}>{employee.gender}</td>
                         <td style={styles.tableCell}>
-                          <button
-                            type="button"
-                            style={styles.viewBtn}
-                            onClick={() => openEmployeeModal(employee)}
-                          >
-                            View
-                          </button>
+                          <div style={styles.actionGroup}>
+                            <button
+                              type="button"
+                              style={styles.viewBtn}
+                              onClick={() => openEmployeeModal(employee)}
+                            >
+                              View
+                            </button>
+
+                            <button
+                              type="button"
+                              style={styles.pdfBtn}
+                              title="Export employee as PDF"
+                              onClick={() => exportEmployeeToPDF(employee)}
+                            >
+                              PDF
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1242,8 +1367,38 @@ export default function AdminEmployees() {
           </div>
         </div>
       )}
+
+      {showExportModal && (
+        <div
+          style={styles.exportModalOverlay}
+          onClick={handleExportModalOverlayClick}
+        >
+          <div style={styles.exportModalContent}>
+            <h2 style={styles.exportModalTitle}>No Employee Records</h2>
+
+            <div style={styles.exportModalDivider}></div>
+
+            <p style={styles.exportModalText}>
+              No employee records available to export.
+            </p>
+
+            <button
+              type="button"
+              style={styles.exportModalButton}
+              onClick={() => setShowExportModal(false)}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function formatCSVValue(value) {
+  const stringValue = value === null || value === undefined ? '' : String(value);
+  return `"${stringValue.replace(/"/g, '""')}"`;
 }
 
 function employeeToStaffPayload(employee) {

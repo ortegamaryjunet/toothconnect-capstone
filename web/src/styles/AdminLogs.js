@@ -301,11 +301,33 @@
 
     rightActions: {
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-end',
       gap: 10,
       width: isSmallScreen ? '100%' : 'auto',
       flexDirection: isMobile ? 'column' : 'row',
       flexWrap: isSmallScreen ? 'wrap' : 'nowrap',
+    },
+
+    dateRangeGroup: {
+      display: 'flex',
+      alignItems: 'flex-end',
+      gap: 14,
+      width: isMobile ? '100%' : 'auto',
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    dateRangeField: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 6,
+      width: isMobile ? '100%' : 'auto',
+    },
+
+    dateRangeLabel: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: '#1e3a8a',
+      fontFamily: 'Arial, sans-serif',
     },
 
     dateFilter: {
@@ -335,6 +357,23 @@
       width: isMobile ? '100%' : 'auto',
       flex: isSmallScreen && !isMobile ? 1 : 'initial',
       minWidth: isMobile ? '100%' : 180,
+      boxSizing: 'border-box',
+    },
+
+    applyFilterBtn: {
+      height: 43,
+      minWidth: isMobile ? '100%' : 140,
+      border: 'none',
+      borderRadius: 14,
+      background: '#2563eb',
+      color: '#ffffff',
+      padding: '0 16px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      boxShadow: '0 10px 20px rgba(37, 99, 235, 0.18)',
+      transition: 'transform 120ms ease, opacity 120ms ease',
       boxSizing: 'border-box',
     },
 
@@ -503,7 +542,6 @@
     modalIconText: {
       fontSize: 30,
       lineHeight: 1,
-
     },
 
     modalTitle: {
@@ -542,13 +580,13 @@
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
       color: 'black',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
     },
 
     notificationBadge: {
