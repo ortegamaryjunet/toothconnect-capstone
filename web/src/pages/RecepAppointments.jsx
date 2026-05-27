@@ -361,6 +361,23 @@ export default function RecepAppointments() {
       .filter((item) => item.fullDate === selectedDateKey)
       .sort((a, b) => parseTime(a.time) - parseTime(b.time));
   }, [calendarAppointments, selectedDateKey]);
+  const rescheduleEstimatedDuration = useMemo(() => {
+    if (!rescheduleModal.appointment?.serviceId) {
+      return 30;
+    }
+
+    return getServiceDurationMinutes(treatmentOptions, rescheduleModal.appointment.serviceId);
+  }, [treatmentOptions, rescheduleModal.appointment?.serviceId]);
+  const rescheduleEstimatedTimeRange = useMemo(() => {
+    if (!rescheduleModal.selectedTime) {
+      return '-';
+    }
+
+    return getEstimatedTimeRange(
+      formatTimePickerValue(rescheduleModal.selectedTime),
+      rescheduleEstimatedDuration
+    );
+  }, [rescheduleModal.selectedTime, rescheduleEstimatedDuration]);
 
   const calendarMonthLabel = currentDate.toLocaleDateString('en-US', {
     month: 'long',
@@ -1649,49 +1666,77 @@ export default function RecepAppointments() {
                     </tbody>
                   </table>
                 </div>
-              </div>
 
-              <div style={scheduleStyles.slotSection}>
-                <label style={scheduleStyles.label}>
-                  Available Time Slots <span style={scheduleStyles.required}>*</span>
-                </label>
+                <div style={scheduleStyles.calendarDivider}></div>
 
-                {rescheduleModal.appointment?.dentistId && rescheduleModal.dentistOnLeave && (
-                  <p style={scheduleStyles.slotEmptyText}>
-                    This dentist is on approved leave
-                    {rescheduleModal.dentistLeaveInfo?.date_from && rescheduleModal.dentistLeaveInfo?.date_to
-                      ? ` (${rescheduleModal.dentistLeaveInfo.date_from} to ${rescheduleModal.dentistLeaveInfo.date_to})`
-                      : ''}
-                    . Please choose another date.
-                  </p>
-                )}
+                <div style={scheduleStyles.timeSection}>
+                  <label style={scheduleStyles.label}>
+                    Available Time Slots <span style={scheduleStyles.required}>*</span>
+                  </label>
 
-                {rescheduleModal.loadingSlots ? (
-                  <p style={scheduleStyles.slotLoadingText}>Loading available slots...</p>
-                ) : rescheduleModal.availableSlots.filter((s) => s.available).length === 0 ? (
-                  <p style={scheduleStyles.slotEmptyText}>No available slots on this date.</p>
-                ) : (
-                  <div style={scheduleStyles.slotGrid}>
-                    {rescheduleModal.availableSlots.map((slot) => {
-                      const isSelected = slot.value === rescheduleModal.selectedTime;
-                      return (
-                        <button
-                          key={slot.value}
-                          type="button"
-                          disabled={!slot.available}
-                          style={{
-                            ...scheduleStyles.slotChip,
-                            ...(!slot.available ? scheduleStyles.slotChipBlocked : {}),
-                            ...(isSelected && slot.available ? scheduleStyles.slotChipSelected : {}),
-                          }}
-                          onClick={() => slot.available && handleSelectRescheduleSlot(slot)}
-                        >
-                          {slot.label}
-                        </button>
-                      );
-                    })}
+                  {rescheduleModal.appointment?.dentistId && rescheduleModal.dentistOnLeave && (
+                    <p style={scheduleStyles.slotEmptyText}>
+                      This dentist is on approved leave
+                      {rescheduleModal.dentistLeaveInfo?.date_from && rescheduleModal.dentistLeaveInfo?.date_to
+                        ? ` (${rescheduleModal.dentistLeaveInfo.date_from} to ${rescheduleModal.dentistLeaveInfo.date_to})`
+                        : ''}
+                      . Please choose another date.
+                    </p>
+                  )}
+
+                  {rescheduleModal.loadingSlots ? (
+                    <p style={scheduleStyles.slotLoadingText}>Loading available slots...</p>
+                  ) : rescheduleModal.availableSlots.filter((s) => s.available).length === 0 ? (
+                    <p style={scheduleStyles.slotEmptyText}>No available slots on this date.</p>
+                  ) : (
+                    <div style={scheduleStyles.slotGrid}>
+                      {rescheduleModal.availableSlots.map((slot) => {
+                        const isSelected = slot.value === rescheduleModal.selectedTime;
+                        return (
+                          <button
+                            key={slot.value}
+                            type="button"
+                            disabled={!slot.available}
+                            style={{
+                              ...scheduleStyles.slotChip,
+                              ...(!slot.available ? scheduleStyles.slotChipBlocked : {}),
+                              ...(isSelected && slot.available ? scheduleStyles.slotChipSelected : {}),
+                            }}
+                            onClick={() => slot.available && handleSelectRescheduleSlot(slot)}
+                          >
+                            {slot.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div style={scheduleStyles.infoRows}>
+                    <div style={scheduleStyles.infoRow}>
+                      <i className="fi fi-rr-clock" style={scheduleStyles.infoIconBlue}></i>
+                      <div>
+                        <p style={scheduleStyles.infoText}>
+                          Estimated Duration: {rescheduleEstimatedTimeRange}
+                        </p>
+                        <p style={scheduleStyles.infoSubText}>
+                          Estimated duration is based on the selected purpose of visit. A
+                          15-minute cleaning/preparation buffer is blocked after each
+                          appointment.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={scheduleStyles.infoRow}>
+                      <i className="fi fi-rr-info" style={scheduleStyles.infoIconGray}></i>
+                      <div>
+                        <p style={scheduleStyles.infoText}>Clinic Hours: 10:00 AM - 7:00 PM</p>
+                        <p style={scheduleStyles.infoSubText}>
+                          Time slots are limited to clinic operating hours.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
               <div style={{ ...scheduleStyles.field, marginTop: 18 }}>
@@ -2392,6 +2437,22 @@ function parseTimeToMinutes(timeString) {
   }
 
   return hour * 60 + (Number(minuteValue) || 0);
+}
+
+function getEstimatedTimeRange(startTime, durationMinutes) {
+  const startMinutes = parseTimeToMinutes(startTime);
+  const endMinutes = startMinutes + Number(durationMinutes || 30);
+
+  return `${formatMinutesToTime(startMinutes)} - ${formatMinutesToTime(endMinutes)}`;
+}
+
+function formatMinutesToTime(totalMinutes) {
+  const hour24 = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+
+  return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
 }
 
 function buildAppointmentStartISO(dateKey, displayTime) {
