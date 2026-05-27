@@ -14,6 +14,15 @@ import createRecepReceiptsStyles from '../styles/RecepReceipts';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
 
+function getReceiptStatusLabel(status) {
+  const labels = {
+    'Pending Validation': 'Pending',
+    Validated: 'Acknowledged',
+  };
+
+  return labels[status] || status;
+}
+
 function mapPaymentToReceipt(payment) {
   const paidOrCreated = payment.paid_at || payment.receipt_uploaded_at || payment.created_at;
 
@@ -578,8 +587,8 @@ export default function RecepReceipts() {
               style={styles.statusFilter}
             >
               <option value="all">All Status</option>
-              <option value="Pending Validation">Pending Validation</option>
-              <option value="Validated">Validated</option>
+              <option value="Pending Validation">Pending</option>
+              <option value="Validated">Acknowledged</option>
               <option value="Rejected">Rejected</option>
             </select>
           </section>
@@ -763,7 +772,7 @@ function ReceiptCard({
             ...(receipt.status === 'Rejected' ? styles.statusRejected : {}),
           }}
         >
-          {receipt.status}
+          {getReceiptStatusLabel(receipt.status)}
         </span>
       </div>
 
@@ -974,7 +983,7 @@ function ReceiptCard({
               disabled={!canReviewReceipt}
             >
               <i className="fi fi-rr-money-check"></i>
-              Validate Payment
+              Acknowledge Payment
             </button>
           </div>
         </div>

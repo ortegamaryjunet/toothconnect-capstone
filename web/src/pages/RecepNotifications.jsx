@@ -598,9 +598,14 @@ export default function RecepNotifications() {
 }
 
 function mapNotification(notification = {}) {
+  const title = notification.title || formatNotificationType(notification.type);
+
   return {
     id: notification.id,
-    title: notification.title || formatNotificationType(notification.type),
+    title:
+      title === 'New receipt pending validation'
+        ? 'New receipt pending acknowledgement'
+        : title,
     message: notification.body || '',
     time: formatNotificationTime(notification.created_at),
     status: notification.is_read ? 'read' : 'unread',
