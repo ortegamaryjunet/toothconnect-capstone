@@ -27,20 +27,6 @@ const paymentMethodLabels = {
 const ewalletProviders = ['GCash', 'Maya'];
 const bankProviders = ['Metrobank', 'BDO', 'BPI', 'GoTyme', 'UnionBank', 'RCBC'];
 
-function normalizePaymentMethodInput(value) {
-  const normalized = String(value || '').trim().toLowerCase();
-
-  if (normalized === 'cash') return 'cash';
-  if (normalized === 'e-wallet' || normalized === 'ewallet' || normalized === 'e wallet') return 'ewallet';
-  if (normalized === 'bank' || normalized === 'bank transfer' || normalized === 'bank_transfer') return 'bank_transfer';
-
-  return '';
-}
-
-function toPaymentMethodInputValue(method) {
-  return paymentMethodLabels[method] || '';
-}
-
 export default function RecepAppointments() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -76,7 +62,6 @@ export default function RecepAppointments() {
     show: false,
     appointment: null,
     method: 'cash',
-    methodInput: toPaymentMethodInputValue('cash'),
     provider: '',
     amount: '',
     saving: false,
@@ -450,7 +435,6 @@ export default function RecepAppointments() {
       show: true,
       appointment,
       method: 'cash',
-      methodInput: toPaymentMethodInputValue('cash'),
       provider: '',
       amount: String(Number(appointment.servicePrice || 0).toFixed(0)),
       saving: false,
@@ -462,7 +446,6 @@ export default function RecepAppointments() {
       show: false,
       appointment: null,
       method: 'cash',
-      methodInput: toPaymentMethodInputValue('cash'),
       provider: '',
       amount: '',
       saving: false,
@@ -478,12 +461,6 @@ export default function RecepAppointments() {
       return;
     }
 
-    const method = paymentModal.method || normalizePaymentMethodInput(paymentModal.methodInput);
-    if (!method) {
-      setAppointmentsError('Please choose a valid payment method (Cash, E-Wallet, or Bank).');
-      return;
-    }
-
     setPaymentModal((current) => ({ ...current, saving: true }));
     setAppointmentsError('');
 
@@ -491,7 +468,7 @@ export default function RecepAppointments() {
       await createStaffPayment({
         appointment_id: paymentModal.appointment.id,
         amount,
-        payment_method: method,
+        payment_method: paymentModal.method,
         ewallet_provider: paymentModal.provider?.trim() || null,
       });
 
@@ -1090,41 +1067,25 @@ export default function RecepAppointments() {
             </p>
 
             <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
-              <div style={{ display: 'grid', gap: 6 }}>
-                <input
-                  list="payment-method-options"
-                  value={paymentModal.methodInput}
-                  onChange={(event) => {
-                    const methodInput = event.target.value;
-                    const method = normalizePaymentMethodInput(methodInput);
+              <select
+                value={paymentModal.method}
+                onChange={(event) => {
+                  const method = event.target.value;
 
-                    setPaymentModal((current) => ({
-                      ...current,
-                      methodInput,
-                      method: method || current.method,
-                      provider: method === 'cash' ? '' : current.provider,
-                    }));
-                  }}
-                  placeholder="Payment method (Cash, E-Wallet, Bank)"
-                  style={{
-                    ...styles.searchInput,
-                    width: '100%',
-                    height: 43,
-                    border: '1px solid #dbe3ef',
-                    borderRadius: 14,
-                    padding: '0 13px',
-                    boxSizing: 'border-box',
-                  }}
-                />
+                  setPaymentModal((current) => ({
+                    ...current,
+                    method,
+                    provider: method === 'cash' ? '' : current.provider,
+                  }));
+                }}
+                style={styles.select}
+              >
+                <option value="cash">{paymentMethodLabels.cash}</option>
+                <option value="ewallet">{paymentMethodLabels.ewallet}</option>
+                <option value="bank_transfer">{paymentMethodLabels.bank_transfer}</option>
+              </select>
 
-                <datalist id="payment-method-options">
-                  <option value="Cash" />
-                  <option value="E-Wallet" />
-                  <option value="Bank" />
-                </datalist>
-              </div>
-
-              {(paymentModal.method === 'ewallet' || normalizePaymentMethodInput(paymentModal.methodInput) === 'ewallet') && (
+              {paymentModal.method === 'ewallet' && (
                 <div style={{ display: 'grid', gap: 6 }}>
                   <input
                     list="payment-provider-ewallet"
@@ -1154,7 +1115,7 @@ export default function RecepAppointments() {
                 </div>
               )}
 
-              {(paymentModal.method === 'bank_transfer' || normalizePaymentMethodInput(paymentModal.methodInput) === 'bank_transfer') && (
+              {paymentModal.method === 'bank_transfer' && (
                 <div style={{ display: 'grid', gap: 6 }}>
                   <input
                     list="payment-provider-bank"
