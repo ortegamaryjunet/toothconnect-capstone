@@ -834,15 +834,21 @@ async function autoBookAppointment(appointmentData) {
     dentistCandidates = fallbackCandidates;
   }
 
-  // Branch-wide rule: only one appointment per exact start_time slot per branch.
+  // Branch-wide rule: block overlapping windows across the branch.
   const [branchSlotConflicts] = await db.query(
     `SELECT id
      FROM appointments
      WHERE branch_id = ?
        AND status IN ('scheduled','arrived')
-       AND start_time = ?
+       AND start_time < ?
+       AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
      LIMIT 1`,
-    [branchId, toMySQLDateTime(startUtc)]
+    [
+      branchId,
+      toMySQLDateTime(blockedEndUtc),
+      APPOINTMENT_BUFFER_MINUTES,
+      toMySQLDateTime(startUtc),
+    ]
   );
   if (branchSlotConflicts.length > 0) {
     const err = new Error('This time slot is already taken at this branch.');
@@ -1164,7 +1170,9 @@ async function listAppointments({ search = '', status = '', branchNames = null }
 async function getBookedSlots(date, branch) {
   // Website online appointments for this date + branch
   const [onlineRows] = await db.query(
-    `SELECT TIME_FORMAT(appointment_time, '%H:%i:%s') AS booked_time
+    `SELECT
+       TIME_FORMAT(appointment_time, '%H:%i:%s') AS booked_time,
+       duration_minutes
      FROM online_appointments_tbl
      WHERE appointment_date = ? AND location = ? AND status IN ('Pending','Confirmed')`,
     [date, branch]
@@ -1173,7 +1181,9 @@ async function getBookedSlots(date, branch) {
   // Shared appointments table (web walk-ins, mobile bookings)
   // branch param is e.g. "Makati Branch" — strip " Branch" to match branches.address ("Makati")
   const [apptRows] = await db.query(
-    `SELECT TIME_FORMAT(TIME(a.start_time), '%H:%i:%s') AS booked_time
+    `SELECT
+       TIME_FORMAT(TIME(a.start_time), '%H:%i:%s') AS booked_time,
+       a.duration_min
      FROM appointments a
      JOIN branches b ON a.branch_id = b.id
      WHERE DATE(a.start_time) = ?
@@ -1188,10 +1198,28 @@ async function getBookedSlots(date, branch) {
     [branch]
   );
 
-  const bookedSlots = [
-    ...onlineRows.map(r => r.booked_time),
-    ...apptRows.map(r => r.booked_time)
-  ];
+  const slotSet = new Set();
+  const stepMinutes = 30;
+  const bufferMinutes = APPOINTMENT_BUFFER_MINUTES;
+
+  function addSlotSpan(timeText, durationMinutes) {
+    const match = String(timeText || '').match(/^(\d{2}):(\d{2})/);
+    if (!match) return;
+
+    const baseMinutes = Number(match[1]) * 60 + Number(match[2]);
+    const span = Math.max(stepMinutes, Number(durationMinutes) || stepMinutes) + bufferMinutes;
+    for (let minutes = 0; minutes < span; minutes += stepMinutes) {
+      const current = baseMinutes + minutes;
+      const hh = String(Math.floor(current / 60)).padStart(2, '0');
+      const mm = String(current % 60).padStart(2, '0');
+      slotSet.add(`${hh}:${mm}:00`);
+    }
+  }
+
+  onlineRows.forEach((row) => addSlotSpan(row.booked_time, row.duration_minutes));
+  apptRows.forEach((row) => addSlotSpan(row.booked_time, row.duration_min));
+
+  const bookedSlots = Array.from(slotSet).sort();
 
   return {
     bookedSlots,

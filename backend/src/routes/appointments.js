@@ -618,15 +618,21 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
       }
     }
 
-    // Branch-wide rule: only one appointment per exact start_time slot per branch.
-    // This blocks the slot for all dentists at that branch.
+    // Branch-wide rule: block overlapping windows across the branch.
+    // This blocks the slot span for all dentists at that branch.
     const [branchSlotConflicts] = await pool.query(
       `SELECT id FROM appointments
        WHERE branch_id = ?
          AND status IN ('scheduled','arrived')
-         AND start_time = ?
+         AND start_time < ?
+         AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
        LIMIT 1`,
-      [effectiveBranchId, toMySQLDateTime(start)]
+      [
+        effectiveBranchId,
+        toMySQLDateTime(blockedEnd),
+        APPOINTMENT_BUFFER_MINUTES,
+        toMySQLDateTime(start),
+      ]
     );
     if (branchSlotConflicts.length > 0) {
       return res.status(409).json({ message: 'This time slot is already taken at this branch' });
@@ -951,15 +957,21 @@ router.post('/conflict-check', requireRole('patient'), async (req, res) => {
   const reqEnd = addMinutes(reqStart, effectiveDuration + BUFFER);
 
   try {
-    // Branch-wide rule: block when the exact slot is already taken at this branch.
+    // Branch-wide rule: block overlapping windows across the branch.
     const [branchSlot] = await pool.query(
       `SELECT id
        FROM appointments
        WHERE branch_id = ?
          AND status IN ('scheduled','arrived')
-         AND start_time = ?
+         AND start_time < ?
+         AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
        LIMIT 1`,
-      [parseInt(branch_id, 10), toMySQLDateTime(reqStart)]
+      [
+        parseInt(branch_id, 10),
+        toMySQLDateTime(reqEnd),
+        BUFFER,
+        toMySQLDateTime(reqStart),
+      ]
     );
     if (branchSlot.length > 0) {
       return res.json({
