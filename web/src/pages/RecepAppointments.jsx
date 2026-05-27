@@ -501,6 +501,8 @@ export default function RecepAppointments() {
       const newNote = buildRescheduleNote({
         existing: rescheduleModal.appointment.note || rescheduleModal.appointment.notes || '',
         reason: rescheduleReasonText,
+        originalDate: rescheduleModal.appointment.fullDate,
+        originalTime: rescheduleModal.appointment.time,
         newDate: rescheduleModal.selectedDate,
         newTime: formatTimePickerValue(rescheduleModal.selectedTime),
         durationMinutes,
@@ -1636,28 +1638,25 @@ export default function RecepAppointments() {
                             return (
                               <td
                                 key={`day-${weekIndex}-${dayIndex}`}
-                                style={scheduleStyles.calendarTd}
+                                style={{
+                                  ...scheduleStyles.calendarTd,
+                                  ...(isEmptyCell ? scheduleStyles.calendarTdEmpty : {}),
+                                  ...(isDisabled && !isEmptyCell
+                                    ? scheduleStyles.calendarTdDisabled
+                                    : {}),
+                                  ...(isSelected ? scheduleStyles.calendarTdSelected : {}),
+                                }}
+                                onClick={() =>
+                                  !isEmptyCell &&
+                                  !isDisabled &&
+                                  setRescheduleModal((current) => ({
+                                    ...current,
+                                    selectedDate: dayItem.dateKey,
+                                    selectedTime: '',
+                                  }))
+                                }
                               >
-                                <button
-                                  type="button"
-                                  disabled={isEmptyCell || isDisabled}
-                                  onClick={() =>
-                                    !isDisabled &&
-                                    setRescheduleModal((current) => ({
-                                      ...current,
-                                      selectedDate: dayItem.dateKey,
-                                      selectedTime: '',
-                                    }))
-                                  }
-                                  style={{
-                                    ...scheduleStyles.calendarDay,
-                                    ...(isEmptyCell ? scheduleStyles.calendarDayEmpty : {}),
-                                    ...(isDisabled ? scheduleStyles.calendarDayDisabled : {}),
-                                    ...(isSelected ? scheduleStyles.calendarDaySelected : {}),
-                                  }}
-                                >
-                                  {dayItem.day || ''}
-                                </button>
+                                {dayItem.day || ''}
                               </td>
                             );
                           })}
@@ -2465,15 +2464,30 @@ function buildAppointmentStartISO(dateKey, displayTime) {
   return date.toISOString();
 }
 
-function buildRescheduleNote({ existing, reason, newDate, newTime }) {
+function buildRescheduleNote({
+  existing,
+  reason,
+  originalDate,
+  originalTime,
+  newDate,
+  newTime,
+}) {
   const prefix = String(existing || '').trim();
   const cleanReason = String(reason || '').trim();
+  const originalLine = `Original Schedule: ${formatScheduleStamp(originalDate, originalTime)}`;
+  const rescheduledLine = `Rescheduled: ${formatScheduleStamp(newDate, newTime)}`;
   const reasonLine = cleanReason ? `Reschedule reason: ${cleanReason}` : 'Reschedule reason: (none)';
-  const headerLine = `Rescheduled to ${newTime} (${newDate})`;
 
   if (!prefix) {
-    return `${headerLine}\n${reasonLine}`;
+    return `${originalLine}\n${rescheduledLine}\n${reasonLine}`;
   }
 
-  return `${prefix}\n\n${headerLine}\n${reasonLine}`;
+  return `${prefix}\n\n${originalLine}\n${rescheduledLine}\n${reasonLine}`;
+}
+
+function formatScheduleStamp(dateKey, timeValue) {
+  const normalizedDate = String(dateKey || '').trim() || '-';
+  const normalizedTime = String(timeValue || '').trim() || '-';
+
+  return `${normalizedDate} ${normalizedTime}`;
 }
