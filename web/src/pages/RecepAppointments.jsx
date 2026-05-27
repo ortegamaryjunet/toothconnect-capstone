@@ -2081,7 +2081,13 @@ function normalizeAppointments(items) {
       item.time
     );
 
-    const scheduleMeta = extractRescheduleScheduleMeta(item.note || item.notes || '');
+    const unifiedNote =
+      item.dentist_note ||
+      item.dentistNote ||
+      item.note ||
+      item.notes ||
+      '';
+    const scheduleMeta = extractRescheduleScheduleMeta(unifiedNote);
     const isRescheduledPending =
       String(item.status || '').toLowerCase() === 'scheduled' &&
       Boolean(scheduleMeta.rescheduledSchedule);
@@ -2128,8 +2134,8 @@ function normalizeAppointments(items) {
         : (item.type || item.bookingType || formatStatus(item.status || 'scheduled')),
       originalSchedule: scheduleMeta.originalSchedule,
       rescheduledSchedule: scheduleMeta.rescheduledSchedule,
-      notes: item.notes || item.note || '',
-      note: item.note || item.notes || '',
+      notes: unifiedNote,
+      note: unifiedNote,
     };
   });
 }
