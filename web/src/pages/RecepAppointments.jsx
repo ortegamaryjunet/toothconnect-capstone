@@ -513,17 +513,12 @@ export default function RecepAppointments() {
         patient_id: Number(rescheduleModal.appointment.patientId),
         dentist_id: Number(rescheduleModal.appointment.dentistId),
         service_id: Number(rescheduleModal.appointment.serviceId),
+        reschedule_appointment_id: Number(rescheduleModal.appointment.id),
         start_time: buildAppointmentStartISO(
           rescheduleModal.selectedDate,
           formatTimePickerValue(rescheduleModal.selectedTime)
         ),
         note: newNote,
-      });
-
-      await cancelAppointmentRequest(rescheduleModal.appointment.id, {
-        reason: rescheduleReasonText.trim()
-          ? `Rescheduled: ${rescheduleReasonText.trim()}`
-          : 'Rescheduled',
       });
 
       closeRescheduleModal();
@@ -1857,6 +1852,17 @@ function PendingAppointmentCard({
 
           <strong style={styles.patientName}>{appointment.name}</strong>
 
+          {appointment.originalSchedule && appointment.rescheduledSchedule && (
+            <div style={{ marginBottom: 10, fontSize: 12, color: '#475569', lineHeight: 1.35 }}>
+              <div>
+                <strong>Original Schedule:</strong> {appointment.originalSchedule}
+              </div>
+              <div>
+                <strong>Rescheduled:</strong> {appointment.rescheduledSchedule}
+              </div>
+            </div>
+          )}
+
           <div style={styles.gridInfo}>
             <InfoRow
               styles={styles}
@@ -2075,6 +2081,11 @@ function normalizeAppointments(items) {
       item.time
     );
 
+    const scheduleMeta = extractRescheduleScheduleMeta(item.note || item.notes || '');
+    const isRescheduledPending =
+      String(item.status || '').toLowerCase() === 'scheduled' &&
+      Boolean(scheduleMeta.rescheduledSchedule);
+
     return {
       id: item.id || item.appointmentId || index + 1,
       patientId: item.patient_id || item.patientId || item.patient?.id || '',
@@ -2112,7 +2123,11 @@ function normalizeAppointments(items) {
       fullDate: displayDate.fullDate,
       sourceDateKey: extractDateKey(rawDateTime),
       status: item.status || 'scheduled',
-      type: item.type || item.bookingType || formatStatus(item.status || 'scheduled'),
+      type: isRescheduledPending
+        ? 'Rescheduled'
+        : (item.type || item.bookingType || formatStatus(item.status || 'scheduled')),
+      originalSchedule: scheduleMeta.originalSchedule,
+      rescheduledSchedule: scheduleMeta.rescheduledSchedule,
       notes: item.notes || item.note || '',
       note: item.note || item.notes || '',
     };
@@ -2450,6 +2465,22 @@ function extractDateKey(rawDateTime) {
   const value = String(rawDateTime || '').trim();
   const matched = value.match(/^(\d{4}-\d{2}-\d{2})/);
   return matched ? matched[1] : '';
+}
+
+function extractRescheduleScheduleMeta(noteText) {
+  const note = String(noteText || '');
+  if (!note.trim()) {
+    return { originalSchedule: '', rescheduledSchedule: '' };
+  }
+
+  const originalMatch = note.match(/^Original Schedule:\s*(.+)$/im);
+  const rescheduledMatch = note.match(/^Rescheduled:\s*(.+)$/im);
+  const legacyMatch = note.match(/^Rescheduled to\s+(.+)$/im);
+
+  return {
+    originalSchedule: originalMatch?.[1]?.trim() || '',
+    rescheduledSchedule: rescheduledMatch?.[1]?.trim() || legacyMatch?.[1]?.trim() || '',
+  };
 }
 
 function getEstimatedTimeRange(startTime, durationMinutes) {
