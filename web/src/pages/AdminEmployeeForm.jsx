@@ -71,30 +71,6 @@ const DENTIST_SPECIALIZATIONS = [
 
 // ─── Input filter helpers ────────────────────────────────────────────────────
 
-function parseBranchTimeSlots(operatingHours) {
-  if (!operatingHours) return timeSlots;
-  const m = String(operatingHours).match(
-    /(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i
-  );
-  if (!m) return timeSlots;
-  let startH = parseInt(m[1], 10);
-  const startMin = parseInt(m[2], 10);
-  const startAmpm = m[3].toUpperCase();
-  let endH = parseInt(m[4], 10);
-  const endMin = parseInt(m[5], 10);
-  const endAmpm = m[6].toUpperCase();
-  if (startAmpm === 'PM' && startH !== 12) startH += 12;
-  if (startAmpm === 'AM' && startH === 12) startH = 0;
-  if (endAmpm === 'PM' && endH !== 12) endH += 12;
-  if (endAmpm === 'AM' && endH === 12) endH = 0;
-  const startTotal = startH * 60 + startMin;
-  const endTotal = endH * 60 + endMin;
-  return timeSlots.filter((slot) => {
-    const [sh, sm] = slot.value.split(':').map(Number);
-    const slotTotal = sh * 60 + sm;
-    return slotTotal >= startTotal && slotTotal < endTotal;
-  });
-}
 
 function makeInputFilter(disallowedRegex) {
   return function (event) {
@@ -320,7 +296,6 @@ export default function AdminEmployeeForm() {
   const [enablePerDayBranch, setEnablePerDayBranch] = useState(false);
   const [dentistWorkDays, setDentistWorkDays] = useState([]);
   const [recepWorkHours, setRecepWorkHours] = useState([]);
-  const [branchTimeSlots, setBranchTimeSlots] = useState(timeSlots);
 
   const [ageValues, setAgeValues] = useState({
     dentist: '',
@@ -437,18 +412,12 @@ export default function AdminEmployeeForm() {
     setEnablePerDayBranch(false);
     setDentistWorkDays([]);
     setRecepWorkHours([]);
-    setBranchTimeSlots(timeSlots);
   }, [employeeType]);
 
   useEffect(() => {
     setBranchSpecializationOptions([]);
     setSpecializationsLoading(false);
-    if (employeeType === 'receptionist') {
-      const branch = branches.find((b) => String(b.id) === selectedBranchId);
-      setBranchTimeSlots(parseBranchTimeSlots(branch?.operating_hours));
-      setRecepWorkHours([]);
-    }
-  }, [selectedBranchId, employeeType, branches]);
+  }, [selectedBranchId]);
 
   function calculateAge(birthdayStr) {
     if (!birthdayStr) return '';
@@ -588,7 +557,7 @@ export default function AdminEmployeeForm() {
     try {
       const isDentist = employeeType === 'dentist';
       const isDentalAssistant = employeeType === 'dentalAssistant';
-      const recepSortedHours = [...recepWorkHours].sort();
+      const recepChecked = recepWorkHours.includes('10:00-19:00');
       const prefix = isDentist ? 'doctor' : isDentalAssistant ? 'da' : 'recep';
       const role = isDentist ? 'dentist' : 'receptionist';
       const firstName = payload[`${prefix}FirstName`] || '';
@@ -650,8 +619,8 @@ export default function AdminEmployeeForm() {
             ? payload.shiftType || null
             : null,
         work_days: workDays,
-        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : (recepSortedHours[0] || ''),
-        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : (recepSortedHours[recepSortedHours.length - 1] || ''),
+        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : (recepChecked ? '10:00' : ''),
+        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : (recepChecked ? '19:00' : ''),
         ...(isDentist && enablePerDayBranch && scheduleEntries.length > 0
           ? { schedule_entries: scheduleEntries }
           : {}),
@@ -1163,41 +1132,28 @@ export default function AdminEmployeeForm() {
               <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
               {(() => {
                 const hasError = formErrors.has('recepWorkHours');
+                const isChecked = recepWorkHours.includes('10:00-19:00');
                 return (
                   <div style={styles.field}>
                     <label style={styles.label}>
                       Working Hours{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
                     </label>
-                    {!selectedBranchId ? (
-                      <p style={{ color: '#6f675b', fontSize: 13, margin: '6px 0' }}>Select a branch to see available hours</p>
-                    ) : branchTimeSlots.length === 0 ? (
-                      <p style={{ color: '#6f675b', fontSize: 13, margin: '6px 0' }}>No time slots configured for this branch</p>
-                    ) : (
-                      <div style={{ ...styles.scheduleGrid, ...(hasError ? { border: '2px solid #dc2626', borderRadius: 12, padding: '6px 10px' } : {}) }}>
-                        {branchTimeSlots.map((slot) => (
-                          <label key={slot.value} style={styles.checkboxLabel}>
-                            <input
-                              type="checkbox"
-                              value={slot.value}
-                              style={styles.checkboxInput}
-                              checked={recepWorkHours.includes(slot.value)}
-                              onChange={(e) => {
-                                setRecepWorkHours((prev) => {
-                                  const next = new Set(prev);
-                                  if (e.target.checked) next.add(slot.value);
-                                  else next.delete(slot.value);
-                                  return Array.from(next);
-                                });
-                                if (e.target.checked) {
-                                  setFormErrors((prev) => { const n = new Set(prev); n.delete('recepWorkHours'); return n; });
-                                }
-                              }}
-                            />
-                            {slot.label}
-                          </label>
-                        ))}
-                      </div>
-                    )}
+                    <div style={{ ...(hasError ? { border: '2px solid #dc2626', borderRadius: 12, padding: '6px 10px', display: 'inline-block' } : {}) }}>
+                      <label style={styles.checkboxLabel}>
+                        <input
+                          type="checkbox"
+                          style={styles.checkboxInput}
+                          checked={isChecked}
+                          onChange={(e) => {
+                            setRecepWorkHours(e.target.checked ? ['10:00-19:00'] : []);
+                            if (e.target.checked) {
+                              setFormErrors((prev) => { const n = new Set(prev); n.delete('recepWorkHours'); return n; });
+                            }
+                          }}
+                        />
+                        10:00 AM - 7:00 PM
+                      </label>
+                    </div>
                   </div>
                 );
               })()}
