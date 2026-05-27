@@ -71,6 +71,31 @@ const DENTIST_SPECIALIZATIONS = [
 
 // ─── Input filter helpers ────────────────────────────────────────────────────
 
+function parseBranchTimeSlots(operatingHours) {
+  if (!operatingHours) return timeSlots;
+  const m = String(operatingHours).match(
+    /(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i
+  );
+  if (!m) return timeSlots;
+  let startH = parseInt(m[1], 10);
+  const startMin = parseInt(m[2], 10);
+  const startAmpm = m[3].toUpperCase();
+  let endH = parseInt(m[4], 10);
+  const endMin = parseInt(m[5], 10);
+  const endAmpm = m[6].toUpperCase();
+  if (startAmpm === 'PM' && startH !== 12) startH += 12;
+  if (startAmpm === 'AM' && startH === 12) startH = 0;
+  if (endAmpm === 'PM' && endH !== 12) endH += 12;
+  if (endAmpm === 'AM' && endH === 12) endH = 0;
+  const startTotal = startH * 60 + startMin;
+  const endTotal = endH * 60 + endMin;
+  return timeSlots.filter((slot) => {
+    const [sh, sm] = slot.value.split(':').map(Number);
+    const slotTotal = sh * 60 + sm;
+    return slotTotal >= startTotal && slotTotal < endTotal;
+  });
+}
+
 function makeInputFilter(disallowedRegex) {
   return function (event) {
     const el = event.target;
@@ -294,6 +319,8 @@ export default function AdminEmployeeForm() {
   const [accessEmail, setAccessEmail] = useState('');
   const [enablePerDayBranch, setEnablePerDayBranch] = useState(false);
   const [dentistWorkDays, setDentistWorkDays] = useState([]);
+  const [recepWorkHours, setRecepWorkHours] = useState([]);
+  const [branchTimeSlots, setBranchTimeSlots] = useState(timeSlots);
 
   const [ageValues, setAgeValues] = useState({
     dentist: '',
@@ -409,12 +436,19 @@ export default function AdminEmployeeForm() {
     setSelectedSpecialization('');
     setEnablePerDayBranch(false);
     setDentistWorkDays([]);
+    setRecepWorkHours([]);
+    setBranchTimeSlots(timeSlots);
   }, [employeeType]);
 
   useEffect(() => {
     setBranchSpecializationOptions([]);
     setSpecializationsLoading(false);
-  }, [selectedBranchId]);
+    if (employeeType === 'receptionist') {
+      const branch = branches.find((b) => String(b.id) === selectedBranchId);
+      setBranchTimeSlots(parseBranchTimeSlots(branch?.operating_hours));
+      setRecepWorkHours([]);
+    }
+  }, [selectedBranchId, employeeType, branches]);
 
   function calculateAge(birthdayStr) {
     if (!birthdayStr) return '';
@@ -497,7 +531,8 @@ export default function AdminEmployeeForm() {
       if (!selectedSpecialization) errors.add('daDepartment');
       ['daStartDate', 'daEmploymentType', 'daShiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
     } else {
-      ['startDate', 'employmentType', 'recepShiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
+      ['startDate', 'employmentType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
+      if (recepWorkHours.length === 0) errors.add('recepWorkHours');
     }
     if (employeeType !== 'dentalAssistant') {
       ['accessEmail', 'accessPassword', 'confirmPassword'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
@@ -514,7 +549,7 @@ export default function AdminEmployeeForm() {
       ? ['branchId', 'department', 'startDate', 'employmentType', 'shiftType']
       : employeeType === 'dentalAssistant'
         ? ['branchId', 'daDepartment', 'daStartDate', 'daEmploymentType', 'daShiftType']
-        : ['branchId', 'startDate', 'employmentType', 'recepShiftType'];
+        : ['branchId', 'startDate', 'employmentType', 'recepWorkHours'];
     const sec4 = ['accessEmail', 'accessPassword', 'confirmPassword'];
     const maps = {
       dentist: { docPersonal: sec1, docWork: sec3, docAccess: sec4 },
@@ -553,6 +588,7 @@ export default function AdminEmployeeForm() {
     try {
       const isDentist = employeeType === 'dentist';
       const isDentalAssistant = employeeType === 'dentalAssistant';
+      const recepSortedHours = [...recepWorkHours].sort();
       const prefix = isDentist ? 'doctor' : isDentalAssistant ? 'da' : 'recep';
       const role = isDentist ? 'dentist' : 'receptionist';
       const firstName = payload[`${prefix}FirstName`] || '';
@@ -612,10 +648,10 @@ export default function AdminEmployeeForm() {
           ? payload.daShiftType
           : isDentist
             ? payload.shiftType || null
-            : payload.recepShiftType || null,
+            : null,
         work_days: workDays,
-        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : payload.recepWorkStart,
-        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : payload.recepWorkEnd,
+        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : (recepSortedHours[0] || ''),
+        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : (recepSortedHours[recepSortedHours.length - 1] || ''),
         ...(isDentist && enablePerDayBranch && scheduleEntries.length > 0
           ? { schedule_entries: scheduleEntries }
           : {}),
@@ -1125,14 +1161,50 @@ export default function AdminEmployeeForm() {
             </div>
             <div style={styles.rowTwo}>
               <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
-              <TimeRangeFieldRaw startName="recepWorkStart" endName="recepWorkEnd" styles={styles} />
+              {(() => {
+                const hasError = formErrors.has('recepWorkHours');
+                return (
+                  <div style={styles.field}>
+                    <label style={styles.label}>
+                      Working Hours{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+                    </label>
+                    {!selectedBranchId ? (
+                      <p style={{ color: '#6f675b', fontSize: 13, margin: '6px 0' }}>Select a branch to see available hours</p>
+                    ) : branchTimeSlots.length === 0 ? (
+                      <p style={{ color: '#6f675b', fontSize: 13, margin: '6px 0' }}>No time slots configured for this branch</p>
+                    ) : (
+                      <div style={{ ...styles.scheduleGrid, ...(hasError ? { border: '2px solid #dc2626', borderRadius: 12, padding: '6px 10px' } : {}) }}>
+                        {branchTimeSlots.map((slot) => (
+                          <label key={slot.value} style={styles.checkboxLabel}>
+                            <input
+                              type="checkbox"
+                              value={slot.value}
+                              style={styles.checkboxInput}
+                              checked={recepWorkHours.includes(slot.value)}
+                              onChange={(e) => {
+                                setRecepWorkHours((prev) => {
+                                  const next = new Set(prev);
+                                  if (e.target.checked) next.add(slot.value);
+                                  else next.delete(slot.value);
+                                  return Array.from(next);
+                                });
+                                if (e.target.checked) {
+                                  setFormErrors((prev) => { const n = new Set(prev); n.delete('recepWorkHours'); return n; });
+                                }
+                              }}
+                            />
+                            {slot.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             <div style={styles.rowTwo}>
               <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
               <SelectFieldRaw label="Employment Type" name="employmentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('employmentType')} styles={styles} />
-            </div>
-            <div style={styles.rowTwo}>
-              <SelectFieldRaw label="Shift Type" name="recepShiftType" placeholder="Select Type" options={['Day', 'Afternoon', 'Night']} hasError={formErrors.has('recepShiftType')} styles={styles} />
             </div>
           </>
         )}
