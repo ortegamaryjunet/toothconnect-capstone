@@ -1835,6 +1835,8 @@ function PendingAppointmentCard({
   isUpdating,
 }) {
   const isOpen = String(openDropdownId) === String(appointment.id);
+  const todayDateKey = toDateKey(new Date());
+  const canMarkArrivedToday = appointment.fullDate === todayDateKey;
 
   return (
     <div style={{
@@ -1896,7 +1898,11 @@ function PendingAppointmentCard({
             <div style={styles.editDropdownMenu}>
               <button
                 type="button"
-                style={styles.editDropdownItem}
+                disabled={!canMarkArrivedToday}
+                style={{
+                  ...styles.editDropdownItem,
+                  ...(!canMarkArrivedToday ? styles.pageBtnDisabled : {}),
+                }}
                 onClick={() => handlePendingAction('arrived', appointment.id)}
               >
                 <i className="fi fi-rr-check"></i>
