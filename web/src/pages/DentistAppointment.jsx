@@ -45,6 +45,8 @@ export default function DentistAppointment() {
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
   const [kitSubmittedBy, setKitSubmittedBy] = useState(null);
+  const [kitEditedBy, setKitEditedBy] = useState(null);
+  const [kitEditedAt, setKitEditedAt] = useState('');
   const [kitEditMode, setKitEditMode] = useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
@@ -265,6 +267,8 @@ export default function DentistAppointment() {
     setKitError('');
     setKitAlreadySubmitted(false);
     setKitSubmittedBy(null);
+    setKitEditedBy(null);
+    setKitEditedAt('');
     setKitEditMode(false);
     setShowKitModal(true);
     setKitLoading(true);
@@ -283,6 +287,8 @@ export default function DentistAppointment() {
       if (isConsultation) {
         setKitAlreadySubmitted(Boolean(consumptionData?.submitted));
         setKitSubmittedBy(consumptionData?.submitted_by || null);
+        setKitEditedBy(consumptionData?.edited_by || null);
+        setKitEditedAt(consumptionData?.edited_at || '');
         setKitNotes('No inventory items was used for consultation service.');
         setKitItems([]);
         return;
@@ -291,6 +297,8 @@ export default function DentistAppointment() {
       if (consumptionData.submitted) {
         setKitAlreadySubmitted(true);
         setKitSubmittedBy(consumptionData?.submitted_by || null);
+        setKitEditedBy(consumptionData?.edited_by || null);
+        setKitEditedAt(consumptionData?.edited_at || '');
 
         const submittedItems = consumptionData.items.map((item) => ({
           category: item.category,
@@ -334,6 +342,8 @@ export default function DentistAppointment() {
     setKitSubmitting(false);
     setKitAlreadySubmitted(false);
     setKitSubmittedBy(null);
+    setKitEditedBy(null);
+    setKitEditedAt('');
     setKitEditMode(false);
   }
 
@@ -381,6 +391,13 @@ export default function DentistAppointment() {
         name: user?.name || 'Dentist',
         role: user?.role || 'dentist',
       });
+      if (kitAlreadySubmitted && kitEditMode) {
+        setKitEditedBy({
+          name: user?.name || 'Dentist',
+          role: user?.role || 'dentist',
+        });
+        setKitEditedAt(new Date().toISOString());
+      }
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to submit consumption.');
     } finally {
@@ -954,6 +971,22 @@ export default function DentistAppointment() {
                   </strong>
                 </div>
               )}
+              {kitEditedBy && (
+                <div style={styles.noteDetailItem}>
+                  <span style={styles.noteDetailLabel}>Edited By</span>
+                  <strong style={styles.noteDetailValue}>
+                    {formatConsumptionSubmitter(kitEditedBy)}
+                  </strong>
+                </div>
+              )}
+              {kitEditedAt && (
+                <div style={styles.noteDetailItem}>
+                  <span style={styles.noteDetailLabel}>Edited When</span>
+                  <strong style={styles.noteDetailValue}>
+                    {formatDateTime(kitEditedAt)}
+                  </strong>
+                </div>
+              )}
             </div>
 
             {!kitAlreadySubmitted && !kitLoading && (
@@ -1215,6 +1248,20 @@ function formatConsumptionSubmitter(submitter) {
   const roleLabel =
     role === 'dentist' ? 'Dentist' : role === 'receptionist' ? 'Receptionist' : 'Staff';
   return submitter.name ? `${submitter.name} (${roleLabel})` : roleLabel;
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 function extractRescheduleInfo(noteText) {

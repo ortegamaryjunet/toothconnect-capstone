@@ -1122,8 +1122,33 @@ router.get('/appointments/:appointmentId/consumption', async (req, res) => {
           role: items[0].recorded_by_role || null,
         }
       : null;
+    const [editedRows] = await pool.query(
+      `SELECT al.user_id, al.created_at, u.name AS edited_by_name, u.role AS edited_by_role
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.user_id
+       WHERE al.action = 'appointment_consumption_updated'
+         AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.appointment_id')) AS UNSIGNED) = ?
+       ORDER BY al.created_at DESC, al.id DESC
+       LIMIT 1`,
+      [appointmentId]
+    );
+    const editedBy = editedRows.length > 0
+      ? {
+          user_id: editedRows[0].user_id || null,
+          name: editedRows[0].edited_by_name || null,
+          role: editedRows[0].edited_by_role || null,
+        }
+      : null;
+    const editedAt = editedRows.length > 0 ? editedRows[0].created_at || null : null;
 
-    res.json({ appointment_id: appointmentId, submitted: items.length > 0, submitted_by: submittedBy, items });
+    res.json({
+      appointment_id: appointmentId,
+      submitted: items.length > 0,
+      submitted_by: submittedBy,
+      edited_by: editedBy,
+      edited_at: editedAt,
+      items,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

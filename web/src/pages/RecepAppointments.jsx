@@ -111,6 +111,8 @@ export default function RecepAppointments() {
   const [kitError, setKitError] = useState('');
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
   const [kitSubmittedBy, setKitSubmittedBy] = useState(null);
+  const [kitEditedBy, setKitEditedBy] = useState(null);
+  const [kitEditedAt, setKitEditedAt] = useState('');
   const [kitEditMode, setKitEditMode] = useState(false);
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [calendarDetailsOpenById, setCalendarDetailsOpenById] = useState({});
@@ -551,6 +553,8 @@ export default function RecepAppointments() {
     setKitError('');
     setKitAlreadySubmitted(false);
     setKitSubmittedBy(null);
+    setKitEditedBy(null);
+    setKitEditedAt('');
     setKitEditMode(false);
     setShowKitModal(true);
     setKitLoading(true);
@@ -569,6 +573,8 @@ export default function RecepAppointments() {
       if (isConsultation) {
         setKitAlreadySubmitted(Boolean(consumptionData?.submitted));
         setKitSubmittedBy(consumptionData?.submitted_by || null);
+        setKitEditedBy(consumptionData?.edited_by || null);
+        setKitEditedAt(consumptionData?.edited_at || '');
         setKitNotes('No inventory items was used for consultation service.');
         setKitItems([]);
         return;
@@ -577,6 +583,8 @@ export default function RecepAppointments() {
       if (consumptionData.submitted) {
         setKitAlreadySubmitted(true);
         setKitSubmittedBy(consumptionData?.submitted_by || null);
+        setKitEditedBy(consumptionData?.edited_by || null);
+        setKitEditedAt(consumptionData?.edited_at || '');
         setKitItems(
           (consumptionData.items || []).map((item) => ({
             category: item.category,
@@ -615,6 +623,8 @@ export default function RecepAppointments() {
     setKitError('');
     setKitAlreadySubmitted(false);
     setKitSubmittedBy(null);
+    setKitEditedBy(null);
+    setKitEditedAt('');
     setKitEditMode(false);
     setKitSubmitting(false);
   }
@@ -656,6 +666,13 @@ export default function RecepAppointments() {
         name: user?.name || 'Receptionist',
         role: user?.role || 'receptionist',
       });
+      if (kitAlreadySubmitted && kitEditMode) {
+        setKitEditedBy({
+          name: user?.name || 'Receptionist',
+          role: user?.role || 'receptionist',
+        });
+        setKitEditedAt(new Date().toISOString());
+      }
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to deduct inventory.');
     } finally {
@@ -2161,6 +2178,16 @@ export default function RecepAppointments() {
                   <strong>Submitted By:</strong> {formatConsumptionSubmitter(kitSubmittedBy)}
                 </div>
               )}
+              {kitEditedBy && (
+                <div style={styles.scheduleDetail}>
+                  <strong>Edited By:</strong> {formatConsumptionSubmitter(kitEditedBy)}
+                </div>
+              )}
+              {kitEditedAt && (
+                <div style={styles.scheduleDetail}>
+                  <strong>Edited When:</strong> {formatDateTime(kitEditedAt)}
+                </div>
+              )}
             </div>
 
             {kitLoading ? (
@@ -2937,6 +2964,20 @@ function formatConsumptionSubmitter(submitter) {
   const roleLabel =
     role === 'dentist' ? 'Dentist' : role === 'receptionist' ? 'Receptionist' : 'Staff';
   return submitter.name ? `${submitter.name} (${roleLabel})` : roleLabel;
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 function formatPaymentAmount(amount) {
