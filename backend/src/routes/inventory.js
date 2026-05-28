@@ -1,48 +1,27 @@
 const express = require('express');
 const pool = require('../config/db');
-<<<<<<< HEAD
-const { authenticate, requireRole } = require('../middleware/auth');
-=======
 const { authenticate, requireRole, requireBranchAccess } = require('../middleware/auth');
 const { getServiceKitAvailability, getServiceKitRows } = require('../utils/serviceKitAvailability');
->>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
 
 const router = express.Router();
 
 router.use(authenticate);
 
-function computeStatus(quantity, threshold) {
-  const qty = Number(quantity || 0);
-  const limit = Number(threshold || 0);
+// ─────────────────────────────────────────────────────────────
+// SHARED HELPERS
+// ─────────────────────────────────────────────────────────────
 
-  if (qty === 0) return 'Out of Stock';
-  if (limit > 0 && qty <= limit) return 'Low Stock';
+function computeStatus(quantity, threshold) {
+  if (quantity === 0) return 'Out of Stock';
+  if (quantity <= threshold) return 'Low Stock';
   return 'In Stock';
 }
 
-function computeStockPercentage(quantity, maximumStock) {
-  const qty = Number(quantity || 0);
-  const max = Number(maximumStock || 0);
-
-  if (max <= 0) return null;
-
-  return Number(Math.min(100, Math.max(0, (qty / max) * 100)).toFixed(2));
-}
-
 function enrichRows(rows) {
-  return rows.map((row) => {
-    const maximumStock = Number(row.maximum_stock || 0);
-
-    return {
-      ...row,
-      maximum_stock: maximumStock > 0 ? maximumStock : null,
-      stock_percentage:
-        row.stock_percentage !== null && row.stock_percentage !== undefined
-          ? Number(row.stock_percentage)
-          : computeStockPercentage(row.quantity, maximumStock),
-      status: computeStatus(row.quantity, row.low_stock_threshold),
-    };
-  });
+  return rows.map(r => ({
+    ...r,
+    status: computeStatus(r.quantity, r.low_stock_threshold),
+  }));
 }
 
 function normalizePrice(value) {
@@ -53,11 +32,6 @@ function normalizePrice(value) {
 function normalizeQuantity(value, fallback = 0) {
   const quantity = Number.parseInt(value, 10);
   return Number.isFinite(quantity) && quantity > 0 ? quantity : fallback;
-}
-
-function normalizeMaximumStock(value, fallback = 20) {
-  const maxStock = Number.parseInt(value, 10);
-  return Number.isFinite(maxStock) && maxStock > 0 ? maxStock : fallback;
 }
 
 function optionalDbValue(value) {
@@ -124,22 +98,15 @@ function getInventoryConfig(category) {
 
 async function fetchInventoryAlertRow(executor, category, id) {
   const config = getInventoryConfig(category);
-
   if (!config) {
     return null;
   }
 
   const [rows] = await executor.query(
-    `SELECT 
-        i.id,
-        i.branch_id,
-        b.name AS branch_name,
-        i.${config.nameColumn} AS item_name,
-        i.quantity,
-        i.low_stock_threshold,
-        i.maximum_stock,
-        i.stock_percentage,
-        ${config.statusExpression} AS raw_status
+    `SELECT i.id, i.branch_id, b.name AS branch_name,
+            i.${config.nameColumn} AS item_name,
+            i.quantity, i.low_stock_threshold,
+            ${config.statusExpression} AS raw_status
      FROM ${config.table} i
      JOIN branches b ON b.id = i.branch_id
      WHERE i.id = ?
@@ -164,7 +131,9 @@ async function fetchInventoryAlertRow(executor, category, id) {
 }
 
 async function createInventoryStatusNotifications(executor, previousRow, nextRow) {
-  if (!nextRow) return;
+  if (!nextRow) {
+    return;
+  }
 
   const previousStatus = previousRow?.alertStatus || 'unknown';
   const nextStatus = nextRow.alertStatus;
@@ -179,12 +148,14 @@ async function createInventoryStatusNotifications(executor, previousRow, nextRow
      WHERE role = 'admin' AND status = 'Active'`
   );
 
+  if (!admins.length) {
+    // Still continue for branch receptionists even if there are no admins.
+  }
+
   const statusLabel =
     nextStatus === 'out_of_stock' ? 'Out of Stock' : 'Low Stock';
-
   const title =
     nextStatus === 'out_of_stock' ? 'Out of Stock Alert' : 'Low Stock Alert';
-
   const body =
     `${nextRow.categoryLabel} "${nextRow.item_name}" at ${nextRow.branch_name} ` +
     `is now ${statusLabel.toLowerCase()} (${Number(nextRow.quantity || 0)} remaining).`;
@@ -204,6 +175,7 @@ async function createInventoryStatusNotifications(executor, previousRow, nextRow
     );
   }
 
+  // Branch-scoped receptionists: only notify receptionists assigned to the inventory item's branch.
   const [receptionists] = await executor.query(
     `SELECT DISTINCT u.id
      FROM users u
@@ -218,8 +190,8 @@ async function createInventoryStatusNotifications(executor, previousRow, nextRow
     await executor.query(
       `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
        VALUES ${receptionists.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`,
-      receptionists.flatMap((receptionist) => [
-        receptionist.id,
+      receptionists.flatMap((r) => [
+        r.id,
         nextStatus,
         title,
         body,
@@ -233,7 +205,7 @@ async function createInventoryStatusNotifications(executor, previousRow, nextRow
 function validateBranchAccess(req, branchId) {
   const userBranches = req.user.branches || [];
   if (req.user.role === 'admin') return true;
-  return userBranches.includes(Number(branchId));
+  return userBranches.includes(branchId);
 }
 
 function inventoryBranchFilter(req, requestedBranchId) {
@@ -241,19 +213,16 @@ function inventoryBranchFilter(req, requestedBranchId) {
 
   if (requestedBranchId) {
     const branchId = parseInt(requestedBranchId, 10);
-
     if (!branchId) {
       const err = new Error('Invalid branch_id');
       err.statusCode = 400;
       throw err;
     }
-
     if (!validateBranchAccess(req, branchId)) {
       const err = new Error('No access to this branch');
       err.statusCode = 403;
       throw err;
     }
-
     return { clause: 'i.branch_id = ?', params: [branchId] };
   }
 
@@ -278,19 +247,16 @@ function usageHistoryBranchFilter(req, requestedBranchId) {
 
   if (requestedBranchId) {
     const branchId = parseInt(requestedBranchId, 10);
-
     if (!branchId) {
       const err = new Error('Invalid branch_id');
       err.statusCode = 400;
       throw err;
     }
-
     if (!validateBranchAccess(req, branchId)) {
       const err = new Error('No access to this branch');
       err.statusCode = 403;
       throw err;
     }
-
     return { clause: 'h.branch_id = ?', params: [branchId] };
   }
 
@@ -310,111 +276,47 @@ function usageHistoryBranchFilter(req, requestedBranchId) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────
+// SUPPLIES
+// ─────────────────────────────────────────────────────────────
+
 router.get('/supplies', async (req, res) => {
   try {
     const branch = inventoryBranchFilter(req, req.query.branch_id);
-
     const [rows] = await pool.query(
-      `SELECT 
-          i.id,
-          i.branch_id,
-          b.name AS branch_name,
-          b.address AS branch_address,
-          i.supply_name,
-          i.brand,
-          i.supplier,
-          i.category,
-          i.unit,
-          i.quantity,
-          i.maximum_stock,
-          i.stock_percentage,
-          i.price_per_item,
-          i.low_stock_threshold,
-          i.created_at,
-          i.updated_at
+      `SELECT i.id, i.branch_id, b.name AS branch_name, b.address AS branch_address, i.supply_name, i.brand,
+              i.supplier, i.category, i.unit, i.quantity, i.price_per_item, i.low_stock_threshold,
+              i.created_at, i.updated_at
        FROM supplies i
        JOIN branches b ON b.id = i.branch_id
        WHERE ${branch.clause}
-       ORDER BY i.supply_name ASC`,
+       ORDER BY supply_name ASC`,
       branch.params
     );
-
     res.json({ supplies: enrichRows(rows) });
   } catch (err) {
     console.error(err);
-    res.status(err.statusCode || 500).json({
-      message: err.statusCode ? err.message : 'Server error',
-    });
+    res.status(err.statusCode || 500).json({ message: err.statusCode ? err.message : 'Server error' });
   }
 });
 
 router.post('/supplies', requireRole('receptionist', 'admin'), async (req, res) => {
-  const {
-    branch_id,
-    supply_name,
-    brand,
-    supplier,
-    category,
-    unit,
-    quantity,
-    maximum_stock,
-    price_per_item,
-    low_stock_threshold,
-  } = req.body;
+  const { branch_id, supply_name, brand, supplier, category, unit, quantity, price_per_item } = req.body;
 
   if (!branch_id || !supply_name || !unit) {
-    return res.status(400).json({
-      message: 'branch_id, supply_name, and unit are required',
-    });
+    return res.status(400).json({ message: 'branch_id, supply_name, and unit are required' });
   }
-
   if (!validateBranchAccess(req, branch_id)) {
     return res.status(403).json({ message: 'No access to this branch' });
   }
 
-  const qty = Number(quantity || 0);
-  const maxStock = normalizeMaximumStock(maximum_stock, Math.max(qty, 20));
-  const threshold = Number(low_stock_threshold || 10);
-
-  if (qty > maxStock) {
-    return res.status(400).json({
-      message: `Quantity cannot exceed maximum stock of ${maxStock}.`,
-    });
-  }
-
   try {
     const [result] = await pool.query(
-      `INSERT INTO supplies (
-         branch_id,
-         supply_name,
-         brand,
-         supplier,
-         category,
-         unit,
-         quantity,
-         maximum_stock,
-         price_per_item,
-         low_stock_threshold
-       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        branch_id,
-        supply_name,
-        brand || null,
-        supplier || null,
-        category || null,
-        unit,
-        qty,
-        maxStock,
-        normalizePrice(price_per_item),
-        threshold,
-      ]
+      `INSERT INTO supplies (branch_id, supply_name, brand, supplier, category, unit, quantity, price_per_item, low_stock_threshold)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 10)`,
+      [branch_id, supply_name, brand || null, supplier || null, category || null, unit, quantity || 0, normalizePrice(price_per_item)]
     );
-
-    res.status(201).json({
-      id: result.insertId,
-      message: 'Supply added',
-    });
+    res.status(201).json({ id: result.insertId, message: 'Supply added' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -423,46 +325,13 @@ router.post('/supplies', requireRole('receptionist', 'admin'), async (req, res) 
 
 router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-
-  const {
-    supply_name,
-    brand,
-    supplier,
-    category,
-    unit,
-    quantity,
-    maximum_stock,
-    max_stock_threshold,
-    price_per_item,
-    low_stock_threshold,
-  } = req.body;
-
-  const nextMaxStock =
-    maximum_stock !== undefined ? maximum_stock : max_stock_threshold;
+  const { supply_name, brand, supplier, category, unit, quantity, price_per_item, low_stock_threshold } = req.body;
 
   try {
     const existing = await fetchInventoryAlertRow(pool, 'supply', id);
-
-    if (!existing) {
-      return res.status(404).json({ message: 'Supply not found' });
-    }
-
+    if (!existing) return res.status(404).json({ message: 'Supply not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
-    }
-
-    const finalQuantity =
-      quantity !== undefined ? Number(quantity) : Number(existing.quantity || 0);
-
-    const finalMaximumStock =
-      nextMaxStock !== undefined
-        ? Number(nextMaxStock)
-        : Number(existing.maximum_stock || 0);
-
-    if (finalMaximumStock > 0 && finalQuantity > finalMaximumStock) {
-      return res.status(400).json({
-        message: `Quantity cannot exceed maximum stock of ${finalMaximumStock}.`,
-      });
     }
 
     await pool.query(
@@ -473,9 +342,8 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
         category = COALESCE(?, category),
         unit = COALESCE(?, unit),
         quantity = COALESCE(?, quantity),
-        maximum_stock = COALESCE(?, maximum_stock),
-        price_per_item = COALESCE(?, price_per_item),
-        low_stock_threshold = COALESCE(?, low_stock_threshold)
+       price_per_item = COALESCE(?, price_per_item),
+       low_stock_threshold = COALESCE(?, low_stock_threshold)
        WHERE id = ?`,
       [
         optionalDbValue(supply_name),
@@ -484,16 +352,13 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
         optionalDbValue(category),
         optionalDbValue(unit),
         optionalDbValue(quantity),
-        optionalDbValue(nextMaxStock),
         optionalDbValue(price_per_item),
         optionalDbValue(low_stock_threshold),
         id,
       ]
     );
-
     const updated = await fetchInventoryAlertRow(pool, 'supply', id);
     await createInventoryStatusNotifications(pool, existing, updated);
-
     res.json({ message: 'Supply updated' });
   } catch (err) {
     console.error(err);
@@ -503,61 +368,30 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
 
 router.post('/supplies/:id/restock', requireRole('receptionist', 'admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const amount = Number(req.body.amount || 0);
+  const { amount } = req.body;
 
   if (!amount || amount <= 0) {
-    return res.status(400).json({
-      message: 'amount must be a positive number',
-    });
+    return res.status(400).json({ message: 'amount must be a positive number' });
   }
 
   try {
     const existing = await fetchInventoryAlertRow(pool, 'supply', id);
-
-    if (!existing) {
-      return res.status(404).json({ message: 'Supply not found' });
-    }
-
+    if (!existing) return res.status(404).json({ message: 'Supply not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
     }
 
-    const currentQuantity = Number(existing.quantity || 0);
-    const maximumStock = Number(existing.maximum_stock || 0);
-
-    if (maximumStock > 0 && currentQuantity + amount > maximumStock) {
-      return res.status(400).json({
-        message: `Cannot restock. This will exceed the maximum stock of ${maximumStock}. Current quantity is ${currentQuantity}.`,
-      });
-    }
-
-    await pool.query(
-      `UPDATE supplies 
-       SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ?`,
-      [amount, id]
-    );
-
+    await pool.query('UPDATE supplies SET quantity = quantity + ? WHERE id = ?', [amount, id]);
     const updated = await fetchInventoryAlertRow(pool, 'supply', id);
     await createInventoryStatusNotifications(pool, existing, updated);
 
     await pool.query(
       `INSERT INTO audit_logs (user_id, action, details)
-       VALUES (?, 'inventory_restock', ?)`,
-      [
-        req.user.user_id,
-        JSON.stringify({
-          category: 'supply',
-          supply_id: id,
-          amount,
-        }),
-      ]
+      VALUES (?, 'inventory_restock', ?)`,
+      [req.user.user_id, JSON.stringify({ category: 'supply', supply_id: id, amount })]
     );
 
-    res.json({
-      message: 'Restocked',
-      new_quantity: currentQuantity + amount,
-    });
+    res.json({ message: 'Restocked', new_quantity: Number(existing.quantity || 0) + amount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -566,17 +400,9 @@ router.post('/supplies/:id/restock', requireRole('receptionist', 'admin'), async
 
 router.delete('/supplies/:id', requireRole('admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-
   try {
-    const [result] = await pool.query(
-      'DELETE FROM supplies WHERE id = ?',
-      [id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Supply not found' });
-    }
-
+    const [result] = await pool.query('DELETE FROM supplies WHERE id = ?', [id]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Supply not found' });
     res.json({ message: 'Supply deleted' });
   } catch (err) {
     console.error(err);
@@ -584,123 +410,47 @@ router.delete('/supplies/:id', requireRole('admin'), async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// MEDICINES
+// ─────────────────────────────────────────────────────────────
+
 router.get('/medicines', async (req, res) => {
   try {
     const branch = inventoryBranchFilter(req, req.query.branch_id);
-
     const [rows] = await pool.query(
-      `SELECT 
-          i.id,
-          i.branch_id,
-          b.name AS branch_name,
-          b.address AS branch_address,
-          i.medicine_name,
-          i.generic_name,
-          i.category,
-          i.form,
-          i.dosage,
-          i.brand,
-          i.supplier,
-          i.unit,
-          i.quantity,
-          i.maximum_stock,
-          i.stock_percentage,
-          i.price_per_item,
-          i.low_stock_threshold,
-          i.created_at,
-          i.updated_at
+      `SELECT i.id, i.branch_id, b.name AS branch_name, b.address AS branch_address, i.medicine_name, i.generic_name,
+              i.category, i.form, i.dosage, i.brand, i.supplier, i.unit, i.quantity, i.price_per_item,
+              i.low_stock_threshold, i.created_at, i.updated_at
        FROM medicines i
        JOIN branches b ON b.id = i.branch_id
        WHERE ${branch.clause}
-       ORDER BY i.medicine_name ASC`,
+       ORDER BY medicine_name ASC`,
       branch.params
     );
-
     res.json({ medicines: enrichRows(rows) });
   } catch (err) {
     console.error(err);
-    res.status(err.statusCode || 500).json({
-      message: err.statusCode ? err.message : 'Server error',
-    });
+    res.status(err.statusCode || 500).json({ message: err.statusCode ? err.message : 'Server error' });
   }
 });
 
 router.post('/medicines', requireRole('receptionist', 'admin'), async (req, res) => {
-  const {
-    branch_id,
-    medicine_name,
-    generic_name,
-    category,
-    form,
-    dosage,
-    brand,
-    supplier,
-    unit,
-    quantity,
-    maximum_stock,
-    price_per_item,
-    low_stock_threshold,
-  } = req.body;
+  const { branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item } = req.body;
 
   if (!branch_id || !medicine_name || !unit) {
-    return res.status(400).json({
-      message: 'branch_id, medicine_name, and unit are required',
-    });
+    return res.status(400).json({ message: 'branch_id, medicine_name, and unit are required' });
   }
-
   if (!validateBranchAccess(req, branch_id)) {
     return res.status(403).json({ message: 'No access to this branch' });
   }
 
-  const qty = Number(quantity || 0);
-  const maxStock = normalizeMaximumStock(maximum_stock, Math.max(qty, 20));
-  const threshold = Number(low_stock_threshold || 10);
-
-  if (qty > maxStock) {
-    return res.status(400).json({
-      message: `Quantity cannot exceed maximum stock of ${maxStock}.`,
-    });
-  }
-
   try {
     const [result] = await pool.query(
-      `INSERT INTO medicines (
-         branch_id,
-         medicine_name,
-         generic_name,
-         category,
-         form,
-         dosage,
-         brand,
-         supplier,
-         unit,
-         quantity,
-         maximum_stock,
-         price_per_item,
-         low_stock_threshold
-       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        branch_id,
-        medicine_name,
-        generic_name || null,
-        category || null,
-        form || null,
-        dosage || null,
-        brand || null,
-        supplier || null,
-        unit,
-        qty,
-        maxStock,
-        normalizePrice(price_per_item),
-        threshold,
-      ]
+      `INSERT INTO medicines (branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item, low_stock_threshold)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 10)`,
+      [branch_id, medicine_name, generic_name || null, category || null, form || null, dosage || null, brand || null, supplier || null, unit, quantity || 0, normalizePrice(price_per_item)]
     );
-
-    res.status(201).json({
-      id: result.insertId,
-      message: 'Medicine added',
-    });
+    res.status(201).json({ id: result.insertId, message: 'Medicine added' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -709,49 +459,13 @@ router.post('/medicines', requireRole('receptionist', 'admin'), async (req, res)
 
 router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-
-  const {
-    medicine_name,
-    generic_name,
-    category,
-    form,
-    dosage,
-    brand,
-    supplier,
-    unit,
-    quantity,
-    maximum_stock,
-    max_stock_threshold,
-    price_per_item,
-    low_stock_threshold,
-  } = req.body;
-
-  const nextMaxStock =
-    maximum_stock !== undefined ? maximum_stock : max_stock_threshold;
+  const { medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item, low_stock_threshold } = req.body;
 
   try {
     const existing = await fetchInventoryAlertRow(pool, 'medicine', id);
-
-    if (!existing) {
-      return res.status(404).json({ message: 'Medicine not found' });
-    }
-
+    if (!existing) return res.status(404).json({ message: 'Medicine not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
-    }
-
-    const finalQuantity =
-      quantity !== undefined ? Number(quantity) : Number(existing.quantity || 0);
-
-    const finalMaximumStock =
-      nextMaxStock !== undefined
-        ? Number(nextMaxStock)
-        : Number(existing.maximum_stock || 0);
-
-    if (finalMaximumStock > 0 && finalQuantity > finalMaximumStock) {
-      return res.status(400).json({
-        message: `Quantity cannot exceed maximum stock of ${finalMaximumStock}.`,
-      });
     }
 
     await pool.query(
@@ -765,9 +479,8 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
         supplier = COALESCE(?, supplier),
         unit = COALESCE(?, unit),
         quantity = COALESCE(?, quantity),
-        maximum_stock = COALESCE(?, maximum_stock),
-        price_per_item = COALESCE(?, price_per_item),
-        low_stock_threshold = COALESCE(?, low_stock_threshold)
+       price_per_item = COALESCE(?, price_per_item),
+       low_stock_threshold = COALESCE(?, low_stock_threshold)
        WHERE id = ?`,
       [
         optionalDbValue(medicine_name),
@@ -779,16 +492,13 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
         optionalDbValue(supplier),
         optionalDbValue(unit),
         optionalDbValue(quantity),
-        optionalDbValue(nextMaxStock),
         optionalDbValue(price_per_item),
         optionalDbValue(low_stock_threshold),
         id,
       ]
     );
-
     const updated = await fetchInventoryAlertRow(pool, 'medicine', id);
     await createInventoryStatusNotifications(pool, existing, updated);
-
     res.json({ message: 'Medicine updated' });
   } catch (err) {
     console.error(err);
@@ -798,61 +508,30 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
 
 router.post('/medicines/:id/restock', requireRole('receptionist', 'admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const amount = Number(req.body.amount || 0);
+  const { amount } = req.body;
 
   if (!amount || amount <= 0) {
-    return res.status(400).json({
-      message: 'amount must be a positive number',
-    });
+    return res.status(400).json({ message: 'amount must be a positive number' });
   }
 
   try {
     const existing = await fetchInventoryAlertRow(pool, 'medicine', id);
-
-    if (!existing) {
-      return res.status(404).json({ message: 'Medicine not found' });
-    }
-
+    if (!existing) return res.status(404).json({ message: 'Medicine not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
     }
 
-    const currentQuantity = Number(existing.quantity || 0);
-    const maximumStock = Number(existing.maximum_stock || 0);
-
-    if (maximumStock > 0 && currentQuantity + amount > maximumStock) {
-      return res.status(400).json({
-        message: `Cannot restock. This will exceed the maximum stock of ${maximumStock}. Current quantity is ${currentQuantity}.`,
-      });
-    }
-
-    await pool.query(
-      `UPDATE medicines 
-       SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ?`,
-      [amount, id]
-    );
-
+    await pool.query('UPDATE medicines SET quantity = quantity + ? WHERE id = ?', [amount, id]);
     const updated = await fetchInventoryAlertRow(pool, 'medicine', id);
     await createInventoryStatusNotifications(pool, existing, updated);
 
     await pool.query(
       `INSERT INTO audit_logs (user_id, action, details)
-       VALUES (?, 'inventory_restock', ?)`,
-      [
-        req.user.user_id,
-        JSON.stringify({
-          category: 'medicine',
-          medicine_id: id,
-          amount,
-        }),
-      ]
+      VALUES (?, 'inventory_restock', ?)`,
+      [req.user.user_id, JSON.stringify({ category: 'medicine', medicine_id: id, amount })]
     );
 
-    res.json({
-      message: 'Restocked',
-      new_quantity: currentQuantity + amount,
-    });
+    res.json({ message: 'Restocked', new_quantity: Number(existing.quantity || 0) + amount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -861,17 +540,9 @@ router.post('/medicines/:id/restock', requireRole('receptionist', 'admin'), asyn
 
 router.delete('/medicines/:id', requireRole('admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-
   try {
-    const [result] = await pool.query(
-      'DELETE FROM medicines WHERE id = ?',
-      [id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Medicine not found' });
-    }
-
+    const [result] = await pool.query('DELETE FROM medicines WHERE id = ?', [id]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Medicine not found' });
     res.json({ message: 'Medicine deleted' });
   } catch (err) {
     console.error(err);
@@ -879,37 +550,19 @@ router.delete('/medicines/:id', requireRole('admin'), async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// EQUIPMENT
+// ─────────────────────────────────────────────────────────────
+
 router.get('/equipment', async (req, res) => {
   try {
     const branch = inventoryBranchFilter(req, req.query.branch_id);
-
     const [rows] = await pool.query(
-      `SELECT 
-          e.id,
-          e.branch_id,
-          b.name AS branch_name,
-          b.address AS branch_address,
-          e.equipment_name,
-          e.brand,
-          e.supplier,
-          e.category,
-          e.model_number,
-          e.serial_number,
-          e.location,
-          e.purchase_date,
-          e.warranty_date,
-          e.last_maintenance,
-          e.next_maintenance,
-          e.maintenance_status,
-          e.assigned_to,
-          u.name AS assigned_to_name,
-          e.quantity,
-          e.maximum_stock,
-          e.stock_percentage,
-          e.price_per_item,
-          e.low_stock_threshold,
-          e.created_at,
-          e.updated_at
+      `SELECT e.id, e.branch_id, b.name AS branch_name, b.address AS branch_address, e.equipment_name, e.brand, e.supplier, e.category, e.model_number,
+              e.serial_number, e.location, e.purchase_date, e.warranty_date,
+              e.last_maintenance, e.next_maintenance, e.maintenance_status,
+              e.assigned_to, u.name AS assigned_to_name,
+              e.quantity, e.price_per_item, e.low_stock_threshold, e.created_at, e.updated_at
        FROM equipment e
        JOIN branches b ON b.id = e.branch_id
        LEFT JOIN users u ON u.id = e.assigned_to
@@ -917,7 +570,6 @@ router.get('/equipment', async (req, res) => {
        ORDER BY e.equipment_name ASC`,
       branch.params
     );
-
     res.json({
       equipment: enrichRows(rows).map((row) => ({
         ...row,
@@ -926,103 +578,39 @@ router.get('/equipment', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(err.statusCode || 500).json({
-      message: err.statusCode ? err.message : 'Server error',
-    });
+    res.status(err.statusCode || 500).json({ message: err.statusCode ? err.message : 'Server error' });
   }
 });
 
 router.post('/equipment', requireRole('receptionist', 'admin'), async (req, res) => {
   const {
-    branch_id,
-    equipment_name,
-    brand,
-    supplier,
-    category,
-    model_number,
-    serial_number,
-    location,
-    purchase_date,
-    warranty_date,
-    last_maintenance,
-    next_maintenance,
-    maintenance_status,
-    assigned_to,
-    quantity,
-    maximum_stock,
-    price_per_item,
-    low_stock_threshold,
+    branch_id, equipment_name, brand, supplier, category, model_number, serial_number,
+    location, purchase_date, warranty_date, last_maintenance, next_maintenance,
+    maintenance_status, assigned_to, quantity, price_per_item,
   } = req.body;
 
   if (!branch_id || !equipment_name) {
-    return res.status(400).json({
-      message: 'branch_id and equipment_name are required',
-    });
+    return res.status(400).json({ message: 'branch_id and equipment_name are required' });
   }
-
   if (!validateBranchAccess(req, branch_id)) {
     return res.status(403).json({ message: 'No access to this branch' });
   }
 
-  const qty = Number(quantity || 1);
-  const maxStock = normalizeMaximumStock(maximum_stock, Math.max(qty, 10));
-  const threshold = Number(low_stock_threshold || 1);
-
-  if (qty > maxStock) {
-    return res.status(400).json({
-      message: `Quantity cannot exceed maximum stock of ${maxStock}.`,
-    });
-  }
-
   try {
     const [result] = await pool.query(
-      `INSERT INTO equipment (
-         branch_id,
-         equipment_name,
-         brand,
-         supplier,
-         category,
-         model_number,
-         serial_number,
-         location,
-         purchase_date,
-         warranty_date,
-         last_maintenance,
-         next_maintenance,
-         maintenance_status,
-         assigned_to,
-         quantity,
-         maximum_stock,
-         price_per_item,
-         low_stock_threshold
-       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO equipment (branch_id, equipment_name, brand, supplier, category, model_number,
+                              serial_number, location, purchase_date, warranty_date,
+                              last_maintenance, next_maintenance, maintenance_status,
+                              assigned_to, quantity, price_per_item, low_stock_threshold)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        branch_id,
-        equipment_name,
-        brand || null,
-        supplier || null,
-        category || null,
-        model_number || null,
-        serial_number || null,
-        location || null,
-        purchase_date || null,
-        warranty_date || null,
-        last_maintenance || null,
-        next_maintenance || null,
-        maintenance_status || 'Available',
-        assigned_to || null,
-        qty,
-        maxStock,
-        normalizePrice(price_per_item),
-        threshold,
+        branch_id, equipment_name, brand || null, supplier || null, category || null, model_number || null,
+        serial_number || null, location || null, purchase_date || null, warranty_date || null,
+        last_maintenance || null, next_maintenance || null, maintenance_status || 'Available',
+        assigned_to || null, quantity || 1, normalizePrice(price_per_item), 1,
       ]
     );
-
-    res.status(201).json({
-      id: result.insertId,
-      message: 'Equipment added',
-    });
+    res.status(201).json({ id: result.insertId, message: 'Equipment added' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -1031,54 +619,18 @@ router.post('/equipment', requireRole('receptionist', 'admin'), async (req, res)
 
 router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-
   const {
-    equipment_name,
-    brand,
-    supplier,
-    category,
-    model_number,
-    serial_number,
-    location,
-    purchase_date,
-    warranty_date,
-    last_maintenance,
-    next_maintenance,
-    maintenance_status,
-    assigned_to,
-    quantity,
-    maximum_stock,
-    max_stock_threshold,
-    price_per_item,
+    equipment_name, brand, supplier, category, model_number, serial_number,
+    location, purchase_date, warranty_date, last_maintenance, next_maintenance,
+    maintenance_status, assigned_to, quantity, price_per_item,
     low_stock_threshold,
   } = req.body;
 
-  const nextMaxStock =
-    maximum_stock !== undefined ? maximum_stock : max_stock_threshold;
-
   try {
     const existing = await fetchInventoryAlertRow(pool, 'equipment', id);
-
-    if (!existing) {
-      return res.status(404).json({ message: 'Equipment not found' });
-    }
-
+    if (!existing) return res.status(404).json({ message: 'Equipment not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
-    }
-
-    const finalQuantity =
-      quantity !== undefined ? Number(quantity) : Number(existing.quantity || 0);
-
-    const finalMaximumStock =
-      nextMaxStock !== undefined
-        ? Number(nextMaxStock)
-        : Number(existing.maximum_stock || 0);
-
-    if (finalMaximumStock > 0 && finalQuantity > finalMaximumStock) {
-      return res.status(400).json({
-        message: `Quantity cannot exceed maximum stock of ${finalMaximumStock}.`,
-      });
     }
 
     await pool.query(
@@ -1097,7 +649,6 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
         maintenance_status = COALESCE(?, maintenance_status),
         assigned_to = COALESCE(?, assigned_to),
         quantity = COALESCE(?, quantity),
-        maximum_stock = COALESCE(?, maximum_stock),
         price_per_item = COALESCE(?, price_per_item),
         low_stock_threshold = COALESCE(?, low_stock_threshold)
        WHERE id = ?`,
@@ -1116,16 +667,13 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
         optionalDbValue(maintenance_status),
         optionalDbValue(assigned_to),
         optionalDbValue(quantity),
-        optionalDbValue(nextMaxStock),
         optionalDbValue(price_per_item),
         optionalDbValue(low_stock_threshold),
         id,
       ]
     );
-
     const updated = await fetchInventoryAlertRow(pool, 'equipment', id);
     await createInventoryStatusNotifications(pool, existing, updated);
-
     res.json({ message: 'Equipment updated' });
   } catch (err) {
     console.error(err);
@@ -1135,23 +683,19 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
 
 router.delete('/equipment/:id', requireRole('admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-
   try {
-    const [result] = await pool.query(
-      'DELETE FROM equipment WHERE id = ?',
-      [id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Equipment not found' });
-    }
-
+    const [result] = await pool.query('DELETE FROM equipment WHERE id = ?', [id]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Equipment not found' });
     res.json({ message: 'Equipment deleted' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+// LOW STOCK SUMMARY (across categories, for dashboard)
+// ─────────────────────────────────────────────────────────────
 
 router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
   const {
@@ -1161,8 +705,6 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
     supplier,
     orderQuantity,
     pricePerItem,
-    maxStock,
-    maximum_stock,
     date,
   } = req.body;
 
@@ -1171,45 +713,34 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
   const quantity = normalizeQuantity(orderQuantity, 0);
   const price = normalizePrice(pricePerItem);
   const expenseDate = date || new Date().toISOString().slice(0, 10);
-  const requestedMaximumStock =
-    maxStock !== undefined ? maxStock : maximum_stock;
 
   const categoryConfig = {
     medicine: {
       table: 'medicines',
       idKey: 'medicine_id',
       nameColumn: 'medicine_name',
-      defaultUnit: 'pcs',
-      defaultThreshold: 10,
-      defaultMaximumStock: 20,
       insertSql:
         `INSERT INTO medicines
-         (branch_id, medicine_name, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (branch_id, medicine_name, supplier, unit, quantity, price_per_item, low_stock_threshold)
+         VALUES (?, ?, ?, 'pcs', ?, ?, 10)`,
     },
     equipment: {
       table: 'equipment',
       idKey: 'equipment_id',
       nameColumn: 'equipment_name',
-      defaultUnit: null,
-      defaultThreshold: 1,
-      defaultMaximumStock: 10,
       insertSql:
         `INSERT INTO equipment
-         (branch_id, equipment_name, supplier, quantity, maximum_stock, price_per_item, low_stock_threshold)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (branch_id, equipment_name, supplier, quantity, price_per_item, low_stock_threshold)
+         VALUES (?, ?, ?, ?, ?, 1)`,
     },
     supplies: {
       table: 'supplies',
       idKey: 'supply_id',
       nameColumn: 'supply_name',
-      defaultUnit: 'pcs',
-      defaultThreshold: 10,
-      defaultMaximumStock: 20,
       insertSql:
         `INSERT INTO supplies
-         (branch_id, supply_name, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (branch_id, supply_name, supplier, unit, quantity, price_per_item, low_stock_threshold)
+         VALUES (?, ?, ?, 'pcs', ?, ?, 10)`,
     },
   };
 
@@ -1231,8 +762,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
     await connection.beginTransaction();
 
     const [existingRows] = await connection.query(
-      `SELECT id, quantity, maximum_stock
-       FROM ${config.table}
+      `SELECT id, quantity FROM ${config.table}
        WHERE branch_id = ? AND LOWER(${config.nameColumn}) = LOWER(?)
        LIMIT 1
        FOR UPDATE`,
@@ -1241,107 +771,34 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
 
     let inventoryId;
     let newQuantity;
-    let finalMaximumStock;
 
     if (existingRows.length) {
-      const existingInventory = existingRows[0];
-      const previousRow = await fetchInventoryAlertRow(
-        connection,
-        category,
-        existingInventory.id
-      );
-
-      inventoryId = existingInventory.id;
-      newQuantity = Number(existingInventory.quantity || 0) + quantity;
-      finalMaximumStock =
-        requestedMaximumStock !== undefined && requestedMaximumStock !== ''
-          ? Number(requestedMaximumStock)
-          : Number(existingInventory.maximum_stock || config.defaultMaximumStock);
-
-      if (finalMaximumStock > 0 && newQuantity > finalMaximumStock) {
-        await connection.rollback();
-
-        return res.status(400).json({
-          message: `Cannot save. This order will exceed the maximum stock of ${finalMaximumStock}. Current quantity is ${Number(existingInventory.quantity || 0)}.`,
-        });
-      }
+      const previousRow = await fetchInventoryAlertRow(connection, category, existingRows[0].id);
+      inventoryId = existingRows[0].id;
+      newQuantity = Number(existingRows[0].quantity || 0) + quantity;
 
       await connection.query(
         `UPDATE ${config.table}
          SET quantity = quantity + ?,
-             maximum_stock = COALESCE(?, maximum_stock),
              supplier = COALESCE(NULLIF(?, ''), supplier),
              price_per_item = ?,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
-        [
-          quantity,
-          requestedMaximumStock !== undefined && requestedMaximumStock !== ''
-            ? Number(requestedMaximumStock)
-            : null,
-          supplier || '',
-          price,
-          inventoryId,
-        ]
+        [quantity, supplier || '', price, inventoryId]
       );
-
-      const updatedRow = await fetchInventoryAlertRow(
-        connection,
-        category,
-        inventoryId
-      );
-
+      const updatedRow = await fetchInventoryAlertRow(connection, category, inventoryId);
       await createInventoryStatusNotifications(connection, previousRow, updatedRow);
     } else {
-      finalMaximumStock = normalizeMaximumStock(
-        requestedMaximumStock,
-        Math.max(quantity, config.defaultMaximumStock)
-      );
-
-      if (quantity > finalMaximumStock) {
-        await connection.rollback();
-
-        return res.status(400).json({
-          message: `Quantity cannot exceed maximum stock of ${finalMaximumStock}.`,
-        });
-      }
-
-      const insertParams =
-        category === 'equipment'
-          ? [
-              branchId,
-              itemNameValue,
-              supplier || null,
-              quantity,
-              finalMaximumStock,
-              price,
-              config.defaultThreshold,
-            ]
-          : [
-              branchId,
-              itemNameValue,
-              supplier || null,
-              config.defaultUnit,
-              quantity,
-              finalMaximumStock,
-              price,
-              config.defaultThreshold,
-            ];
-
-      const [insertResult] = await connection.query(
-        config.insertSql,
-        insertParams
-      );
-
+      const [insertResult] = await connection.query(config.insertSql, [
+        branchId,
+        itemNameValue,
+        supplier || null,
+        quantity,
+        price,
+      ]);
       inventoryId = insertResult.insertId;
       newQuantity = quantity;
-
-      const createdRow = await fetchInventoryAlertRow(
-        connection,
-        category,
-        inventoryId
-      );
-
+      const createdRow = await fetchInventoryAlertRow(connection, category, inventoryId);
       await createInventoryStatusNotifications(connection, null, createdRow);
     }
 
@@ -1349,13 +806,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
 
     const [expenseResult] = await connection.query(
       `INSERT INTO clinic_expenses (
-         branch_id,
-         category,
-         description,
-         amount,
-         expense_date,
-         recorded_by,
-         status
+         branch_id, category, description, amount, expense_date, recorded_by, status
        )
        VALUES (?, ?, ?, ?, ?, ?, 'recorded')`,
       [
@@ -1380,7 +831,6 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
           item_name: itemNameValue,
           supplier: supplier || null,
           quantity_added: quantity,
-          maximum_stock: finalMaximumStock,
           price_per_item: price,
           total_expense: totalExpense,
           expense_id: expenseResult.insertId,
@@ -1395,14 +845,11 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       expense_id: expenseResult.insertId,
       inventory_id: inventoryId,
       new_quantity: newQuantity,
-      maximum_stock: finalMaximumStock,
-      stock_percentage: computeStockPercentage(newQuantity, finalMaximumStock),
       price_per_item: price,
     });
   } catch (err) {
     await connection.rollback();
     console.error(err);
-
     res.status(500).json({ message: 'Server error' });
   } finally {
     connection.release();
@@ -1411,72 +858,36 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
 
 router.get('/low-stock-summary', async (req, res) => {
   const branchId = parseInt(req.query.branch_id, 10);
-
   if (!branchId) {
-    return res.status(400).json({
-      message: 'branch_id query param is required',
-    });
+    return res.status(400).json({ message: 'branch_id query param is required' });
   }
-
   if (!validateBranchAccess(req, branchId)) {
     return res.status(403).json({ message: 'No access to this branch' });
   }
 
   try {
     const [supplies] = await pool.query(
-      `SELECT 
-          id,
-          supply_name AS name,
-          quantity,
-          maximum_stock,
-          stock_percentage,
-          low_stock_threshold
-       FROM supplies
-       WHERE branch_id = ? AND quantity <= low_stock_threshold`,
+      `SELECT id, supply_name AS name, quantity, low_stock_threshold
+       FROM supplies WHERE branch_id = ? AND quantity <= low_stock_threshold`,
       [branchId]
     );
-
     const [medicines] = await pool.query(
-      `SELECT 
-          id,
-          medicine_name AS name,
-          quantity,
-          maximum_stock,
-          stock_percentage,
-          low_stock_threshold
-       FROM medicines
-       WHERE branch_id = ? AND quantity <= low_stock_threshold`,
+      `SELECT id, medicine_name AS name, quantity, low_stock_threshold
+       FROM medicines WHERE branch_id = ? AND quantity <= low_stock_threshold`,
       [branchId]
     );
-
     const [equipment] = await pool.query(
-      `SELECT 
-          id,
-          equipment_name AS name,
-          quantity,
-          maximum_stock,
-          stock_percentage,
-          low_stock_threshold
-       FROM equipment
-       WHERE branch_id = ? AND quantity <= low_stock_threshold`,
+      `SELECT id, equipment_name AS name, quantity, low_stock_threshold
+       FROM equipment WHERE branch_id = ? AND quantity <= low_stock_threshold`,
       [branchId]
     );
 
     res.json({
       branch_id: branchId,
       total: supplies.length + medicines.length + equipment.length,
-      supplies: enrichRows(supplies).map((item) => ({
-        ...item,
-        category: 'supply',
-      })),
-      medicines: enrichRows(medicines).map((item) => ({
-        ...item,
-        category: 'medicine',
-      })),
-      equipment: enrichRows(equipment).map((item) => ({
-        ...item,
-        category: 'equipment',
-      })),
+      supplies: supplies.map(s => ({ ...s, category: 'supply', status: computeStatus(s.quantity, s.low_stock_threshold) })),
+      medicines: medicines.map(m => ({ ...m, category: 'medicine', status: computeStatus(m.quantity, m.low_stock_threshold) })),
+      equipment: equipment.map(e => ({ ...e, category: 'equipment', status: computeStatus(e.quantity, e.low_stock_threshold) })),
     });
   } catch (err) {
     console.error(err);
@@ -1484,56 +895,45 @@ router.get('/low-stock-summary', async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// SERVICE KIT LOOKUP — what should we pre-fill?
+// ─────────────────────────────────────────────────────────────
+
 router.get('/usage-history', requireRole('admin', 'receptionist'), async (req, res) => {
   try {
     const branch = usageHistoryBranchFilter(req, req.query.branch_id);
 
-    const startDate = req.query.start_date
-      ? String(req.query.start_date).slice(0, 10)
-      : '';
+    const startDate = req.query.start_date ? String(req.query.start_date).slice(0, 10) : '';
+    const endDate = req.query.end_date ? String(req.query.end_date).slice(0, 10) : '';
 
-    const endDate = req.query.end_date
-      ? String(req.query.end_date).slice(0, 10)
-      : '';
-
-    if (
-      (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) ||
-      (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))
-    ) {
-      return res.status(400).json({
-        message: 'Invalid start_date or end_date (expected YYYY-MM-DD)',
-      });
+    if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
+      return res.status(400).json({ message: 'Invalid start_date or end_date (expected YYYY-MM-DD)' });
     }
 
     const whereParts = [branch.clause];
     const params = [...branch.params];
 
     if (startDate && endDate) {
-      whereParts.push(
-        'h.deducted_at >= ? AND h.deducted_at < DATE_ADD(?, INTERVAL 1 DAY)'
-      );
+      whereParts.push('h.deducted_at >= ? AND h.deducted_at < DATE_ADD(?, INTERVAL 1 DAY)');
       params.push(`${startDate} 00:00:00`, `${endDate} 00:00:00`);
     } else if (startDate) {
-      whereParts.push(
-        'h.deducted_at >= ? AND h.deducted_at < DATE_ADD(?, INTERVAL 1 DAY)'
-      );
+      whereParts.push('h.deducted_at >= ? AND h.deducted_at < DATE_ADD(?, INTERVAL 1 DAY)');
       params.push(`${startDate} 00:00:00`, `${startDate} 00:00:00`);
     }
 
     const [rows] = await pool.query(
-      `SELECT 
-          h.id,
-          h.inventory_type,
-          h.item_name,
-          h.item_category,
-          h.quantity_deducted,
-          h.service_name,
-          h.appointment_start_time,
-          h.deducted_at,
-          u.role AS deducted_by_role,
-          u.name AS deducted_by_name,
-          b.name AS branch_name,
-          b.address AS branch_address
+      `SELECT h.id,
+              h.inventory_type,
+              h.item_name,
+              h.item_category,
+              h.quantity_deducted,
+              h.service_name,
+              h.appointment_start_time,
+              h.deducted_at,
+              u.role AS deducted_by_role,
+              u.name AS deducted_by_name,
+              b.name AS branch_name,
+              b.address AS branch_address
        FROM inventory_usage_history h
        LEFT JOIN users u ON u.id = h.deducted_by
        JOIN branches b ON b.id = h.branch_id
@@ -1544,27 +944,24 @@ router.get('/usage-history', requireRole('admin', 'receptionist'), async (req, r
     );
 
     res.json({
-      records: rows.map((row) => ({
-        id: row.id,
-        type: row.inventory_type,
-        item_name: row.item_name,
-        category: row.item_category,
-        qty_deducted: Number(row.quantity_deducted || 0),
-        service: row.service_name || null,
-        appointment_date: row.appointment_start_time,
-        branch_name: row.branch_name,
-        branch_address: row.branch_address,
-        deducted_at: row.deducted_at,
-        deducted_by_role: row.deducted_by_role || null,
-        deducted_by_name: row.deducted_by_name || null,
+      records: rows.map((r) => ({
+        id: r.id,
+        type: r.inventory_type,
+        item_name: r.item_name,
+        category: r.item_category,
+        qty_deducted: Number(r.quantity_deducted || 0),
+        service: r.service_name || null,
+        appointment_date: r.appointment_start_time,
+        branch_name: r.branch_name,
+        branch_address: r.branch_address,
+        deducted_at: r.deducted_at,
+        deducted_by_role: r.deducted_by_role || null,
+        deducted_by_name: r.deducted_by_name || null,
       })),
     });
   } catch (err) {
     console.error(err);
-
-    res.status(err.statusCode || 500).json({
-      message: err.message || 'Server error',
-    });
+    res.status(err.statusCode || 500).json({ message: err.message || 'Server error' });
   }
 });
 
@@ -1645,29 +1042,15 @@ router.get('/service-kits/:serviceId', async (req, res) => {
   const branchId = parseInt(req.query.branch_id, 10);
 
   if (!branchId) {
-    return res.status(400).json({
-      message: 'branch_id query param is required',
-    });
+    return res.status(400).json({ message: 'branch_id query param is required' });
   }
-
   if (!validateBranchAccess(req, branchId)) {
     return res.status(403).json({ message: 'No access to this branch' });
   }
 
   try {
-<<<<<<< HEAD
-    const [kitRows] = await pool.query(
-      `SELECT id, service_id, notes
-       FROM service_kits
-       WHERE service_id = ?`,
-      [serviceId]
-    );
-
-    if (kitRows.length === 0) {
-=======
     const [kitRows] = await pool.query(`SELECT id, service_id, notes FROM service_kits WHERE service_id = ?`, [serviceId]);
     if (!kitRows.length) {
->>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
       return res.json({
         service_id: serviceId,
         kit_exists: false,
@@ -1678,132 +1061,7 @@ router.get('/service-kits/:serviceId', async (req, res) => {
 
     const kit = kitRows[0];
 
-<<<<<<< HEAD
-    const [items] = await pool.query(
-      `SELECT id, category, item_name, default_quantity
-       FROM service_kit_items
-       WHERE service_kit_id = ?`,
-      [kit.id]
-    );
-
-    const resolved = [];
-
-    for (const item of items) {
-      let inventoryRow = null;
-
-      if (item.category === 'supply') {
-        const [rows] = await pool.query(
-          `SELECT 
-              id,
-              supply_name AS name,
-              quantity,
-              maximum_stock,
-              stock_percentage,
-              low_stock_threshold,
-              unit
-           FROM supplies
-           WHERE branch_id = ?
-             AND (
-               LOWER(TRIM(supply_name)) = LOWER(TRIM(?))
-               OR LOWER(TRIM(supply_name)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
-               OR LOWER(TRIM(?)) LIKE CONCAT('%', LOWER(TRIM(supply_name)), '%')
-             )
-           ORDER BY
-             CASE WHEN LOWER(TRIM(supply_name)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
-             LENGTH(supply_name) ASC
-           LIMIT 1`,
-          [
-            branchId,
-            item.item_name,
-            item.item_name,
-            item.item_name,
-            item.item_name,
-          ]
-        );
-
-        inventoryRow = rows[0] || null;
-      } else if (item.category === 'medicine') {
-        const [rows] = await pool.query(
-          `SELECT 
-              id,
-              medicine_name AS name,
-              quantity,
-              maximum_stock,
-              stock_percentage,
-              low_stock_threshold,
-              unit
-           FROM medicines
-           WHERE branch_id = ?
-             AND (
-               LOWER(TRIM(medicine_name)) = LOWER(TRIM(?))
-               OR LOWER(TRIM(medicine_name)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
-               OR LOWER(TRIM(?)) LIKE CONCAT('%', LOWER(TRIM(medicine_name)), '%')
-             )
-           ORDER BY
-             CASE WHEN LOWER(TRIM(medicine_name)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
-             LENGTH(medicine_name) ASC
-           LIMIT 1`,
-          [
-            branchId,
-            item.item_name,
-            item.item_name,
-            item.item_name,
-            item.item_name,
-          ]
-        );
-
-        inventoryRow = rows[0] || null;
-      } else if (item.category === 'equipment') {
-        const [rows] = await pool.query(
-          `SELECT 
-              id,
-              equipment_name AS name,
-              quantity,
-              maximum_stock,
-              stock_percentage,
-              low_stock_threshold,
-              COALESCE(maintenance_status, 'Available') AS unit
-           FROM equipment
-           WHERE branch_id = ?
-             AND (
-               LOWER(TRIM(equipment_name)) = LOWER(TRIM(?))
-               OR LOWER(TRIM(equipment_name)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
-               OR LOWER(TRIM(?)) LIKE CONCAT('%', LOWER(TRIM(equipment_name)), '%')
-             )
-           ORDER BY
-             CASE WHEN LOWER(TRIM(equipment_name)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
-             LENGTH(equipment_name) ASC
-           LIMIT 1`,
-          [
-            branchId,
-            item.item_name,
-            item.item_name,
-            item.item_name,
-            item.item_name,
-          ]
-        );
-
-        inventoryRow = rows[0] || null;
-      }
-
-      resolved.push({
-        category: item.category,
-        item_name: item.item_name,
-        default_quantity: item.default_quantity,
-        inventory_id: inventoryRow ? inventoryRow.id : null,
-        current_stock: inventoryRow ? inventoryRow.quantity : null,
-        maximum_stock: inventoryRow ? inventoryRow.maximum_stock : null,
-        stock_percentage: inventoryRow ? inventoryRow.stock_percentage : null,
-        unit: inventoryRow ? inventoryRow.unit : null,
-        available: inventoryRow !== null,
-        sufficient:
-          inventoryRow !== null &&
-          Number(inventoryRow.quantity || 0) >= Number(item.default_quantity || 0),
-      });
-    }
-=======
     const availability = await getServiceKitAvailability(pool, { serviceId, branchId });
->>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
 
     res.json({
       service_id: serviceId,
@@ -1826,8 +1084,6 @@ router.get('/service-kits/:serviceId', async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-=======
 router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) => {
   const serviceId = parseInt(req.params.serviceId, 10);
   const { notes = null, items = [], branch_id = null } = req.body || {};
@@ -1902,49 +1158,34 @@ router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) =>
 // CONSUMPTION LOOKUP — what was used for a completed appointment?
 // ─────────────────────────────────────────────────────────────
 
->>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
 router.get('/appointments/:appointmentId/consumption', async (req, res) => {
   const appointmentId = parseInt(req.params.appointmentId, 10);
   const userId = req.user.user_id;
   const role = req.user.role;
 
   try {
-    const [appointmentRows] = await pool.query(
-      `SELECT id, dentist_id, branch_id, status
-       FROM appointments
-       WHERE id = ?`,
+    const [apptRows] = await pool.query(
+      `SELECT id, dentist_id, branch_id, status FROM appointments WHERE id = ?`,
       [appointmentId]
     );
-
-    if (appointmentRows.length === 0) {
+    if (apptRows.length === 0) {
       return res.status(404).json({ message: 'Appointment not found' });
     }
+    const appt = apptRows[0];
 
-    const appointment = appointmentRows[0];
-
-    if (role === 'dentist' && appointment.dentist_id !== userId) {
+    if (role === 'dentist' && appt.dentist_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
     }
-
-    if (
-      (role === 'receptionist' || role === 'admin') &&
-      !validateBranchAccess(req, appointment.branch_id)
-    ) {
+    if ((role === 'receptionist' || role === 'admin') && !validateBranchAccess(req, appt.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
     }
 
     const [items] = await pool.query(
-<<<<<<< HEAD
-      `SELECT category, item_id, item_name, quantity_used
-       FROM appointment_consumption
-       WHERE appointment_id = ?`,
-=======
       `SELECT ac.category, ac.item_id, ac.item_name, ac.quantity_used, ac.recorded_by,
               u.role AS recorded_by_role, u.name AS recorded_by_name
        FROM appointment_consumption ac
        LEFT JOIN users u ON u.id = ac.recorded_by
        WHERE ac.appointment_id = ?`,
->>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
       [appointmentId]
     );
     const submittedBy = items.length > 0
@@ -1979,12 +1220,9 @@ router.get('/appointments/:appointmentId/consumption', async (req, res) => {
     res.json({
       appointment_id: appointmentId,
       submitted: items.length > 0,
-<<<<<<< HEAD
-=======
       submitted_by: submittedBy,
       edited_by: editedBy,
       edited_at: editedAt,
->>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
       items,
     });
   } catch (err) {
@@ -1993,296 +1231,173 @@ router.get('/appointments/:appointmentId/consumption', async (req, res) => {
   }
 });
 
-router.post(
-  '/appointments/:appointmentId/consumption',
-  requireRole('dentist', 'receptionist', 'admin'),
-  async (req, res) => {
-    const appointmentId = parseInt(req.params.appointmentId, 10);
-    const { items, mark_complete } = req.body;
-    const userId = req.user.user_id;
-    const role = req.user.role;
+// ─────────────────────────────────────────────────────────────
+// CONSUMPTION SUBMISSION — decrement inventory atomically
+// ─────────────────────────────────────────────────────────────
 
-    if (!Array.isArray(items)) {
-      return res.status(400).json({ message: 'items must be an array' });
+router.post('/appointments/:appointmentId/consumption', requireRole('dentist', 'receptionist', 'admin'), async (req, res) => {
+  const appointmentId = parseInt(req.params.appointmentId, 10);
+  const { items, mark_complete } = req.body;
+  const userId = req.user.user_id;
+  const role = req.user.role;
+
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ message: 'items must be an array' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [apptRows] = await conn.query(
+      `SELECT id, dentist_id, branch_id, service_id, start_time, status
+       FROM appointments WHERE id = ? FOR UPDATE`,
+      [appointmentId]
+    );
+    if (apptRows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+    const appt = apptRows[0];
+
+    if (role === 'dentist' && appt.dentist_id !== userId) {
+      await conn.rollback();
+      return res.status(403).json({ message: 'You are not the dentist for this appointment' });
     }
 
-    const connection = await pool.getConnection();
+    if (!validateBranchAccess(req, appt.branch_id)) {
+      await conn.rollback();
+      return res.status(403).json({ message: 'No access to this branch' });
+    }
 
+    const [existing] = await conn.query(
+      `SELECT id FROM appointment_consumption WHERE appointment_id = ? LIMIT 1`,
+      [appointmentId]
+    );
+    if (existing.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({ message: 'Consumption already recorded for this appointment' });
+    }
+
+    const serviceId = appt.service_id || null;
+    let serviceName = null;
     try {
-      await connection.beginTransaction();
+      const [serviceRows] = await conn.query(`SELECT name FROM services WHERE id = ?`, [serviceId]);
+      serviceName = serviceRows.length ? serviceRows[0].name : null;
+    } catch {
+      serviceName = null;
+    }
 
-      const [appointmentRows] = await connection.query(
-        `SELECT id, dentist_id, branch_id, service_id, start_time, status
-         FROM appointments
-         WHERE id = ?
-         FOR UPDATE`,
-        [appointmentId]
+    const decrementResults = [];
+    for (const item of items) {
+      const { category, inventory_id, quantity_used } = item;
+
+      if (!category || !inventory_id || !quantity_used || quantity_used <= 0) {
+        await conn.rollback();
+        return res.status(400).json({
+          message: 'Each item needs category, inventory_id, and positive quantity_used',
+        });
+      }
+
+      const validCategories = { supply: 'supplies', medicine: 'medicines', equipment: 'equipment' };
+      const nameColumns = { supply: 'supply_name', medicine: 'medicine_name', equipment: 'equipment_name' };
+
+      if (!validCategories[category]) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Invalid category: ${category}` });
+      }
+
+      const table = validCategories[category];
+      const nameCol = nameColumns[category];
+
+      const [invRows] = await conn.query(
+        `SELECT id, branch_id, ${nameCol} AS name, category AS item_category, quantity
+         FROM ${table} WHERE id = ? FOR UPDATE`,
+        [inventory_id]
+      );
+      if (invRows.length === 0) {
+        await conn.rollback();
+        return res.status(404).json({ message: `${category} id ${inventory_id} not found` });
+      }
+      const invItem = invRows[0];
+      const previousInventoryRow = await fetchInventoryAlertRow(conn, category, inventory_id);
+
+      if (invItem.branch_id !== appt.branch_id) {
+        await conn.rollback();
+        return res.status(400).json({
+          message: `${invItem.name} is not at this appointment's branch`,
+        });
+      }
+
+      if (invItem.quantity < quantity_used) {
+        await conn.rollback();
+        return res.status(400).json({
+          message: `Insufficient stock for ${invItem.name}: have ${invItem.quantity}, need ${quantity_used}`,
+        });
+      }
+
+      await conn.query(
+        `UPDATE ${table} SET quantity = quantity - ? WHERE id = ?`,
+        [quantity_used, inventory_id]
+      );
+      const updatedInventoryRow = await fetchInventoryAlertRow(conn, category, inventory_id);
+      await createInventoryStatusNotifications(conn, previousInventoryRow, updatedInventoryRow);
+
+      await conn.query(
+        `INSERT INTO appointment_consumption (appointment_id, category, item_id, item_name, quantity_used, recorded_by)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [appointmentId, category, inventory_id, invItem.name, quantity_used, userId]
       );
 
-      if (appointmentRows.length === 0) {
-        await connection.rollback();
-        return res.status(404).json({ message: 'Appointment not found' });
-      }
+      const inventoryType =
+        category === 'medicine' ? 'medicine' : category === 'equipment' ? 'equipment' : 'supply';
 
-      const appointment = appointmentRows[0];
-
-      if (role === 'dentist' && appointment.dentist_id !== userId) {
-        await connection.rollback();
-
-        return res.status(403).json({
-          message: 'You are not the dentist for this appointment',
-        });
-      }
-
-      if (!validateBranchAccess(req, appointment.branch_id)) {
-        await connection.rollback();
-        return res.status(403).json({ message: 'No access to this branch' });
-      }
-
-      const [existing] = await connection.query(
-        `SELECT id
-         FROM appointment_consumption
-         WHERE appointment_id = ?
-         LIMIT 1`,
-        [appointmentId]
-      );
-
-      if (existing.length > 0) {
-        await connection.rollback();
-
-        return res.status(409).json({
-          message: 'Consumption already recorded for this appointment',
-        });
-      }
-
-      const serviceId = appointment.service_id || null;
-      let serviceName = null;
-
-      try {
-        const [serviceRows] = await connection.query(
-          `SELECT name FROM services WHERE id = ?`,
-          [serviceId]
-        );
-
-        serviceName = serviceRows.length ? serviceRows[0].name : null;
-      } catch {
-        serviceName = null;
-      }
-
-      const decrementResults = [];
-
-      for (const item of items) {
-        const { category, inventory_id, quantity_used } = item;
-
-        if (!category || !inventory_id || !quantity_used || quantity_used <= 0) {
-          await connection.rollback();
-
-          return res.status(400).json({
-            message: 'Each item needs category, inventory_id, and positive quantity_used',
-          });
-        }
-
-        const validCategories = {
-          supply: 'supplies',
-          medicine: 'medicines',
-          equipment: 'equipment',
-        };
-
-        const nameColumns = {
-          supply: 'supply_name',
-          medicine: 'medicine_name',
-          equipment: 'equipment_name',
-        };
-
-        if (!validCategories[category]) {
-          await connection.rollback();
-
-          return res.status(400).json({
-            message: `Invalid category: ${category}`,
-          });
-        }
-
-        const table = validCategories[category];
-        const nameColumn = nameColumns[category];
-
-        const [inventoryRows] = await connection.query(
-          `SELECT 
-              id,
-              branch_id,
-              ${nameColumn} AS name,
-              category AS item_category,
-              quantity,
-              maximum_stock,
-              stock_percentage,
-              low_stock_threshold
-           FROM ${table}
-           WHERE id = ?
-           FOR UPDATE`,
-          [inventory_id]
-        );
-
-        if (inventoryRows.length === 0) {
-          await connection.rollback();
-
-          return res.status(404).json({
-            message: `${category} id ${inventory_id} not found`,
-          });
-        }
-
-        const inventoryItem = inventoryRows[0];
-        const previousInventoryRow = await fetchInventoryAlertRow(
-          connection,
-          category,
-          inventory_id
-        );
-
-        if (inventoryItem.branch_id !== appointment.branch_id) {
-          await connection.rollback();
-
-          return res.status(400).json({
-            message: `${inventoryItem.name} is not at this appointment's branch`,
-          });
-        }
-
-        if (inventoryItem.quantity < quantity_used) {
-          await connection.rollback();
-
-          return res.status(400).json({
-            message: `Insufficient stock for ${inventoryItem.name}: have ${inventoryItem.quantity}, need ${quantity_used}`,
-          });
-        }
-
-        await connection.query(
-          `UPDATE ${table}
-           SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP
-           WHERE id = ?`,
-          [quantity_used, inventory_id]
-        );
-
-        const updatedInventoryRow = await fetchInventoryAlertRow(
-          connection,
-          category,
-          inventory_id
-        );
-
-        await createInventoryStatusNotifications(
-          connection,
-          previousInventoryRow,
-          updatedInventoryRow
-        );
-
-        await connection.query(
-          `INSERT INTO appointment_consumption (
-             appointment_id,
-             category,
-             item_id,
-             item_name,
-             quantity_used,
-             recorded_by
-           )
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [
-            appointmentId,
-            category,
-            inventory_id,
-            inventoryItem.name,
-            quantity_used,
-            userId,
-          ]
-        );
-
-        const inventoryType =
-          category === 'medicine'
-            ? 'medicine'
-            : category === 'equipment'
-              ? 'equipment'
-              : 'supply';
-
-        await connection.query(
-          `INSERT INTO inventory_usage_history (
-             appointment_id,
-             branch_id,
-             inventory_type,
-             item_id,
-             item_name,
-             item_category,
-             quantity_deducted,
-             service_id,
-             service_name,
-             appointment_start_time,
-             deducted_by
-           )
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            appointmentId,
-            appointment.branch_id,
-            inventoryType,
-            inventory_id,
-            inventoryItem.name,
-            inventoryItem.item_category || null,
-            quantity_used,
-            serviceId,
-            serviceName,
-            appointment.start_time || null,
-            userId,
-          ]
-        );
-
-        decrementResults.push({
-          category,
-          item_id: inventory_id,
-          item_name: inventoryItem.name,
-          quantity_used,
-          new_quantity: inventoryItem.quantity - quantity_used,
-          maximum_stock: inventoryItem.maximum_stock,
-          stock_percentage: computeStockPercentage(
-            inventoryItem.quantity - quantity_used,
-            inventoryItem.maximum_stock
-          ),
-        });
-      }
-
-      if (mark_complete && appointment.status === 'scheduled') {
-        await connection.query(
-          `UPDATE appointments
-           SET status = 'completed'
-           WHERE id = ?`,
-          [appointmentId]
-        );
-      }
-
-      await connection.query(
-        `INSERT INTO audit_logs (user_id, action, branch_id, details)
-         VALUES (?, 'appointment_consumption', ?, ?)`,
+      await conn.query(
+        `INSERT INTO inventory_usage_history
+         (appointment_id, branch_id, inventory_type, item_id, item_name, item_category, quantity_deducted,
+          service_id, service_name, appointment_start_time, deducted_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
+          appointmentId,
+          appt.branch_id,
+          inventoryType,
+          inventory_id,
+          invItem.name,
+          invItem.item_category || null,
+          quantity_used,
+          serviceId,
+          serviceName,
+          appt.start_time || null,
           userId,
-          appointment.branch_id,
-          JSON.stringify({
-            appointment_id: appointmentId,
-            items_count: items.length,
-            items: decrementResults,
-          }),
         ]
       );
 
-      await connection.commit();
-
-      res.json({
-        message: 'Consumption recorded',
-        appointment_id: appointmentId,
-        status: mark_complete ? 'completed' : appointment.status,
-        items: decrementResults,
+      decrementResults.push({
+        category,
+        item_id: inventory_id,
+        item_name: invItem.name,
+        quantity_used,
+        new_quantity: invItem.quantity - quantity_used,
       });
-    } catch (err) {
-      await connection.rollback();
-      console.error(err);
-
-<<<<<<< HEAD
-      res.status(500).json({ message: 'Server error' });
-    } finally {
-      connection.release();
     }
-=======
+
+    if (mark_complete && appt.status === 'scheduled') {
+      await conn.query(
+        `UPDATE appointments SET status = 'completed' WHERE id = ?`,
+        [appointmentId]
+      );
+    }
+
+    await conn.query(
+      `INSERT INTO audit_logs (user_id, action, branch_id, details)
+       VALUES (?, 'appointment_consumption', ?, ?)`,
+      [userId, appt.branch_id, JSON.stringify({
+        appointment_id: appointmentId,
+        items_count: items.length,
+        items: decrementResults,
+      })]
+    );
+
     if (role === 'receptionist' && appt.dentist_id) {
       const receptionistName = req.user?.name || 'Receptionist';
       await conn.query(
@@ -2310,13 +1425,9 @@ router.post(
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
->>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
   }
-);
+});
 
-<<<<<<< HEAD
-module.exports = router;
-=======
 router.put('/appointments/:appointmentId/consumption', requireRole('dentist', 'receptionist', 'admin'), async (req, res) => {
   const appointmentId = parseInt(req.params.appointmentId, 10);
   const { items } = req.body;
@@ -2535,4 +1646,3 @@ router.put('/appointments/:appointmentId/consumption', requireRole('dentist', 'r
 });
 
 module.exports = router;
->>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
