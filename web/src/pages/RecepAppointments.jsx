@@ -11,6 +11,7 @@ import {
   setAppointmentStatus,
 } from '../api/appointments';
 import { createStaffPayment } from '../api/payments';
+import { getConsumption, getServiceKit } from '../api/inventory';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createRecepAppointmentsStyles from '../styles/RecepAppointments';
@@ -100,6 +101,13 @@ export default function RecepAppointments() {
   const [rescheduleReasonText, setRescheduleReasonText] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
+  const [showKitModal, setShowKitModal] = useState(false);
+  const [selectedKitAppointment, setSelectedKitAppointment] = useState(null);
+  const [kitItems, setKitItems] = useState([]);
+  const [kitNotes, setKitNotes] = useState('');
+  const [kitLoading, setKitLoading] = useState(false);
+  const [kitError, setKitError] = useState('');
+  const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
 
   const isMobile = screenWidth <= 850;
   const isVerySmall = screenWidth <= 560;
@@ -171,7 +179,7 @@ export default function RecepAppointments() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal) {
+    if (showLogoutModal || showKitModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -180,7 +188,7 @@ export default function RecepAppointments() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal]);
+  }, [showLogoutModal, showKitModal]);
 
   useEffect(() => {
     if (rescheduleModal.show) {
@@ -197,6 +205,7 @@ export default function RecepAppointments() {
       if (event.key === 'Escape') {
         closeLogoutModal();
         closeRescheduleModal();
+        closeKitModal();
         setOpenDropdownId(null);
       }
     }
@@ -454,6 +463,64 @@ export default function RecepAppointments() {
       saving: false,
     });
     setRescheduleReasonText('');
+  }
+
+  async function openCalendarServiceKitModal(appointment) {
+    if (!appointment || String(appointment.status).toLowerCase() !== 'completed') return;
+
+    setSelectedKitAppointment(appointment);
+    setKitItems([]);
+    setKitNotes('');
+    setKitError('');
+    setKitAlreadySubmitted(false);
+    setShowKitModal(true);
+    setKitLoading(true);
+
+    try {
+      const [consumptionData, kitData] = await Promise.all([
+        getConsumption(appointment.id).catch(() => ({ submitted: false, items: [] })),
+        appointment.serviceId && appointment.branchId
+          ? getServiceKit(appointment.serviceId, appointment.branchId).catch(() => ({
+              kit_exists: false,
+              items: [],
+            }))
+          : Promise.resolve({ kit_exists: false, items: [] }),
+      ]);
+
+      if (consumptionData.submitted) {
+        setKitAlreadySubmitted(true);
+        setKitItems(
+          (consumptionData.items || []).map((item) => ({
+            category: item.category,
+            item_name: item.item_name,
+            quantity_used: item.quantity_used,
+          }))
+        );
+      } else {
+        setKitNotes(kitData.notes || '');
+        setKitItems(
+          (kitData.items || []).map((item) => ({
+            category: item.category,
+            item_name: item.item_name,
+            quantity_used: item.default_quantity,
+            current_stock: item.current_stock,
+          }))
+        );
+      }
+    } catch (err) {
+      setKitError(err.response?.data?.message || 'Failed to load service kit.');
+    } finally {
+      setKitLoading(false);
+    }
+  }
+
+  function closeKitModal() {
+    setShowKitModal(false);
+    setSelectedKitAppointment(null);
+    setKitItems([]);
+    setKitNotes('');
+    setKitError('');
+    setKitAlreadySubmitted(false);
   }
 
   function handleReschedulePreviousMonth() {
@@ -1062,7 +1129,7 @@ export default function RecepAppointments() {
                           >
                             <div style={styles.scheduleItemTop}>
                               <div style={styles.scheduleTime}>
-                                {appointment.time}
+                                {appointment.fullDate} | {appointment.time}
                               </div>
 
                               <span
@@ -1079,6 +1146,9 @@ export default function RecepAppointments() {
                               <button
                                 type="button"
                                 style={styles.serviceKitCalendarButton}
+                                onClick={() =>
+                                  openCalendarServiceKitModal(appointment)
+                                }
                               >
                                 service_kit
                               </button>
@@ -1095,6 +1165,24 @@ export default function RecepAppointments() {
                             <div style={styles.scheduleDetail}>
                               {appointment.treatment}
                             </div>
+
+                            <div style={styles.scheduleDetail}>
+                              Estimated Duration: {getEstimatedTimeRange(appointment.time, appointment.durationMinutes)}
+                            </div>
+
+                            {calendarStatus === 'Done' && (
+                              <div style={styles.scheduleDetail}>
+                                <strong>Original Schedule:</strong> {appointment.originalSchedule || 'Not recorded'}
+                                <br />
+                                <strong>Rescheduled:</strong> {appointment.rescheduledSchedule || 'Not recorded'}
+                                <br />
+                                <strong>Payment Type:</strong> {appointment.paymentMethodLabel || 'Not recorded'}
+                                <br />
+                                <strong>Provider:</strong> {appointment.paymentProvider || 'Not recorded'}
+                                <br />
+                                <strong>Payment Amount:</strong> {formatPaymentAmount(appointment.paymentAmount)}
+                              </div>
+                            )}
                           </div>
                         );
                         })
@@ -1816,6 +1904,78 @@ export default function RecepAppointments() {
           </div>
         </div>
       )}
+
+      {showKitModal && selectedKitAppointment && (
+        <div style={styles.modal} onClick={closeKitModal}>
+          <div
+            style={{
+              ...styles.modalContentReschedule,
+              maxWidth: '680px',
+              width: '92vw',
+              maxHeight: '80vh',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={styles.modalHeaderRow}>
+              <div>
+                <h2 style={styles.modalHeaderTitle}>Service Kit</h2>
+                <p style={styles.modalHeaderSub}>
+                  {kitAlreadySubmitted
+                    ? 'Items used for this appointment were already submitted.'
+                    : 'Service kit template for this appointment.'}
+                </p>
+              </div>
+              <button type="button" style={styles.modalCloseBtn} onClick={closeKitModal}>
+                <i className="fi fi-rr-cross-small"></i>
+              </button>
+            </div>
+
+            <div style={{ ...styles.scheduleItem, marginBottom: 12 }}>
+              <div style={styles.scheduleDetail}><strong>Patient:</strong> {selectedKitAppointment.name}</div>
+              <div style={styles.scheduleDetail}><strong>Service:</strong> {selectedKitAppointment.treatment}</div>
+              <div style={styles.scheduleDetail}>
+                <strong>Schedule:</strong> {selectedKitAppointment.fullDate} | {selectedKitAppointment.time}
+              </div>
+              {!kitAlreadySubmitted && (
+                <div style={styles.scheduleDetail}>
+                  <strong>Kit Note:</strong> {kitNotes || 'No kit note added.'}
+                </div>
+              )}
+            </div>
+
+            {kitLoading ? (
+              <p style={styles.scheduleDetail}>Loading kit...</p>
+            ) : kitError ? (
+              <p style={{ ...styles.scheduleDetail, color: '#b91c1c' }}>{kitError}</p>
+            ) : kitItems.length === 0 ? (
+              <p style={styles.scheduleDetail}>No items defined for this service kit.</p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Category</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
+                        {kitAlreadySubmitted ? 'Used' : 'Qty'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kitItems.map((item, index) => (
+                      <tr key={`${item.item_name}-${index}`}>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.item_name}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.category || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.quantity_used || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2124,6 +2284,10 @@ function normalizeAppointments(items) {
       paymentId: item.payment_id || null,
       paymentStatus: item.payment_status || '',
       paymentMethod: item.payment_method || '',
+      paymentMethodLabel: paymentMethodLabels[item.payment_method] || 'Not recorded',
+      paymentProvider: item.ewallet_provider || item.bank_provider || item.provider || '',
+      paymentAmount: Number(item.payment_amount || 0),
+      durationMinutes: Number(item.duration_min || 30),
       date: displayDate.week,
       day: displayDate.day,
       time: displayDate.time,
@@ -2468,6 +2632,12 @@ function parseTimeToMinutes(timeString) {
   }
 
   return hour * 60 + (Number(minuteValue) || 0);
+}
+
+function formatPaymentAmount(amount) {
+  const value = Number(amount || 0);
+  if (!Number.isFinite(value) || value <= 0) return 'Not recorded';
+  return `PHP ${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function extractDateKey(rawDateTime) {
