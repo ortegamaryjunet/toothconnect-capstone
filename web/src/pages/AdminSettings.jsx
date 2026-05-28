@@ -8,6 +8,7 @@ import {
   listSupplies,
   listMedicines,
   listEquipment,
+  listServiceKitHistory,
 } from '../api/inventory';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminSettingsStyles from '../styles/AdminSettings';
@@ -205,6 +206,12 @@ export default function AdminSettings() {
     medicines: [],
     equipment: [],
   });
+  const [showServiceKitHistory, setShowServiceKitHistory] = useState(false);
+  const [serviceKitHistoryRows, setServiceKitHistoryRows] = useState([]);
+  const [serviceKitHistoryLoading, setServiceKitHistoryLoading] = useState(false);
+  const [serviceKitHistoryError, setServiceKitHistoryError] = useState('');
+  const [serviceKitHistoryFilters, setServiceKitHistoryFilters] = useState({ startDate: '', endDate: '', branchId: '' });
+
   const [userForm, setUserForm] = useState(initialUserForm);
 
   const [filters, setFilters] = useState({
@@ -272,7 +279,7 @@ export default function AdminSettings() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay || websiteValidationModal || serviceKitOverlay) {
+    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay || websiteValidationModal || serviceKitOverlay || showServiceKitHistory) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -281,7 +288,7 @@ export default function AdminSettings() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay, websiteValidationModal, serviceKitOverlay]);
+  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay, websiteValidationModal, serviceKitOverlay, showServiceKitHistory]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -1075,6 +1082,36 @@ export default function AdminSettings() {
       setServiceKitOverlay(false);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service kit.');
+    }
+  }
+
+  async function openServiceKitHistory() {
+    setShowServiceKitHistory(true);
+    setServiceKitHistoryError('');
+    setServiceKitHistoryRows([]);
+    setServiceKitHistoryFilters({ startDate: '', endDate: '', branchId: '' });
+    await loadServiceKitHistory({ startDate: '', endDate: '', branchId: '' });
+  }
+
+  function closeServiceKitHistory() {
+    setShowServiceKitHistory(false);
+  }
+
+  async function loadServiceKitHistory(overrideFilters) {
+    const f = overrideFilters || serviceKitHistoryFilters;
+    setServiceKitHistoryLoading(true);
+    setServiceKitHistoryError('');
+    try {
+      const params = {};
+      if (f.startDate) params.start_date = f.startDate;
+      if (f.endDate) params.end_date = f.endDate;
+      if (f.branchId) params.branch_id = f.branchId;
+      const records = await listServiceKitHistory(params);
+      setServiceKitHistoryRows(records);
+    } catch (err) {
+      setServiceKitHistoryError(err.response?.data?.message || 'Failed to load service kit history.');
+    } finally {
+      setServiceKitHistoryLoading(false);
     }
   }
 
@@ -2028,6 +2065,9 @@ export default function AdminSettings() {
           <button type="button" style={styles.secondaryBtn} onClick={() => openServiceKitManager(filteredServices[0])} disabled={!filteredServices.length}>
             Manage Service Kit
           </button>
+          <button type="button" style={styles.secondaryBtn} onClick={openServiceKitHistory}>
+            Service Kit History
+          </button>
           <select
             value={filters.serviceCategory}
             onChange={(event) => updateFilter('serviceCategory', event.target.value)}
@@ -2735,6 +2775,152 @@ export default function AdminSettings() {
             <button type="button" style={styles.saveBtn} onClick={saveServiceKit} disabled={serviceKitRowInputsDisabled}>Save Service Kit</button>
           </div>
         </FormOverlay>
+      )}
+
+      {showServiceKitHistory && (
+        <div
+          style={styles.modal}
+          onClick={(e) => { if (e.target === e.currentTarget) closeServiceKitHistory(); }}
+        >
+          <div style={{
+            background: '#fff',
+            borderRadius: 22,
+            padding: 28,
+            width: '96%',
+            maxWidth: 900,
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 22px 50px rgba(15,23,42,0.2)',
+            boxSizing: 'border-box',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 20, color: '#0f172a', fontFamily: 'Arial, sans-serif' }}>Service Kit History</h2>
+                <p style={{ margin: '4px 0 0', fontSize: 14, color: '#64748b', fontFamily: 'Arial, sans-serif' }}>
+                  Changes to service kit configurations across all branches.
+                </p>
+              </div>
+              <button type="button" onClick={closeServiceKitHistory} style={{ ...styles.secondaryBtn, height: 36, padding: '0 16px', fontSize: 13 }}>
+                X
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 14 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160, flex: 1 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Branch</span>
+                <select
+                  value={serviceKitHistoryFilters.branchId}
+                  onChange={(e) => setServiceKitHistoryFilters((prev) => ({ ...prev, branchId: e.target.value }))}
+                  style={styles.formInput}
+                >
+                  <option value="">All Branches</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>{b.address || b.name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160, flex: 1 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>From</span>
+                <input
+                  type="date"
+                  value={serviceKitHistoryFilters.startDate}
+                  max={serviceKitHistoryFilters.endDate || ''}
+                  onChange={(e) => setServiceKitHistoryFilters((prev) => ({ ...prev, startDate: e.target.value }))}
+                  style={styles.formInput}
+                />
+              </label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160, flex: 1 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>To</span>
+                <input
+                  type="date"
+                  value={serviceKitHistoryFilters.endDate}
+                  min={serviceKitHistoryFilters.startDate || ''}
+                  onChange={(e) => setServiceKitHistoryFilters((prev) => ({ ...prev, endDate: e.target.value }))}
+                  style={styles.formInput}
+                />
+              </label>
+
+              <button
+                type="button"
+                style={{ ...styles.secondaryBtn, height: 48 }}
+                onClick={() => setServiceKitHistoryFilters({ startDate: '', endDate: '', branchId: '' })}
+              >
+                Clear
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.saveBtn, height: 48 }}
+                onClick={() => loadServiceKitHistory()}
+              >
+                Apply
+              </button>
+            </div>
+
+            {serviceKitHistoryError && (
+              <p style={{ color: '#b91c1c', fontSize: 13, marginBottom: 10 }}>{serviceKitHistoryError}</p>
+            )}
+
+            <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: 14 }}>
+                <thead>
+                  <tr>
+                    <th style={styles.tableHead}>Service</th>
+                    <th style={styles.tableHead}>Kit Items</th>
+                    <th style={styles.tableHead}>Status</th>
+                    <th style={styles.tableHead}>Changed By</th>
+                    <th style={styles.tableHead}>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {serviceKitHistoryLoading ? (
+                    <tr><td colSpan={5} style={styles.emptyRow}>Loading service kit history...</td></tr>
+                  ) : serviceKitHistoryRows.length === 0 ? (
+                    <tr><td colSpan={5} style={styles.emptyRow}>No service kit history records found.</td></tr>
+                  ) : (
+                    serviceKitHistoryRows.map((row) => (
+                      <tr key={row.id} style={styles.tableRow}>
+                        <td style={{ ...styles.tableCell, fontWeight: 700, whiteSpace: 'nowrap' }}>{row.service_name}</td>
+                        <td style={{ ...styles.tableCell, maxWidth: 340 }}>
+                          {row.items.length === 0
+                            ? <span style={{ color: '#94a3b8' }}>No items</span>
+                            : row.items.map((item, i) => (
+                                <span key={i}>
+                                  <span style={{ fontWeight: 600 }}>{item.item_name}</span>
+                                  {' '}
+                                  <span style={{ color: '#64748b', fontSize: 12 }}>({item.category})</span>
+                                  {' ×'}{item.default_quantity}
+                                  {i < row.items.length - 1 ? ', ' : ''}
+                                </span>
+                              ))
+                          }
+                        </td>
+                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                          <span style={{
+                            ...styles.statusBadge,
+                            background: row.status === 'Added' ? '#dcfce7' : '#dbeafe',
+                            color: row.status === 'Added' ? '#15803d' : '#1d4ed8',
+                          }}>
+                            {row.status}
+                          </span>
+                        </td>
+                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{row.changed_by}</td>
+                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
+                          {row.changed_at
+                            ? new Date(row.changed_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
+                            : '—'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {activeOverlay === 'users' && (

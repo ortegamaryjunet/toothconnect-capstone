@@ -965,6 +965,73 @@ router.get('/usage-history', requireRole('admin', 'receptionist'), async (req, r
   }
 });
 
+router.get('/service-kit-history', requireRole('admin'), async (req, res) => {
+  const startDate = req.query.start_date ? String(req.query.start_date).slice(0, 10) : '';
+  const endDate = req.query.end_date ? String(req.query.end_date).slice(0, 10) : '';
+  const branchId = req.query.branch_id ? parseInt(req.query.branch_id, 10) : null;
+
+  if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
+    return res.status(400).json({ message: 'Invalid date format (expected YYYY-MM-DD)' });
+  }
+
+  try {
+    const whereParts = [`al.action = 'service_kit_managed'`];
+    const params = [];
+
+    if (startDate && endDate) {
+      whereParts.push(`al.created_at >= ? AND al.created_at < DATE_ADD(?, INTERVAL 1 DAY)`);
+      params.push(`${startDate} 00:00:00`, endDate);
+    } else if (startDate) {
+      whereParts.push(`al.created_at >= ? AND al.created_at < DATE_ADD(?, INTERVAL 1 DAY)`);
+      params.push(`${startDate} 00:00:00`, startDate);
+    }
+
+    if (branchId) {
+      const [branchServiceRows] = await pool.query(
+        `SELECT DISTINCT dsv.service_id
+         FROM dentist_services dsv
+         JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id
+         WHERE dsch.branch_id = ?`,
+        [branchId]
+      );
+      const serviceIds = branchServiceRows.map((r) => r.service_id);
+      if (serviceIds.length === 0) {
+        return res.json({ records: [] });
+      }
+      whereParts.push(`JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.service_id')) IN (${serviceIds.map(() => '?').join(',')})`);
+      params.push(...serviceIds);
+    }
+
+    const [rows] = await pool.query(
+      `SELECT al.id, al.created_at, al.details, u.name AS changed_by_name, u.role AS changed_by_role
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.user_id
+       WHERE ${whereParts.join(' AND ')}
+       ORDER BY al.created_at DESC
+       LIMIT 500`,
+      params
+    );
+
+    const records = rows.map((row) => {
+      const details = typeof row.details === 'string' ? JSON.parse(row.details) : (row.details || {});
+      return {
+        id: row.id,
+        service_id: details.service_id || null,
+        service_name: details.service_name || '—',
+        items: Array.isArray(details.items) ? details.items : [],
+        status: details.was_new ? 'Added' : 'Updated',
+        changed_by: row.changed_by_name || row.changed_by_role || 'Admin',
+        changed_at: row.created_at,
+      };
+    });
+
+    res.json({ records });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.get('/service-kits/:serviceId', async (req, res) => {
   const serviceId = parseInt(req.params.serviceId, 10);
   const branchId = parseInt(req.query.branch_id, 10);
@@ -1023,14 +1090,16 @@ router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) =>
   try {
     await conn.beginTransaction();
 
-    const [serviceRows] = await conn.query('SELECT id FROM services WHERE id = ? LIMIT 1', [serviceId]);
+    const [serviceRows] = await conn.query('SELECT id, name FROM services WHERE id = ? LIMIT 1', [serviceId]);
     if (!serviceRows.length) {
       await conn.rollback();
       return res.status(404).json({ message: 'Service not found' });
     }
+    const serviceName = serviceRows[0].name;
 
     const [kitRows] = await conn.query('SELECT id FROM service_kits WHERE service_id = ? LIMIT 1', [serviceId]);
     let kitId = kitRows[0]?.id || null;
+    const wasNew = !kitId;
 
     if (!kitId) {
       const [insertKit] = await conn.query('INSERT INTO service_kits (service_id, notes) VALUES (?, ?)', [serviceId, notes]);
@@ -1055,6 +1124,11 @@ router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) =>
         cleanItems.flatMap((item) => [kitId, item.category, item.item_name, item.default_quantity])
       );
     }
+
+    await conn.query(
+      `INSERT INTO audit_logs (user_id, action, details) VALUES (?, 'service_kit_managed', ?)`,
+      [req.user.user_id, JSON.stringify({ service_id: serviceId, service_name: serviceName, items: cleanItems, was_new: wasNew })]
+    );
 
     await conn.commit();
     const savedItems = await getServiceKitRows(pool, serviceId);

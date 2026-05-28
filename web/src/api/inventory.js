@@ -109,3 +109,8 @@ export async function listInventoryUsageHistory(params = {}) {
   const res = await api.get('/inventory/usage-history', { params });
   return res.data.records || [];
 }
+
+export async function listServiceKitHistory(params = {}) {
+  const res = await api.get('/inventory/service-kit-history', { params });
+  return res.data.records || [];
+}
