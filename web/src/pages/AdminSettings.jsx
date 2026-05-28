@@ -2741,22 +2741,55 @@ export default function AdminSettings() {
                     </option>
                   ))}
                 </select>
-                <input
-                  value={item.default_quantity}
-                  onChange={(e) =>
-                    updateServiceKitItem(
-                      index,
-                      'default_quantity',
-                      e.target.value.replace(/[^0-9]/g, '')
-                    )
-                  }
-                  placeholder="Default Quantity"
-                  style={{
-                    ...styles.formInput,
-                    ...(Number(item.default_quantity || 0) < 1 ? { borderColor: '#ef4444' } : {}),
-                  }}
-                  disabled={serviceKitRowInputsDisabled}
-                />
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  border: `1px solid ${Number(item.default_quantity || 0) < 1 ? '#ef4444' : '#d1d5db'}`,
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  height: 40,
+                  background: serviceKitRowInputsDisabled ? '#f8fafc' : '#fff',
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => updateServiceKitItem(index, 'default_quantity', String(Math.max(1, Number(item.default_quantity || 1) - 1)))}
+                    disabled={serviceKitRowInputsDisabled}
+                    style={{
+                      width: 28, height: '100%', border: 'none', borderRight: '1px solid #e5e7eb',
+                      background: 'transparent', cursor: serviceKitRowInputsDisabled ? 'not-allowed' : 'pointer',
+                      fontSize: 16, color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, padding: 0,
+                    }}
+                  >
+                    −
+                  </button>
+                  <input
+                    value={item.default_quantity}
+                    onChange={(e) =>
+                      updateServiceKitItem(index, 'default_quantity', e.target.value.replace(/[^0-9]/g, ''))
+                    }
+                    placeholder="Qty"
+                    style={{
+                      flex: 1, minWidth: 0, border: 'none', outline: 'none',
+                      textAlign: 'center', fontSize: 13, fontFamily: 'Arial, sans-serif',
+                      background: 'transparent', padding: '0 2px',
+                    }}
+                    disabled={serviceKitRowInputsDisabled}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => updateServiceKitItem(index, 'default_quantity', String(Number(item.default_quantity || 0) + 1))}
+                    disabled={serviceKitRowInputsDisabled}
+                    style={{
+                      width: 28, height: '100%', border: 'none', borderLeft: '1px solid #e5e7eb',
+                      background: 'transparent', cursor: serviceKitRowInputsDisabled ? 'not-allowed' : 'pointer',
+                      fontSize: 16, color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, padding: 0,
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
                 <input
                   value={item.current_stock ?? ''}
                   readOnly
