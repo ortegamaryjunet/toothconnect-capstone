@@ -234,6 +234,261 @@ const reportData = {
   },
 };
 
+
+;
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString('en-PH');
+}
+
+function getTopValue(labels = [], values = []) {
+  if (!values.length) {
+    return {
+      label: 'No data',
+      value: 0,
+    };
+  }
+
+  let bestIndex = 0;
+
+  values.forEach((value, index) => {
+    if (Number(value || 0) > Number(values[bestIndex] || 0)) {
+      bestIndex = index;
+    }
+  });
+
+  return {
+    label: labels[bestIndex] || 'No label',
+    value: Number(values[bestIndex] || 0),
+  };
+}
+
+function getReportInterpretation(report, metrics = {}) {
+  const rows = report?.rows || [];
+  const headers = report?.headers || [];
+  const labels = report?.labels || [];
+  const values = (report?.mainData || []).map((value) => Number(value || 0));
+  const statusLabels = report?.statusLabels || [];
+  const statusValues = (report?.statusData || []).map((value) => Number(value || 0));
+
+  const totalRows = rows.length;
+  const totalMainValue = values.reduce((sum, value) => sum + value, 0);
+  const totalStatusValue = statusValues.reduce((sum, value) => sum + value, 0);
+  const topGraph = getTopValue(labels, values);
+  const topStatus = getTopValue(statusLabels, statusValues);
+
+  const firstHeader = headers[0] || 'records';
+  const lastHeader = headers[headers.length - 1] || 'status';
+  const tableScope =
+    headers.length > 0
+      ? `${headers.slice(0, 4).join(', ')}${headers.length > 4 ? ', and more details' : ''}`
+      : 'report details';
+
+  const isFinancialReport = metrics.isRevenueReport === true;
+
+  if (isFinancialReport) {
+    const netStatus =
+      metrics.netRevenue > 0
+        ? 'positive'
+        : metrics.netRevenue < 0
+          ? 'negative'
+          : 'break-even';
+
+    return {
+      overview: `${report.title} contains ${totalRows} financial record(s) for the selected filter.`,
+      graph: `The graph compares income, expenses, and revenue across ${totalRows} period(s).`,
+      pie: `The chart summary uses total income, total expenses, and net revenue to show the financial composition.`,
+      table: `The table export focuses on period, income, expenses, and revenue values.`,
+      insight: `Total income is ${formatPeso(metrics.totalIncome)}, total expenses are ${formatPeso(metrics.totalExpense)}, and net revenue is ${formatPeso(metrics.netRevenue)}. The current result is ${netStatus}.`,
+      recommendation:
+        metrics.netRevenue < 0
+          ? 'Review expense records and identify which cost items should be reduced or monitored.'
+          : 'Continue monitoring income and expenses to keep revenue stable and support financial planning.',
+    };
+  }
+
+  return {
+    overview: `${report.title} contains ${totalRows} record(s) based on the selected report type and filters.`,
+    graph:
+      totalMainValue > 0
+        ? `The bar graph total is ${formatNumber(totalMainValue)}. The highest value is ${topGraph.label} with ${formatNumber(topGraph.value)}.`
+        : 'The bar graph has no measurable value for the selected filters.',
+    pie:
+      totalStatusValue > 0
+        ? `The doughnut chart total is ${formatNumber(totalStatusValue)}. The largest group is ${topStatus.label} with ${formatNumber(topStatus.value)}.`
+        : 'The doughnut chart has no status value for the selected filters.',
+    table: `The table is based on ${tableScope}. It starts with ${firstHeader} and ends with ${lastHeader}.`,
+    insight:
+      totalRows > 0
+        ? `The report has enough table data to compare chart results with actual records. The strongest chart category is ${topGraph.label}.`
+        : 'No records are available for the current filters.',
+    recommendation:
+      totalRows > 0
+        ? 'Use the chart summary and table records together to review trends, status counts, and areas that need action.'
+        : 'Try selecting another report type, changing the date range, or clearing optional filters.',
+  };
+}
+
+function wrapPdfText(doc, text, x, y, maxWidth, lineHeight = 5) {
+  const lines = doc.splitTextToSize(String(text || ''), maxWidth);
+  doc.text(lines, x, y);
+  return y + lines.length * lineHeight;
+}
+
+function drawPdfHeader(doc, title, pageWidth, generatedText, rangeText) {
+  doc.setFillColor(255, 248, 220);
+  doc.rect(0, 0, pageWidth, 210, 'F');
+
+  doc.setFillColor(139, 101, 8);
+  doc.roundedRect(10, 10, pageWidth - 20, 30, 4, 4, 'F');
+
+  doc.setFillColor(212, 175, 55);
+  doc.rect(10, 37, pageWidth - 20, 2, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(17);
+  doc.text(title, 16, 23);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('Smile Empress Dental Hub', 16, 31);
+
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(9);
+  doc.text(generatedText, pageWidth - 16, 48, { align: 'right' });
+  doc.text(rangeText, 16, 48);
+}
+
+function drawPdfFooter(doc, pageWidth, pageHeight) {
+  doc.setDrawColor(212, 175, 55);
+  doc.setLineWidth(0.3);
+  doc.line(10, pageHeight - 12, pageWidth - 10, pageHeight - 12);
+
+  doc.setTextColor(100, 116, 139);
+  doc.setFontSize(8);
+  doc.text('Generated by ToothConnect', 10, pageHeight - 7);
+  doc.text(`Page ${doc.internal.getCurrentPageInfo().pageNumber}`, pageWidth - 10, pageHeight - 7, {
+    align: 'right',
+  });
+}
+
+function drawPdfInfoBox(doc, title, items, x, y, width) {
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(229, 231, 235);
+  doc.roundedRect(x, y, width, 38, 3, 3, 'FD');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(title, x + 4, y + 8);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+
+  let nextY = y + 15;
+  items.forEach((item) => {
+    nextY = wrapPdfText(doc, item, x + 4, nextY, width - 8, 4);
+    nextY += 1;
+  });
+}
+
+function drawPdfBarChart(doc, title, labels, values, x, y, width, height) {
+  const safeLabels = labels && labels.length ? labels : ['No Data'];
+  const safeValues = values && values.length ? values.map((v) => Number(v || 0)) : [0];
+  const maxValue = Math.max(...safeValues, 1);
+  const barGap = 3;
+  const chartTop = y + 15;
+  const chartHeight = height - 30;
+  const barWidth = Math.max(5, (width - 18 - barGap * safeValues.length) / safeValues.length);
+
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(229, 231, 235);
+  doc.roundedRect(x, y, width, height, 3, 3, 'FD');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(title, x + 4, y + 8);
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(x + 10, chartTop + chartHeight, x + width - 6, chartTop + chartHeight);
+
+  safeValues.forEach((value, index) => {
+    const barHeight = Math.max(1, (value / maxValue) * chartHeight);
+    const bx = x + 10 + index * (barWidth + barGap);
+    const by = chartTop + chartHeight - barHeight;
+
+    doc.setFillColor(37, 99, 235);
+    doc.roundedRect(bx, by, barWidth, barHeight, 1, 1, 'F');
+
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    const label = String(safeLabels[index] || '').slice(0, 10);
+    doc.text(label, bx + barWidth / 2, chartTop + chartHeight + 5, { align: 'center' });
+  });
+}
+
+function drawPdfDoughnutChart(doc, title, labels, values, x, y, width, height) {
+  const safeLabels = labels && labels.length ? labels : ['No Data'];
+  const safeValues = values && values.length ? values.map((v) => Number(v || 0)) : [0];
+  const total = safeValues.reduce((sum, value) => sum + value, 0) || 1;
+  const colors = [
+    [37, 99, 235],
+    [245, 158, 11],
+    [220, 38, 38],
+    [22, 163, 74],
+    [139, 92, 246],
+    [14, 165, 233],
+  ];
+
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(229, 231, 235);
+  doc.roundedRect(x, y, width, height, 3, 3, 'FD');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(title, x + 4, y + 8);
+
+  let legendY = y + 18;
+
+  safeValues.forEach((value, index) => {
+    const color = colors[index % colors.length];
+    const percent = Math.round((value / total) * 100);
+
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.circle(x + 7, legendY - 1.5, 2, 'F');
+
+    doc.setTextColor(51, 65, 85);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`${safeLabels[index]}: ${value} (${percent}%)`, x + 13, legendY);
+    legendY += 6;
+  });
+}
+
+function drawPdfInterpretation(doc, interpretation, x, y, width) {
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(229, 231, 235);
+  doc.roundedRect(x, y, width, 42, 3, 3, 'FD');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Report Interpretation', x + 4, y + 8);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+
+  let nextY = y + 15;
+  nextY = wrapPdfText(doc, `Overview: ${interpretation.overview}`, x + 4, nextY, width - 8, 4);
+  nextY = wrapPdfText(doc, `Insight: ${interpretation.insight}`, x + 4, nextY + 1, width - 8, 4);
+  wrapPdfText(doc, `Recommendation: ${interpretation.recommendation}`, x + 4, nextY + 1, width - 8, 4);
+}
+
 function formatPeso(value) {
   return `\u20B1${Number(value || 0).toLocaleString('en-PH', {
     minimumFractionDigits: 0,
@@ -397,7 +652,7 @@ export default function AdminReports() {
   const isStockAvailabilityReport = appliedReportType === 'stockAvailability';
   const isConsumptionReport = appliedReportType === 'consumption';
   const reportUsesBranchFilter =
-    appliedReportType === 'clinicDentist' || appliedReportType === 'satisfaction';
+    reportType === 'clinicDentist' || reportType === 'satisfaction';
   const showReportSummary =
     !isClinicDentistReport &&
     !isSatisfactionReport &&
@@ -423,6 +678,15 @@ export default function AdminReports() {
   const totalIncome = revenueRows.reduce((sum, row) => sum + row.income, 0);
   const totalExpense = revenueRows.reduce((sum, row) => sum + row.expense, 0);
   const netRevenue = totalIncome - totalExpense;
+  const currentInterpretation = useMemo(() => {
+    return getReportInterpretation(currentReport, {
+      isRevenueReport,
+      totalIncome,
+      totalExpense,
+      netRevenue,
+    });
+  }, [currentReport, isRevenueReport, totalIncome, totalExpense, netRevenue]);
+
 
   useEffect(() => {
     function handleResize() {
@@ -763,10 +1027,15 @@ export default function AdminReports() {
       setFilterClicked(false);
     }, 180);
 
-    setAppliedReportType(reportType);
-    setAppliedFromDate(fromDate);
-    setAppliedToDate(toDate);
-    setAppliedBranchFilter(branchFilter);
+    const selectedReportType = reportType || 'clinicDentist';
+    const supportsBranch =
+      selectedReportType === 'clinicDentist' ||
+      selectedReportType === 'satisfaction';
+
+    setAppliedReportType(selectedReportType);
+    setAppliedFromDate(fromDate || '');
+    setAppliedToDate(toDate || '');
+    setAppliedBranchFilter(supportsBranch ? branchFilter : '');
     setCurrentPage(1);
   }
 
@@ -776,11 +1045,9 @@ export default function AdminReports() {
       nextType === 'clinicDentist' || nextType === 'satisfaction';
 
     setReportType(nextType);
-    setAppliedReportType(nextType);
 
     if (!supportsBranch) {
       setBranchFilter('');
-      setAppliedBranchFilter('');
     }
 
     setCurrentPage(1);
@@ -999,51 +1266,106 @@ export default function AdminReports() {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+    const generatedText = `Generated: ${new Date().toLocaleString('en-PH')}`;
+    const rangeText = `Date Range: ${appliedFromDate || 'All'} to ${appliedToDate || 'All'}`;
+    const title = getReportTitle();
 
-    doc.setFillColor(255, 248, 220);
-    doc.rect(0, 0, pageWidth, pageHeight, 'F');
+    drawPdfHeader(doc, title, pageWidth, generatedText, rangeText);
 
-    doc.setFillColor(212, 175, 55);
-    doc.roundedRect(10, 10, pageWidth - 20, 30, 4, 4, 'F');
+    const interpretation = currentInterpretation;
+    const leftX = 10;
+    const midX = 148;
+    const rightX = 214;
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text(getReportTitle(), 16, 23);
+    if (isRevenueReport) {
+      drawPdfInfoBox(
+        doc,
+        'Financial Summary',
+        [
+          `Total Income: ${formatPeso(totalIncome)}`,
+          `Total Expenses: ${formatPeso(totalExpense)}`,
+          `Net Revenue: ${formatPeso(netRevenue)}`,
+        ],
+        leftX,
+        54,
+        130
+      );
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text('Smile Empress Dental Hub', 16, 31);
+      drawPdfBarChart(
+        doc,
+        'Income, Expenses, and Revenue Graph',
+        revenueRows.map((row) => row.period),
+        revenueRows.map((row) => row.revenue),
+        midX,
+        54,
+        138,
+        70
+      );
 
-    doc.setTextColor(71, 85, 105);
-    doc.setFontSize(9);
-    doc.text(
-      `Generated: ${new Date().toLocaleString('en-PH')}`,
-      pageWidth - 16,
-      48,
-      { align: 'right' }
-    );
+      drawPdfDoughnutChart(
+        doc,
+        'Financial Composition',
+        ['Income', 'Expenses', 'Net Revenue'],
+        [totalIncome, totalExpense, Math.max(netRevenue, 0)],
+        leftX,
+        96,
+        130,
+        54
+      );
+    } else {
+      drawPdfBarChart(
+        doc,
+        currentReport.mainChartTitle || 'Report Graph',
+        currentReport.labels || [],
+        currentReport.mainData || [],
+        leftX,
+        54,
+        130,
+        70
+      );
 
-    doc.text(
-      `Date Range: ${appliedFromDate || 'All'} to ${appliedToDate || 'All'}`,
-      16,
-      48
-    );
+      drawPdfDoughnutChart(
+        doc,
+        currentReport.statusChartTitle || 'Status Chart',
+        currentReport.statusLabels || [],
+        currentReport.statusData || [],
+        midX,
+        54,
+        62,
+        70
+      );
+
+      drawPdfInfoBox(
+        doc,
+        'Report Details',
+        [
+          `Total Table Records: ${(currentReport.rows || []).length}`,
+          `Graph Type: Bar graph`,
+          `Pie Chart Type: Doughnut chart`,
+        ],
+        rightX,
+        54,
+        72
+      );
+    }
+
+    drawPdfInterpretation(doc, interpretation, leftX, 154, pageWidth - 20);
 
     autoTable(doc, {
       head: [getExportHeaders()],
       body: pdfRows,
-      startY: 56,
+      startY: 202,
       theme: 'grid',
       margin: { left: 10, right: 10 },
       styles: {
         font: 'helvetica',
-        fontSize: 8,
-        cellPadding: 3,
+        fontSize: 7.5,
+        cellPadding: 2.8,
         textColor: [15, 23, 42],
         fillColor: [255, 255, 255],
         lineColor: [229, 231, 235],
         lineWidth: 0.25,
+        overflow: 'linebreak',
       },
       headStyles: {
         fillColor: [212, 175, 55],
@@ -1055,19 +1377,18 @@ export default function AdminReports() {
         fillColor: [255, 253, 242],
       },
       didDrawPage() {
-        doc.setTextColor(100, 116, 139);
-        doc.setFontSize(8);
-        doc.text('Generated by ToothConnect', 10, pageHeight - 8);
-        doc.text(
-          `Page ${doc.internal.getNumberOfPages()}`,
-          pageWidth - 10,
-          pageHeight - 8,
-          { align: 'right' }
-        );
+        drawPdfFooter(doc, pageWidth, pageHeight);
       },
     });
 
-    doc.save(createFileName(getReportTitle(), 'pdf'));
+    const totalPages = doc.internal.getNumberOfPages();
+
+    for (let page = 1; page <= totalPages; page += 1) {
+      doc.setPage(page);
+      drawPdfFooter(doc, pageWidth, pageHeight);
+    }
+
+    doc.save(createFileName(title, 'pdf'));
   }
 
   return (
@@ -1269,6 +1590,50 @@ export default function AdminReports() {
                 <i className="fi fi-rr-file-pdf"></i>
                 PDF
               </button>
+            </div>
+          </section>
+
+          <section style={styles.interpretationCard}>
+            <div style={styles.interpretationHeader}>
+              <div>
+                <h3 style={styles.interpretationTitle}>Report Interpretation</h3>
+                <p style={styles.interpretationSubtitle}>
+                  Explanation of the graph, doughnut chart, table, and recommended action.
+                </p>
+              </div>
+            </div>
+
+            <div style={styles.interpretationGrid}>
+              <InterpretationItem
+                styles={styles}
+                title="Overview"
+                text={currentInterpretation.overview}
+              />
+              <InterpretationItem
+                styles={styles}
+                title="Graph"
+                text={currentInterpretation.graph}
+              />
+              <InterpretationItem
+                styles={styles}
+                title="Pie Chart"
+                text={currentInterpretation.pie}
+              />
+              <InterpretationItem
+                styles={styles}
+                title="Table"
+                text={currentInterpretation.table}
+              />
+              <InterpretationItem
+                styles={styles}
+                title="Insight"
+                text={currentInterpretation.insight}
+              />
+              <InterpretationItem
+                styles={styles}
+                title="Recommendation"
+                text={currentInterpretation.recommendation}
+              />
             </div>
           </section>
 
@@ -1493,32 +1858,27 @@ export default function AdminReports() {
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
           <div style={styles.modalContent}>
-            <div style={styles.modalIcon}>
-              <i
-                className="fi fi-rr-sign-out-alt"
-                style={styles.modalIconText}
-              ></i>
-            </div>
-
             <h2 style={styles.modalTitle}>Confirm Logout</h2>
+
+            <div style={styles.modalDivider}></div>
 
             <p style={styles.modalText}>Are you sure you want to log out?</p>
 
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-
-              <button
-                type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={closeLogoutModal}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>
@@ -1549,6 +1909,15 @@ export default function AdminReports() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InterpretationItem({ styles, title, text }) {
+  return (
+    <div style={styles.interpretationItem}>
+      <h4 style={styles.interpretationItemTitle}>{title}</h4>
+      <p style={styles.interpretationItemText}>{text}</p>
     </div>
   );
 }

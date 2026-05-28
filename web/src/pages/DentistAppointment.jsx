@@ -983,32 +983,29 @@ export default function DentistAppointment() {
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
           <div style={styles.modalContent}>
-            <div style={styles.modalIcon}>
-              <i
-                className="fi fi-rr-sign-out-alt"
-                style={styles.modalIconText}
-              ></i>
-            </div>
-
             <h2 style={styles.modalTitle}>Confirm Logout</h2>
 
-            <p style={styles.modalText}>Are you sure you want to log out?</p>
+            <div style={styles.modalDivider}></div>
+
+            <p style={styles.modalText}>
+              Are you sure you want to log out?
+            </p>
 
             <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-
               <button
                 type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={closeLogoutModal}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>

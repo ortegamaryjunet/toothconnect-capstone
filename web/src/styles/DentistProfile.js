@@ -25,23 +25,25 @@
       height: '100vh',
       background: '#ffffff',
       borderRight: '1px solid #e5e7eb',
-      padding: isMobile ? '18px 10px' : '22px 16px',
+      padding: isMobile ? '16px 8px' : isTablet ? '18px 10px' : '22px 16px',
       zIndex: 200,
       display: 'flex',
       flexDirection: 'column',
       boxSizing: 'border-box',
+      overflowX: 'hidden',
     },
 
     logo: {
       textAlign: 'center',
-      paddingBottom: 22,
-      marginBottom: 14,
+      paddingBottom: isMobile || isTablet ? 18 : 22,
+      marginBottom: isMobile || isTablet ? 12 : 14,
       borderBottom: '1px solid #e5e7eb',
     },
 
     logoImg: {
-      width: isMobile ? 55 : 125,
+      width: isMobile ? 52 : isTablet ? 58 : 125,
       height: 'auto',
+      maxWidth: '100%',
     },
 
     menu: {
@@ -54,9 +56,9 @@
     menuItem: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isMobile ? 'center' : 'flex-start',
-      gap: 12,
-      padding: '13px 14px',
+      justifyContent: isMobile || isTablet ? 'center' : 'flex-start',
+      gap: isMobile || isTablet ? 0 : 12,
+      padding: isMobile || isTablet ? '13px 0' : '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
@@ -67,18 +69,22 @@
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
     },
 
     menuItemIcon: {
-      marginRight: isMobile ? 0 : 12,
+      marginRight: isMobile || isTablet ? 0 : 12,
       fontSize: 18,
       verticalAlign: 'middle',
+      flexShrink: 0,
     },
 
     menuItemText: {
-      display: isMobile ? 'none' : 'inline',
+      display: isMobile || isTablet ? 'none' : 'inline',
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.15,
     },
 
     menuItemActive: {
@@ -89,7 +95,7 @@
 
     logoutSection: {
       marginTop: 'auto',
-      paddingTop: isTablet ? 14 : 18,
+      paddingTop: isMobile || isTablet ? 14 : 18,
       borderTop: '1px solid #e5e7eb',
     },
 
@@ -111,13 +117,13 @@
       top: 0,
       left: sidebarWidth,
       right: 0,
-      height: 78,
+      height: isMobile ? 72 : 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: isMobile ? '0 14px' : '0 28px',
+      padding: isMobile ? '0 12px' : isTablet ? '0 18px' : '0 28px',
       zIndex: 150,
       boxSizing: 'border-box',
     },
@@ -127,6 +133,7 @@
       alignItems: 'center',
       gap: 18,
       height: '100%',
+      minWidth: 0,
     },
 
     doctorProfile: {
@@ -134,10 +141,11 @@
       alignItems: 'center',
       gap: 10,
       height: 52,
-      padding: '0 12px',
+      padding: isMobile ? '0 10px' : '0 12px',
       borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
+      minWidth: 0,
     },
 
     avatarSmall: {
@@ -149,6 +157,7 @@
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
     },
 
     avatarIcon: {
@@ -157,6 +166,7 @@
 
     doctorInfo: {
       display: isMobile ? 'none' : 'block',
+      minWidth: 0,
     },
 
     doctorName: {
@@ -164,6 +174,7 @@
       fontSize: 14,
       fontWeight: 600,
       color: '#0f172a',
+      whiteSpace: 'nowrap',
     },
 
     doctorSpecialization: {
@@ -171,10 +182,17 @@
       textAlign: 'left',
       color: '#64748b',
       marginTop: 2,
+      whiteSpace: 'nowrap',
     },
 
     mainContent: {
-      padding: isMobile ? '96px 14px 22px' : '104px 28px 28px',
+      padding: isMobile
+        ? '88px 12px 18px'
+        : isTablet
+          ? '96px 18px 22px'
+          : isSmallScreen
+            ? '98px 20px 24px'
+            : '104px 28px 28px',
       boxSizing: 'border-box',
       width: '100%',
       maxWidth: '100%',
@@ -184,16 +202,16 @@
     heroCard: {
       position: 'relative',
       width: '100%',
-      minHeight: isMobile ? 170 : 225,
-      borderRadius: isMobile ? 22 : 28,
+      minHeight: isMobile ? 165 : isTablet ? 190 : 225,
+      borderRadius: isMobile ? 20 : 28,
       background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
-      padding: isMobile ? 20 : 30,
-      marginBottom: 22,
+      padding: isMobile ? 18 : isTablet ? 22 : 30,
+      marginBottom: isMobile ? 16 : 22,
       overflow: 'hidden',
       display: 'flex',
       alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'space-between',
-      gap: 24,
+      gap: 20,
       flexDirection: isMobile ? 'column' : 'row',
       textAlign: 'left',
       boxSizing: 'border-box',
@@ -209,6 +227,9 @@
       marginBottom: 16,
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+      lineHeight: 1.45,
+      wordBreak: 'break-word',
     },
 
     heroBadge: {
@@ -225,7 +246,7 @@
 
     heroTitle: {
       maxWidth: 760,
-      fontSize: isMobile ? 23 : 31,
+      fontSize: isMobile ? 22 : isTablet ? 26 : 31,
       color: '#ffffff',
       marginBottom: 12,
       marginTop: 0,
@@ -240,8 +261,8 @@
     },
 
     heroIcon: {
-      width: isMobile ? 70 : 90,
-      height: isMobile ? 70 : 90,
+      width: isMobile ? 68 : isTablet ? 78 : 90,
+      height: isMobile ? 68 : isTablet ? 78 : 90,
       borderRadius: 24,
       background: 'rgba(255, 255, 255, 0.22)',
       display: 'flex',
@@ -252,7 +273,7 @@
     },
 
     heroIconText: {
-      fontSize: isMobile ? 32 : 42,
+      fontSize: isMobile ? 32 : isTablet ? 36 : 42,
       color: '#ffffff',
       verticalAlign: 'middle',
     },
@@ -260,22 +281,27 @@
     profileHeader: {
       background: '#ffffff',
       border: '1px solid #edf0f5',
-      borderRadius: isMobile ? 20 : 22,
-      padding: isMobile ? 18 : 24,
+      borderRadius: isMobile ? 18 : 22,
+      padding: isMobile ? 16 : isTablet ? 20 : 24,
       display: 'flex',
       alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'space-between',
-      flexDirection: isMobile ? 'column' : 'row',
-      gap: isMobile ? 18 : 16,
+      flexDirection: isSmallScreen ? 'column' : 'row',
+      gap: isMobile ? 16 : 18,
       boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
-      marginBottom: 24,
+      marginBottom: isMobile ? 18 : 24,
       boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
+      overflow: 'hidden',
     },
 
     profileLeft: {
       display: 'flex',
-      alignItems: 'center',
+      alignItems: isMobile ? 'flex-start' : 'center',
       gap: 16,
+      width: isSmallScreen ? '100%' : 'auto',
+      minWidth: 0,
     },
 
     profileAvatar: {
@@ -295,10 +321,12 @@
     },
 
     profileName: {
-      fontSize: isMobile ? 22 : 28,
+      fontSize: isMobile ? 22 : isTablet ? 25 : 28,
       color: '#0f172a',
       margin: 0,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.2,
+      wordBreak: 'break-word',
     },
 
     profileSubtext: {
@@ -307,15 +335,18 @@
       color: '#64748b',
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.4,
+      wordBreak: 'break-word',
     },
 
     profileActions: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isMobile ? 'stretch' : 'flex-end',
+      justifyContent: isSmallScreen ? 'stretch' : 'flex-end',
       gap: 10,
-      width: isMobile ? '100%' : 'auto',
+      width: isSmallScreen ? '100%' : 'auto',
       flexDirection: isMobile ? 'column' : 'row',
+      flexWrap: isMobile ? 'nowrap' : 'wrap',
     },
 
     editBtn: {
@@ -332,6 +363,8 @@
       gap: 8,
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
     },
 
     pdfBtn: {
@@ -370,17 +403,20 @@
     profileGrid: {
       display: 'grid',
       gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr',
-      gap: 24,
+      gap: isMobile ? 16 : 24,
+      width: '100%',
+      minWidth: 0,
     },
 
     card: {
       background: '#ffffff',
       border: '1px solid #edf0f5',
-      borderRadius: isMobile ? 20 : 22,
-      padding: isMobile ? 18 : 24,
+      borderRadius: isMobile ? 18 : 22,
+      padding: isMobile ? 16 : isTablet ? 20 : 24,
       boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
       boxSizing: 'border-box',
       minWidth: 0,
+      overflow: 'hidden',
     },
 
     fullCard: {
@@ -391,21 +427,22 @@
       display: 'flex',
       alignItems: 'center',
       gap: 12,
-      marginBottom: 20,
-      paddingBottom: 16,
+      marginBottom: isMobile ? 16 : 20,
+      paddingBottom: isMobile ? 14 : 16,
       borderBottom: '1px solid #e2e8f0',
+      minWidth: 0,
     },
 
     cardTitleIcon: {
-      width: 42,
-      height: 42,
+      width: isMobile ? 38 : 42,
+      height: isMobile ? 38 : 42,
       background: '#dbeafe',
       color: '#2563eb',
       borderRadius: 14,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: 19,
+      fontSize: isMobile ? 17 : 19,
       flexShrink: 0,
     },
 
@@ -414,12 +451,15 @@
       color: '#0f172a',
       margin: 0,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.25,
+      wordBreak: 'break-word',
     },
 
     infoGrid: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-      gap: 16,
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+      gap: isMobile ? 12 : 16,
+      minWidth: 0,
     },
 
     infoGridFour: {
@@ -427,17 +467,20 @@
       gridTemplateColumns: isMobile
         ? '1fr'
         : isSmallScreen
-          ? '1fr 1fr'
-          : 'repeat(4, 1fr)',
-      gap: 16,
+          ? 'repeat(2, minmax(0, 1fr))'
+          : 'repeat(4, minmax(0, 1fr))',
+      gap: isMobile ? 12 : 16,
+      minWidth: 0,
     },
 
     infoItem: {
       background: '#f8fafc',
       border: '1px solid #e2e8f0',
       borderRadius: 16,
-      padding: 16,
+      padding: isMobile ? 14 : 16,
       boxSizing: 'border-box',
+      minWidth: 0,
+      overflow: 'hidden',
     },
 
     infoItemFull: {
@@ -450,6 +493,7 @@
       fontSize: 13,
       marginBottom: 7,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.3,
     },
 
     infoValue: {
@@ -458,6 +502,7 @@
       fontWeight: 700,
       lineHeight: 1.4,
       fontFamily: 'Arial, sans-serif',
+      wordBreak: 'break-word',
     },
 
     subTitle: {
@@ -466,6 +511,7 @@
       fontWeight: 700,
       color: '#0f172a',
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.3,
     },
 
     emptyBox: {
@@ -477,6 +523,8 @@
       fontSize: 14,
       textAlign: 'center',
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.5,
+      boxSizing: 'border-box',
     },
 
     editOverlay: {
@@ -503,7 +551,7 @@
     },
 
     editModalHeader: {
-      padding: isMobile ? '20px 18px' : '22px 24px',
+      padding: isMobile ? '18px 16px' : '22px 24px',
       borderBottom: '1px solid #e2e8f0',
       display: 'flex',
       alignItems: 'center',
@@ -516,6 +564,7 @@
       color: '#0f172a',
       margin: 0,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.25,
     },
 
     modalClose: {
@@ -531,18 +580,19 @@
     },
 
     editForm: {
-      padding: isMobile ? 18 : 24,
+      padding: isMobile ? 16 : 24,
     },
 
     formGrid: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
       gap: 16,
     },
 
     formGroup: {
       display: 'flex',
       flexDirection: 'column',
+      minWidth: 0,
     },
 
     formGroupFull: {
@@ -568,6 +618,7 @@
       color: '#0f172a',
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+      minWidth: 0,
     },
 
     formTextarea: {
@@ -593,6 +644,7 @@
       color: '#ffffff',
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
+      whiteSpace: 'nowrap',
     },
 
     cancelEditBtn: {
@@ -605,62 +657,60 @@
       color: '#334155',
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
+      whiteSpace: 'nowrap',
     },
 
     modal: {
-      display: 'flex',
       position: 'fixed',
       inset: 0,
       zIndex: 9999,
-      background: 'rgba(15, 23, 42, 0.55)',
-      backdropFilter: 'blur(4px)',
-      justifyContent: 'center',
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
       alignItems: 'center',
+      justifyContent: 'center',
       padding: isMobile ? 18 : 20,
       boxSizing: 'border-box',
     },
 
     modalContent: {
-      width: isMobile ? '92%' : 380,
-      maxWidth: 380,
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
       background: '#ffffff',
-      borderRadius: isMobile ? 20 : 22,
-      padding: isMobile ? '24px 18px' : 30,
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.2)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
     },
 
     modalIcon: {
-      width: 70,
-      height: 70,
-      margin: '0 auto 16px',
-      borderRadius: '50%',
-      background: '#fee2e2',
-      color: '#dc2626',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      display: 'none',
     },
 
     modalIconText: {
-      fontSize: 28,
+      display: 'none',
     },
 
     modalTitle: {
-      fontSize: 21,
-      color: '#0f172a',
-      marginBottom: 8,
-      marginTop: 0,
       fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    modalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
     },
 
     modalText: {
-      fontSize: 15,
-      color: '#64748b',
-      marginBottom: 24,
-      marginTop: 0,
       fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
     },
 
     modalActions: {
@@ -671,24 +721,24 @@
 
     modalButton: {
       flex: 1,
+      width: isMobile ? '100%' : 'auto',
+      height: 38,
       border: 'none',
-      borderRadius: 12,
-      padding: 12,
-      cursor: 'pointer',
-      fontSize: 15,
+      borderRadius: 8,
       fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
     },
 
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
-      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
-      color: 'black',
-      fontWeight: 'bold',
+      color: '#334155',
     },
 
     notificationBadge: {

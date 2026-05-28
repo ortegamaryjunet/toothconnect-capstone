@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import createDentistScheduleStyles from '../styles/DentistSchedule';
 import { useAuth } from '../auth/AuthContext';
@@ -8,10 +8,20 @@ import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
 import clinicLogo from '../assets/dentistImages/clinic-logo.png';
 
+function normalizeDate(value) {
+  if (!value) return '';
+  return String(value).split('T')[0];
+}
+
 function formatReadableDate(value) {
-  if (!value) return '-';
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return value;
+  const cleanValue = normalizeDate(value);
+
+  if (!cleanValue) return '-';
+
+  const parsed = new Date(`${cleanValue}T00:00:00`);
+
+  if (Number.isNaN(parsed.getTime())) return cleanValue;
+
   return parsed.toLocaleDateString('en-PH', {
     year: 'numeric',
     month: 'long',
@@ -20,20 +30,21 @@ function formatReadableDate(value) {
 }
 
 function formatDateRange(from, to) {
-  const normalize = (value) => {
-    if (!value) return '';
-    return String(value).split('T')[0];
-  };
-  const start = normalize(from);
-  const end = normalize(to);
+  const start = normalizeDate(from);
+  const end = normalizeDate(to);
+
   if (start && end) return `${start} - ${end}`;
+
   return start || end || '-';
 }
 
 function formatSubmittedDate(value) {
   if (!value) return '-';
+
   const parsed = new Date(value);
+
   if (Number.isNaN(parsed.getTime())) return value;
+
   return parsed.toLocaleDateString('en-PH', {
     month: 'short',
     day: 'numeric',
@@ -41,20 +52,70 @@ function formatSubmittedDate(value) {
   });
 }
 
+function getLeaveDays(from, to) {
+  const start = normalizeDate(from);
+  const end = normalizeDate(to);
+
+  if (!start || !end) return 0;
+
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return 0;
+  }
+
+  const difference = endDate.getTime() - startDate.getTime();
+
+  if (difference < 0) return 0;
+
+  return Math.floor(difference / 86400000) + 1;
+}
+
+function dateRangesOverlap(aFrom, aTo, bFrom, bTo) {
+  const aStart = new Date(`${normalizeDate(aFrom)}T00:00:00`);
+  const aEnd = new Date(`${normalizeDate(aTo)}T00:00:00`);
+  const bStart = new Date(`${normalizeDate(bFrom)}T00:00:00`);
+  const bEnd = new Date(`${normalizeDate(bTo)}T00:00:00`);
+
+  if (
+    Number.isNaN(aStart.getTime()) ||
+    Number.isNaN(aEnd.getTime()) ||
+    Number.isNaN(bStart.getTime()) ||
+    Number.isNaN(bEnd.getTime())
+  ) {
+    return false;
+  }
+
+  return aStart <= bEnd && bStart <= aEnd;
+}
+
 export default function DentistSchedule() {
   const { user } = useAuth();
+
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
+
+  const [validationTitle, setValidationTitle] = useState('');
+  const [validationMessage, setValidationMessage] = useState('');
+  const [requestToCancel, setRequestToCancel] = useState(null);
+
   const [serviceNames, setServiceNames] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
-  const [screenWidth, setScreenWidth] = useState(
-    typeof window !== 'undefined' ? window.innerWidth : 1200
-  );
+  const [requestHistory, setRequestHistory] = useState([]);
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
-  const isMobile = screenWidth <= 768;
-  const isTablet = screenWidth > 768 && screenWidth <= 1200;
-  const isSmallScreen = screenWidth <= 1200;
-
-  const styles = createDentistScheduleStyles({ isMobile, isTablet, isSmallScreen });
+  const [leaveForm, setLeaveForm] = useState({
+    dateFrom: '',
+    dateTo: '',
+    reason: '',
+  });
 
   const [weeklySchedule, setWeeklySchedule] = useState([
     { day: 'Sunday', status: 'Off', time: '-', branchAddress: null },
@@ -65,46 +126,64 @@ export default function DentistSchedule() {
     { day: 'Friday', status: 'Off', time: '-', branchAddress: null },
     { day: 'Saturday', status: 'Off', time: '-', branchAddress: null },
   ]);
+
   const [scheduleInfo, setScheduleInfo] = useState({
     branchName: '-',
     workingDays: '-',
     workingTime: '-',
     todayBranchAddress: 'Off',
   });
-  const [requestHistory, setRequestHistory] = useState([]);
-  const [requestLoading, setRequestLoading] = useState(false);
-  const [submitError, setSubmitError] = useState('');
-  const [selectedRequest, setSelectedRequest] = useState(null);
 
-  const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [leaveForm, setLeaveForm] = useState({ dateFrom: '', dateTo: '', reason: '' });
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
 
-  function loadRequests() {
-    setRequestLoading(true);
-    api.get('/dentist-dashboard/schedule-requests')
-      .then((res) => setRequestHistory(res.data || []))
-      .catch(() => {})
-      .finally(() => setRequestLoading(false));
-  }
+  const isMobile = screenWidth <= 768;
+  const isTablet = screenWidth > 768 && screenWidth <= 1200;
+  const isSmallScreen = screenWidth <= 1200;
 
-  useEffect(() => { loadRequests(); }, []);
+  const styles = createDentistScheduleStyles({
+    isMobile,
+    isTablet,
+    isSmallScreen,
+  });
+
+  const leaveDays = useMemo(() => {
+    return getLeaveDays(leaveForm.dateFrom, leaveForm.dateTo);
+  }, [leaveForm.dateFrom, leaveForm.dateTo]);
+
+  const pendingLeaveRequest = useMemo(() => {
+    return requestHistory.find((request) => {
+      return (
+        request.request_type === 'leave' &&
+        String(request.status || '').toLowerCase() === 'pending'
+      );
+    });
+  }, [requestHistory]);
 
   useEffect(() => {
-    api.get('/auth/staff-profile/me')
+    loadRequests();
+  }, []);
+
+  useEffect(() => {
+    api
+      .get('/auth/staff-profile/me')
       .then((res) => setServiceNames(res.data.profile?.serviceNames || ''))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    api.get('/dentist-dashboard/schedule')
+    api
+      .get('/dentist-dashboard/schedule')
       .then((res) => {
-        const d = res.data;
-        setWeeklySchedule(d.weeklySchedule || []);
+        const data = res.data;
+
+        setWeeklySchedule(data.weeklySchedule || []);
         setScheduleInfo({
-          branchName: d.branchName || '-',
-          workingDays: d.workingDays || '-',
-          workingTime: d.workingTime || '-',
-          todayBranchAddress: d.todayBranchAddress || 'Off',
+          branchName: data.branchName || '-',
+          workingDays: data.workingDays || '-',
+          workingTime: data.workingTime || '-',
+          todayBranchAddress: data.todayBranchAddress || 'Off',
         });
       })
       .catch(() => {});
@@ -140,22 +219,33 @@ export default function DentistSchedule() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showLeaveModal || selectedRequest) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    const hasOpenModal =
+      showLogoutModal ||
+      showLeaveModal ||
+      selectedRequest ||
+      showValidationModal ||
+      showCancelConfirmModal;
+
+    document.body.style.overflow = hasOpenModal ? 'hidden' : '';
 
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showLeaveModal, selectedRequest]);
+  }, [
+    showLogoutModal,
+    showLeaveModal,
+    selectedRequest,
+    showValidationModal,
+    showCancelConfirmModal,
+  ]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
-        setShowLeaveModal(false);
+        closeLeaveModal();
+        closeValidationModal();
+        closeCancelConfirmModal();
         setSelectedRequest(null);
       }
     }
@@ -166,6 +256,28 @@ export default function DentistSchedule() {
       document.removeEventListener('keydown', handleEscape);
     };
   }, []);
+
+  function loadRequests() {
+    setRequestLoading(true);
+
+    api
+      .get('/dentist-dashboard/schedule-requests')
+      .then((res) => setRequestHistory(res.data || []))
+      .catch(() => {})
+      .finally(() => setRequestLoading(false));
+  }
+
+  function openValidationModal(title, message) {
+    setValidationTitle(title);
+    setValidationMessage(message);
+    setShowValidationModal(true);
+  }
+
+  function closeValidationModal() {
+    setShowValidationModal(false);
+    setValidationTitle('');
+    setValidationMessage('');
+  }
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -179,6 +291,16 @@ export default function DentistSchedule() {
     window.location.href = '/login';
   }
 
+  function closeLeaveModal() {
+    setShowLeaveModal(false);
+    setSubmitError('');
+  }
+
+  function closeCancelConfirmModal() {
+    setShowCancelConfirmModal(false);
+    setRequestToCancel(null);
+  }
+
   function handleModalOverlayClick(event) {
     if (event.target === event.currentTarget) {
       closeLogoutModal();
@@ -186,32 +308,166 @@ export default function DentistSchedule() {
   }
 
   function handleLeaveOverlayClick(event) {
-    if (event.target === event.currentTarget) setShowLeaveModal(false);
+    if (event.target === event.currentTarget) {
+      closeLeaveModal();
+    }
   }
 
   function handleDetailsOverlayClick(event) {
-    if (event.target === event.currentTarget) setSelectedRequest(null);
+    if (event.target === event.currentTarget) {
+      setSelectedRequest(null);
+    }
+  }
+
+  function handleValidationOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeValidationModal();
+    }
+  }
+
+  function handleCancelConfirmOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeCancelConfirmModal();
+    }
   }
 
   function handleLeaveChange(field, value) {
-    setLeaveForm((prev) => ({ ...prev, [field]: value }));
+    setSubmitError('');
+
+    setLeaveForm((prev) => {
+      const nextForm = {
+        ...prev,
+        [field]: value,
+      };
+
+      if (
+        field === 'dateFrom' &&
+        nextForm.dateTo &&
+        value &&
+        nextForm.dateTo < value
+      ) {
+        nextForm.dateTo = value;
+      }
+
+      return nextForm;
+    });
+  }
+
+  function validateLeaveForm() {
+    if (!leaveForm.dateFrom || !leaveForm.dateTo) {
+      openValidationModal(
+        'Incomplete Leave Date',
+        'Please select both From Date and To Date before submitting your leave request.'
+      );
+      return false;
+    }
+
+    if (leaveForm.dateTo < leaveForm.dateFrom) {
+      openValidationModal(
+        'Invalid Date Range',
+        'To Date must not be earlier than From Date.'
+      );
+      return false;
+    }
+
+    if (!leaveForm.reason.trim()) {
+      openValidationModal(
+        'Reason Required',
+        'Please enter the reason for your leave request.'
+      );
+      return false;
+    }
+
+    const duplicateRequest = requestHistory.find((request) => {
+      const status = String(request.status || '').toLowerCase();
+
+      if (request.request_type !== 'leave') return false;
+      if (!['pending', 'approved'].includes(status)) return false;
+
+      return dateRangesOverlap(
+        leaveForm.dateFrom,
+        leaveForm.dateTo,
+        request.date_from,
+        request.date_to
+      );
+    });
+
+    if (duplicateRequest) {
+      openValidationModal(
+        'Leave Request Already Exists',
+        'You already have a leave request with the same or overlapping date range. Please cancel the first leave request before changing the date range.'
+      );
+      return false;
+    }
+
+    return true;
   }
 
   function handleLeaveSubmit() {
     setSubmitError('');
-    api.post('/dentist-dashboard/schedule-requests', {
-      request_type: 'leave',
-      date_from: leaveForm.dateFrom,
-      date_to: leaveForm.dateTo,
-      reason: leaveForm.reason,
-    })
+
+    if (!validateLeaveForm()) {
+      return;
+    }
+
+    setSubmitLoading(true);
+
+    api
+      .post('/dentist-dashboard/schedule-requests', {
+        request_type: 'leave',
+        date_from: leaveForm.dateFrom,
+        date_to: leaveForm.dateTo,
+        duration: `${leaveDays} ${leaveDays === 1 ? 'day' : 'days'}`,
+        reason: leaveForm.reason,
+      })
       .then(() => {
         setShowLeaveModal(false);
         setLeaveForm({ dateFrom: '', dateTo: '', reason: '' });
         loadRequests();
+        openValidationModal(
+          'Leave Request Submitted',
+          'Your leave request has been submitted successfully.'
+        );
       })
       .catch((err) => {
-        setSubmitError(err.response?.data?.message || 'Failed to submit request');
+        setSubmitError(
+          err.response?.data?.message || 'Failed to submit request.'
+        );
+      })
+      .finally(() => {
+        setSubmitLoading(false);
+      });
+  }
+
+  function openCancelRequestModal(request) {
+    setRequestToCancel(request);
+    setShowCancelConfirmModal(true);
+  }
+
+  function handleCancelRequest() {
+    if (!requestToCancel) return;
+
+    setCancelLoading(true);
+
+    api
+      .patch(`/dentist-dashboard/schedule-requests/${requestToCancel.id}/cancel`)
+      .then(() => {
+        closeCancelConfirmModal();
+        setSelectedRequest(null);
+        loadRequests();
+        openValidationModal(
+          'Leave Request Cancelled',
+          'Your leave request has been cancelled successfully.'
+        );
+      })
+      .catch((err) => {
+        openValidationModal(
+          'Cancel Failed',
+          err.response?.data?.message || 'Failed to cancel leave request.'
+        );
+      })
+      .finally(() => {
+        setCancelLoading(false);
       });
   }
 
@@ -224,7 +480,10 @@ export default function DentistSchedule() {
 
         <nav style={styles.menu}>
           <Link to="/dentist" style={styles.menuItem}>
-            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-chart-histogram"
+              style={styles.menuItemIcon}
+            ></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
@@ -289,7 +548,9 @@ export default function DentistSchedule() {
 
               <div style={styles.doctorInfo}>
                 <div style={styles.doctorName}>{user?.name || 'Dentist'}</div>
-                <div style={styles.doctorSpecialization}>{serviceNames || 'Dentist'}</div>
+                <div style={styles.doctorSpecialization}>
+                  {serviceNames || 'Dentist'}
+                </div>
               </div>
             </div>
           </div>
@@ -322,16 +583,26 @@ export default function DentistSchedule() {
 
             <div style={styles.infoCard}>
               <p style={styles.infoLabel}>Today's Branch</p>
-              <h3 style={styles.infoValue}>{scheduleInfo.todayBranchAddress || 'Off'}</h3>
+              <h3 style={styles.infoValue}>
+                {scheduleInfo.todayBranchAddress || 'Off'}
+              </h3>
             </div>
-            
+
             <section style={styles.actionCard}>
               <div style={styles.actionRow}>
                 <h2 style={styles.actionTitle}>Leave Request</h2>
                 <p style={styles.actionText}>
                   Submit a leave request for a day or multiple days.
                 </p>
+
+                {pendingLeaveRequest && (
+                  <p style={styles.warningText}>
+                    You have a pending leave request. Cancel it first before
+                    submitting another date range.
+                  </p>
+                )}
               </div>
+
               <button
                 type="button"
                 style={styles.primaryButton}
@@ -383,29 +654,49 @@ export default function DentistSchedule() {
 
             <section style={styles.card}>
               <div style={styles.sectionHeader}>
-                <h2 style={{ ...styles.sectionTitle, margin: 0 }}>Request History</h2>
+                <h2 style={{ ...styles.sectionTitle, margin: 0 }}>
+                  Request History
+                </h2>
               </div>
 
               <div style={styles.requestList}>
                 {requestLoading ? (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#64748b', fontSize: '13px' }}>
-                    Loading...
-                  </div>
+                  <div style={styles.emptyState}>Loading...</div>
                 ) : requestHistory.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#64748b', fontSize: '13px' }}>
-                    No requests found.
-                  </div>
+                  <div style={styles.emptyState}>No requests found.</div>
                 ) : (
                   requestHistory.map((request) => {
                     const isLeave = request.request_type === 'leave';
-                    const title = isLeave ? 'Leave Request' : 'Branch Transfer Request';
+                    const title = isLeave
+                      ? 'Leave Request'
+                      : 'Branch Transfer Request';
+
                     const subtitle = isLeave
-                      ? formatDateRange(request.date_from, request.date_to)
-                      : `To: ${request.requested_branch_name || '-'} (${request.transfer_type || ''})`;
-                    const statusLabel = request.status.charAt(0).toUpperCase() + request.status.slice(1);
-                    const isPending = request.status === 'pending';
-                    const isApproved = request.status === 'approved';
-                    const submittedDate = formatSubmittedDate(request.submitted_at);
+                      ? `${formatDateRange(
+                          request.date_from,
+                          request.date_to
+                        )} • ${getLeaveDays(
+                          request.date_from,
+                          request.date_to
+                        )} ${
+                          getLeaveDays(request.date_from, request.date_to) === 1
+                            ? 'day'
+                            : 'days'
+                        }`
+                      : `To: ${request.requested_branch_name || '-'} (${
+                          request.transfer_type || ''
+                        })`;
+
+                    const status = String(request.status || '').toLowerCase();
+                    const statusLabel =
+                      status.charAt(0).toUpperCase() + status.slice(1);
+
+                    const isPending = status === 'pending';
+                    const isApproved = status === 'approved';
+                    const isCancelled = status === 'cancelled';
+                    const submittedDate = formatSubmittedDate(
+                      request.submitted_at
+                    );
 
                     return (
                       <div key={request.id} style={styles.requestItem}>
@@ -416,7 +707,12 @@ export default function DentistSchedule() {
                               ? styles.pendingBadge
                               : isApproved
                                 ? styles.approvedBadge
-                                : { backgroundColor: '#fee2e2', color: '#b91c1c' }),
+                                : isCancelled
+                                  ? styles.cancelledBadge
+                                  : {
+                                      backgroundColor: '#fee2e2',
+                                      color: '#b91c1c',
+                                    }),
                           }}
                         >
                           {statusLabel}
@@ -428,14 +724,29 @@ export default function DentistSchedule() {
                         </div>
 
                         <div style={styles.requestDate}>
-                          <p style={styles.requestDateText}>{submittedDate}</p>
-                          <button
-                            type="button"
-                            style={styles.requestDetailsButton}
-                            onClick={() => setSelectedRequest(request)}
-                          >
-                            View Details
-                          </button>
+                          <p style={styles.requestDateText}>
+                            {submittedDate}
+                          </p>
+
+                          <div style={styles.requestButtonGroup}>
+                            <button
+                              type="button"
+                              style={styles.requestDetailsButton}
+                              onClick={() => setSelectedRequest(request)}
+                            >
+                              View Details
+                            </button>
+
+                            {isLeave && isPending && (
+                              <button
+                                type="button"
+                                style={styles.requestCancelButton}
+                                onClick={() => openCancelRequestModal(request)}
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -445,7 +756,8 @@ export default function DentistSchedule() {
 
               {requestHistory.length > 0 && (
                 <p style={styles.requestCount}>
-                  Showing {requestHistory.length} of {requestHistory.length} requests
+                  Showing {requestHistory.length} of {requestHistory.length}{' '}
+                  requests
                 </p>
               )}
             </section>
@@ -455,83 +767,94 @@ export default function DentistSchedule() {
 
       {showLeaveModal && (
         <div style={styles.modal} onClick={handleLeaveOverlayClick}>
-          <div
-            style={{
-              ...styles.modalContent,
-              width: isMobile ? '92vw' : '420px',
-              maxWidth: isMobile ? '92vw' : '90vw',
-              textAlign: 'left',
-              padding: isMobile ? '22px 18px' : undefined,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h2 style={{ ...styles.modalTitle, margin: 0 }}>Leave Request</h2>
+          <div style={styles.leaveModalContent}>
+            <div style={styles.leaveModalHeader}>
+              <h2 style={{ ...styles.modalTitle, margin: 0 }}>
+                Leave Request
+              </h2>
+
               <button
                 type="button"
-                onClick={() => setShowLeaveModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#64748b', lineHeight: 1 }}
+                onClick={closeLeaveModal}
+                style={styles.detailsCloseButton}
               >
                 &times;
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '12px', marginBottom: '14px' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#0f1b3d', marginBottom: '6px' }}>
-                  From Date
-                </label>
+            <div style={styles.leaveDateRow}>
+              <div style={styles.leaveDateField}>
+                <label style={styles.leaveLabel}>From Date</label>
+
                 <input
                   type="date"
                   value={leaveForm.dateFrom}
-                  onChange={(e) => handleLeaveChange('dateFrom', e.target.value)}
-                  style={{ width: '100%', height: '38px', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0 10px', fontSize: '13px', color: '#0f1b3d', boxSizing: 'border-box' }}
+                  onChange={(event) =>
+                    handleLeaveChange('dateFrom', event.target.value)
+                  }
+                  style={styles.leaveInput}
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#0f1b3d', marginBottom: '6px' }}>
-                  To Date
-                </label>
+
+              <div style={styles.leaveDateField}>
+                <label style={styles.leaveLabel}>To Date</label>
+
                 <input
                   type="date"
                   value={leaveForm.dateTo}
                   min={leaveForm.dateFrom || undefined}
-                  onChange={(e) => handleLeaveChange('dateTo', e.target.value)}
-                  style={{ width: '100%', height: '38px', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0 10px', fontSize: '13px', color: '#0f1b3d', boxSizing: 'border-box' }}
+                  onChange={(event) =>
+                    handleLeaveChange('dateTo', event.target.value)
+                  }
+                  style={styles.leaveInput}
                 />
               </div>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#0f1b3d', marginBottom: '6px' }}>
-                Reason
-              </label>
+            <div style={styles.leaveDaysBox}>
+              Leave Duration:{' '}
+              <strong>
+                {leaveDays > 0
+                  ? `${leaveDays} ${leaveDays === 1 ? 'day' : 'days'}`
+                  : '0 day'}
+              </strong>
+            </div>
+
+            <div style={styles.leaveReasonBox}>
+              <label style={styles.leaveLabel}>Reason</label>
+
               <textarea
                 rows={4}
                 placeholder="Describe the reason for your leave..."
                 value={leaveForm.reason}
-                onChange={(e) => handleLeaveChange('reason', e.target.value)}
-                style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px', fontSize: '13px', color: '#0f1b3d', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                onChange={(event) =>
+                  handleLeaveChange('reason', event.target.value)
+                }
+                style={styles.leaveTextarea}
               />
             </div>
 
-            {submitError ? <p style={{ color: '#ef4444', fontSize: '12px', marginBottom: '10px' }}>{submitError}</p> : null}
+            {submitError ? (
+              <p style={styles.submitErrorText}>{submitError}</p>
+            ) : null}
+
             <div style={{ ...styles.modalActions, justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
-                onClick={() => {
-                  setShowLeaveModal(false);
-                  setSubmitError('');
-                }}
+                onClick={closeLeaveModal}
+                disabled={submitLoading}
               >
                 Cancel
               </button>
+
               <button
                 type="button"
-                style={{ ...styles.modalButton, background: 'linear-gradient(135deg, #8b6508, #d4af37)', color: '#ffffff' }}
+                style={styles.submitLeaveButton}
                 onClick={handleLeaveSubmit}
+                disabled={submitLoading}
               >
-                Submit Request
+                {submitLoading ? 'Submitting...' : 'Submit Request'}
               </button>
             </div>
           </div>
@@ -542,7 +865,10 @@ export default function DentistSchedule() {
         <div style={styles.modal} onClick={handleDetailsOverlayClick}>
           <div style={{ ...styles.modalContent, ...styles.detailsModalContent }}>
             <div style={styles.detailsModalHeader}>
-              <h2 style={{ ...styles.modalTitle, margin: 0 }}>Submitted Request Details</h2>
+              <h2 style={{ ...styles.modalTitle, margin: 0 }}>
+                Submitted Request Details
+              </h2>
+
               <button
                 type="button"
                 onClick={() => setSelectedRequest(null)}
@@ -556,38 +882,69 @@ export default function DentistSchedule() {
               <div style={styles.detailsField}>
                 <div style={styles.detailsLabel}>Request Type</div>
                 <div style={styles.detailsValue}>
-                  {selectedRequest.request_type === 'leave' ? 'Leave Request' : 'Branch Transfer Request'}
+                  {selectedRequest.request_type === 'leave'
+                    ? 'Leave Request'
+                    : 'Branch Transfer Request'}
                 </div>
               </div>
 
               <div style={styles.detailsField}>
                 <div style={styles.detailsLabel}>Status</div>
                 <div style={styles.detailsValue}>
-                  {selectedRequest.status.charAt(0).toUpperCase() + selectedRequest.status.slice(1)}
+                  {String(selectedRequest.status || '').charAt(0).toUpperCase() +
+                    String(selectedRequest.status || '').slice(1)}
                 </div>
               </div>
 
               <div style={styles.detailsField}>
                 <div style={styles.detailsLabel}>Submitted On</div>
-                <div style={styles.detailsValue}>{formatSubmittedDate(selectedRequest.submitted_at)}</div>
+                <div style={styles.detailsValue}>
+                  {formatSubmittedDate(selectedRequest.submitted_at)}
+                </div>
               </div>
 
               {selectedRequest.request_type === 'leave' ? (
-                <div style={styles.detailsField}>
-                  <div style={styles.detailsLabel}>Date Range</div>
-                  <div style={styles.detailsValue}>
-                    {formatDateRange(selectedRequest.date_from, selectedRequest.date_to)}
+                <>
+                  <div style={styles.detailsField}>
+                    <div style={styles.detailsLabel}>Date Range</div>
+                    <div style={styles.detailsValue}>
+                      {formatDateRange(
+                        selectedRequest.date_from,
+                        selectedRequest.date_to
+                      )}
+                    </div>
                   </div>
-                </div>
+
+                  <div style={styles.detailsField}>
+                    <div style={styles.detailsLabel}>Leave Days</div>
+                    <div style={styles.detailsValue}>
+                      {getLeaveDays(
+                        selectedRequest.date_from,
+                        selectedRequest.date_to
+                      )}{' '}
+                      {getLeaveDays(
+                        selectedRequest.date_from,
+                        selectedRequest.date_to
+                      ) === 1
+                        ? 'day'
+                        : 'days'}
+                    </div>
+                  </div>
+                </>
               ) : (
                 <>
                   <div style={styles.detailsField}>
                     <div style={styles.detailsLabel}>Requested Branch</div>
-                    <div style={styles.detailsValue}>{selectedRequest.requested_branch_name || '-'}</div>
+                    <div style={styles.detailsValue}>
+                      {selectedRequest.requested_branch_name || '-'}
+                    </div>
                   </div>
+
                   <div style={styles.detailsField}>
                     <div style={styles.detailsLabel}>Transfer Type</div>
-                    <div style={styles.detailsValue}>{selectedRequest.transfer_type || '-'}</div>
+                    <div style={styles.detailsValue}>
+                      {selectedRequest.transfer_type || '-'}
+                    </div>
                   </div>
                 </>
               )}
@@ -595,21 +952,18 @@ export default function DentistSchedule() {
               {selectedRequest.date_from && (
                 <div style={styles.detailsField}>
                   <div style={styles.detailsLabel}>From Date</div>
-                  <div style={styles.detailsValue}>{formatReadableDate(selectedRequest.date_from)}</div>
+                  <div style={styles.detailsValue}>
+                    {formatReadableDate(selectedRequest.date_from)}
+                  </div>
                 </div>
               )}
 
               {selectedRequest.date_to && (
                 <div style={styles.detailsField}>
                   <div style={styles.detailsLabel}>To Date</div>
-                  <div style={styles.detailsValue}>{formatReadableDate(selectedRequest.date_to)}</div>
-                </div>
-              )}
-
-              {selectedRequest.duration && (
-                <div style={styles.detailsField}>
-                  <div style={styles.detailsLabel}>Duration</div>
-                  <div style={styles.detailsValue}>{selectedRequest.duration}</div>
+                  <div style={styles.detailsValue}>
+                    {formatReadableDate(selectedRequest.date_to)}
+                  </div>
                 </div>
               )}
 
@@ -622,6 +976,18 @@ export default function DentistSchedule() {
             </div>
 
             <div style={{ ...styles.modalActions, justifyContent: 'flex-end' }}>
+              {selectedRequest.request_type === 'leave' &&
+                String(selectedRequest.status || '').toLowerCase() ===
+                  'pending' && (
+                  <button
+                    type="button"
+                    style={styles.detailsCancelButton}
+                    onClick={() => openCancelRequestModal(selectedRequest)}
+                  >
+                    Cancel Leave
+                  </button>
+                )}
+
               <button
                 type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
@@ -634,35 +1000,86 @@ export default function DentistSchedule() {
         </div>
       )}
 
+      {showCancelConfirmModal && (
+        <div style={styles.validationModalOverlay} onClick={handleCancelConfirmOverlayClick}>
+          <div style={styles.validationModalContent}>
+            <h2 style={styles.validationModalTitle}>Cancel Leave Request</h2>
+
+            <div style={styles.validationModalDivider}></div>
+
+            <p style={styles.validationModalText}>
+              Are you sure you want to cancel this leave request?
+            </p>
+
+            <div style={styles.validationModalActions}>
+              <button
+                type="button"
+                style={styles.validationModalCancelButton}
+                onClick={closeCancelConfirmModal}
+                disabled={cancelLoading}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={styles.validationModalButton}
+                onClick={handleCancelRequest}
+                disabled={cancelLoading}
+              >
+                {cancelLoading ? 'Cancelling...' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showValidationModal && (
+        <div style={styles.validationModalOverlay} onClick={handleValidationOverlayClick}>
+          <div style={styles.validationModalContent}>
+            <h2 style={styles.validationModalTitle}>{validationTitle}</h2>
+
+            <div style={styles.validationModalDivider}></div>
+
+            <p style={styles.validationModalText}>{validationMessage}</p>
+
+            <button
+              type="button"
+              style={styles.validationModalButton}
+              onClick={closeValidationModal}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
+
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
           <div style={styles.modalContent}>
-            <div style={styles.modalIcon}>
-              <i
-                className="fi fi-rr-sign-out-alt"
-                style={styles.modalIconText}
-              ></i>
-            </div>
-
             <h2 style={styles.modalTitle}>Confirm Logout</h2>
 
-            <p style={styles.modalText}>Are you sure you want to log out?</p>
+            <div style={styles.modalDivider}></div>
+
+            <p style={styles.modalText}>
+              Are you sure you want to log out?
+            </p>
 
             <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-
               <button
                 type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={closeLogoutModal}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>

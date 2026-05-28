@@ -944,8 +944,12 @@ export default function AdminSettings() {
   function getStatusStyle(status) {
     const statusKey = String(status).toLowerCase();
 
-    if (['active', 'published'].includes(statusKey)) {
+    if (['active', 'published', 'approved', 'completed'].includes(statusKey)) {
       return { ...styles.statusBadge, ...styles.statusActive };
+    }
+
+    if (['pending', 'draft'].includes(statusKey)) {
+      return { ...styles.statusBadge, ...styles.statusPending };
     }
 
     if (['inactive', 'hidden'].includes(statusKey)) {
@@ -956,11 +960,15 @@ export default function AdminSettings() {
       return { ...styles.statusBadge, ...styles.statusOpening };
     }
 
-    if (['closed', 'discontinued'].includes(statusKey)) {
+    if (['closed', 'discontinued', 'rejected'].includes(statusKey)) {
       return { ...styles.statusBadge, ...styles.statusClosed };
     }
 
-    if (['renovation', 'draft'].includes(statusKey)) {
+    if (['cancelled', 'canceled'].includes(statusKey)) {
+      return { ...styles.statusBadge, ...styles.statusCancelled };
+    }
+
+    if (['renovation'].includes(statusKey)) {
       return { ...styles.statusBadge, ...styles.statusRenovation };
     }
 

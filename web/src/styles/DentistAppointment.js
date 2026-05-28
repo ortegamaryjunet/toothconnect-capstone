@@ -25,23 +25,25 @@
       height: '100vh',
       background: '#ffffff',
       borderRight: '1px solid #e5e7eb',
-      padding: isMobile ? '18px 10px' : '22px 16px',
+      padding: isMobile ? '16px 8px' : isTablet ? '18px 10px' : '22px 16px',
       zIndex: 200,
       display: 'flex',
       flexDirection: 'column',
       boxSizing: 'border-box',
+      overflowX: 'hidden',
     },
 
     logo: {
       textAlign: 'center',
-      paddingBottom: 22,
-      marginBottom: 14,
+      paddingBottom: isMobile || isTablet ? 18 : 22,
+      marginBottom: isMobile || isTablet ? 12 : 14,
       borderBottom: '1px solid #e5e7eb',
     },
 
     logoImg: {
-      width: isMobile ? 55 : 125,
+      width: isMobile ? 52 : isTablet ? 58 : 125,
       height: 'auto',
+      maxWidth: '100%',
     },
 
     menu: {
@@ -54,9 +56,9 @@
     menuItem: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isMobile ? 'center' : 'flex-start',
-      gap: 12,
-      padding: '13px 14px',
+      justifyContent: isMobile || isTablet ? 'center' : 'flex-start',
+      gap: isMobile || isTablet ? 0 : 12,
+      padding: isMobile || isTablet ? '13px 0' : '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
@@ -67,18 +69,22 @@
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
     },
 
     menuItemIcon: {
-      marginRight: isMobile ? 0 : 12,
+      marginRight: isMobile || isTablet ? 0 : 12,
       fontSize: 18,
       verticalAlign: 'middle',
+      flexShrink: 0,
     },
 
     menuItemText: {
-      display: isMobile ? 'none' : 'inline',
+      display: isMobile || isTablet ? 'none' : 'inline',
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.15,
     },
 
     menuItemActive: {
@@ -89,7 +95,7 @@
 
     logoutSection: {
       marginTop: 'auto',
-      paddingTop: isTablet ? 14 : 18,
+      paddingTop: isMobile || isTablet ? 14 : 18,
       borderTop: '1px solid #e5e7eb',
     },
 
@@ -111,13 +117,13 @@
       top: 0,
       left: sidebarWidth,
       right: 0,
-      height: 78,
+      height: isMobile ? 72 : 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: isMobile ? '0 14px' : '0 28px',
+      padding: isMobile ? '0 12px' : isTablet ? '0 18px' : '0 28px',
       zIndex: 150,
       boxSizing: 'border-box',
     },
@@ -127,6 +133,7 @@
       alignItems: 'center',
       gap: 18,
       height: '100%',
+      minWidth: 0,
     },
 
     doctorProfile: {
@@ -134,10 +141,11 @@
       alignItems: 'center',
       gap: 10,
       height: 52,
-      padding: '0 12px',
+      padding: isMobile ? '0 10px' : '0 12px',
       borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
+      minWidth: 0,
     },
 
     avatar: {
@@ -149,6 +157,7 @@
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
     },
 
     avatarIcon: {
@@ -157,6 +166,7 @@
 
     doctorInfo: {
       display: isMobile ? 'none' : 'block',
+      minWidth: 0,
     },
 
     doctorName: {
@@ -164,6 +174,7 @@
       fontSize: 14,
       fontWeight: 600,
       color: '#0f172a',
+      whiteSpace: 'nowrap',
     },
 
     doctorSpecialization: {
@@ -171,10 +182,17 @@
       textAlign: 'left',
       color: '#64748b',
       marginTop: 2,
+      whiteSpace: 'nowrap',
     },
 
     mainContent: {
-      padding: isMobile ? '96px 14px 22px' : '104px 28px 28px',
+      padding: isMobile
+        ? '88px 12px 18px'
+        : isTablet
+          ? '96px 18px 22px'
+          : isSmallScreen
+            ? '98px 20px 24px'
+            : '104px 28px 28px',
       boxSizing: 'border-box',
       width: '100%',
       maxWidth: '100%',
@@ -184,16 +202,16 @@
     heroCard: {
       position: 'relative',
       width: '100%',
-      minHeight: isMobile ? 170 : 225,
-      borderRadius: isMobile ? 22 : 28,
+      minHeight: isMobile ? 165 : isTablet ? 190 : 225,
+      borderRadius: isMobile ? 20 : 28,
       background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
-      padding: isMobile ? 20 : 30,
-      marginBottom: 22,
+      padding: isMobile ? 18 : isTablet ? 22 : 30,
+      marginBottom: isMobile ? 16 : 22,
       overflow: 'hidden',
       display: 'flex',
       alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'space-between',
-      gap: 24,
+      gap: 20,
       flexDirection: isMobile ? 'column' : 'row',
       textAlign: 'left',
       boxSizing: 'border-box',
@@ -214,7 +232,7 @@
 
     heroTitle: {
       maxWidth: 760,
-      fontSize: isMobile ? 23 : 31,
+      fontSize: isMobile ? 22 : isTablet ? 26 : 31,
       color: '#ffffff',
       marginBottom: 12,
       marginTop: 0,
@@ -229,8 +247,8 @@
     },
 
     heroIcon: {
-      width: isMobile ? 70 : 90,
-      height: isMobile ? 70 : 90,
+      width: isMobile ? 68 : isTablet ? 78 : 90,
+      height: isMobile ? 68 : isTablet ? 78 : 90,
       borderRadius: 24,
       background: 'rgba(255, 255, 255, 0.22)',
       display: 'flex',
@@ -241,18 +259,19 @@
     },
 
     heroIconText: {
-      fontSize: isMobile ? 32 : 42,
+      fontSize: isMobile ? 32 : isTablet ? 36 : 42,
       color: '#ffffff',
       verticalAlign: 'middle',
     },
 
     appointmentLayout: {
       display: 'grid',
-      gridTemplateColumns: isSmallScreen ? '1fr' : '390px 1fr',
-      gap: 22,
+      gridTemplateColumns: isSmallScreen ? '1fr' : '390px minmax(0, 1fr)',
+      gap: isMobile ? 16 : 22,
       alignItems: 'start',
       width: '100%',
       boxSizing: 'border-box',
+      minWidth: 0,
     },
 
     calendarCard: {
@@ -260,10 +279,13 @@
       border: '1px solid #edf0f5',
       borderRadius: isMobile ? 18 : 22,
       boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
-      padding: isMobile ? 14 : 22,
+      padding: isMobile ? 14 : isTablet ? 18 : 22,
       height: 'fit-content',
       minHeight: isSmallScreen ? 'auto' : 520,
       boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
+      overflow: 'hidden',
     },
 
     calendarHeader: {
@@ -275,6 +297,7 @@
       color: '#0f172a',
       margin: 0,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.25,
     },
 
     cardSubtitle: {
@@ -283,6 +306,7 @@
       marginTop: 3,
       marginBottom: 0,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.35,
     },
 
     controls: {
@@ -290,6 +314,8 @@
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: isMobile ? 8 : 10,
+      width: '100%',
+      minWidth: 0,
     },
 
     calendarNav: {
@@ -309,7 +335,8 @@
     calendarSelects: {
       display: 'flex',
       gap: 10,
-      flex: isMobile ? 1 : 'initial',
+      flex: 1,
+      minWidth: 0,
     },
 
     calendarSelect: {
@@ -320,16 +347,18 @@
       padding: '0 10px',
       color: '#334155',
       outline: 'none',
-      width: isMobile ? '100%' : 'auto',
+      width: '100%',
+      minWidth: 0,
       fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
     },
 
     currentMonthLabel: {
       textAlign: 'center',
-      fontSize: 20,
+      fontSize: isMobile ? 18 : 20,
       fontWeight: 700,
       color: '#2563eb',
-      margin: '22px 0 18px',
+      margin: isMobile ? '18px 0 14px' : '22px 0 18px',
       fontFamily: 'Arial, sans-serif',
     },
 
@@ -341,7 +370,7 @@
     },
 
     calendarTh: {
-      fontSize: isMobile ? 12 : 13,
+      fontSize: isMobile ? 11 : 13,
       color: '#64748b',
       paddingBottom: 8,
       textAlign: 'center',
@@ -349,9 +378,9 @@
     },
 
     calendarTd: {
-      height: isMobile ? 36 : 42,
+      height: isMobile ? 34 : 42,
       textAlign: 'center',
-      borderRadius: isMobile ? 10 : 13,
+      borderRadius: isMobile ? 9 : 13,
       cursor: 'pointer',
       fontSize: isMobile ? 12 : 14,
       color: '#334155',
@@ -379,15 +408,22 @@
     appointmentContent: {
       display: 'grid',
       gridTemplateColumns: '1fr',
-      gap: 18,
+      gap: isMobile ? 16 : 18,
       minWidth: 0,
+      width: '100%',
       boxSizing: 'border-box',
     },
 
     statusGrid: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-      gap: 18,
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : isTablet || isSmallScreen
+          ? 'repeat(3, minmax(0, 1fr))'
+          : 'repeat(3, minmax(0, 1fr))',
+      gap: isMobile ? 12 : 18,
+      width: '100%',
+      minWidth: 0,
     },
 
     statusCard: {
@@ -395,9 +431,11 @@
       border: '1px solid #edf0f5',
       borderRadius: isMobile ? 18 : 22,
       boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
-      minHeight: 95,
+      minHeight: isMobile ? 86 : 95,
       padding: isMobile ? 14 : 18,
       boxSizing: 'border-box',
+      minWidth: 0,
+      overflow: 'hidden',
     },
 
     confirmedCard: {
@@ -416,10 +454,11 @@
       fontSize: 13,
       color: '#64748b',
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.3,
     },
 
     statusCardValue: {
-      fontSize: 31,
+      fontSize: isMobile ? 26 : 31,
       marginTop: 7,
       marginBottom: 0,
       color: '#0f172a',
@@ -431,10 +470,12 @@
       border: '1px solid #edf0f5',
       borderRadius: isMobile ? 18 : 22,
       boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
-      padding: isMobile ? 14 : 22,
+      padding: isMobile ? 14 : isTablet ? 18 : 22,
       minWidth: 0,
       minHeight: 360,
       boxSizing: 'border-box',
+      width: '100%',
+      overflow: 'hidden',
     },
 
     tableHeader: {
@@ -444,6 +485,8 @@
       marginBottom: 18,
       gap: 15,
       flexDirection: isMobile ? 'column' : 'row',
+      width: '100%',
+      minWidth: 0,
     },
 
     dropdownStatus: {
@@ -455,18 +498,22 @@
       color: '#334155',
       outline: 'none',
       width: isMobile ? '100%' : 'auto',
+      minWidth: isMobile ? 0 : 150,
       fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
     },
 
     tableWrapper: {
       width: '100%',
+      maxWidth: '100%',
       overflowX: 'auto',
+      boxSizing: 'border-box',
     },
 
     doctorTable: {
       width: '100%',
       borderCollapse: 'collapse',
-      minWidth: 820,
+      minWidth: isMobile ? 760 : 820,
     },
 
     tableHead: {
@@ -503,6 +550,7 @@
       fontSize: 12,
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
+      whiteSpace: 'nowrap',
     },
 
     statusPillConfirmed: {
@@ -577,6 +625,7 @@
       justifyContent: isMobile ? 'center' : 'flex-end',
       gap: 12,
       marginTop: 18,
+      flexWrap: 'wrap',
     },
 
     pageBtn: {
@@ -590,6 +639,7 @@
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
+      flexShrink: 0,
     },
 
     pageBtnDisabled: {
@@ -606,59 +656,56 @@
     },
 
     modal: {
-      display: 'flex',
       position: 'fixed',
       inset: 0,
       zIndex: 9999,
-      background: 'rgba(15, 23, 42, 0.55)',
-      backdropFilter: 'blur(4px)',
-      justifyContent: 'center',
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
       alignItems: 'center',
+      justifyContent: 'center',
       padding: isMobile ? 18 : 20,
       boxSizing: 'border-box',
     },
 
     modalContent: {
-      width: isMobile ? '92%' : 380,
-      maxWidth: 380,
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
       background: '#ffffff',
-      borderRadius: isMobile ? 20 : 22,
-      padding: isMobile ? '24px 18px' : 30,
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.2)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
     },
 
     modalIcon: {
-      width: 70,
-      height: 70,
-      margin: '0 auto 16px',
-      borderRadius: '50%',
-      background: '#fee2e2',
-      color: '#dc2626',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      display: 'none',
     },
 
     modalIconText: {
-      fontSize: 28,
+      display: 'none',
     },
 
     modalTitle: {
-      fontSize: 21,
-      color: '#0f172a',
-      marginBottom: 8,
-      marginTop: 0,
       fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    modalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
     },
 
     modalText: {
-      fontSize: 15,
-      color: '#64748b',
-      marginBottom: 24,
-      marginTop: 0,
       fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
     },
 
     modalActions: {
@@ -669,31 +716,31 @@
 
     modalButton: {
       flex: 1,
+      width: isMobile ? '100%' : 'auto',
+      height: 38,
       border: 'none',
-      borderRadius: 12,
-      padding: 12,
-      cursor: 'pointer',
-      fontSize: 15,
+      borderRadius: 8,
       fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
     },
 
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
-      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
-      color: 'black',
-      fontWeight: 'bold',
+      color: '#334155',
     },
 
     noteModalContent: {
-      width: isMobile ? '94%' : 520,
+      width: isMobile ? '100%' : 520,
       maxWidth: 520,
       background: '#ffffff',
-      borderRadius: isMobile ? 20 : 22,
+      borderRadius: isMobile ? 18 : 22,
       padding: isMobile ? 18 : 24,
       boxShadow: '0 22px 50px rgba(15, 23, 42, 0.2)',
       boxSizing: 'border-box',
@@ -712,6 +759,7 @@
       fontSize: isMobile ? 18 : 21,
       color: '#0f172a',
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.25,
     },
 
     noteModalSubtitle: {
@@ -742,7 +790,7 @@
 
     noteDetailsBox: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
       gap: 10,
       background: '#f8fafc',
       border: '1px solid #edf0f5',
@@ -836,13 +884,16 @@
       fontWeight: 700,
       display: isMobile || isTablet ? 'none' : 'inline-flex',
     },
-        serviceKitToolbar: {
+
+    serviceKitToolbar: {
       display: 'flex',
       alignItems: isMobile ? 'stretch' : 'center',
       justifyContent: 'space-between',
       gap: 12,
       marginBottom: 12,
       flexDirection: isMobile ? 'column' : 'row',
+      width: '100%',
+      minWidth: 0,
     },
 
     kitNoteText: {
@@ -864,6 +915,7 @@
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
       whiteSpace: 'nowrap',
+      width: isMobile ? '100%' : 'auto',
     },
 
     kitManualPanel: {
@@ -873,13 +925,21 @@
       padding: 14,
       marginBottom: 14,
       boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
     },
 
     kitManualGrid: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : '1.1fr 1.4fr 90px auto',
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : isTablet || isSmallScreen
+          ? '1fr 1fr'
+          : '1.1fr 1.4fr 90px auto',
       gap: 10,
       alignItems: 'end',
+      width: '100%',
+      minWidth: 0,
     },
 
     kitManualField: {
@@ -908,6 +968,7 @@
       fontSize: 13,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+      minWidth: 0,
     },
 
     kitQtyInput: {
@@ -922,6 +983,7 @@
       fontSize: 13,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+      minWidth: 0,
     },
 
     kitInlineError: {

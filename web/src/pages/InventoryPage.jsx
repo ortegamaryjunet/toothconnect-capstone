@@ -34,6 +34,33 @@ function fallback(value) {
   return value || 'N/A';
 }
 
+function getMaximumStock(row) {
+  return Number(
+    row?.max_stock_threshold ||
+      row?.maximum_stock ||
+      row?.max_stock ||
+      row?.stock_maximum ||
+      0
+  );
+}
+
+function getStockPercentageValue(quantity, maxStock) {
+  const qty = Number(quantity || 0);
+  const max = Number(maxStock || 0);
+
+  if (max <= 0) return 0;
+
+  return Math.min(100, Math.max(0, Math.round((qty / max) * 100)));
+}
+
+function formatStockPercentage(quantity, maxStock) {
+  const max = Number(maxStock || 0);
+
+  if (max <= 0) return 'N/A';
+
+  return `${getStockPercentageValue(quantity, maxStock)}%`;
+}
+
 function formatPeso(value) {
   return `\u20B1${Number(value || 0).toLocaleString('en-PH', {
     minimumFractionDigits: 0,
@@ -73,6 +100,8 @@ function mapMedicineRow(row, index) {
     unit: fallback(row.unit),
     quantity: Number(row.quantity || 0),
     threshold: Number(row.low_stock_threshold || row.threshold || 0),
+    maxStock: getMaximumStock(row),
+    stockPercentage: formatStockPercentage(row.quantity, getMaximumStock(row)),
     pricePerItem: Number(row.price_per_item || 0),
     lastUpdated: formatDateOnly(row.updated_at || row.created_at),
     status: row.status,
@@ -95,6 +124,8 @@ function mapEquipmentRow(row, index) {
     location: fallback(row.location),
     quantity: Number(row.quantity || 0),
     threshold: Number(row.low_stock_threshold || row.threshold || 0),
+    maxStock: getMaximumStock(row),
+    stockPercentage: formatStockPercentage(row.quantity, getMaximumStock(row)),
     pricePerItem: Number(row.price_per_item || 0),
     lastUpdated: formatDateOnly(row.updated_at || row.created_at),
     maintenanceStatus: fallback(row.maintenance_status),
@@ -114,6 +145,8 @@ function mapSupplyRow(row, index) {
     unit: fallback(row.unit),
     quantity: Number(row.quantity || 0),
     threshold: Number(row.low_stock_threshold || row.threshold || 0),
+    maxStock: getMaximumStock(row),
+    stockPercentage: formatStockPercentage(row.quantity, getMaximumStock(row)),
     pricePerItem: Number(row.price_per_item || 0),
     lastUpdated: formatDateOnly(row.updated_at || row.created_at),
     status: row.status,
@@ -124,6 +157,8 @@ function getSummaryStatus(item) {
   const normalizedStatus = String(item?.status || '').toLowerCase();
   const quantity = Number(item?.quantity || 0);
   const threshold = Number(item?.threshold || 0);
+  const maxStock = Number(item?.maxStock || item?.max_stock_threshold || 0);
+  const stockPercentage = getStockPercentageValue(quantity, maxStock);
 
   if (
     normalizedStatus === 'out of stock' ||
@@ -139,6 +174,7 @@ function getSummaryStatus(item) {
     normalizedStatus === 'low stock' ||
     normalizedStatus === 'maintenance' ||
     normalizedStatus === 'under maintenance' ||
+    (maxStock > 0 && stockPercentage <= 20) ||
     (threshold > 0 && quantity <= threshold)
   ) {
     return 'Low Stock';
@@ -207,6 +243,7 @@ export default function InventoryPage() {
     orderQuantity: '',
     pricePerItem: '',
     threshold: '',
+    maxStock: '',
   });
   const [expenseInventoryRows, setExpenseInventoryRows] = useState(emptyExpenseInventoryRows);
   const [expenseBranchOptions, setExpenseBranchOptions] = useState([]);
@@ -222,6 +259,7 @@ export default function InventoryPage() {
     dosage: '',
     unit: '',
     threshold: '',
+    maxStock: '',
     maintenanceStatus: '',
   });
   const [editSaving, setEditSaving] = useState(false);
@@ -362,8 +400,8 @@ export default function InventoryPage() {
         ? 'View medicine inventory for your assigned branch.'
         : 'View medicine inventory across clinic branches.',
       rows: medicines,
-      colspan: isReceptionist ? 12 : 13,
-      tableMinWidth: 1420,
+      colspan: isReceptionist ? 14 : 15,
+      tableMinWidth: 1660,
     },
     equipment: {
       label: 'Dental Equipment',
@@ -372,8 +410,8 @@ export default function InventoryPage() {
         ? 'View dental equipment details for your assigned branch.'
         : 'View dental equipment details, warranty, and location.',
       rows: equipment,
-      colspan: isReceptionist ? 14 : 15,
-      tableMinWidth: 1650,
+      colspan: isReceptionist ? 16 : 17,
+      tableMinWidth: 1900,
     },
     supplies: {
       label: 'Dental Supplies',
@@ -382,8 +420,8 @@ export default function InventoryPage() {
         ? 'View supplies and availability for your assigned branch.'
         : 'View supplies, units, and availability status.',
       rows: supplies,
-      colspan: isReceptionist ? 10 : 11,
-      tableMinWidth: 1250,
+      colspan: isReceptionist ? 12 : 13,
+      tableMinWidth: 1500,
     },
   };
 
@@ -483,6 +521,8 @@ export default function InventoryPage() {
           quantity: Number(item.quantity || 0),
           unit: fallback(item.unit),
           threshold: Number(item.threshold || 0),
+          maxStock: Number(item.maxStock || 0),
+          stockPercentage: formatStockPercentage(item.quantity, item.maxStock),
           status: getSummaryStatus(item),
           lastUpdated: item.lastUpdated || 'N/A',
         }))
@@ -829,6 +869,7 @@ export default function InventoryPage() {
       dosage: item.dosage === 'N/A' ? '' : item.dosage || '',
       unit: item.unit === 'N/A' ? '' : item.unit || '',
       threshold: Number.isFinite(Number(item.threshold)) ? String(Number(item.threshold)) : '',
+      maxStock: Number.isFinite(Number(item.maxStock)) && Number(item.maxStock) > 0 ? String(Number(item.maxStock)) : '',
       maintenanceStatus:
         item.maintenanceStatus === 'N/A'
           ? 'Available'
@@ -860,6 +901,16 @@ export default function InventoryPage() {
         ? undefined
         : Math.max(0, Number(editForm.threshold) || 0);
 
+    const maxStockValue =
+      editForm.maxStock === '' || editForm.maxStock === null || typeof editForm.maxStock === 'undefined'
+        ? undefined
+        : Math.max(0, Number(editForm.maxStock) || 0);
+
+    if (typeof maxStockValue === 'number' && maxStockValue > 0 && Number(selectedInventoryItem.quantity || 0) > maxStockValue) {
+      setEditError('Maximum stock cannot be lower than the current quantity.');
+      return;
+    }
+
     const payload =
       type === 'medicine'
         ? {
@@ -869,6 +920,7 @@ export default function InventoryPage() {
             dosage: editForm.dosage,
             unit: editForm.unit,
             ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
+            ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
           }
         : type === 'supplies'
         ? {
@@ -876,11 +928,13 @@ export default function InventoryPage() {
             category: editForm.category,
             unit: editForm.unit,
             ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
+            ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
           }
         : {
             category: editForm.category,
             maintenance_status: editForm.maintenanceStatus,
             ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
+            ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
           };
 
     setEditSaving(true);
@@ -944,6 +998,7 @@ export default function InventoryPage() {
       dosage: item.dosage === 'N/A' ? '' : item.dosage || '',
       unit: item.unit === 'N/A' ? '' : item.unit || '',
       threshold: Number.isFinite(Number(item.threshold)) ? String(Number(item.threshold)) : '',
+      maxStock: Number.isFinite(Number(item.maxStock)) && Number(item.maxStock) > 0 ? String(Number(item.maxStock)) : '',
       maintenanceStatus:
         item.maintenanceStatus === 'N/A' ? 'Available' : item.maintenanceStatus || 'Available',
     });
@@ -995,6 +1050,7 @@ export default function InventoryPage() {
         updatedForm.orderQuantity = '';
         updatedForm.pricePerItem = '';
         updatedForm.threshold = '';
+        updatedForm.maxStock = '';
       }
       if (field === 'itemName') {
         const matchingItem = selectedExpenseInventoryRows.find(
@@ -1010,8 +1066,13 @@ export default function InventoryPage() {
             matchingItem?.low_stock_threshold != null
               ? String(matchingItem.low_stock_threshold)
               : '';
+          updatedForm.maxStock =
+            getMaximumStock(matchingItem) > 0
+              ? String(getMaximumStock(matchingItem))
+              : '';
         } else {
           updatedForm.threshold = '';
+          updatedForm.maxStock = '';
         }
       }
       return updatedForm;
@@ -1020,6 +1081,26 @@ export default function InventoryPage() {
 
   function handleSaveExpense() {
     setExpenseSaveError('');
+
+    const orderQuantity = Number(expenseForm.orderQuantity || 0);
+    const maxStockValue = Number(expenseForm.maxStock || 0);
+
+    if (maxStockValue > 0) {
+      const selectedExistingItem = selectedExpenseInventoryRows.find(
+        (row) =>
+          String(getExpenseItemName(row, expenseForm.category) || '')
+            .trim()
+            .toLowerCase() === String(expenseForm.itemName || '').trim().toLowerCase()
+      );
+      const existingQuantity = Number(selectedExistingItem?.quantity || 0);
+
+      if (existingQuantity + orderQuantity > maxStockValue) {
+        setExpenseSaveError(
+          `Cannot save. This order will exceed the maximum stock of ${maxStockValue}. Current quantity is ${existingQuantity}.`
+        );
+        return;
+      }
+    }
     setSaveExpenseClicked(true);
     setTimeout(() => setSaveExpenseClicked(false), 160);
     setTimeout(() => { setShowExpenseConfirmModal(true); }, 90);
@@ -1037,6 +1118,7 @@ export default function InventoryPage() {
         supplier: expenseForm.supplier,
         orderQuantity: expenseForm.orderQuantity,
         pricePerItem: expenseForm.pricePerItem,
+        maxStock: expenseForm.maxStock,
       });
 
       const thresholdValue =
@@ -1044,9 +1126,17 @@ export default function InventoryPage() {
           ? undefined
           : Math.max(0, Number(expenseForm.threshold) || 0);
 
-      if (typeof thresholdValue === 'number' && expenseRes?.inventory_id) {
+      const maxStockValue =
+        expenseForm.maxStock === '' || expenseForm.maxStock === null || typeof expenseForm.maxStock === 'undefined'
+          ? undefined
+          : Math.max(0, Number(expenseForm.maxStock) || 0);
+
+      if ((typeof thresholdValue === 'number' || typeof maxStockValue === 'number') && expenseRes?.inventory_id) {
         const inventoryId = expenseRes.inventory_id;
-        const thresholdPayload = { low_stock_threshold: thresholdValue };
+        const thresholdPayload = {
+          ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
+          ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
+        };
 
         if (expenseForm.category === 'medicine') {
           await updateMedicine(inventoryId, thresholdPayload);
@@ -1067,6 +1157,7 @@ export default function InventoryPage() {
         orderQuantity: '',
         pricePerItem: '',
         threshold: '',
+        maxStock: '',
       }));
     } catch (err) {
       setExpenseSaveError(err.response?.data?.message || 'Failed to save expense.');
@@ -1142,9 +1233,11 @@ export default function InventoryPage() {
         <td style={styles.tableCell}>{item.dosage}</td>
         <td style={styles.tableCell}>{item.unit}</td>
         <td style={styles.tableCell}>{item.quantity}</td>
+        <td style={styles.tableCell}>{item.maxStock > 0 ? item.maxStock : 'N/A'}</td>
+        <td style={styles.tableCell}>{formatStockPercentage(item.quantity, item.maxStock)}</td>
         <td style={styles.tableCell}>{formatPeso(item.pricePerItem)}</td>
         <td style={styles.tableCell}>
-          <span style={getStatusBadgeStyle(item.status)}>{item.status}</span>
+          <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
         </td>
         {!isReceptionist && (
           <td style={styles.tableCell}>
@@ -1183,9 +1276,11 @@ export default function InventoryPage() {
         <td style={styles.tableCell}>{item.warrantyDate}</td>
         <td style={styles.tableCell}>{item.location}</td>
         <td style={styles.tableCell}>{item.quantity}</td>
+        <td style={styles.tableCell}>{item.maxStock > 0 ? item.maxStock : 'N/A'}</td>
+        <td style={styles.tableCell}>{formatStockPercentage(item.quantity, item.maxStock)}</td>
         <td style={styles.tableCell}>{formatPeso(item.pricePerItem)}</td>
         <td style={styles.tableCell}>
-          <span style={getStatusBadgeStyle(item.status)}>{item.status}</span>
+          <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
         </td>
         {!isReceptionist && (
           <td style={styles.tableCell}>
@@ -1220,9 +1315,11 @@ export default function InventoryPage() {
         <td style={styles.tableCell}>{item.category}</td>
         <td style={styles.tableCell}>{item.unit}</td>
         <td style={styles.tableCell}>{item.quantity}</td>
+        <td style={styles.tableCell}>{item.maxStock > 0 ? item.maxStock : 'N/A'}</td>
+        <td style={styles.tableCell}>{formatStockPercentage(item.quantity, item.maxStock)}</td>
         <td style={styles.tableCell}>{formatPeso(item.pricePerItem)}</td>
         <td style={styles.tableCell}>
-          <span style={getStatusBadgeStyle(item.status)}>{item.status}</span>
+          <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
         </td>
         {!isReceptionist && (
           <td style={styles.tableCell}>
@@ -1245,35 +1342,89 @@ export default function InventoryPage() {
 
     return (
       <>
-        <div style={styles.tableHeaderRow}>
-          <div>
-            <h3 style={styles.tableTitle}>Search Results</h3>
-            <p style={styles.tableSubtitle}>
-              {inventoryLoading
-                ? 'Loading inventory records...'
-                : `Showing matches across medicine, equipment, and supplies${isReceptionist ? ' for your branch' : ''}.`}
+      <div style={styles.tableHeaderRow}>
+        <div>
+          <h3 style={styles.tableTitle}>Search Results</h3>
+
+          <p style={styles.tableSubtitle}>
+            {inventoryLoading
+              ? 'Loading inventory records...'
+              : `Showing matches across medicine, equipment, and supplies${isReceptionist ? ' for your branch' : ''}.`}
+          </p>
+
+          {inventoryError && (
+            <p
+              style={{
+                ...styles.tableSubtitle,
+                color: '#b91c1c',
+              }}
+            >
+              {inventoryError}
             </p>
-            {inventoryError && (
-              <p style={{ ...styles.tableSubtitle, color: '#b91c1c' }}>{inventoryError}</p>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {!isReceptionist && (
-              <button type="button" style={styles.stockSummaryBtn} onClick={openExpenseModal}>
-                Expense Input
-              </button>
-            )}
-            <button type="button" style={styles.stockSummaryBtn} onClick={openUsageHistoryModal}>
-              View Usage History
-            </button>
-            <button type="button" style={styles.stockSummaryBtn} onClick={openStockSummaryModal}>
-              View Stock Summary
-            </button>
-          </div>
+          )}
         </div>
 
+        <div style={styles.tableActionGroup}>
+          {!isReceptionist && (
+            <button
+              type="button"
+              style={styles.stockSummaryBtn}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.background = '#d4af37';
+                event.currentTarget.style.color = '#ffffff';
+                event.currentTarget.style.borderColor = '#d4af37';
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.background = '#fff8e1';
+                event.currentTarget.style.color = '#b8860b';
+                event.currentTarget.style.borderColor = '#d4af37';
+              }}
+              onClick={openExpenseModal}
+            >
+              Expense Input
+            </button>
+          )}
+
+          <button
+            type="button"
+            style={styles.stockSummaryBtn}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.background = '#d4af37';
+              event.currentTarget.style.color = '#ffffff';
+              event.currentTarget.style.borderColor = '#d4af37';
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.background = '#fff8e1';
+              event.currentTarget.style.color = '#b8860b';
+              event.currentTarget.style.borderColor = '#d4af37';
+            }}
+            onClick={openUsageHistoryModal}
+          >
+            View Usage History
+          </button>
+
+          <button
+            type="button"
+            style={styles.stockSummaryBtn}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.background = '#d4af37';
+              event.currentTarget.style.color = '#ffffff';
+              event.currentTarget.style.borderColor = '#d4af37';
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.background = '#fff8e1';
+              event.currentTarget.style.color = '#b8860b';
+              event.currentTarget.style.borderColor = '#d4af37';
+            }}
+            onClick={openStockSummaryModal}
+          >
+            View Stock Summary
+          </button>
+        </div>
+      </div>
+
         <div style={styles.tableWrapper}>
-          <table style={{ ...styles.inventoryTable, minWidth: 850 }}>
+          <table style={{ ...styles.inventoryTable, minWidth: 1050 }}>
             <thead>
               <tr>
                 <th style={styles.tableHead}>ID</th>
@@ -1282,6 +1433,8 @@ export default function InventoryPage() {
                 <th style={styles.tableHead}>Item Name</th>
                 <th style={styles.tableHead}>Category</th>
                 <th style={styles.tableHead}>Qty</th>
+                <th style={styles.tableHead}>Maximum Stock</th>
+                <th style={styles.tableHead}>Current Stock %</th>
                 <th style={styles.tableHead}>Status</th>
                 {!isReceptionist && <th style={styles.tableHead}>Action</th>}
               </tr>
@@ -1289,7 +1442,7 @@ export default function InventoryPage() {
             <tbody>
               {paginatedCrossResults.length === 0 ? (
                 <tr>
-                  <td colSpan={isReceptionist ? 5 : 7} style={styles.emptyRow}>
+                  <td colSpan={isReceptionist ? 7 : 9} style={styles.emptyRow}>
                     No inventory records found matching your search.
                   </td>
                 </tr>
@@ -1302,8 +1455,10 @@ export default function InventoryPage() {
                     <td style={{ ...styles.tableCell, fontWeight: 600 }}>{item._name}</td>
                     <td style={styles.tableCell}>{item.category}</td>
                     <td style={styles.tableCell}>{item.quantity}</td>
+                    <td style={styles.tableCell}>{item.maxStock > 0 ? item.maxStock : 'N/A'}</td>
+                    <td style={styles.tableCell}>{formatStockPercentage(item.quantity, item.maxStock)}</td>
                     <td style={styles.tableCell}>
-                      <span style={getStatusBadgeStyle(item.status)}>{item.status}</span>
+                      <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
                     </td>
                     {!isReceptionist && (
                       <td style={styles.tableCell}>
@@ -1370,6 +1525,8 @@ export default function InventoryPage() {
           <th style={styles.tableHead}>Dosage</th>
           <th style={styles.tableHead}>Unit</th>
           <th style={styles.tableHead}>Qty</th>
+          <th style={styles.tableHead}>Maximum Stock</th>
+          <th style={styles.tableHead}>Current Stock %</th>
           <th style={styles.tableHead}>Price per Item</th>
           <th style={styles.tableHead}>Status</th>
           {!isReceptionist && <th style={styles.tableHead}>Action</th>}
@@ -1392,6 +1549,8 @@ export default function InventoryPage() {
           <th style={styles.tableHead}>Warranty Date</th>
           <th style={styles.tableHead}>Location</th>
           <th style={styles.tableHead}>Qty</th>
+          <th style={styles.tableHead}>Maximum Stock</th>
+          <th style={styles.tableHead}>Current Stock %</th>
           <th style={styles.tableHead}>Price per Item</th>
           <th style={styles.tableHead}>Status</th>
           {!isReceptionist && <th style={styles.tableHead}>Action</th>}
@@ -1409,6 +1568,8 @@ export default function InventoryPage() {
         <th style={styles.tableHead}>Category</th>
         <th style={styles.tableHead}>Unit</th>
         <th style={styles.tableHead}>Qty</th>
+        <th style={styles.tableHead}>Maximum Stock</th>
+        <th style={styles.tableHead}>Current Stock %</th>
         <th style={styles.tableHead}>Price per Item</th>
         <th style={styles.tableHead}>Status</th>
         {!isReceptionist && <th style={styles.tableHead}>Action</th>}
@@ -1536,6 +1697,21 @@ export default function InventoryPage() {
               value={editForm.threshold}
               onChange={(event) =>
                 handleEditFormChange('threshold', event.target.value)
+              }
+              style={styles.formInput}
+            />
+          </label>
+
+          <label style={styles.formGroup}>
+            <span style={styles.formLabel}>Maximum Stock</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              step="1"
+              value={editForm.maxStock}
+              onChange={(event) =>
+                handleEditFormChange('maxStock', event.target.value)
               }
               style={styles.formInput}
             />
@@ -1780,7 +1956,7 @@ export default function InventoryPage() {
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={styles.tableButtonGroup}>
                     {!isReceptionist && (
                       <button type="button" style={styles.stockSummaryBtn} onClick={openExpenseModal}>
                         Expense Input
@@ -2008,6 +2184,8 @@ export default function InventoryPage() {
                       {getSummaryColumnLabel(selectedStockCategory)}
                     </th>
                     <th style={styles.tableHead}>Quantity</th>
+                    <th style={styles.tableHead}>Maximum Stock</th>
+                    <th style={styles.tableHead}>Current Stock %</th>
                     <th style={styles.tableHead}>Unit</th>
                     <th style={styles.tableHead}>Threshold</th>
                     <th style={styles.tableHead}>Status</th>
@@ -2022,11 +2200,11 @@ export default function InventoryPage() {
                         colSpan={
                           selectedStockCategory === 'all'
                             ? isReceptionist
-                              ? 7
-                              : 8
+                              ? 9
+                              : 10
                             : isReceptionist
-                            ? 6
-                            : 7
+                            ? 8
+                            : 9
                         }
                         style={styles.emptyRow}
                       >
@@ -2046,6 +2224,8 @@ export default function InventoryPage() {
                           {item.name}
                         </td>
                         <td style={styles.tableCell}>{item.quantity}</td>
+                        <td style={styles.tableCell}>{item.maxStock > 0 ? item.maxStock : 'N/A'}</td>
+                        <td style={styles.tableCell}>{item.stockPercentage}</td>
                         <td style={styles.tableCell}>{item.unit}</td>
                         <td style={styles.tableCell}>
                           {item.threshold > 0 ? item.threshold : 'N/A'}
@@ -2419,6 +2599,7 @@ export default function InventoryPage() {
                 ['Quantity', String(expenseForm.orderQuantity || 0)],
                 ['Price per Item', formatPeso(expenseForm.pricePerItem || 0)],
                 ['Low Stock Threshold', expenseForm.threshold === '' ? 'Not set' : String(expenseForm.threshold)],
+                ['Maximum Stock', expenseForm.maxStock === '' ? 'Not set' : String(expenseForm.maxStock)],
               ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}>
                   <span style={{ color: '#64748b' }}>{label}</span>
@@ -2458,32 +2639,27 @@ export default function InventoryPage() {
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
           <div style={styles.modalContent}>
-            <div style={styles.modalIcon}>
-              <i
-                className="fi fi-rr-sign-out-alt"
-                style={styles.modalIconText}
-              ></i>
-            </div>
-
             <h2 style={styles.modalTitle}>Confirm Logout</h2>
+
+            <div style={styles.modalDivider}></div>
 
             <p style={styles.modalText}>Are you sure you want to log out?</p>
 
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-
-              <button
-                type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={closeLogoutModal}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>
