@@ -46,6 +46,7 @@ const sectionConfig = {
       'Category',
       'Price',
       'Duration',
+      'Time Buffer',
       'Status',
       'Action',
     ],
@@ -92,6 +93,7 @@ const initialServiceForm = {
   category: '',
   price: '',
   duration: '',
+  time_buffer_min: 30,
   status: '',
 };
 
@@ -727,8 +729,11 @@ export default function AdminSettings() {
       newValue = allowLettersOnly(value);
     }
 
-    if (['price', 'duration'].includes(name)) {
+    if (name === 'price') {
       newValue = allowPriceOnly(value);
+    }
+    if (['duration', 'time_buffer_min'].includes(name)) {
+      newValue = value.replace(/[^0-9]/g, '');
     }
 
     setServiceForm((prev) => ({
@@ -834,6 +839,7 @@ export default function AdminSettings() {
       category: serviceForm.category,
       price: serviceForm.price,
       duration_min: serviceForm.duration,
+      time_buffer_min: Number(serviceForm.time_buffer_min || 30),
       status: serviceForm.status,
     };
 
@@ -1879,6 +1885,7 @@ export default function AdminSettings() {
           <td style={styles.tableCell}>{service.category}</td>
           <td style={styles.tableCell}>₱{service.price}</td>
           <td style={styles.tableCell}>{service.duration}</td>
+          <td style={styles.tableCell}>{service.time_buffer_min ?? 30} min</td>
           <td style={styles.tableCell}>
             <span style={getStatusStyle(service.status)}>{service.status}</span>
           </td>
@@ -2297,6 +2304,18 @@ export default function AdminSettings() {
                   value={serviceForm.duration}
                   onChange={(event) =>
                     handleServiceChange('duration', event.target.value)
+                  }
+                  style={styles.formInput}
+                  required
+                />
+              </Field>
+
+              <Field label="Time Buffer (minutes)" styles={styles}>
+                <input
+                  type="text"
+                  value={serviceForm.time_buffer_min}
+                  onChange={(event) =>
+                    handleServiceChange('time_buffer_min', event.target.value)
                   }
                   style={styles.formInput}
                   required

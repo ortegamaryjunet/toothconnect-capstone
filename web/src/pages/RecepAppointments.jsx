@@ -257,6 +257,10 @@ export default function RecepAppointments() {
           treatmentOptions,
           rescheduleModal.appointment.serviceId
         );
+        const bufferMinutes = getServiceBufferMinutes(
+          treatmentOptions,
+          rescheduleModal.appointment.serviceId
+        );
         const bounds = dayBoundsUTC(rescheduleModal.selectedDate);
 
         const [dayAppointmentsRaw, dentistBusyMeta] = await Promise.all([
@@ -283,6 +287,7 @@ export default function RecepAppointments() {
           appointments: combined,
           dateKey: rescheduleModal.selectedDate,
           durationMinutes,
+          bufferMinutes,
         });
 
         setRescheduleModal((current) => ({
@@ -2035,7 +2040,7 @@ export default function RecepAppointments() {
                         </p>
                         <p style={scheduleStyles.infoSubText}>
                           Estimated duration is based on the selected purpose of visit. A
-                          15-minute cleaning/preparation buffer is blocked after each
+                          30-minute cleaning/preparation buffer is blocked after each
                           appointment.
                         </p>
                       </div>
@@ -2834,6 +2839,14 @@ function getServiceDurationMinutes(services, serviceId) {
   return Number.isFinite(duration) && duration > 0 ? duration : 30;
 }
 
+function getServiceBufferMinutes(services, serviceId) {
+  const service = (Array.isArray(services) ? services : []).find(
+    (s) => String(s.id) === String(serviceId)
+  );
+  const buffer = Number(service?.time_buffer_min ?? appointmentBufferMinutes);
+  return Number.isFinite(buffer) && buffer >= 0 ? buffer : appointmentBufferMinutes;
+}
+
 function buildScheduleCalendarWeeks(year, month, todayInput) {
   const today = new Date(todayInput || new Date());
   today.setHours(0, 0, 0, 0);
@@ -2889,9 +2902,9 @@ const clinicStartMinutes = 10 * 60;
 const clinicEndMinutes = 19 * 60;
 const lunchStartMinutes = 12 * 60;
 const lunchEndMinutes = 13 * 60 + 30;
-const appointmentBufferMinutes = 15;
+const appointmentBufferMinutes = 30;
 
-function computeAvailableSlotsForSchedule({ appointments, dateKey, durationMinutes }) {
+function computeAvailableSlotsForSchedule({ appointments, dateKey, durationMinutes, bufferMinutes = appointmentBufferMinutes }) {
   const now = Date.now();
   const [year, month, day] = String(dateKey || '').split('-').map(Number);
 
@@ -2899,7 +2912,7 @@ function computeAvailableSlotsForSchedule({ appointments, dateKey, durationMinut
     .filter((a) => ['scheduled', 'arrived'].includes(String(a?.status || '').toLowerCase()))
     .map((a) => {
       const start = new Date(a.start_time).getTime();
-      const end = start + (Number(a.duration_min || 30) + appointmentBufferMinutes) * 60 * 1000;
+      const end = start + (Number(a.duration_min || 30) + Number(a.service_buffer_min ?? appointmentBufferMinutes)) * 60 * 1000;
       return { start, end };
     })
     .filter((interval) => Number.isFinite(interval.start) && Number.isFinite(interval.end));
@@ -2913,7 +2926,7 @@ function computeAvailableSlotsForSchedule({ appointments, dateKey, durationMinut
     const minute = minutes % 60;
     const slotDate = new Date(year, (month || 1) - 1, day || 1, hour24, minute, 0, 0);
     const slotStart = slotDate.getTime();
-    const slotEnd = slotStart + (durationMinutes + appointmentBufferMinutes) * 60 * 1000;
+    const slotEnd = slotStart + (durationMinutes + bufferMinutes) * 60 * 1000;
 
     const isPast = slotStart <= now;
     const isBlocked = !isPast && busyIntervals.some((b) => slotStart < b.end && slotEnd > b.start);

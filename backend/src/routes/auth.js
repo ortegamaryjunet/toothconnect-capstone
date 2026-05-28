@@ -504,6 +504,7 @@ async function loadServices() {
        category,
        price,
        duration_min,
+       time_buffer_min,
        status
      FROM services
      ORDER BY name ASC`
@@ -516,6 +517,7 @@ async function loadServices() {
     price: Number(row.price || 0),
     duration: row.duration_min,
     duration_min: row.duration_min,
+    time_buffer_min: Number(row.time_buffer_min ?? 30),
     status: row.status || 'Active',
   }));
 }
@@ -573,8 +575,9 @@ router.get('/branch-services/:branchId', authenticate, requireRole('admin'), asy
 });
 
 router.post('/services', authenticate, requireRole('admin'), async (req, res) => {
-  const { name, category, price, duration, duration_min, status = 'Active' } = req.body;
+  const { name, category, price, duration, duration_min, time_buffer_min, status = 'Active' } = req.body;
   const durationMin = Number(duration_min || duration);
+  const bufferMin = Number.isFinite(Number(time_buffer_min)) ? Number(time_buffer_min) : 30;
   const servicePrice = Number(price);
 
   if (!name || !category || !Number.isFinite(servicePrice) || !Number.isFinite(durationMin) || !status) {
@@ -586,12 +589,15 @@ router.post('/services', authenticate, requireRole('admin'), async (req, res) =>
   if (!['Active', 'Inactive', 'Discontinued'].includes(status)) {
     return res.status(400).json({ message: 'Invalid service status' });
   }
+  if (!Number.isFinite(bufferMin) || bufferMin < 0) {
+    return res.status(400).json({ message: 'Time buffer must be a non-negative number' });
+  }
 
   try {
     const [result] = await pool.query(
-      `INSERT INTO services (name, category, price, duration_min, status)
-       VALUES (?, ?, ?, ?, ?)`,
-      [name, category, servicePrice, durationMin, status]
+      `INSERT INTO services (name, category, price, duration_min, time_buffer_min, status)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [name, category, servicePrice, durationMin, bufferMin, status]
     );
 
     const services = await loadServices();
@@ -604,8 +610,9 @@ router.post('/services', authenticate, requireRole('admin'), async (req, res) =>
 
 router.patch('/services/:id', authenticate, requireRole('admin'), async (req, res) => {
   const id = Number.parseInt(req.params.id, 10);
-  const { name, category, price, duration, duration_min, status } = req.body;
+  const { name, category, price, duration, duration_min, time_buffer_min, status } = req.body;
   const durationMin = Number(duration_min || duration);
+  const bufferMin = Number.isFinite(Number(time_buffer_min)) ? Number(time_buffer_min) : 30;
   const servicePrice = Number(price);
 
   if (Number.isNaN(id)) {
@@ -621,6 +628,9 @@ router.patch('/services/:id', authenticate, requireRole('admin'), async (req, re
   if (!['Active', 'Inactive', 'Discontinued'].includes(status)) {
     return res.status(400).json({ message: 'Invalid service status' });
   }
+  if (!Number.isFinite(bufferMin) || bufferMin < 0) {
+    return res.status(400).json({ message: 'Time buffer must be a non-negative number' });
+  }
 
   try {
     const [result] = await pool.query(
@@ -629,9 +639,10 @@ router.patch('/services/:id', authenticate, requireRole('admin'), async (req, re
            category = ?,
            price = ?,
            duration_min = ?,
+           time_buffer_min = ?,
            status = ?
        WHERE id = ?`,
-      [name, category, servicePrice, durationMin, status, id]
+      [name, category, servicePrice, durationMin, bufferMin, status, id]
     );
 
     if (result.affectedRows === 0) {

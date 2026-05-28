@@ -207,6 +207,7 @@ CREATE TABLE services (
   name VARCHAR(100) NOT NULL,
   category VARCHAR(100) NOT NULL DEFAULT 'General Dentistry',
   duration_min INT NOT NULL,
+  time_buffer_min INT NOT NULL DEFAULT 30,
   price DECIMAL(10,2) NOT NULL,
   status ENUM('Active','Inactive','Discontinued') NOT NULL DEFAULT 'Active',
   description TEXT NULL
