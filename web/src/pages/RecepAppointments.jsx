@@ -386,6 +386,11 @@ export default function RecepAppointments() {
 
       const results = await Promise.all(
         completed.map(async (appointment) => {
+          const isConsultation = /consultation/i.test(String(appointment.treatment || ''));
+          if (isConsultation) {
+            return { id: appointment.id, submitted: false, hasTemplateItems: false };
+          }
+
           try {
             const [consumptionData, kitData] = await Promise.all([
               getConsumption(appointment.id),
@@ -400,7 +405,7 @@ export default function RecepAppointments() {
             const hasTemplateItems =
               Boolean(kitData?.kit_exists) &&
               Array.isArray(kitData?.items) &&
-              kitData.items.length > 0;
+              kitData.items.some((item) => Number(item?.default_quantity || 0) > 0 && item?.inventory_id);
 
             return {
               id: appointment.id,
@@ -534,6 +539,7 @@ export default function RecepAppointments() {
 
   async function openCalendarServiceKitModal(appointment) {
     if (!appointment || String(appointment.status).toLowerCase() !== 'completed') return;
+    const isConsultation = /consultation/i.test(String(appointment.treatment || ''));
 
     setSelectedKitAppointment(appointment);
     setKitItems([]);
@@ -553,6 +559,13 @@ export default function RecepAppointments() {
             }))
           : Promise.resolve({ kit_exists: false, items: [] }),
       ]);
+
+      if (isConsultation) {
+        setKitAlreadySubmitted(Boolean(consumptionData?.submitted));
+        setKitNotes('No inventory items was used for consultation service.');
+        setKitItems([]);
+        return;
+      }
 
       if (consumptionData.submitted) {
         setKitAlreadySubmitted(true);
@@ -624,6 +637,13 @@ export default function RecepAppointments() {
     } finally {
       setKitSubmitting(false);
     }
+  }
+
+  function handleKitQtyChange(index, value) {
+    const qty = Math.max(0, parseInt(value, 10) || 0);
+    setKitItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, quantity_used: qty } : item))
+    );
   }
 
   const hasDeductibleKitItems = useMemo(
@@ -2101,7 +2121,11 @@ export default function RecepAppointments() {
             ) : kitError ? (
               <p style={{ ...styles.scheduleDetail, color: '#b91c1c' }}>{kitError}</p>
             ) : kitItems.length === 0 ? (
-              <p style={styles.scheduleDetail}>No items defined for this service kit.</p>
+              <p style={styles.scheduleDetail}>
+                {/consultation/i.test(String(selectedKitAppointment?.treatment || ''))
+                  ? 'No inventory items was used for consultation service.'
+                  : 'No items defined for this service kit.'}
+              </p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -2119,7 +2143,25 @@ export default function RecepAppointments() {
                       <tr key={`${item.item_name}-${index}`}>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.item_name}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.category || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.quantity_used || 0}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                          {kitAlreadySubmitted ? (
+                            item.quantity_used || 0
+                          ) : (
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.quantity_used || 0}
+                              onChange={(event) => handleKitQtyChange(index, event.target.value)}
+                              style={{
+                                width: '60px',
+                                padding: '4px 8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                              }}
+                            />
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
