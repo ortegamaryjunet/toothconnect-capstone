@@ -658,6 +658,17 @@ export default function RecepAppointments() {
       return;
     }
 
+    const hasOverStock = kitItems.some((item) =>
+      item.inventory_id &&
+      item.current_stock !== null &&
+      item.current_stock !== undefined &&
+      Number(item.quantity_used) > Number(item.current_stock)
+    );
+    if (hasOverStock) {
+      setKitError('One or more quantities exceed current stock. Please correct before deducting.');
+      return;
+    }
+
     setKitSubmitting(true);
     setKitError('');
     try {
@@ -695,6 +706,16 @@ export default function RecepAppointments() {
 
   const hasDeductibleKitItems = useMemo(
     () => kitItems.some((item) => Number(item.quantity_used) > 0 && item.inventory_id),
+    [kitItems]
+  );
+
+  const kitHasStockError = useMemo(
+    () => kitItems.some((item) =>
+      item.inventory_id &&
+      item.current_stock !== null &&
+      item.current_stock !== undefined &&
+      Number(item.quantity_used) > Number(item.current_stock)
+    ),
     [kitItems]
   );
 
@@ -2213,6 +2234,7 @@ export default function RecepAppointments() {
                     <tr>
                       <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
                       <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Category</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Current Stock</th>
                       <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
                         {kitAlreadySubmitted && !kitEditMode ? 'Used' : 'Qty'}
                       </th>
@@ -2230,27 +2252,46 @@ export default function RecepAppointments() {
                           )}
                         </td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.category || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', color: '#374151' }}>
+                          {item.current_stock !== null && item.current_stock !== undefined
+                            ? item.current_stock
+                            : <span style={{ color: '#94a3b8' }}>—</span>}
+                        </td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
                           {kitAlreadySubmitted && !kitEditMode ? (
                             item.quantity_used || 0
-                          ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.quantity_used || 0}
-                              onChange={(event) => handleKitQtyChange(index, event.target.value)}
-                              disabled={!item.inventory_id}
-                              style={{
-                                width: '60px',
-                                padding: '4px 8px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
-                                cursor: !item.inventory_id ? 'not-allowed' : 'text',
-                              }}
-                            />
-                          )}
+                          ) : (() => {
+                            const exceedsStock =
+                              item.inventory_id &&
+                              item.current_stock !== null &&
+                              item.current_stock !== undefined &&
+                              Number(item.quantity_used) > Number(item.current_stock);
+                            return (
+                              <>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.quantity_used || 0}
+                                  onChange={(event) => handleKitQtyChange(index, event.target.value)}
+                                  disabled={!item.inventory_id}
+                                  style={{
+                                    width: '60px',
+                                    padding: '4px 8px',
+                                    border: `1px solid ${exceedsStock ? '#ef4444' : '#d1d5db'}`,
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
+                                    cursor: !item.inventory_id ? 'not-allowed' : 'text',
+                                  }}
+                                />
+                                {exceedsStock && (
+                                  <span style={{ display: 'block', color: '#b91c1c', fontSize: 11, marginTop: 2 }}>
+                                    Exceeds stock
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
@@ -2273,7 +2314,7 @@ export default function RecepAppointments() {
                   type="button"
                   style={{
                     ...styles.modalPrimaryBtn,
-                    ...((kitSubmitting || !hasDeductibleKitItems) ? styles.pageBtnDisabled : {}),
+                    ...((kitSubmitting || !hasDeductibleKitItems || kitHasStockError) ? styles.pageBtnDisabled : {}),
                   }}
                   onClick={() => {
                     if (kitAlreadySubmitted && !kitEditMode) {
@@ -2282,7 +2323,7 @@ export default function RecepAppointments() {
                     }
                     handleConfirmKitDeduction();
                   }}
-                  disabled={kitSubmitting || !hasDeductibleKitItems}
+                  disabled={kitSubmitting || !hasDeductibleKitItems || kitHasStockError}
                 >
                   {kitAlreadySubmitted && !kitEditMode
                     ? 'Edit'
