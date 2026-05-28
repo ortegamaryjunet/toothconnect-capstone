@@ -1372,6 +1372,15 @@ router.put('/appointments/:appointmentId/consumption', requireRole('dentist', 'r
       return res.status(404).json({ message: 'No existing service kit submission to edit' });
     }
 
+    const [existingReceptionistSubmitters] = await conn.query(
+      `SELECT DISTINCT ac.recorded_by AS user_id
+       FROM appointment_consumption ac
+       JOIN users u ON u.id = ac.recorded_by
+       WHERE ac.appointment_id = ?
+         AND u.role = 'receptionist'`,
+      [appointmentId]
+    );
+
     const tableByCategory = { supply: 'supplies', medicine: 'medicines', equipment: 'equipment' };
     for (const row of existingRows) {
       const table = tableByCategory[row.category];
@@ -1499,6 +1508,25 @@ router.put('/appointments/:appointmentId/consumption', requireRole('dentist', 'r
           appointmentId,
         ]
       );
+    }
+
+    if (role === 'dentist' && existingReceptionistSubmitters.length > 0) {
+      const dentistName = req.user?.name || 'Dentist';
+      const appointmentSchedule = appt.start_time
+        ? String(appt.start_time)
+        : 'the recorded schedule';
+      const rowsToInsert = existingReceptionistSubmitters.filter((row) => Number(row.user_id) > 0);
+      if (rowsToInsert.length > 0) {
+        await conn.query(
+          `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
+           VALUES ${rowsToInsert.map(() => "(?, 'service_kit_updated_by_dentist', 'Service Kit Edited', ?, 'appointment', ?)").join(', ')}`,
+          rowsToInsert.flatMap((row) => [
+            row.user_id,
+            `${dentistName} edited the service kit you submitted for appointment #${appointmentId} scheduled at ${appointmentSchedule}.`,
+            appointmentId,
+          ])
+        );
+      }
     }
 
     await conn.commit();
