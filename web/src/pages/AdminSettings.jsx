@@ -2871,7 +2871,7 @@ export default function AdminSettings() {
                     <th style={styles.tableHead}>Service</th>
                     <th style={styles.tableHead}>Kit Items</th>
                     <th style={styles.tableHead}>Status</th>
-                    <th style={styles.tableHead}>Changed By</th>
+                    <th style={styles.tableHead}>Updated By</th>
                     <th style={styles.tableHead}>Date</th>
                   </tr>
                 </thead>
@@ -2907,7 +2907,7 @@ export default function AdminSettings() {
                             {row.status}
                           </span>
                         </td>
-                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{row.changed_by}</td>
+                        <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{row.changed_by || '—'}</td>
                         <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
                           {row.changed_at
                             ? new Date(row.changed_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
