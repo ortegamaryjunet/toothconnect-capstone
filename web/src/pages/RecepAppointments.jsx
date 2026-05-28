@@ -638,6 +638,7 @@ export default function RecepAppointments() {
 
   async function handleConfirmKitDeduction() {
     if (!selectedKitAppointment || kitSubmitting) return;
+    const isEditingSubmitted = kitAlreadySubmitted && kitEditMode;
 
     const itemsToSubmit = kitItems
       .filter((item) => Number(item.quantity_used) > 0 && item.inventory_id)
@@ -655,7 +656,7 @@ export default function RecepAppointments() {
     setKitSubmitting(true);
     setKitError('');
     try {
-      if (kitAlreadySubmitted && kitEditMode) {
+      if (isEditingSubmitted) {
         await updateConsumption(selectedKitAppointment.id, itemsToSubmit);
       } else {
         await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
@@ -666,7 +667,7 @@ export default function RecepAppointments() {
         name: user?.name || 'Receptionist',
         role: user?.role || 'receptionist',
       });
-      if (kitAlreadySubmitted && kitEditMode) {
+      if (isEditingSubmitted) {
         setKitEditedBy({
           name: user?.name || 'Receptionist',
           role: user?.role || 'receptionist',
@@ -2621,10 +2622,10 @@ function normalizeAppointments(items) {
       type: isRescheduledPending
         ? 'Rescheduled'
         : (item.type || item.bookingType || formatStatus(item.status || 'scheduled')),
-      originalSchedule: scheduleMeta.originalSchedule,
-      rescheduledSchedule:
-        scheduleMeta.rescheduledSchedule ||
+      originalSchedule:
+        scheduleMeta.originalSchedule ||
         `${displayDate.fullDate || '-'} ${displayDate.time || '-'}`,
+      rescheduledSchedule: scheduleMeta.rescheduledSchedule || '',
       notes: unifiedNote,
       note: unifiedNote,
     };
