@@ -317,7 +317,6 @@ const styles = StyleSheet.create({
   },
 
   assistantPanel: {
-    height: 520,
     borderWidth: 1,
     borderColor: '#d6dde7',
     borderRadius: 14,
@@ -340,6 +339,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
   },
+  assistantHeaderCompact: {
+    minHeight: 58,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
   assistantBotIcon: {
     width: 38,
     height: 38,
@@ -349,6 +353,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
+  },
+  assistantBotIconCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 10,
   },
   assistantBotIconText: {
     color: '#ffffff',
@@ -363,6 +373,9 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 22,
     fontWeight: '700',
+  },
+  assistantTitleCompact: {
+    fontSize: 18,
   },
   assistantStatusRow: {
     flexDirection: 'row',
@@ -402,6 +415,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 18,
     paddingBottom: 14,
+  },
+  assistantMessagesContentCompact: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
   },
   assistantMessageRow: {
     flexDirection: 'row',
@@ -516,6 +534,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
   },
+  assistantComposerCompact: {
+    minHeight: 76,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
   assistantTextInput: {
     flex: 1,
     minHeight: 66,
@@ -529,6 +552,13 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     fontSize: 16,
     fontWeight: '500',
+  },
+  assistantTextInputCompact: {
+    minHeight: 48,
+    maxHeight: 58,
+    fontSize: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   assistantSendButton: {
     width: 52,

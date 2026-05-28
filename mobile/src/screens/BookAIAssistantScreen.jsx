@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ActivityIndicator,
   Modal,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../api/axios';
@@ -115,6 +117,7 @@ function buildClinicISO(dateKey, timeKey) {
 }
 
 export default function BookAIAssistantScreen({ navigation }) {
+  const { height: windowHeight } = useWindowDimensions();
   const [branches, setBranches] = useState([]);
   const [services, setServices] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -124,11 +127,12 @@ export default function BookAIAssistantScreen({ navigation }) {
   const [concern, setConcern] = useState('');
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantExpanded, setAssistantExpanded] = useState(false);
+  const [assistantKeyboardOpen, setAssistantKeyboardOpen] = useState(false);
   const [assistantMessages, setAssistantMessages] = useState([
     {
       id: 'assistant-welcome',
       role: 'assistant',
-      text: 'Hello! Describe your dental concern or service request, and I will help prepare it for booking.',
+      text: "Hello! I'm ToothConnect. Describe your dental concern or service request, and I will help prepare it for booking.",
       time: 'Online',
     },
   ]);
@@ -145,6 +149,26 @@ export default function BookAIAssistantScreen({ navigation }) {
   useEffect(() => {
     loadMeta();
   }, []);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setAssistantKeyboardOpen(true);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setAssistantKeyboardOpen(false);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const assistantPanelHeight = assistantKeyboardOpen
+    ? Math.max(260, Math.min(300, windowHeight * 0.32))
+    : assistantExpanded
+      ? Math.max(500, Math.min(640, windowHeight * 0.74))
+      : Math.max(420, Math.min(520, windowHeight * 0.58));
 
   async function loadMeta() {
     try {
@@ -467,13 +491,15 @@ export default function BookAIAssistantScreen({ navigation }) {
           {inputError ? <Text style={styles.inputError}>{inputError}</Text> : null}
 
           {assistantOpen ? (
-            <View style={[styles.assistantPanel, assistantExpanded && styles.assistantPanelExpanded]}>
-              <View style={styles.assistantHeader}>
-                <View style={styles.assistantBotIcon}>
+            <View style={[styles.assistantPanel, { height: assistantPanelHeight }]}>
+              <View style={[styles.assistantHeader, assistantKeyboardOpen && styles.assistantHeaderCompact]}>
+                <View style={[styles.assistantBotIcon, assistantKeyboardOpen && styles.assistantBotIconCompact]}>
                   <Text style={styles.assistantBotIconText}>TC</Text>
                 </View>
                 <View style={styles.assistantTitleBlock}>
-                  <Text style={styles.assistantTitle}>AI Assistant</Text>
+                  <Text style={[styles.assistantTitle, assistantKeyboardOpen && styles.assistantTitleCompact]}>
+                    ToothConnect
+                  </Text>
                   <View style={styles.assistantStatusRow}>
                     <View style={styles.onlineDot} />
                     <Text style={styles.assistantStatus}>Online</Text>
@@ -499,7 +525,10 @@ export default function BookAIAssistantScreen({ navigation }) {
 
               <ScrollView
                 style={styles.assistantMessages}
-                contentContainerStyle={styles.assistantMessagesContent}
+                contentContainerStyle={[
+                  styles.assistantMessagesContent,
+                  assistantKeyboardOpen && styles.assistantMessagesContentCompact,
+                ]}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
@@ -552,9 +581,9 @@ export default function BookAIAssistantScreen({ navigation }) {
                 ) : null}
               </ScrollView>
 
-              <View style={styles.assistantComposer}>
+              <View style={[styles.assistantComposer, assistantKeyboardOpen && styles.assistantComposerCompact]}>
                 <TextInput
-                  style={styles.assistantTextInput}
+                  style={[styles.assistantTextInput, assistantKeyboardOpen && styles.assistantTextInputCompact]}
                   value={concern}
                   onChangeText={handleConcernChange}
                   placeholder={
