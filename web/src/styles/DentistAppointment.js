@@ -826,6 +826,30 @@
       color: '#ffffff',
     },
 
+    modalSecondaryBtn: {
+      height: 44,
+      borderRadius: 12,
+      border: '1px solid #e5e7eb',
+      background: '#ffffff',
+      cursor: 'pointer',
+      padding: '0 16px',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      color: '#0f172a',
+    },
+
+    modalPrimaryBtn: {
+      height: 44,
+      borderRadius: 12,
+      border: 'none',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      color: '#ffffff',
+      cursor: 'pointer',
+      padding: '0 18px',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+    },
+
     notificationBadge: {
       marginLeft: 'auto',
       background: '#dc2626',

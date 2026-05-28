@@ -1041,7 +1041,7 @@ export default function DentistAppointment() {
               <div style={styles.noteModalActions}>
                 <button
                   type="button"
-                  style={{ ...styles.noteActionButton, ...styles.noteCancelBtn }}
+                  style={styles.modalSecondaryBtn}
                   onClick={closeKitModal}
                 >
                   Cancel
@@ -1049,7 +1049,10 @@ export default function DentistAppointment() {
 
                 <button
                   type="button"
-                  style={{ ...styles.noteActionButton, ...styles.noteSaveBtn }}
+                  style={{
+                    ...styles.modalPrimaryBtn,
+                    ...((kitSubmitting || !hasDeductibleKitItems) ? styles.pageBtnDisabled : {}),
+                  }}
                   onClick={() => {
                     if (kitAlreadySubmitted && !kitEditMode) {
                       setKitEditMode(true);
@@ -1074,7 +1077,7 @@ export default function DentistAppointment() {
               <div style={{ textAlign: 'right', marginTop: '16px' }}>
                 <button
                   type="button"
-                  style={{ ...styles.noteActionButton, ...styles.noteCancelBtn }}
+                  style={styles.modalSecondaryBtn}
                   onClick={closeKitModal}
                 >
                   Close
