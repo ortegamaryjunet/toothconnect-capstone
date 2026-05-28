@@ -1005,23 +1005,53 @@ router.get('/service-kits/:serviceId', async (req, res) => {
       if (item.category === 'supply') {
         const [r] = await pool.query(
           `SELECT id, supply_name AS name, quantity, low_stock_threshold, unit
-           FROM supplies WHERE branch_id = ? AND supply_name = ? LIMIT 1`,
-          [branchId, item.item_name]
+           FROM supplies
+           WHERE branch_id = ?
+             AND (
+               LOWER(TRIM(supply_name)) = LOWER(TRIM(?))
+               OR LOWER(TRIM(supply_name)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
+               OR LOWER(TRIM(?)) LIKE CONCAT('%', LOWER(TRIM(supply_name)), '%')
+             )
+           ORDER BY
+             CASE WHEN LOWER(TRIM(supply_name)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
+             LENGTH(supply_name) ASC
+           LIMIT 1`,
+          [branchId, item.item_name, item.item_name, item.item_name, item.item_name]
         );
         inventoryRow = r[0] || null;
       } else if (item.category === 'medicine') {
         const [r] = await pool.query(
           `SELECT id, medicine_name AS name, quantity, low_stock_threshold, unit
-           FROM medicines WHERE branch_id = ? AND medicine_name = ? LIMIT 1`,
-          [branchId, item.item_name]
+           FROM medicines
+           WHERE branch_id = ?
+             AND (
+               LOWER(TRIM(medicine_name)) = LOWER(TRIM(?))
+               OR LOWER(TRIM(medicine_name)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
+               OR LOWER(TRIM(?)) LIKE CONCAT('%', LOWER(TRIM(medicine_name)), '%')
+             )
+           ORDER BY
+             CASE WHEN LOWER(TRIM(medicine_name)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
+             LENGTH(medicine_name) ASC
+           LIMIT 1`,
+          [branchId, item.item_name, item.item_name, item.item_name, item.item_name]
         );
         inventoryRow = r[0] || null;
       } else if (item.category === 'equipment') {
         const [r] = await pool.query(
           `SELECT id, equipment_name AS name, quantity, low_stock_threshold,
                   COALESCE(maintenance_status, 'Available') AS unit
-           FROM equipment WHERE branch_id = ? AND equipment_name = ? LIMIT 1`,
-          [branchId, item.item_name]
+           FROM equipment
+           WHERE branch_id = ?
+             AND (
+               LOWER(TRIM(equipment_name)) = LOWER(TRIM(?))
+               OR LOWER(TRIM(equipment_name)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
+               OR LOWER(TRIM(?)) LIKE CONCAT('%', LOWER(TRIM(equipment_name)), '%')
+             )
+           ORDER BY
+             CASE WHEN LOWER(TRIM(equipment_name)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
+             LENGTH(equipment_name) ASC
+           LIMIT 1`,
+          [branchId, item.item_name, item.item_name, item.item_name, item.item_name]
         );
         inventoryRow = r[0] || null;
       }
