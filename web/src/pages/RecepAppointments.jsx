@@ -1213,11 +1213,7 @@ export default function RecepAppointments() {
                               <div
                                 style={{
                                   ...styles.scheduleDetail,
-                                  position: 'absolute',
-                                  right: 14,
-                                  bottom: 14,
-                                  textAlign: 'right',
-                                  maxWidth: '75%',
+                                  marginTop: 8,
                                   background: '#f8fafc',
                                   border: '1px solid #e2e8f0',
                                   borderRadius: 10,
