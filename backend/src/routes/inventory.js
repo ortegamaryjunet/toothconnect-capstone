@@ -1003,9 +1003,12 @@ router.get('/service-kit-history', requireRole('admin'), async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      `SELECT al.id, al.created_at, al.details, u.name AS changed_by_name, u.role AS changed_by_role
+      `SELECT al.id, al.created_at, al.details, al.branch_id,
+              u.name AS changed_by_name, u.role AS changed_by_role,
+              b.address AS branch_address, b.name AS branch_name
        FROM audit_logs al
        LEFT JOIN users u ON u.id = al.user_id
+       LEFT JOIN branches b ON b.id = al.branch_id
        WHERE ${whereParts.join(' AND ')}
        ORDER BY al.created_at DESC
        LIMIT 500`,
@@ -1014,6 +1017,7 @@ router.get('/service-kit-history', requireRole('admin'), async (req, res) => {
 
     const records = rows.map((row) => {
       const details = typeof row.details === 'string' ? JSON.parse(row.details) : (row.details || {});
+      const branchDisplay = row.branch_address || details.branch_address || row.branch_name || '—';
       return {
         id: row.id,
         service_id: details.service_id || null,
@@ -1021,6 +1025,7 @@ router.get('/service-kit-history', requireRole('admin'), async (req, res) => {
         items: Array.isArray(details.items) ? details.items : [],
         status: details.was_new ? 'Added' : 'Updated',
         changed_by: row.changed_by_name || row.changed_by_role || 'Admin',
+        branch_address: branchDisplay,
         changed_at: row.created_at,
       };
     });
@@ -1081,7 +1086,8 @@ router.get('/service-kits/:serviceId', async (req, res) => {
 
 router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) => {
   const serviceId = parseInt(req.params.serviceId, 10);
-  const { notes = null, items = [] } = req.body || {};
+  const { notes = null, items = [], branch_id = null } = req.body || {};
+  const auditBranchId = branch_id ? parseInt(branch_id, 10) : null;
 
   if (!serviceId) return res.status(400).json({ message: 'Invalid service id' });
   if (!Array.isArray(items)) return res.status(400).json({ message: 'items must be an array' });
@@ -1125,9 +1131,15 @@ router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) =>
       );
     }
 
+    let branchAddress = null;
+    if (auditBranchId) {
+      const [branchRows] = await conn.query('SELECT address, name FROM branches WHERE id = ? LIMIT 1', [auditBranchId]);
+      branchAddress = branchRows[0]?.address || branchRows[0]?.name || null;
+    }
+
     await conn.query(
-      `INSERT INTO audit_logs (user_id, action, details) VALUES (?, 'service_kit_managed', ?)`,
-      [req.user.user_id, JSON.stringify({ service_id: serviceId, service_name: serviceName, items: cleanItems, was_new: wasNew })]
+      `INSERT INTO audit_logs (user_id, action, branch_id, details) VALUES (?, 'service_kit_managed', ?, ?)`,
+      [req.user.user_id, auditBranchId, JSON.stringify({ service_id: serviceId, service_name: serviceName, items: cleanItems, was_new: wasNew, branch_address: branchAddress })]
     );
 
     await conn.commit();
