@@ -574,7 +574,7 @@ export default function BookAIAssistantScreen({ navigation }) {
                       <Text style={styles.assistantMiniAvatarText}>TC</Text>
                     </View>
                     <View style={styles.typingBubble}>
-                      <ActivityIndicator color="#0f9d8c" size="small" />
+                      <ActivityIndicator color="#c98904" size="small" />
                       <Text style={styles.typingText}>Checking availability...</Text>
                     </View>
                   </View>
@@ -605,7 +605,7 @@ export default function BookAIAssistantScreen({ navigation }) {
                   accessibilityLabel="Send message"
                 >
                   {conflictChecking ? (
-                    <ActivityIndicator color="#0f172a" size="small" />
+                    <ActivityIndicator color="#8a650e" size="small" />
                   ) : (
                     <Text style={styles.assistantSendButtonText}>▷</Text>
                   )}
