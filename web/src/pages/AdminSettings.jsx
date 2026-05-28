@@ -194,7 +194,8 @@ export default function AdminSettings() {
 
   const [branchForm, setBranchForm] = useState(initialBranchForm);
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
-  const [serviceKitOverlay, setServiceKitOverlay] = useState(null);
+  const [serviceKitOverlay, setServiceKitOverlay] = useState(false);
+  const [serviceKitServiceId, setServiceKitServiceId] = useState('');
   const [serviceKitBranchId, setServiceKitBranchId] = useState('');
   const [serviceKitItems, setServiceKitItems] = useState([]);
   const [serviceKitInventory, setServiceKitInventory] = useState({
@@ -289,7 +290,7 @@ export default function AdminSettings() {
         setWebsiteServiceOverlay(null);
         setWebsiteAnnouncementOverlay(null);
         setWebsiteValidationModal(null);
-        setServiceKitOverlay(null);
+        setServiceKitOverlay(false);
       }
     }
 
@@ -871,25 +872,31 @@ export default function AdminSettings() {
     }
   }
 
-  async function openServiceKitManager(service) {
-    if (!service?.id) return;
+  async function openServiceKitManager(service = null) {
+    const resolvedServiceId = service?.id ? String(service.id) : String(services?.[0]?.id || '');
+    if (!resolvedServiceId) return alert('No service available.');
+
     const branchId = Number(branches?.[0]?.id || 0);
     if (!branchId) return alert('No branch available.');
-    setServiceKitOverlay(service);
+
+    setServiceKitOverlay(true);
+    setServiceKitServiceId(resolvedServiceId);
     setServiceKitBranchId(String(branchId));
+
     try {
-      const [supplies, medicines, equipment] = await Promise.all([
+      const [supplies, medicines, equipment, data] = await Promise.all([
         listSupplies(branchId),
         listMedicines(branchId),
         listEquipment(branchId),
+        getManageServiceKit(Number(resolvedServiceId), branchId),
       ]);
+
       setServiceKitInventory({
         supplies: Array.isArray(supplies) ? supplies : [],
         medicines: Array.isArray(medicines) ? medicines : [],
         equipment: Array.isArray(equipment) ? equipment : [],
       });
 
-      const data = await getManageServiceKit(service.id, branchId);
       setServiceKitItems((data.items || []).map((item) => ({
         category: item.category,
         item_name: item.item_name,
@@ -903,7 +910,7 @@ export default function AdminSettings() {
   }
 
   async function reloadServiceKitBranch(branchId) {
-    if (!serviceKitOverlay || !branchId) return;
+    if (!serviceKitOverlay || !branchId || !serviceKitServiceId) return;
     setServiceKitBranchId(String(branchId));
     try {
       const [supplies, medicines, equipment] = await Promise.all([
@@ -917,7 +924,30 @@ export default function AdminSettings() {
         equipment: Array.isArray(equipment) ? equipment : [],
       });
 
-      const data = await getManageServiceKit(serviceKitOverlay.id, branchId);
+      const data = await getManageServiceKit(Number(serviceKitServiceId), branchId);
+      setServiceKitItems((data.items || []).map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: String(item.default_quantity || ''),
+        current_stock: item.current_stock,
+      })));
+    } catch {
+      setServiceKitItems([]);
+    }
+  }
+
+  async function reloadServiceKitService(nextServiceId) {
+    const sid = String(nextServiceId || '');
+    if (!sid) return;
+    if (!serviceKitOverlay) return;
+
+    setServiceKitServiceId(sid);
+
+    const branchId = Number(serviceKitBranchId || 0);
+    if (!branchId) return;
+
+    try {
+      const data = await getManageServiceKit(Number(sid), branchId);
       setServiceKitItems((data.items || []).map((item) => ({
         category: item.category,
         item_name: item.item_name,
@@ -944,7 +974,7 @@ export default function AdminSettings() {
   }
 
   async function saveServiceKit() {
-    if (!serviceKitOverlay) return;
+    if (!serviceKitOverlay || !serviceKitServiceId) return;
     const payload = {
       notes: null,
       items: serviceKitItems.map((item) => ({
@@ -954,8 +984,8 @@ export default function AdminSettings() {
       })),
     };
     try {
-      await saveManageServiceKit(serviceKitOverlay.id, payload);
-      setServiceKitOverlay(null);
+      await saveManageServiceKit(Number(serviceKitServiceId), payload);
+      setServiceKitOverlay(false);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service kit.');
     }
@@ -2485,21 +2515,49 @@ export default function AdminSettings() {
       {serviceKitOverlay && (
         <FormOverlay
           styles={styles}
-          title={`Manage Service Kit: ${serviceKitOverlay.name}`}
-          onClose={() => setServiceKitOverlay(null)}
+          title="Manage Service Kit"
+          onClose={() => setServiceKitOverlay(false)}
           onOverlayClick={handleOverlayClick}
         >
-          <div style={styles.field}>
-            <label style={styles.fieldLabel}>Branch</label>
-            <select value={serviceKitBranchId} onChange={(e) => reloadServiceKitBranch(Number(e.target.value))} style={styles.formInput}>
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
+          <div style={styles.formGrid}>
+            <div style={styles.field}>
+              <label style={styles.fieldLabel}>Service</label>
+              <select
+                value={serviceKitServiceId}
+                onChange={(e) => reloadServiceKitService(e.target.value)}
+                style={styles.formInput}
+              >
+                {services.map((svc) => (
+                  <option key={svc.id} value={svc.id}>
+                    {svc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={styles.field}>
+              <label style={styles.fieldLabel}>Branch</label>
+              <select
+                value={serviceKitBranchId}
+                onChange={(e) => reloadServiceKitBranch(Number(e.target.value))}
+                style={styles.formInput}
+              >
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div style={{ marginTop: 12 }}>
+            <div style={{ ...styles.formGrid, marginBottom: 6 }}>
+              <div style={styles.fieldLabel}>Category</div>
+              <div style={styles.fieldLabel}>Item</div>
+              <div style={styles.fieldLabel}>Default Quantity</div>
+              <div style={styles.fieldLabel}>Current Stock</div>
+              <div style={styles.fieldLabel}>Action</div>
+            </div>
             {serviceKitItems.map((item, index) => (
               <div key={`${item.category}-${index}`} style={{ ...styles.formGrid, marginBottom: 8 }}>
                 <select
