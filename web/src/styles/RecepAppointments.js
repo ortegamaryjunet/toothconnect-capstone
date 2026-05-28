@@ -1069,6 +1069,118 @@
       boxSizing: 'border-box',
     },
 
+    modalContentReschedule: {
+      width: '100%',
+      maxWidth: 980,
+      maxHeight: '90vh',
+      overflowY: 'auto',
+      background: '#ffffff',
+      borderRadius: 22,
+      padding: isVerySmall ? 18 : 22,
+      textAlign: 'left',
+      boxShadow: '0 25px 60px rgba(15, 23, 42, 0.25)',
+      boxSizing: 'border-box',
+    },
+
+    modalHeaderRow: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 14,
+    },
+
+    modalHeaderTitle: {
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: isVerySmall ? 18 : 22,
+      color: '#0f172a',
+      margin: 0,
+    },
+
+    modalHeaderSub: {
+      margin: '6px 0 0',
+      color: '#64748b',
+      fontSize: 13,
+      lineHeight: 1.4,
+    },
+
+    modalCloseBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      border: '1px solid #e5e7eb',
+      background: '#ffffff',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#334155',
+      flexShrink: 0,
+    },
+
+    alertErrorInline: {
+      marginBottom: 14,
+      color: '#b91c1c',
+      background: '#fee2e2',
+      border: '1px solid #fecaca',
+      borderRadius: 12,
+      padding: '10px 12px',
+      fontSize: 13,
+      display: 'flex',
+      alignItems: 'center',
+    },
+
+    reasonHeaderRow: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+
+    reasonTemplateBtn: {
+      border: '1px solid #e5e7eb',
+      background: '#ffffff',
+      color: '#0f172a',
+      height: 30,
+      padding: '0 10px',
+      borderRadius: 10,
+      fontSize: 12,
+      cursor: 'pointer',
+      whiteSpace: 'nowrap',
+    },
+
+    rescheduleActions: {
+      display: 'flex',
+      justifyContent: 'flex-end',
+      gap: 10,
+      marginTop: 16,
+      flexDirection: isVerySmall ? 'column' : 'row',
+    },
+
+    modalSecondaryBtn: {
+      height: 44,
+      borderRadius: 12,
+      border: '1px solid #e5e7eb',
+      background: '#ffffff',
+      cursor: 'pointer',
+      padding: '0 16px',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      color: '#0f172a',
+    },
+
+    modalPrimaryBtn: {
+      height: 44,
+      borderRadius: 12,
+      border: 'none',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      color: '#ffffff',
+      cursor: 'pointer',
+      padding: '0 18px',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+    },
+
     modalIcon: {
       width: 70,
       height: 70,

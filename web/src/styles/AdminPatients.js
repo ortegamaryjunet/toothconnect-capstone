@@ -321,6 +321,31 @@
       boxSizing: 'border-box',
     },
 
+    exportBtn: {
+      height: 42,
+      minWidth: 145,
+      border: 'none',
+      borderRadius: 14,
+      background: 'linear-gradient(135deg, #16a34a, #22c55e)',
+      color: '#ffffff',
+      padding: '0 18px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      boxShadow: '0 8px 18px rgba(34, 197, 94, 0.22)',
+      transition: '0.2s ease',
+      whiteSpace: 'nowrap',
+    },
+
+    exportIcon: {
+      fontSize: 15,
+    },
+
     tableCard: {
       background: '#ffffff',
       border: '1px solid #edf0f5',
@@ -334,6 +359,11 @@
 
     tableHeader: {
       marginBottom: 18,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 14,
+      flexWrap: isMobile ? 'wrap' : 'nowrap',
     },
 
     tableTitle: {
@@ -341,6 +371,21 @@
       fontSize: 18,
       color: '#0f172a',
       margin: 0,
+      fontWeight: 700,
+    },
+
+    errorText: {
+      color: '#b91c1c',
+      padding: '0 0 12px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+    },
+
+    loadingText: {
+      color: '#64748b',
+      padding: '0 0 12px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
     },
 
     tableWrapper: {
@@ -350,7 +395,7 @@
 
     patientTable: {
       width: '100%',
-      minWidth: 800,
+      minWidth: 900,
       borderCollapse: 'collapse',
     },
 
@@ -380,6 +425,12 @@
       background: '#ffffff',
     },
 
+    actionGroup: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+    },
+
     viewBtn: {
       minWidth: 70,
       height: 36,
@@ -391,6 +442,23 @@
       justifyContent: 'center',
       textDecoration: 'none',
       fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      border: 'none',
+      cursor: 'pointer',
+    },
+
+    pdfBtn: {
+      minWidth: 70,
+      height: 36,
+      borderRadius: 12,
+      background: 'linear-gradient(135deg, #991b1b, #dc2626)',
+      color: '#ffffff',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      textDecoration: 'none',
+      fontSize: 13,
+      fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
       border: 'none',
       cursor: 'pointer',
@@ -477,7 +545,6 @@
     modalIconText: {
       fontSize: 30,
       lineHeight: 1,
-
     },
 
     modalTitle: {
@@ -515,13 +582,71 @@
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
       color: 'black',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
+    },
+
+    exportModalOverlay: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 10000,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    exportModalContent: {
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
+      background: '#ffffff',
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
+    },
+
+    exportModalTitle: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    exportModalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
+    },
+
+    exportModalText: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
+    },
+
+    exportModalButton: {
+      width: '100%',
+      height: 38,
+      border: 'none',
+      borderRadius: 8,
+      background: '#d4af37',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
     },
 
     notificationBadge: {

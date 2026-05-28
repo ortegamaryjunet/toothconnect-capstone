@@ -162,19 +162,19 @@ async function getDentistAppointmentsOnDay(dentistId, dayStart, dayEnd) {
   }));
 }
 
-async function getBranchBookedStartTimesOnDay(branchId, dayStart, dayEnd) {
+async function getBranchBusyIntervalsOnDay(branchId, dayStart, dayEnd) {
   const [rows] = await pool.query(
-    `SELECT start_time FROM appointments
+    `SELECT start_time, duration_min FROM appointments
      WHERE branch_id = ?
        AND status IN ('scheduled','arrived')
        AND start_time >= ? AND start_time < ?`,
     [branchId, toMySQLDateTime(dayStart), toMySQLDateTime(dayEnd)]
   );
-  const booked = new Set();
-  for (const r of rows) {
-    booked.add(toMySQLDateTime(parseISOToDate(r.start_time)));
-  }
-  return booked;
+  return rows.map((r) => {
+    const start = parseISOToDate(r.start_time);
+    const end = addMinutes(start, Number(r.duration_min || 30) + APPOINTMENT_BUFFER_MINUTES);
+    return { start, end };
+  });
 }
 
 async function getPatientPreferences(patientId) {
@@ -301,7 +301,7 @@ async function suggestSlots({
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
     const weekday = jsWeekday(day);
     const dayKey = clinicDateKeyFromUtcDate(dayStart);
-    const branchBookedStartTimes = await getBranchBookedStartTimesOnDay(branchId, dayStart, dayEnd);
+    const branchBusyIntervals = await getBranchBusyIntervalsOnDay(branchId, dayStart, dayEnd);
 
     for (const dentist of dentists) {
       const leaveRanges = approvedLeavesByDentist.get(Number(dentist.id)) || null;
@@ -353,7 +353,10 @@ async function suggestSlots({
       for (const slot of candidates) {
         if (slot.start <= new Date()) continue;
         if (isInsideLunchLocal(slot.start, slot.end)) continue;
-        if (branchBookedStartTimes.has(toMySQLDateTime(slot.start))) continue;
+        const branchConflict = branchBusyIntervals.some((b) =>
+          rangesOverlap(slot.start, slot.end, b.start, b.end)
+        );
+        if (branchConflict) continue;
 
         const conflict = existing.some(e =>
           rangesOverlap(slot.start, slot.end, e.start, e.end)

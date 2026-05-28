@@ -14,6 +14,15 @@ import createRecepReceiptsStyles from '../styles/RecepReceipts';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
 
+function getReceiptStatusLabel(status) {
+  const labels = {
+    'Pending Validation': 'Pending',
+    Validated: 'Acknowledged',
+  };
+
+  return labels[status] || status;
+}
+
 function mapPaymentToReceipt(payment) {
   const paidOrCreated = payment.paid_at || payment.receipt_uploaded_at || payment.created_at;
 
@@ -27,7 +36,7 @@ function mapPaymentToReceipt(payment) {
     appointmentTime: formatTime(paidOrCreated),
     amountValue: Number(payment.amount || 0),
     amount: formatPeso(payment.amount),
-    paymentMethod: formatPaymentMethod(payment.payment_method),
+    paymentMethod: formatPaymentMethod(payment.payment_method, payment.ewallet_provider),
     fileType: payment.receipt_mime_type ? payment.receipt_mime_type.split('/').pop().toUpperCase() : 'Pending',
     fileName: payment.receipt_file_name || 'Awaiting patient upload',
     receiptUrl: payment.receipt_url || '',
@@ -53,7 +62,13 @@ function formatPeso(value) {
   })}`;
 }
 
-function formatPaymentMethod(value) {
+function formatPaymentMethod(value, provider) {
+  const providerValue = String(provider || '').trim();
+
+  if ((value === 'ewallet' || value === 'bank_transfer') && providerValue) {
+    return providerValue;
+  }
+
   const labels = {
     cash: 'Cash',
     ewallet: 'E-wallet',

@@ -19,8 +19,16 @@ export default function AdminLogs() {
   );
 
   const [searchValue, setSearchValue] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
+
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+
+  const [appliedFromDate, setAppliedFromDate] = useState('');
+  const [appliedToDate, setAppliedToDate] = useState('');
+  const [appliedRoleFilter, setAppliedRoleFilter] = useState('all');
+
+  const [filterClicked, setFilterClicked] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [auditLogs, setAuditLogs] = useState([]);
 
@@ -64,34 +72,6 @@ export default function AdminLogs() {
     inventory_purchase_expense: 'Created purchase expense',
   };
 
-  function formatLogDateTime(isoString) {
-    if (!isoString) return '';
-    const d = new Date(isoString);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    return `${year}-${month}-${day} ${time}`;
-  }
-
-  useEffect(() => {
-    listAuditLogs()
-      .then(data => {
-        const rows = (data.logs || []).map(row => ({
-          id: row.id,
-          dateTime: formatLogDateTime(row.created_at),
-          role: row.user_role ? row.user_role.charAt(0).toUpperCase() + row.user_role.slice(1) : 'Unknown',
-          name: row.user_name || 'Unknown',
-          action: ACTION_LABEL_MAP[row.action] || row.action,
-          module: MODULE_MAP[row.action] || 'System',
-          deviceBrowser: row.device_browser || 'N/A',
-          status: row.log_status === 'failed' ? 'Failed' : 'Success',
-        }));
-        setAuditLogs(rows);
-      })
-      .catch(() => {});
-  }, []);
-
   const isMobile = screenWidth <= 850;
   const isTablet = screenWidth > 850 && screenWidth <= 1200;
   const isSmallScreen = screenWidth <= 1200;
@@ -102,13 +82,48 @@ export default function AdminLogs() {
     isSmallScreen,
   });
 
+  function formatLogDateTime(isoString) {
+    if (!isoString) return '';
+
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const time = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    return `${year}-${month}-${day} ${time}`;
+  }
+
+  useEffect(() => {
+    listAuditLogs()
+      .then((data) => {
+        const rows = (data.logs || []).map((row) => ({
+          id: row.id,
+          dateTime: formatLogDateTime(row.created_at),
+          role: row.user_role
+            ? row.user_role.charAt(0).toUpperCase() + row.user_role.slice(1)
+            : 'Unknown',
+          name: row.user_name || 'Unknown',
+          action: ACTION_LABEL_MAP[row.action] || row.action,
+          module: MODULE_MAP[row.action] || 'System',
+          deviceBrowser: row.device_browser || 'N/A',
+          status: row.log_status === 'failed' ? 'Failed' : 'Success',
+        }));
+
+        setAuditLogs(rows);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     function handleResize() {
       setScreenWidth(window.innerWidth);
     }
 
     handleResize();
-
     window.addEventListener('resize', handleResize);
 
     return () => {
@@ -133,11 +148,7 @@ export default function AdminLogs() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = showLogoutModal ? 'hidden' : '';
 
     return () => {
       document.body.style.overflow = '';
@@ -166,7 +177,6 @@ export default function AdminLogs() {
       const action = String(log.action).toLowerCase();
       const module = String(log.module).toLowerCase();
       const role = String(log.role).toLowerCase();
-
       const rowDate = String(log.dateTime).substring(0, 10);
 
       const matchesSearch =
@@ -174,14 +184,30 @@ export default function AdminLogs() {
         action.includes(search) ||
         module.includes(search);
 
-      const matchesDate = !dateFilter || rowDate === dateFilter;
+      const matchesFromDate =
+        !appliedFromDate || rowDate >= appliedFromDate;
+
+      const matchesToDate =
+        !appliedToDate || rowDate <= appliedToDate;
 
       const matchesRole =
-        roleFilter === 'all' || role === roleFilter.toLowerCase();
+        appliedRoleFilter === 'all' ||
+        role === appliedRoleFilter.toLowerCase();
 
-      return matchesSearch && matchesDate && matchesRole;
+      return (
+        matchesSearch &&
+        matchesFromDate &&
+        matchesToDate &&
+        matchesRole
+      );
     });
-  }, [auditLogs, searchValue, dateFilter, roleFilter]);
+  }, [
+    auditLogs,
+    searchValue,
+    appliedFromDate,
+    appliedToDate,
+    appliedRoleFilter,
+  ]);
 
   const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
 
@@ -194,7 +220,7 @@ export default function AdminLogs() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchValue, dateFilter, roleFilter]);
+  }, [searchValue, appliedFromDate, appliedToDate, appliedRoleFilter]);
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -212,6 +238,35 @@ export default function AdminLogs() {
     if (event.target === event.currentTarget) {
       closeLogoutModal();
     }
+  }
+
+  function handleFromDateChange(value) {
+    setFromDate(value);
+
+    if (toDate && value && toDate < value) {
+      setToDate('');
+    }
+  }
+
+  function handleToDateChange(value) {
+    if (fromDate && value && value < fromDate) {
+      return;
+    }
+
+    setToDate(value);
+  }
+
+  function applyFilter() {
+    setFilterClicked(true);
+
+    window.setTimeout(() => {
+      setFilterClicked(false);
+    }, 180);
+
+    setAppliedFromDate(fromDate);
+    setAppliedToDate(toDate);
+    setAppliedRoleFilter(roleFilter);
+    setCurrentPage(1);
   }
 
   function nextPage() {
@@ -257,7 +312,10 @@ export default function AdminLogs() {
 
         <nav style={styles.menu}>
           <Link to="/admin" style={styles.menuItem}>
-            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-chart-histogram"
+              style={styles.menuItemIcon}
+            ></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
@@ -321,7 +379,10 @@ export default function AdminLogs() {
             style={{ ...styles.menuItem, ...styles.logoutItem, width: '100%' }}
             onClick={openLogoutModal}
           >
-            <i className="fi fi-rr-sign-out-alt" style={styles.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-sign-out-alt"
+              style={styles.menuItemIcon}
+            ></i>
             <span style={styles.menuItemText}>Logout</span>
           </button>
         </div>
@@ -380,12 +441,34 @@ export default function AdminLogs() {
             </div>
 
             <div style={styles.rightActions}>
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(event) => setDateFilter(event.target.value)}
-                style={styles.dateFilter}
-              />
+              <div style={styles.dateRangeGroup}>
+                <div style={styles.dateRangeField}>
+                  <label style={styles.dateRangeLabel}>From</label>
+
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(event) =>
+                      handleFromDateChange(event.target.value)
+                    }
+                    style={styles.dateFilter}
+                  />
+                </div>
+
+                <div style={styles.dateRangeField}>
+                  <label style={styles.dateRangeLabel}>To</label>
+
+                  <input
+                    type="date"
+                    value={toDate}
+                    min={fromDate || undefined}
+                    onChange={(event) =>
+                      handleToDateChange(event.target.value)
+                    }
+                    style={styles.dateFilter}
+                  />
+                </div>
+              </div>
 
               <select
                 value={roleFilter}
@@ -397,6 +480,18 @@ export default function AdminLogs() {
                 <option value="Dentist">Dentist</option>
                 <option value="Receptionist">Receptionist</option>
               </select>
+
+              <button
+                type="button"
+                onClick={applyFilter}
+                style={{
+                  ...styles.applyFilterBtn,
+                  transform: filterClicked ? 'scale(0.97)' : 'scale(1)',
+                  opacity: filterClicked ? 0.82 : 1,
+                }}
+              >
+                Apply Filter
+              </button>
             </div>
           </section>
 

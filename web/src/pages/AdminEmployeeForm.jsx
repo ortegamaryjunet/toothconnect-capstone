@@ -71,6 +71,7 @@ const DENTIST_SPECIALIZATIONS = [
 
 // ─── Input filter helpers ────────────────────────────────────────────────────
 
+
 function makeInputFilter(disallowedRegex) {
   return function (event) {
     const el = event.target;
@@ -109,7 +110,7 @@ const filterProfessionalTextInput = makeInputFilter(/[^a-zA-ZÀ-ÿ\s'\-.,()&/:]/
 
 // ─── Primitive field components (stable module-level references) ──────────────
 
-function FieldRaw({ label, name, type = 'text', readOnly = false, value, onChange, placeholder, required = false, min, onInput, maxLength, hasError = false, styles }) {
+function FieldRaw({ label, name, type = 'text', readOnly = false, value, onChange, placeholder, required = false, min, onInput, maxLength, hasError = false, errorMessage, styles }) {
   return (
     <div style={styles.field}>
       <label style={styles.label}>
@@ -128,6 +129,7 @@ function FieldRaw({ label, name, type = 'text', readOnly = false, value, onChang
         maxLength={maxLength}
         style={{ ...styles.input, ...(readOnly ? styles.readOnlyInput : {}), ...(hasError ? { borderColor: '#dc2626', borderWidth: '2px' } : {}) }}
       />
+      {errorMessage && <span style={{ color: '#dc2626', fontSize: '11px', marginTop: '3px', display: 'block' }}>{errorMessage}</span>}
     </div>
   );
 }
@@ -294,6 +296,10 @@ export default function AdminEmployeeForm() {
   const [accessEmail, setAccessEmail] = useState('');
   const [enablePerDayBranch, setEnablePerDayBranch] = useState(false);
   const [dentistWorkDays, setDentistWorkDays] = useState([]);
+  const [recepWorkHours, setRecepWorkHours] = useState([]);
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const accessPasswordRef = useRef('');
 
   const [ageValues, setAgeValues] = useState({
     dentist: '',
@@ -409,6 +415,7 @@ export default function AdminEmployeeForm() {
     setSelectedSpecialization('');
     setEnablePerDayBranch(false);
     setDentistWorkDays([]);
+    setRecepWorkHours([]);
   }, [employeeType]);
 
   useEffect(() => {
@@ -440,7 +447,9 @@ export default function AdminEmployeeForm() {
     setEmployeeType(event.target.value);
     setOpenSections({});
     setFormErrors(new Set());
+    setFieldErrors({});
     setAccessEmail('');
+    accessPasswordRef.current = '';
   }
 
   function toggleSection(sectionName) {
@@ -482,6 +491,51 @@ export default function AdminEmployeeForm() {
     setNoSuffix((prev) => ({ ...prev, [type]: event.target.checked }));
   }
 
+  function setFieldError(name, message) {
+    setFieldErrors((prev) => {
+      if (!message) {
+        if (!(name in prev)) return prev;
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      }
+      if (prev[name] === message) return prev;
+      return { ...prev, [name]: message };
+    });
+  }
+
+  function clearSubmitError(name) {
+    setFormErrors((prev) => {
+      if (!prev.has(name)) return prev;
+      const n = new Set(prev);
+      n.delete(name);
+      return n;
+    });
+  }
+
+  function validateRequiredText(value) {
+    return value && value.trim() ? null : 'This field is required';
+  }
+
+  function validateContactValue(value) {
+    if (!value || !value.trim()) return 'Contact number is required';
+    const v = value.trim();
+    if (v.startsWith('+')) return /^\+639\d{9}$/.test(v) ? null : 'Format: +639XXXXXXXXX (13 digits)';
+    return /^09\d{9}$/.test(v) ? null : 'Format: 09XXXXXXXXX (11 digits)';
+  }
+
+  function validateEmailValue(value) {
+    if (!value || !value.trim()) return 'Email is required';
+    return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(value.trim())
+      ? null : 'Invalid email address';
+  }
+
+  function validatePositiveNumber(value) {
+    if (value === '' || value === null || value === undefined) return null;
+    const n = Number(value);
+    return isNaN(n) || n < 0 ? 'Must be 0 or greater' : null;
+  }
+
   function validateRequiredFields(formData) {
     const prefix = employeeType === 'dentist' ? 'doctor'
       : employeeType === 'dentalAssistant' ? 'da' : 'recep';
@@ -497,7 +551,8 @@ export default function AdminEmployeeForm() {
       if (!selectedSpecialization) errors.add('daDepartment');
       ['daStartDate', 'daEmploymentType', 'daShiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
     } else {
-      ['startDate', 'employmentType', 'recepShiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
+      ['startDate', 'employmentType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
+      if (recepWorkHours.length === 0) errors.add('recepWorkHours');
     }
     if (employeeType !== 'dentalAssistant') {
       ['accessEmail', 'accessPassword', 'confirmPassword'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
@@ -514,7 +569,7 @@ export default function AdminEmployeeForm() {
       ? ['branchId', 'department', 'startDate', 'employmentType', 'shiftType']
       : employeeType === 'dentalAssistant'
         ? ['branchId', 'daDepartment', 'daStartDate', 'daEmploymentType', 'daShiftType']
-        : ['branchId', 'startDate', 'employmentType', 'recepShiftType'];
+        : ['branchId', 'startDate', 'employmentType', 'recepWorkHours'];
     const sec4 = ['accessEmail', 'accessPassword', 'confirmPassword'];
     const maps = {
       dentist: { docPersonal: sec1, docWork: sec3, docAccess: sec4 },
@@ -535,10 +590,15 @@ export default function AdminEmployeeForm() {
     payload.employeeType = employeeType;
 
     const errors = validateRequiredFields(formData);
-    if (errors.size > 0) {
+    const hasFormatErrors = Object.keys(fieldErrors).length > 0;
+    if (errors.size > 0 || hasFormatErrors) {
       setFormErrors(errors);
       setOpenSections((prev) => ({ ...prev, ...getSectionsWithErrors(errors) }));
-      setErrorModalMessage('Please fill in all required fields before submitting.');
+      setErrorModalMessage(
+        errors.size > 0
+          ? 'Please fill in all required fields before submitting.'
+          : 'Please fix the highlighted errors before submitting.'
+      );
       setShowErrorModal(true);
       return;
     }
@@ -553,6 +613,7 @@ export default function AdminEmployeeForm() {
     try {
       const isDentist = employeeType === 'dentist';
       const isDentalAssistant = employeeType === 'dentalAssistant';
+      const recepChecked = recepWorkHours.includes('10:00-19:00');
       const prefix = isDentist ? 'doctor' : isDentalAssistant ? 'da' : 'recep';
       const role = isDentist ? 'dentist' : 'receptionist';
       const firstName = payload[`${prefix}FirstName`] || '';
@@ -612,10 +673,10 @@ export default function AdminEmployeeForm() {
           ? payload.daShiftType
           : isDentist
             ? payload.shiftType || null
-            : payload.recepShiftType || null,
+            : null,
         work_days: workDays,
-        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : payload.recepWorkStart,
-        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : payload.recepWorkEnd,
+        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : (recepChecked ? '10:00' : ''),
+        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : (recepChecked ? '19:00' : ''),
         ...(isDentist && enablePerDayBranch && scheduleEntries.length > 0
           ? { schedule_entries: scheduleEntries }
           : {}),
@@ -678,9 +739,33 @@ export default function AdminEmployeeForm() {
     return (
       <>
         <div style={styles.rowThree}>
-          <FieldRaw label="First Name:" name={`${prefix}FirstName`} onInput={filterNameInput} hasError={formErrors.has(`${prefix}FirstName`)} styles={styles} />
+          <FieldRaw
+            label="First Name:"
+            name={`${prefix}FirstName`}
+            onInput={(e) => {
+              filterNameInput(e);
+              const err = validateRequiredText(e.target.value);
+              setFieldError(`${prefix}FirstName`, err);
+              if (!err) clearSubmitError(`${prefix}FirstName`);
+            }}
+            hasError={formErrors.has(`${prefix}FirstName`) || !!fieldErrors[`${prefix}FirstName`]}
+            errorMessage={fieldErrors[`${prefix}FirstName`]}
+            styles={styles}
+          />
           <FieldRaw label="Middle Name:" name={`${prefix}MiddleName`} onInput={filterNameInput} styles={styles} />
-          <FieldRaw label="Last Name:" name={`${prefix}LastName`} onInput={filterNameInput} hasError={formErrors.has(`${prefix}LastName`)} styles={styles} />
+          <FieldRaw
+            label="Last Name:"
+            name={`${prefix}LastName`}
+            onInput={(e) => {
+              filterNameInput(e);
+              const err = validateRequiredText(e.target.value);
+              setFieldError(`${prefix}LastName`, err);
+              if (!err) clearSubmitError(`${prefix}LastName`);
+            }}
+            hasError={formErrors.has(`${prefix}LastName`) || !!fieldErrors[`${prefix}LastName`]}
+            errorMessage={fieldErrors[`${prefix}LastName`]}
+            styles={styles}
+          />
         </div>
 
         <div style={styles.rowTwo}>
@@ -753,8 +838,96 @@ export default function AdminEmployeeForm() {
 
         <div style={styles.rowThree}>
           <FieldRaw label="Home Address:" name={`${prefix}Address`} hasError={formErrors.has(`${prefix}Address`)} styles={styles} />
-          <FieldRaw label="Contact Number:" name={`${prefix}Contact`} type="tel" onInput={filterContactInput} maxLength={13} hasError={formErrors.has(`${prefix}Contact`)} styles={styles} />
-          <FieldRaw label="Email Address:" name={`${prefix}Email`} type="email" onInput={filterEmailInput} onChange={type !== 'dentalAssistant' ? (e) => setAccessEmail(e.target.value) : undefined} hasError={formErrors.has(`${prefix}Email`)} styles={styles} />
+          <FieldRaw
+            label="Contact Number:"
+            name={`${prefix}Contact`}
+            type="tel"
+            onInput={(e) => {
+              filterContactInput(e);
+              const err = validateContactValue(e.target.value);
+              setFieldError(`${prefix}Contact`, err);
+              if (!err) clearSubmitError(`${prefix}Contact`);
+            }}
+            maxLength={13}
+            hasError={formErrors.has(`${prefix}Contact`) || !!fieldErrors[`${prefix}Contact`]}
+            errorMessage={fieldErrors[`${prefix}Contact`]}
+            styles={styles}
+          />
+          <FieldRaw
+            label="Email Address:"
+            name={`${prefix}Email`}
+            type="email"
+            onInput={(e) => {
+              filterEmailInput(e);
+              const err = validateEmailValue(e.target.value);
+              setFieldError(`${prefix}Email`, err);
+              if (!err) clearSubmitError(`${prefix}Email`);
+              if (type !== 'dentalAssistant') setAccessEmail(e.target.value);
+            }}
+            hasError={formErrors.has(`${prefix}Email`) || !!fieldErrors[`${prefix}Email`]}
+            errorMessage={fieldErrors[`${prefix}Email`]}
+            styles={styles}
+          />
+        </div>
+      </>
+    );
+  }
+
+  function renderAccessSection(roleValue, sectionKey) {
+    return renderSection(sectionKey, 'Section 4 - Web Access',
+      <>
+        <div style={styles.rowTwo}>
+          <FieldRaw
+            label="Email Address"
+            name="accessEmail"
+            type="text"
+            value={accessEmail}
+            onChange={(e) => {
+              setAccessEmail(e.target.value);
+              const err = validateEmailValue(e.target.value);
+              setFieldError('accessEmail', err);
+              if (!err) clearSubmitError('accessEmail');
+            }}
+            onInput={filterEmailInput}
+            hasError={formErrors.has('accessEmail') || !!fieldErrors.accessEmail}
+            errorMessage={fieldErrors.accessEmail}
+            styles={styles}
+          />
+          <FieldRaw
+            label="Password"
+            name="accessPassword"
+            type="password"
+            onInput={(e) => {
+              filterPasswordInput(e);
+              accessPasswordRef.current = e.target.value;
+              const err = e.target.value ? null : 'Password is required';
+              setFieldError('accessPassword', err);
+              if (!err) clearSubmitError('accessPassword');
+            }}
+            hasError={formErrors.has('accessPassword') || !!fieldErrors.accessPassword}
+            errorMessage={fieldErrors.accessPassword}
+            styles={styles}
+          />
+        </div>
+        <div style={styles.rowTwo}>
+          <FieldRaw label="Access Role" name="accessRole" value={roleValue} onChange={() => {}} readOnly styles={styles} />
+          <FieldRaw
+            label="Confirm Password"
+            name="confirmPassword"
+            type="password"
+            onInput={(e) => {
+              filterPasswordInput(e);
+              const val = e.target.value;
+              let err = null;
+              if (!val) err = 'Please confirm your password';
+              else if (val !== accessPasswordRef.current) err = 'Passwords do not match';
+              setFieldError('confirmPassword', err);
+              if (!err) clearSubmitError('confirmPassword');
+            }}
+            hasError={formErrors.has('confirmPassword') || !!fieldErrors.confirmPassword}
+            errorMessage={fieldErrors.confirmPassword}
+            styles={styles}
+          />
         </div>
       </>
     );
@@ -873,7 +1046,19 @@ export default function AdminEmployeeForm() {
             </div>
             <div style={styles.rowTwo}>
               <FieldRaw label="Specialization" name="specialization" onInput={filterProfessionalTextInput} styles={styles} />
-              <FieldRaw label="Years of Experience" name="experienceYears" type="number" min="0" styles={styles} />
+              <FieldRaw
+                label="Years of Experience"
+                name="experienceYears"
+                type="number"
+                min="0"
+                onChange={(e) => {
+                  const err = validatePositiveNumber(e.target.value);
+                  setFieldError('experienceYears', err);
+                }}
+                hasError={!!fieldErrors.experienceYears}
+                errorMessage={fieldErrors.experienceYears}
+                styles={styles}
+              />
             </div>
 
             <h3 style={styles.subTitle}>Previous Work</h3>
@@ -995,18 +1180,7 @@ export default function AdminEmployeeForm() {
           </>
         )}
 
-        {renderSection('docAccess', 'Section 4 - Web Access',
-          <>
-            <div style={styles.rowTwo}>
-              <FieldRaw label="Email Address" name="accessEmail" type="text" value={accessEmail} onChange={(e) => setAccessEmail(e.target.value)} onInput={filterEmailInput} hasError={formErrors.has('accessEmail')} styles={styles} />
-              <FieldRaw label="Password" name="accessPassword" type="password" onInput={filterPasswordInput} hasError={formErrors.has('accessPassword')} styles={styles} />
-            </div>
-            <div style={styles.rowTwo}>
-              <FieldRaw label="Access Role" name="accessRole" value="Dentist" onChange={() => {}} readOnly styles={styles} />
-              <FieldRaw label="Confirm Password" name="confirmPassword" type="password" onInput={filterPasswordInput} hasError={formErrors.has('confirmPassword')} styles={styles} />
-            </div>
-          </>
-        )}
+        {renderAccessSection('Dentist', 'docAccess')}
       </div>
     );
   }
@@ -1022,7 +1196,19 @@ export default function AdminEmployeeForm() {
           <>
             <div style={styles.rowTwo}>
               <FieldRaw label="Position" name="daPosition" value="Dental Assistant" onChange={() => {}} readOnly styles={styles} />
-              <FieldRaw label="Years of Experience" name="daExperienceYears" type="number" min="0" styles={styles} />
+              <FieldRaw
+                label="Years of Experience"
+                name="daExperienceYears"
+                type="number"
+                min="0"
+                onChange={(e) => {
+                  const err = validatePositiveNumber(e.target.value);
+                  setFieldError('daExperienceYears', err);
+                }}
+                hasError={!!fieldErrors.daExperienceYears}
+                errorMessage={fieldErrors.daExperienceYears}
+                styles={styles}
+              />
             </div>
             <div style={styles.rowTwo}>
               <FieldRaw label="Skills" name="daSkills" styles={styles} />
@@ -1098,7 +1284,19 @@ export default function AdminEmployeeForm() {
           <>
             <div style={styles.rowTwo}>
               <FieldRaw label="Position" name="recepPosition" value="Receptionist" onChange={() => {}} readOnly styles={styles} />
-              <FieldRaw label="Years of Experience" name="recepExperienceYears" type="number" min="0" styles={styles} />
+              <FieldRaw
+                label="Years of Experience"
+                name="recepExperienceYears"
+                type="number"
+                min="0"
+                onChange={(e) => {
+                  const err = validatePositiveNumber(e.target.value);
+                  setFieldError('recepExperienceYears', err);
+                }}
+                hasError={!!fieldErrors.recepExperienceYears}
+                errorMessage={fieldErrors.recepExperienceYears}
+                styles={styles}
+              />
             </div>
             <div style={styles.rowTwo}>
               <FieldRaw label="Skills" name="recepSkills" styles={styles} />
@@ -1125,30 +1323,42 @@ export default function AdminEmployeeForm() {
             </div>
             <div style={styles.rowTwo}>
               <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
-              <TimeRangeFieldRaw startName="recepWorkStart" endName="recepWorkEnd" styles={styles} />
+              {(() => {
+                const hasError = formErrors.has('recepWorkHours');
+                const isChecked = recepWorkHours.includes('10:00-19:00');
+                return (
+                  <div style={styles.field}>
+                    <label style={styles.label}>
+                      Working Hours{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+                    </label>
+                    <div style={{ ...(hasError ? { border: '2px solid #dc2626', borderRadius: 12, padding: '6px 10px', display: 'inline-block' } : {}) }}>
+                      <label style={styles.checkboxLabel}>
+                        <input
+                          type="checkbox"
+                          style={styles.checkboxInput}
+                          checked={isChecked}
+                          onChange={(e) => {
+                            setRecepWorkHours(e.target.checked ? ['10:00-19:00'] : []);
+                            if (e.target.checked) {
+                              setFormErrors((prev) => { const n = new Set(prev); n.delete('recepWorkHours'); return n; });
+                            }
+                          }}
+                        />
+                        10:00 AM - 7:00 PM
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <div style={styles.rowTwo}>
               <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
               <SelectFieldRaw label="Employment Type" name="employmentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('employmentType')} styles={styles} />
             </div>
-            <div style={styles.rowTwo}>
-              <SelectFieldRaw label="Shift Type" name="recepShiftType" placeholder="Select Type" options={['Day', 'Afternoon', 'Night']} hasError={formErrors.has('recepShiftType')} styles={styles} />
-            </div>
           </>
         )}
 
-        {renderSection('recAccess', 'Section 4 - Web Access',
-          <>
-            <div style={styles.rowTwo}>
-              <FieldRaw label="Email Address" name="accessEmail" type="text" value={accessEmail} onChange={(e) => setAccessEmail(e.target.value)} onInput={filterEmailInput} hasError={formErrors.has('accessEmail')} styles={styles} />
-              <FieldRaw label="Password" name="accessPassword" type="password" onInput={filterPasswordInput} hasError={formErrors.has('accessPassword')} styles={styles} />
-            </div>
-            <div style={styles.rowTwo}>
-              <FieldRaw label="Access Role" name="accessRole" value="Receptionist" onChange={() => {}} readOnly styles={styles} />
-              <FieldRaw label="Confirm Password" name="confirmPassword" type="password" onInput={filterPasswordInput} hasError={formErrors.has('confirmPassword')} styles={styles} />
-            </div>
-          </>
-        )}
+        {renderAccessSection('Receptionist', 'recAccess')}
       </div>
     );
   }

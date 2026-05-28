@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -348,6 +350,8 @@ export default function AdminReports() {
   const adminName = user?.name || 'Admin';
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportModalMessage, setExportModalMessage] = useState('');
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -393,7 +397,7 @@ export default function AdminReports() {
   const isStockAvailabilityReport = appliedReportType === 'stockAvailability';
   const isConsumptionReport = appliedReportType === 'consumption';
   const reportUsesBranchFilter =
-    reportType === 'clinicDentist' || reportType === 'satisfaction';
+    appliedReportType === 'clinicDentist' || appliedReportType === 'satisfaction';
   const showReportSummary =
     !isClinicDentistReport &&
     !isSatisfactionReport &&
@@ -451,21 +455,18 @@ export default function AdminReports() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = showLogoutModal || showExportModal ? 'hidden' : '';
 
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal]);
+  }, [showLogoutModal, showExportModal]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
+        setShowExportModal(false);
       }
     }
 
@@ -769,6 +770,22 @@ export default function AdminReports() {
     setCurrentPage(1);
   }
 
+  function handleReportTypeChange(value) {
+    const nextType = String(value || 'clinicDentist');
+    const supportsBranch =
+      nextType === 'clinicDentist' || nextType === 'satisfaction';
+
+    setReportType(nextType);
+    setAppliedReportType(nextType);
+
+    if (!supportsBranch) {
+      setBranchFilter('');
+      setAppliedBranchFilter('');
+    }
+
+    setCurrentPage(1);
+  }
+
   function handleFromDateChange(value) {
     setFromDate(value);
 
@@ -867,184 +884,190 @@ export default function AdminReports() {
     URL.revokeObjectURL(link.href);
   }
 
-  function exportToCSV() {
+  function showNoExportDataModal(message) {
+    setExportModalMessage(message);
+    setShowExportModal(true);
+  }
+
+  function handleExportModalOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      setShowExportModal(false);
+    }
+  }
+
+  function getReportTitle() {
+    return isRevenueReport
+      ? 'Revenue, Income, and Expense Reports'
+      : currentReport.title;
+  }
+
+  function getTableExportRows() {
     if (isRevenueReport) {
-      const csv = [];
+      return revenueRows.map((row) => [
+        row.period,
+        formatPeso(row.income),
+        formatPeso(row.expense),
+        formatPeso(row.revenue),
+      ]);
+    }
 
-      csv.push(['Revenue, Income, and Expense Report']);
-      csv.push(['Smile Empress Dental Hub']);
-      csv.push(['Generated Report', new Date().toLocaleString('en-PH')]);
-      csv.push([]);
-      csv.push(['Period', 'Income', 'Expenses', 'Revenue']);
+    return filteredRows || [];
+  }
 
-      revenueRows.forEach((row) => {
-        csv.push([row.period, row.income, row.expense, row.revenue]);
-      });
+  function getReportExportRows() {
+    if (isRevenueReport) {
+      return [
+        ...revenueRows.map((row) => [
+          row.period,
+          formatPeso(row.income),
+          formatPeso(row.expense),
+          formatPeso(row.revenue),
+        ]),
+        [
+          'Total',
+          formatPeso(totalIncome),
+          formatPeso(totalExpense),
+          formatPeso(netRevenue),
+        ],
+      ];
+    }
 
-      csv.push(['Total', totalIncome, totalExpense, netRevenue]);
+    return currentReport.rows || [];
+  }
 
-      const csvContent =
-        '\uFEFF' +
-        csv
-          .map((row) =>
-            row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-          )
-          .join('\n');
+  function getExportHeaders() {
+    if (isRevenueReport) {
+      return ['Period', 'Income', 'Expenses', 'Revenue'];
+    }
 
-      downloadFile(
-        csvContent,
-        'revenue-income-and-expense-report.csv',
-        'text/csv;charset=utf-8;'
-      );
+    return currentReport.headers || [];
+  }
 
+  function formatCSVValue(value) {
+    const stringValue = value === null || value === undefined ? '' : String(value);
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+
+  function exportToCSV() {
+    const tableRows = getTableExportRows();
+
+    if (tableRows.length === 0) {
+      showNoExportDataModal('No table records available to export.');
       return;
     }
 
     const csv = [];
 
-    csv.push([currentReport.title]);
+    csv.push([getReportTitle()]);
     csv.push(['Smile Empress Dental Hub']);
     csv.push(['Generated Report', new Date().toLocaleString('en-PH')]);
+    csv.push(['Date Range', `${appliedFromDate || 'All'} to ${appliedToDate || 'All'}`]);
     csv.push([]);
-    csv.push(currentReport.headers);
+    csv.push(getExportHeaders());
 
-    filteredRows.forEach((row) => {
+    tableRows.forEach((row) => {
       csv.push(row);
     });
 
+    if (isRevenueReport) {
+      csv.push([
+        'Total',
+        formatPeso(totalIncome),
+        formatPeso(totalExpense),
+        formatPeso(netRevenue),
+      ]);
+    }
+
     const csvContent =
-      '\uFEFF' +
-      csv
-        .map((row) =>
-          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-        )
-        .join('\n');
+      '\uFEFF' + csv.map((row) => row.map(formatCSVValue).join(',')).join('\n');
 
     downloadFile(
       csvContent,
-      createFileName(currentReport.title, 'csv'),
+      createFileName(getReportTitle(), 'csv'),
       'text/csv;charset=utf-8;'
     );
   }
 
-  async function exportToPDF() {
-    try {
-      const { jsPDF } = await import('jspdf');
-      const autoTableModule = await import('jspdf-autotable');
+  function exportToPDF() {
+    const pdfRows = getReportExportRows();
 
-      const autoTable = autoTableModule.default;
-
-      const doc = new jsPDF('landscape', 'mm', 'a4');
-
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-
-      doc.setFillColor(239, 246, 255);
-      doc.rect(0, 0, pageWidth, pageHeight, 'F');
-
-      doc.setFillColor(37, 99, 235);
-      doc.roundedRect(10, 10, pageWidth - 20, 30, 4, 4, 'F');
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(18);
-      doc.text(
-        isRevenueReport
-          ? 'Revenue, Income, and Expense Report'
-          : currentReport.title,
-        16,
-        23
-      );
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text('Smile Empress Dental Hub', 16, 31);
-
-      doc.setTextColor(71, 85, 105);
-      doc.setFontSize(9);
-      doc.text(
-        `Generated: ${new Date().toLocaleString('en-PH')}`,
-        pageWidth - 16,
-        48,
-        {
-          align: 'right',
-        }
-      );
-
-      const pdfHeaders = isRevenueReport
-        ? ['Period', 'Income', 'Expenses', 'Revenue']
-        : currentReport.headers;
-
-      const pdfRows = isRevenueReport
-        ? [
-            ...revenueRows.map((row) => [
-              row.period,
-              formatPeso(row.income),
-              formatPeso(row.expense),
-              formatPeso(row.revenue),
-            ]),
-            [
-              'Total',
-              formatPeso(totalIncome),
-              formatPeso(totalExpense),
-              formatPeso(netRevenue),
-            ],
-          ]
-        : filteredRows;
-
-      autoTable(doc, {
-        head: [pdfHeaders],
-        body: pdfRows,
-        startY: 56,
-        theme: 'grid',
-        margin: {
-          left: 10,
-          right: 10,
-        },
-        styles: {
-          font: 'helvetica',
-          fontSize: 8,
-          cellPadding: 3,
-          textColor: [15, 23, 42],
-          fillColor: [255, 255, 255],
-          lineColor: [219, 234, 254],
-          lineWidth: 0.25,
-        },
-        headStyles: {
-          fillColor: [37, 99, 235],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          halign: 'center',
-        },
-        alternateRowStyles: {
-          fillColor: [248, 251, 255],
-        },
-        didDrawPage() {
-          doc.setTextColor(100, 116, 139);
-          doc.setFontSize(8);
-
-          doc.text('Generated by ToothConnect', 10, pageHeight - 8);
-
-          doc.text(
-            `Page ${doc.internal.getNumberOfPages()}`,
-            pageWidth - 10,
-            pageHeight - 8,
-            {
-              align: 'right',
-            }
-          );
-        },
-      });
-
-      doc.save(
-        isRevenueReport
-          ? 'revenue-income-and-expense-report.pdf'
-          : createFileName(currentReport.title, 'pdf')
-      );
-    } catch (error) {
-      console.error('PDF export error:', error);
-      alert('PDF export failed. Check the browser console for the exact error.');
+    if (pdfRows.length === 0) {
+      showNoExportDataModal('No report data available to export.');
+      return;
     }
+
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    doc.setFillColor(255, 248, 220);
+    doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+    doc.setFillColor(212, 175, 55);
+    doc.roundedRect(10, 10, pageWidth - 20, 30, 4, 4, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text(getReportTitle(), 16, 23);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Smile Empress Dental Hub', 16, 31);
+
+    doc.setTextColor(71, 85, 105);
+    doc.setFontSize(9);
+    doc.text(
+      `Generated: ${new Date().toLocaleString('en-PH')}`,
+      pageWidth - 16,
+      48,
+      { align: 'right' }
+    );
+
+    doc.text(
+      `Date Range: ${appliedFromDate || 'All'} to ${appliedToDate || 'All'}`,
+      16,
+      48
+    );
+
+    autoTable(doc, {
+      head: [getExportHeaders()],
+      body: pdfRows,
+      startY: 56,
+      theme: 'grid',
+      margin: { left: 10, right: 10 },
+      styles: {
+        font: 'helvetica',
+        fontSize: 8,
+        cellPadding: 3,
+        textColor: [15, 23, 42],
+        fillColor: [255, 255, 255],
+        lineColor: [229, 231, 235],
+        lineWidth: 0.25,
+      },
+      headStyles: {
+        fillColor: [212, 175, 55],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      alternateRowStyles: {
+        fillColor: [255, 253, 242],
+      },
+      didDrawPage() {
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(8);
+        doc.text('Generated by ToothConnect', 10, pageHeight - 8);
+        doc.text(
+          `Page ${doc.internal.getNumberOfPages()}`,
+          pageWidth - 10,
+          pageHeight - 8,
+          { align: 'right' }
+        );
+      },
+    });
+
+    doc.save(createFileName(getReportTitle(), 'pdf'));
   }
 
   return (
@@ -1171,12 +1194,7 @@ export default function AdminReports() {
 
               <select
                 value={reportType}
-                onChange={(event) => {
-                  const nextReportType = event.target.value;
-                  setReportType(nextReportType);
-                  setAppliedReportType(nextReportType);
-                  setCurrentPage(1);
-                }}
+                onChange={(event) => handleReportTypeChange(event.target.value)}
                 style={styles.filterSelect}
               >
                 {reportOptions.map((option) => (
@@ -1229,18 +1247,29 @@ export default function AdminReports() {
               />
             </div>
 
-            <button
-              type="button"
-              onClick={applyFilter}
-              style={{
-                ...styles.filterBtn,
-                transform: filterClicked ? 'scale(0.97)' : 'scale(1)',
-                opacity: filterClicked ? 0.82 : 1,
-                transition: 'transform 120ms ease, opacity 120ms ease',
-              }}
-            >
-              Apply Filter
-            </button>
+            <div style={styles.filterActionGroup}>
+              <button
+                type="button"
+                onClick={applyFilter}
+                style={{
+                  ...styles.filterBtn,
+                  transform: filterClicked ? 'scale(0.97)' : 'scale(1)',
+                  opacity: filterClicked ? 0.82 : 1,
+                  transition: 'transform 120ms ease, opacity 120ms ease',
+                }}
+              >
+                Apply Filter
+              </button>
+
+              <button
+                type="button"
+                onClick={exportToPDF}
+                style={{ ...styles.exportBtn, ...styles.exportPdf }}
+              >
+                <i className="fi fi-rr-file-pdf"></i>
+                PDF
+              </button>
+            </div>
           </section>
 
           {isRevenueReport ? (
@@ -1253,7 +1282,6 @@ export default function AdminReports() {
               revenueChartData={revenueChartData}
               revenueChartOptions={revenueChartOptions}
               exportToCSV={exportToCSV}
-              exportToPDF={exportToPDF}
             />
           ) : (
             <>
@@ -1368,18 +1396,10 @@ export default function AdminReports() {
                       onClick={exportToCSV}
                       style={{ ...styles.exportBtn, ...styles.exportCsv }}
                     >
-                      <i className="fi fi-rr-file"></i>
+                      <i className="fi fi-rr-file-csv"></i>
                       CSV
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={exportToPDF}
-                      style={{ ...styles.exportBtn, ...styles.exportPdf }}
-                    >
-                      <i className="fi fi-rr-file-pdf"></i>
-                      PDF
-                    </button>
                   </div>
                 </div>
 
@@ -1504,6 +1524,31 @@ export default function AdminReports() {
           </div>
         </div>
       )}
+
+      {showExportModal && (
+        <div
+          style={styles.exportModalOverlay}
+          onClick={handleExportModalOverlayClick}
+        >
+          <div style={styles.exportModalContent}>
+            <h2 style={styles.exportModalTitle}>No Records Found</h2>
+
+            <div style={styles.exportModalDivider}></div>
+
+            <p style={styles.exportModalText}>
+              {exportModalMessage || 'No records available to export.'}
+            </p>
+
+            <button
+              type="button"
+              style={styles.exportModalButton}
+              onClick={() => setShowExportModal(false)}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1517,7 +1562,6 @@ function RevenueReportSection({
   revenueChartData,
   revenueChartOptions,
   exportToCSV,
-  exportToPDF,
 }) {
   return (
     <section style={styles.revenueContent}>
@@ -1620,15 +1664,6 @@ function RevenueReportSection({
                 >
                   <i className="fi fi-rr-file"></i>
                   CSV
-                </button>
-
-                <button
-                  type="button"
-                  onClick={exportToPDF}
-                  style={{ ...styles.exportBtn, ...styles.exportPdf }}
-                >
-                  <i className="fi fi-rr-file-pdf"></i>
-                  PDF
                 </button>
               </div>
             </div>

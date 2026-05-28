@@ -165,7 +165,8 @@ export default function DentistAppointment() {
   }, [appointments, selectedDate, statusFilter]);
 
   const confirmedCount = filteredAppointments.filter(
-    (appointment) => appointment.rawStatus === 'scheduled'
+    (appointment) =>
+      appointment.rawStatus === 'scheduled' || appointment.rawStatus === 'rescheduled'
   ).length;
 
   const waitingCount = filteredAppointments.filter(
@@ -203,10 +204,6 @@ export default function DentistAppointment() {
       (item) => String(item.category) === String(manualKitCategory)
     );
   }, [manualInventoryItems, kitItems, manualKitCategory]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedDate, statusFilter]);
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -277,6 +274,7 @@ export default function DentistAppointment() {
     const cleanStatus = String(appointment?.rawStatus || '')
       .toLowerCase()
       .replace(/[\s_]+/g, '');
+    const isConsultation = /consultation/i.test(String(appointment?.reason || ''));
 
     if (cleanStatus !== 'completed') return;
 
@@ -304,6 +302,14 @@ export default function DentistAppointment() {
             }))
           : Promise.resolve({ kit_exists: false, items: [] }),
       ]);
+
+      if (isConsultation) {
+        setKitAlreadySubmitted(Boolean(consumptionData?.submitted));
+        setKitNotes('No inventory items was used for consultation service.');
+        setKitItems([]);
+        setManualInventoryItems([]);
+        return;
+      }
 
       if (consumptionData.submitted) {
         setKitAlreadySubmitted(true);
@@ -391,10 +397,6 @@ export default function DentistAppointment() {
     setKitItems((prev) =>
       prev.map((item, i) => (i === index ? { ...item, quantity_used: qty } : item))
     );
-  }
-
-  function handleKitRemoveItem(index) {
-    setKitItems((prev) => prev.filter((_, i) => i !== index));
   }
 
   function handleManualKitCategoryChange(value) {
@@ -561,7 +563,7 @@ export default function DentistAppointment() {
   function getStatusPillStyle(status) {
     const cleanStatus = String(status).toLowerCase().replace(/[\s_]+/g, '');
 
-    if (cleanStatus === 'scheduled') {
+    if (cleanStatus === 'scheduled' || cleanStatus === 'rescheduled') {
       return { ...styles.statusPill, ...styles.statusPillConfirmed };
     }
 
@@ -764,6 +766,7 @@ export default function DentistAppointment() {
                             onClick={() => {
                               if (!day.disabled) {
                                 setSelectedDate(day.dateString);
+                                setCurrentPage(1);
                               }
                             }}
                             style={{
@@ -809,11 +812,15 @@ export default function DentistAppointment() {
 
                   <select
                     value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value)}
+                    onChange={(event) => {
+                      setStatusFilter(event.target.value);
+                      setCurrentPage(1);
+                    }}
                     style={styles.dropdownStatus}
                   >
                     <option value="All">All Status</option>
                     <option value="scheduled">Scheduled</option>
+                    <option value="rescheduled">Rescheduled</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
                     <option value="no_show">No Show</option>
@@ -871,7 +878,18 @@ export default function DentistAppointment() {
                               </td>
 
                               <td style={styles.tableCell}>
-                                {appointment.time}
+                                {appointment.originalSchedule && appointment.rescheduledSchedule ? (
+                                  <div style={{ display: 'grid', gap: 6, whiteSpace: 'normal' }}>
+                                    <div>
+                                      <strong>Original Schedule:</strong> {appointment.originalSchedule}
+                                    </div>
+                                    <div>
+                                      <strong>Rescheduled:</strong> {appointment.rescheduledSchedule}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  appointment.time
+                                )}
                               </td>
 
                               <td style={styles.tableCell}>
@@ -1135,7 +1153,9 @@ export default function DentistAppointment() {
               </p>
             ) : kitItems.length === 0 ? (
               <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>
-                No items defined for this service kit.
+                {/consultation/i.test(String(selectedKitAppointment?.reason || ''))
+                  ? 'No inventory items was used for consultation service.'
+                  : 'No items defined for this service kit.'}
               </p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
@@ -1322,6 +1342,9 @@ function normalizeAppointments(items) {
   return items.map((item, index) => {
     const date = new Date(item.start_time);
     const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+    const note = item.dentist_note || item.note || '';
+    const scheduleMeta = extractRescheduleInfo(note);
+    const isRescheduled = Boolean(scheduleMeta.rescheduledSchedule);
 
     return {
       id: item.id || index + 1,
@@ -1329,14 +1352,16 @@ function normalizeAppointments(items) {
       serviceId: item.service_id || null,
       patientName: item.patient_name || item.patientName || 'Unnamed Patient',
       reason: item.service_name || item.serviceName || 'Treatment not set',
-      note: item.dentist_note || '',
+      note: note,
       time: safeDate.toLocaleTimeString('en-PH', {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
       }),
-      status: formatAppointmentStatus(item.status),
-      rawStatus: item.status || 'scheduled',
+      originalSchedule: scheduleMeta.originalSchedule,
+      rescheduledSchedule: scheduleMeta.rescheduledSchedule,
+      status: isRescheduled ? 'Rescheduled' : formatAppointmentStatus(item.status),
+      rawStatus: isRescheduled ? 'rescheduled' : (item.status || 'scheduled'),
       date: formatDateString(
         safeDate.getFullYear(),
         safeDate.getMonth(),
@@ -1351,12 +1376,32 @@ function normalizeAppointments(items) {
 function formatAppointmentStatus(status) {
   const statusMap = {
     scheduled: 'Scheduled',
+    rescheduled: 'Rescheduled',
     completed: 'Completed',
     cancelled: 'Cancelled',
     no_show: 'No Show',
   };
 
   return statusMap[status] || 'Scheduled';
+}
+
+function extractRescheduleInfo(noteText) {
+  const note = String(noteText || '');
+  if (!note.trim()) {
+    return { originalSchedule: '', rescheduledSchedule: '' };
+  }
+
+  const originalMatch = note.match(/^Original Schedule:\s*(.+)$/im);
+  const rescheduledMatch = note.match(/^Rescheduled:\s*(.+)$/im);
+  const legacyMatch = note.match(/^Rescheduled to\s+(.+)$/im);
+
+  return {
+    originalSchedule: originalMatch?.[1]?.trim() || '',
+    rescheduledSchedule:
+      rescheduledMatch?.[1]?.trim() ||
+      legacyMatch?.[1]?.trim() ||
+      '',
+  };
 }
 
 function formatDateString(year, month, day) {

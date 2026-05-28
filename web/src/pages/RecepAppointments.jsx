@@ -1,26 +1,55 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../auth/AuthContext';
 import {
   cancelAppointment as cancelAppointmentRequest,
   getAppointmentMeta,
+  getDentistBusySlots,
   listAppointments,
+  createAppointment,
   setAppointmentStatus,
 } from '../api/appointments';
 import { createStaffPayment } from '../api/payments';
+import { getConsumption, getServiceKit, submitConsumption } from '../api/inventory';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createRecepAppointmentsStyles from '../styles/RecepAppointments';
+import createRecepAppointmentFormStyles from '../styles/RecepAppointmentForm';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
 
 const pendingPerPage = 4;
 const queuePerPage = 3;
 
+const scheduleMonths = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const paymentMethodLabels = {
+  cash: 'Cash',
+  ewallet: 'E-Wallet',
+  bank_transfer: 'Bank',
+};
+
+const ewalletProviders = ['GCash', 'Maya'];
+const bankProviders = ['Metrobank', 'BDO', 'BPI', 'GoTyme', 'UnionBank', 'RCBC'];
+
 export default function RecepAppointments() {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const recepBranchId =
+    Number(user?.home_branch_id || user?.branches?.[0] || 0) || undefined;
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [activeView, setActiveView] = useState('queue');
 
@@ -42,7 +71,6 @@ export default function RecepAppointments() {
 
   const [pendingAppointments, setPendingAppointments] = useState([]);
   const [queueAppointments, setQueueAppointments] = useState([]);
-  const [allAppointments, setAllAppointments] = useState([]);
   const [calendarAppointments, setCalendarAppointments] = useState([]);
   const [dentistOptions, setDentistOptions] = useState([]);
   const [treatmentOptions, setTreatmentOptions] = useState([]);
@@ -53,13 +81,39 @@ export default function RecepAppointments() {
     show: false,
     appointment: null,
     method: 'cash',
+    provider: '',
     amount: '',
     saving: false,
   });
   const [cancelReasonModal, setCancelReasonModal] = useState({ show: false, appointmentId: null });
   const [cancelReasonText, setCancelReasonText] = useState('');
+  const [rescheduleModal, setRescheduleModal] = useState({
+    show: false,
+    appointment: null,
+    calendarMonth: new Date().getMonth(),
+    calendarYear: new Date().getFullYear(),
+    selectedDate: '',
+    selectedTime: '',
+    availableSlots: [],
+    loadingSlots: false,
+    dentistOnLeave: false,
+    dentistLeaveInfo: null,
+    saving: false,
+  });
+  const [rescheduleReasonText, setRescheduleReasonText] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
+  const [showKitModal, setShowKitModal] = useState(false);
+  const [selectedKitAppointment, setSelectedKitAppointment] = useState(null);
+  const [kitItems, setKitItems] = useState([]);
+  const [kitNotes, setKitNotes] = useState('');
+  const [kitLoading, setKitLoading] = useState(false);
+  const [kitError, setKitError] = useState('');
+  const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
+  const [kitSubmitting, setKitSubmitting] = useState(false);
+  const [calendarDetailsOpenById, setCalendarDetailsOpenById] = useState({});
+  const [kitSubmittedByAppointmentId, setKitSubmittedByAppointmentId] = useState({});
+  const [kitTemplateHasItemsByAppointmentId, setKitTemplateHasItemsByAppointmentId] = useState({});
 
   const isMobile = screenWidth <= 850;
   const isVerySmall = screenWidth <= 560;
@@ -72,6 +126,16 @@ export default function RecepAppointments() {
     isSmallScreen,
     isCalendarCompact,
   });
+
+  const scheduleStyles = createRecepAppointmentFormStyles({
+    isMobile: screenWidth <= 900,
+    isVerySmall,
+  });
+
+  const scheduleYearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 11 }, (_, index) => currentYear + index);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -121,7 +185,7 @@ export default function RecepAppointments() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal) {
+    if (showLogoutModal || showKitModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -130,12 +194,24 @@ export default function RecepAppointments() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal]);
+  }, [showLogoutModal, showKitModal]);
+
+  useEffect(() => {
+    if (rescheduleModal.show) {
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [rescheduleModal.show]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
+        closeRescheduleModal();
+        closeKitModal();
         setOpenDropdownId(null);
       }
     }
@@ -148,18 +224,89 @@ export default function RecepAppointments() {
   }, []);
 
   useEffect(() => {
-    setPendingPage(1);
-    setQueuePage(1);
-  }, [searchText, dentistFilter, treatmentFilter]);
-
-  useEffect(() => {
     fetchUpcomingAppointments();
     fetchAppointmentMeta();
   }, []);
 
   useEffect(() => {
     fetchCalendarAppointments(currentDate);
-  }, [currentDate]);
+  }, [currentDate, recepBranchId]);
+
+  useEffect(() => {
+    if (!rescheduleModal.show || !rescheduleModal.appointment || !rescheduleModal.selectedDate) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function loadRescheduleSlots() {
+      setRescheduleModal((current) => ({
+        ...current,
+        loadingSlots: true,
+        availableSlots: [],
+        dentistOnLeave: false,
+        dentistLeaveInfo: null,
+      }));
+
+      try {
+        const durationMinutes = getServiceDurationMinutes(
+          treatmentOptions,
+          rescheduleModal.appointment.serviceId
+        );
+        const bounds = dayBoundsUTC(rescheduleModal.selectedDate);
+
+        const [dayAppointmentsRaw, dentistBusyMeta] = await Promise.all([
+          listAppointments({
+            from: bounds.fromUTC,
+            to: bounds.toUTC,
+            ...(rescheduleModal.appointment.branchId
+              ? { branch_id: Number(rescheduleModal.appointment.branchId) }
+              : {}),
+          }),
+          rescheduleModal.appointment.dentistId
+            ? getDentistBusySlots(rescheduleModal.appointment.dentistId, rescheduleModal.selectedDate)
+            : Promise.resolve({ appointments: [], on_leave: false, leave: null }),
+        ]);
+
+        if (cancelled) return;
+
+        const combined = [
+          ...(Array.isArray(dentistBusyMeta?.appointments) ? dentistBusyMeta.appointments : []),
+          ...(Array.isArray(dayAppointmentsRaw) ? dayAppointmentsRaw : []),
+        ].filter((a) => String(a?.id) !== String(rescheduleModal.appointment.id));
+
+        const slots = computeAvailableSlotsForSchedule({
+          appointments: combined,
+          dateKey: rescheduleModal.selectedDate,
+          durationMinutes,
+        });
+
+        setRescheduleModal((current) => ({
+          ...current,
+          availableSlots: slots,
+          dentistOnLeave: !!dentistBusyMeta?.on_leave,
+          dentistLeaveInfo: dentistBusyMeta?.leave || null,
+          loadingSlots: false,
+          selectedTime: slots.some((s) => s.value === current.selectedTime) ? current.selectedTime : '',
+        }));
+      } catch {
+        if (cancelled) return;
+        setRescheduleModal((current) => ({
+          ...current,
+          availableSlots: [],
+          dentistOnLeave: false,
+          dentistLeaveInfo: null,
+          loadingSlots: false,
+        }));
+      }
+    }
+
+    loadRescheduleSlots();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rescheduleModal.show, rescheduleModal.appointment, rescheduleModal.selectedDate, treatmentOptions]);
 
 
   const filteredPending = useMemo(() => {
@@ -189,28 +336,22 @@ export default function RecepAppointments() {
     filteredQueue.length === 0
       ? 0
       : Math.ceil(filteredQueue.length / queuePerPage);
+  const safePendingPage = fixPage(pendingPage, pendingTotalPages);
+  const safeQueuePage = fixPage(queuePage, queueTotalPages);
 
   const receptionistName = user?.name || user?.email || 'Receptionist';
 
-  useEffect(() => {
-    setPendingPage((page) => fixPage(page, pendingTotalPages));
-  }, [pendingTotalPages]);
-
-  useEffect(() => {
-    setQueuePage((page) => fixPage(page, queueTotalPages));
-  }, [queueTotalPages]);
-
   const pagedPending = useMemo(() => {
-    const start = pendingPage > 0 ? (pendingPage - 1) * pendingPerPage : 0;
+    const start = safePendingPage > 0 ? (safePendingPage - 1) * pendingPerPage : 0;
 
     return filteredPending.slice(start, start + pendingPerPage);
-  }, [filteredPending, pendingPage]);
+  }, [filteredPending, safePendingPage]);
 
   const pagedQueue = useMemo(() => {
-    const start = queuePage > 0 ? (queuePage - 1) * queuePerPage : 0;
+    const start = safeQueuePage > 0 ? (safeQueuePage - 1) * queuePerPage : 0;
 
     return filteredQueue.slice(start, start + queuePerPage);
-  }, [filteredQueue, queuePage]);
+  }, [filteredQueue, safeQueuePage]);
 
   const calendarDays = useMemo(() => {
     return buildCalendarDays(currentDate, calendarAppointments);
@@ -235,6 +376,91 @@ export default function RecepAppointments() {
       .filter((item) => item.fullDate === selectedDateKey)
       .sort((a, b) => parseTime(a.time) - parseTime(b.time));
   }, [calendarAppointments, selectedDateKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadKitSubmissionStates() {
+      const completed = selectedDateSchedules.filter(
+        (appointment) => String(appointment.status).toLowerCase() === 'completed'
+      );
+      if (completed.length === 0) return;
+
+      const results = await Promise.all(
+        completed.map(async (appointment) => {
+          const isConsultation = /consultation/i.test(String(appointment.treatment || ''));
+          if (isConsultation) {
+            return { id: appointment.id, submitted: false, hasTemplateItems: false };
+          }
+
+          try {
+            const [consumptionData, kitData] = await Promise.all([
+              getConsumption(appointment.id),
+              appointment.serviceId && appointment.branchId
+                ? getServiceKit(appointment.serviceId, appointment.branchId).catch(() => ({
+                    kit_exists: false,
+                    items: [],
+                  }))
+                : Promise.resolve({ kit_exists: false, items: [] }),
+            ]);
+
+            const hasTemplateItems =
+              Boolean(kitData?.kit_exists) &&
+              Array.isArray(kitData?.items) &&
+              kitData.items.some((item) => Number(item?.default_quantity || 0) > 0 && item?.inventory_id);
+
+            return {
+              id: appointment.id,
+              submitted: Boolean(consumptionData?.submitted),
+              hasTemplateItems,
+            };
+          } catch {
+            return { id: appointment.id, submitted: null, hasTemplateItems: false };
+          }
+        })
+      );
+
+      if (cancelled) return;
+
+      setKitSubmittedByAppointmentId((current) => {
+        const next = { ...current };
+        results.forEach((item) => {
+          next[item.id] = item.submitted;
+        });
+        return next;
+      });
+      setKitTemplateHasItemsByAppointmentId((current) => {
+        const next = { ...current };
+        results.forEach((item) => {
+          next[item.id] = item.hasTemplateItems;
+        });
+        return next;
+      });
+    }
+
+    loadKitSubmissionStates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDateSchedules]);
+  const rescheduleEstimatedDuration = useMemo(() => {
+    if (!rescheduleModal.appointment?.serviceId) {
+      return 30;
+    }
+
+    return getServiceDurationMinutes(treatmentOptions, rescheduleModal.appointment.serviceId);
+  }, [treatmentOptions, rescheduleModal.appointment?.serviceId]);
+  const rescheduleEstimatedTimeRange = useMemo(() => {
+    if (!rescheduleModal.selectedTime) {
+      return '-';
+    }
+
+    return getEstimatedTimeRange(
+      formatTimePickerValue(rescheduleModal.selectedTime),
+      rescheduleEstimatedDuration
+    );
+  }, [rescheduleModal.selectedTime, rescheduleEstimatedDuration]);
 
   const calendarMonthLabel = currentDate.toLocaleDateString('en-US', {
     month: 'long',
@@ -272,15 +498,258 @@ export default function RecepAppointments() {
     setCurrentDate((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1));
   }
 
+  function openRescheduleModal(appointment) {
+    if (!appointment) return;
+
+    const appointmentDate = appointment.fullDate
+      ? new Date(`${appointment.fullDate}T00:00:00`)
+      : new Date();
+
+    setRescheduleReasonText('');
+    setOpenDropdownId(null);
+    setRescheduleModal({
+      show: true,
+      appointment,
+      calendarMonth: appointmentDate.getMonth(),
+      calendarYear: appointmentDate.getFullYear(),
+      selectedDate: appointment.fullDate || toDateKey(new Date()),
+      selectedTime: '',
+      availableSlots: [],
+      loadingSlots: true,
+      dentistOnLeave: false,
+      dentistLeaveInfo: null,
+      saving: false,
+    });
+  }
+
+  function closeRescheduleModal() {
+    setRescheduleModal({
+      show: false,
+      appointment: null,
+      calendarMonth: new Date().getMonth(),
+      calendarYear: new Date().getFullYear(),
+      selectedDate: '',
+      selectedTime: '',
+      availableSlots: [],
+      loadingSlots: false,
+      dentistOnLeave: false,
+      dentistLeaveInfo: null,
+      saving: false,
+    });
+    setRescheduleReasonText('');
+  }
+
+  async function openCalendarServiceKitModal(appointment) {
+    if (!appointment || String(appointment.status).toLowerCase() !== 'completed') return;
+    const isConsultation = /consultation/i.test(String(appointment.treatment || ''));
+
+    setSelectedKitAppointment(appointment);
+    setKitItems([]);
+    setKitNotes('');
+    setKitError('');
+    setKitAlreadySubmitted(false);
+    setShowKitModal(true);
+    setKitLoading(true);
+
+    try {
+      const [consumptionData, kitData] = await Promise.all([
+        getConsumption(appointment.id).catch(() => ({ submitted: false, items: [] })),
+        appointment.serviceId && appointment.branchId
+          ? getServiceKit(appointment.serviceId, appointment.branchId).catch(() => ({
+              kit_exists: false,
+              items: [],
+            }))
+          : Promise.resolve({ kit_exists: false, items: [] }),
+      ]);
+
+      if (isConsultation) {
+        setKitAlreadySubmitted(Boolean(consumptionData?.submitted));
+        setKitNotes('No inventory items was used for consultation service.');
+        setKitItems([]);
+        return;
+      }
+
+      if (consumptionData.submitted) {
+        setKitAlreadySubmitted(true);
+        setKitItems(
+          (consumptionData.items || []).map((item) => ({
+            category: item.category,
+            item_name: item.item_name,
+            inventory_id: item.item_id || item.inventory_id || null,
+            quantity_used: item.quantity_used,
+          }))
+        );
+      } else {
+        setKitNotes(kitData.notes || '');
+        setKitItems(
+          (kitData.items || []).map((item) => ({
+            category: item.category,
+            item_name: item.item_name,
+            inventory_id: item.inventory_id || null,
+            quantity_used: item.default_quantity,
+            current_stock: item.current_stock,
+            unit: item.unit,
+            available: item.available,
+            sufficient: item.sufficient,
+          }))
+        );
+      }
+    } catch (err) {
+      setKitError(err.response?.data?.message || 'Failed to load service kit.');
+    } finally {
+      setKitLoading(false);
+    }
+  }
+
+  function closeKitModal() {
+    setShowKitModal(false);
+    setSelectedKitAppointment(null);
+    setKitItems([]);
+    setKitNotes('');
+    setKitError('');
+    setKitAlreadySubmitted(false);
+    setKitSubmitting(false);
+  }
+
+  function toggleCalendarDetails(appointmentId) {
+    setCalendarDetailsOpenById((current) => ({
+      ...current,
+      [appointmentId]: !current[appointmentId],
+    }));
+  }
+
+  async function handleConfirmKitDeduction() {
+    if (!selectedKitAppointment || kitSubmitting || kitAlreadySubmitted) return;
+
+    const itemsToSubmit = kitItems
+      .filter((item) => Number(item.quantity_used) > 0 && item.inventory_id)
+      .map((item) => ({
+        category: item.category,
+        inventory_id: item.inventory_id,
+        quantity_used: Number(item.quantity_used),
+      }));
+
+    if (itemsToSubmit.length === 0) {
+      setKitError('No valid inventory items to deduct.');
+      return;
+    }
+
+    setKitSubmitting(true);
+    setKitError('');
+    try {
+      await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
+      setKitAlreadySubmitted(true);
+    } catch (err) {
+      setKitError(err.response?.data?.message || 'Failed to deduct inventory.');
+    } finally {
+      setKitSubmitting(false);
+    }
+  }
+
+  function handleKitQtyChange(index, value) {
+    const qty = Math.max(0, parseInt(value, 10) || 0);
+    setKitItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, quantity_used: qty } : item))
+    );
+  }
+
+  const hasDeductibleKitItems = useMemo(
+    () => kitItems.some((item) => Number(item.quantity_used) > 0 && item.inventory_id),
+    [kitItems]
+  );
+
+  function handleReschedulePreviousMonth() {
+    setRescheduleModal((current) => {
+      const dateValue = new Date(current.calendarYear, current.calendarMonth, 1);
+      const previous = new Date(dateValue.getFullYear(), dateValue.getMonth() - 1, 1);
+      return { ...current, calendarMonth: previous.getMonth(), calendarYear: previous.getFullYear() };
+    });
+  }
+
+  function handleRescheduleNextMonth() {
+    setRescheduleModal((current) => {
+      const dateValue = new Date(current.calendarYear, current.calendarMonth, 1);
+      const next = new Date(dateValue.getFullYear(), dateValue.getMonth() + 1, 1);
+      return { ...current, calendarMonth: next.getMonth(), calendarYear: next.getFullYear() };
+    });
+  }
+
+  function handleSelectRescheduleSlot(slot) {
+    setRescheduleModal((current) => ({ ...current, selectedTime: slot?.value || '' }));
+  }
+
+  async function handleConfirmReschedule() {
+    if (!rescheduleModal.appointment) return;
+
+    if (!rescheduleModal.selectedDate || !rescheduleModal.selectedTime) {
+      setAppointmentsError('Please select a new date and time.');
+      return;
+    }
+
+    if (!rescheduleModal.appointment.patientId || !rescheduleModal.appointment.branchId) {
+      setAppointmentsError('Unable to reschedule: missing patient or branch details.');
+      return;
+    }
+
+    setAppointmentsError('');
+    setRescheduleModal((current) => ({ ...current, saving: true }));
+
+    try {
+      const durationMinutes = getServiceDurationMinutes(
+        treatmentOptions,
+        rescheduleModal.appointment.serviceId
+      );
+
+      const newNote = buildRescheduleNote({
+        existing: rescheduleModal.appointment.note || rescheduleModal.appointment.notes || '',
+        reason: rescheduleReasonText,
+        originalDate: rescheduleModal.appointment.fullDate,
+        originalTime: rescheduleModal.appointment.time,
+        newDate: rescheduleModal.selectedDate,
+        newTime: formatTimePickerValue(rescheduleModal.selectedTime),
+        durationMinutes,
+      });
+
+      await createAppointment({
+        branch_id: Number(rescheduleModal.appointment.branchId),
+        patient_id: Number(rescheduleModal.appointment.patientId),
+        dentist_id: Number(rescheduleModal.appointment.dentistId),
+        service_id: Number(rescheduleModal.appointment.serviceId),
+        reschedule_appointment_id: Number(rescheduleModal.appointment.id),
+        start_time: buildAppointmentStartISO(
+          rescheduleModal.selectedDate,
+          formatTimePickerValue(rescheduleModal.selectedTime)
+        ),
+        note: newNote,
+      });
+
+      closeRescheduleModal();
+      await fetchUpcomingAppointments();
+      await fetchCalendarAppointments(currentDate);
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setAppointmentsError(
+          'This time slot conflicts with an existing appointment. Please choose another time.'
+        );
+      } else {
+        setAppointmentsError(
+          err.response?.data?.message || 'Failed to reschedule appointment.'
+        );
+      }
+      setRescheduleModal((current) => ({ ...current, saving: false }));
+    }
+  }
+
   async function fetchUpcomingAppointments() {
     setAppointmentsLoading(true);
     setAppointmentsError('');
 
     try {
-      const data = await listAppointments();
+      const data = await listAppointments(
+        recepBranchId ? { branch_id: recepBranchId } : {}
+      );
       const normalized = normalizeAppointments(data);
 
-      setAllAppointments(normalized);
       setPendingAppointments(
         normalized.filter((appointment) => appointment.status === 'scheduled')
       );
@@ -305,10 +774,11 @@ export default function RecepAppointments() {
       const data = await listAppointments({
         from: bounds.fromUTC,
         to: bounds.toUTC,
+        ...(recepBranchId ? { branch_id: recepBranchId } : {}),
       });
 
       setCalendarAppointments(normalizeAppointments(data));
-    } catch (err) {
+    } catch {
       setCalendarAppointments([]);
     }
   }
@@ -318,7 +788,7 @@ export default function RecepAppointments() {
       const meta = await getAppointmentMeta();
       setDentistOptions(Array.isArray(meta.dentists) ? meta.dentists : []);
       setTreatmentOptions(Array.isArray(meta.services) ? meta.services : []);
-    } catch (err) {
+    } catch {
       setDentistOptions([]);
       setTreatmentOptions([]);
     }
@@ -397,13 +867,6 @@ export default function RecepAppointments() {
             : appointment
         )
       );
-      setAllAppointments((currentAppointments) =>
-        currentAppointments.map((appointment) =>
-          String(appointment.id) === String(id)
-            ? { ...appointment, status: 'completed', type: 'Completed' }
-            : appointment
-        )
-      );
       setCalendarAppointments((currentAppointments) =>
         currentAppointments.map((appointment) =>
           String(appointment.id) === String(id)
@@ -425,6 +888,7 @@ export default function RecepAppointments() {
       show: true,
       appointment,
       method: 'cash',
+      provider: '',
       amount: String(Number(appointment.servicePrice || 0).toFixed(0)),
       saving: false,
     });
@@ -435,6 +899,7 @@ export default function RecepAppointments() {
       show: false,
       appointment: null,
       method: 'cash',
+      provider: '',
       amount: '',
       saving: false,
     });
@@ -457,6 +922,7 @@ export default function RecepAppointments() {
         appointment_id: paymentModal.appointment.id,
         amount,
         payment_method: paymentModal.method,
+        ewallet_provider: paymentModal.provider?.trim() || null,
       });
 
       setQueueAppointments((currentQueue) =>
@@ -793,31 +1259,68 @@ export default function RecepAppointments() {
                       ) : (
                         selectedDateSchedules.map((appointment) => {
                           const calendarStatus = getAppointmentCalendarStatus(appointment);
+                          const showDetails = Boolean(calendarDetailsOpenById[appointment.id]);
+                          const isServiceKitSubmitted =
+                            calendarStatus === 'Done' &&
+                            kitSubmittedByAppointmentId[appointment.id] === true;
+                          const isServiceKitPending =
+                            calendarStatus === 'Done' &&
+                            kitTemplateHasItemsByAppointmentId[appointment.id] === true &&
+                            kitSubmittedByAppointmentId[appointment.id] === false;
 
                           return (
                           <div
                             key={appointment.id}
-                            style={styles.scheduleItem}
+                            style={{ ...styles.scheduleItem, position: 'relative', paddingBottom: 56 }}
                           >
                             <div style={styles.scheduleItemTop}>
                               <div style={styles.scheduleTime}>
-                                {appointment.time}
+                                {appointment.fullDate} | {appointment.time}
                               </div>
 
-                              <span
-                                style={{
-                                  ...styles.scheduleStatusBadge,
-                                  ...getAppointmentStatusStyle(styles, appointment),
-                                }}
-                              >
-                                {calendarStatus}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span
+                                  style={{
+                                    ...styles.scheduleStatusBadge,
+                                    ...getAppointmentStatusStyle(styles, appointment),
+                                  }}
+                                >
+                                  {calendarStatus}
+                                </span>
+                                {isServiceKitPending && (
+                                  <span
+                                    style={{
+                                      ...styles.scheduleStatusBadge,
+                                      background: '#fff7ed',
+                                      color: '#c2410c',
+                                      border: '1px solid #fdba74',
+                                    }}
+                                  >
+                                    Pending service_kit
+                                  </span>
+                                )}
+                                {isServiceKitSubmitted && (
+                                  <span
+                                    style={{
+                                      ...styles.scheduleStatusBadge,
+                                      background: '#dcfce7',
+                                      color: '#166534',
+                                      border: '1px solid #86efac',
+                                    }}
+                                  >
+                                    Service_kit submitted
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {calendarStatus === 'Done' && (
                               <button
                                 type="button"
                                 style={styles.serviceKitCalendarButton}
+                                onClick={() =>
+                                  openCalendarServiceKitModal(appointment)
+                                }
                               >
                                 service_kit
                               </button>
@@ -834,6 +1337,50 @@ export default function RecepAppointments() {
                             <div style={styles.scheduleDetail}>
                               {appointment.treatment}
                             </div>
+
+                            <div style={styles.scheduleDetail}>
+                              Estimated Duration: {getEstimatedTimeRange(appointment.time, appointment.durationMinutes)}
+                            </div>
+
+                            {showDetails && (
+                              <div
+                                style={{
+                                  ...styles.scheduleDetail,
+                                  marginTop: 8,
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 10,
+                                  padding: '8px 10px',
+                                }}
+                              >
+                                <strong>Original Schedule:</strong> {appointment.originalSchedule || 'Not recorded'}
+                                <br />
+                                <strong>Rescheduled:</strong> {appointment.rescheduledSchedule || 'Not recorded'}
+                                <br />
+                                <strong>Payment Type:</strong> {appointment.paymentMethodLabel || 'Not recorded'}
+                                <br />
+                                <strong>Provider:</strong> {appointment.paymentProvider || 'Not recorded'}
+                                <br />
+                                <strong>Payment Amount:</strong> {formatPaymentAmount(appointment.paymentAmount)}
+                              </div>
+                            )}
+
+                            <button
+                              type="button"
+                              style={{
+                                ...styles.serviceKitCalendarButton,
+                                position: 'absolute',
+                                right: 14,
+                                bottom: 14,
+                                margin: 0,
+                                borderColor: '#cbd5e1',
+                                background: '#ffffff',
+                                color: '#334155',
+                              }}
+                              onClick={() => toggleCalendarDetails(appointment.id)}
+                            >
+                              {showDetails ? 'Hide Details' : 'Details'}
+                            </button>
                           </div>
                         );
                         })
@@ -870,7 +1417,11 @@ export default function RecepAppointments() {
                         type="text"
                         placeholder="Search patient or dentist"
                         value={searchText}
-                        onChange={(event) => setSearchText(event.target.value)}
+                        onChange={(event) => {
+                          setSearchText(event.target.value);
+                          setPendingPage(1);
+                          setQueuePage(1);
+                        }}
                         style={styles.searchInput}
                       />
                     </div>
@@ -879,7 +1430,11 @@ export default function RecepAppointments() {
                   <div style={styles.rightActions}>
                     <select
                       value={dentistFilter}
-                      onChange={(event) => setDentistFilter(event.target.value)}
+                      onChange={(event) => {
+                        setDentistFilter(event.target.value);
+                        setPendingPage(1);
+                        setQueuePage(1);
+                      }}
                       style={styles.select}
                     >
                       <option value="all">All Dentist</option>
@@ -892,9 +1447,11 @@ export default function RecepAppointments() {
 
                     <select
                       value={treatmentFilter}
-                      onChange={(event) =>
-                        setTreatmentFilter(event.target.value)
-                      }
+                      onChange={(event) => {
+                        setTreatmentFilter(event.target.value);
+                        setPendingPage(1);
+                        setQueuePage(1);
+                      }}
                       style={styles.select}
                     >
                       <option value="">All Treatment</option>
@@ -964,6 +1521,7 @@ export default function RecepAppointments() {
                           openDropdownId={openDropdownId}
                           setOpenDropdownId={setOpenDropdownId}
                           handlePendingAction={handlePendingAction}
+                          onReschedule={openRescheduleModal}
                           isUpdating={
                             String(updatingId) === String(appointment.id)
                           }
@@ -974,7 +1532,7 @@ export default function RecepAppointments() {
 
                   <Pagination
                     styles={styles}
-                    page={pendingPage}
+                    page={safePendingPage}
                     totalPages={pendingTotalPages}
                     onPrev={() => setPendingPage((page) => Math.max(page - 1, 1))}
                     onNext={() =>
@@ -1023,7 +1581,7 @@ export default function RecepAppointments() {
 
                   <Pagination
                     styles={styles}
-                    page={queuePage}
+                    page={safeQueuePage}
                     totalPages={queueTotalPages}
                     onPrev={() => setQueuePage((page) => Math.max(page - 1, 1))}
                     onNext={() =>
@@ -1056,18 +1614,81 @@ export default function RecepAppointments() {
             <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
               <select
                 value={paymentModal.method}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const method = event.target.value;
+
                   setPaymentModal((current) => ({
                     ...current,
-                    method: event.target.value,
-                  }))
-                }
+                    method,
+                    provider: method === 'cash' ? '' : current.provider,
+                  }));
+                }}
                 style={styles.select}
               >
-                <option value="cash">Cash</option>
-                <option value="ewallet">E-wallet</option>
-                <option value="bank_transfer">Bank</option>
+                <option value="cash">{paymentMethodLabels.cash}</option>
+                <option value="ewallet">{paymentMethodLabels.ewallet}</option>
+                <option value="bank_transfer">{paymentMethodLabels.bank_transfer}</option>
               </select>
+
+              {paymentModal.method === 'ewallet' && (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <input
+                    list="payment-provider-ewallet"
+                    value={paymentModal.provider}
+                    onChange={(event) =>
+                      setPaymentModal((current) => ({
+                        ...current,
+                        provider: event.target.value,
+                      }))
+                    }
+                    placeholder="E-Wallet provider (e.g. GCash)"
+                    style={{
+                      ...styles.searchInput,
+                      width: '100%',
+                      height: 43,
+                      border: '1px solid #dbe3ef',
+                      borderRadius: 14,
+                      padding: '0 13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <datalist id="payment-provider-ewallet">
+                    {ewalletProviders.map((provider) => (
+                      <option key={provider} value={provider} />
+                    ))}
+                  </datalist>
+                </div>
+              )}
+
+              {paymentModal.method === 'bank_transfer' && (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <input
+                    list="payment-provider-bank"
+                    value={paymentModal.provider}
+                    onChange={(event) =>
+                      setPaymentModal((current) => ({
+                        ...current,
+                        provider: event.target.value,
+                      }))
+                    }
+                    placeholder="Bank (e.g. BDO)"
+                    style={{
+                      ...styles.searchInput,
+                      width: '100%',
+                      height: 43,
+                      border: '1px solid #dbe3ef',
+                      borderRadius: 14,
+                      padding: '0 13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <datalist id="payment-provider-bank">
+                    {bankProviders.map((provider) => (
+                      <option key={provider} value={provider} />
+                    ))}
+                  </datalist>
+                </div>
+              )}
 
               <input
                 type="number"
@@ -1179,6 +1800,275 @@ export default function RecepAppointments() {
         </div>
       )}
 
+      {rescheduleModal.show && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeRescheduleModal();
+          }}
+        >
+          <div style={styles.modalContentReschedule}>
+            <div style={styles.modalHeaderRow}>
+              <div>
+                <h2 style={styles.modalHeaderTitle}>Reschedule Appointment</h2>
+                <p style={styles.modalHeaderSub}>
+                  Pick a new date and time for {rescheduleModal.appointment?.name || 'this patient'}.
+                </p>
+              </div>
+
+              <button type="button" style={styles.modalCloseBtn} onClick={closeRescheduleModal}>
+                <i className="fi fi-rr-cross"></i>
+              </button>
+            </div>
+
+            {appointmentsError && (
+              <div style={styles.alertErrorInline}>
+                <i className="fi fi-rr-triangle-warning" style={{ marginRight: 8 }}></i>
+                <span>{appointmentsError}</span>
+              </div>
+            )}
+
+            <div style={{ ...scheduleStyles.formPanel, marginTop: 0 }}>
+              <h3 style={scheduleStyles.panelTitle}>Appointment Schedule</h3>
+
+              <div style={scheduleStyles.calendarContainer}>
+                <div style={scheduleStyles.calendar}>
+                  <div style={scheduleStyles.controls}>
+                    <button
+                      type="button"
+                      style={scheduleStyles.calendarNav}
+                      onClick={handleReschedulePreviousMonth}
+                    >
+                      <i className="fi fi-rr-angle-left"></i>
+                    </button>
+
+                    <div style={scheduleStyles.calendarDropdowns}>
+                      <select
+                        value={rescheduleModal.calendarMonth}
+                        onChange={(event) =>
+                          setRescheduleModal((current) => ({
+                            ...current,
+                            calendarMonth: Number(event.target.value),
+                          }))
+                        }
+                        style={scheduleStyles.calendarSelect}
+                      >
+                        {scheduleMonths.map((month, index) => (
+                          <option key={month} value={index}>
+                            {month}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={rescheduleModal.calendarYear}
+                        onChange={(event) =>
+                          setRescheduleModal((current) => ({
+                            ...current,
+                            calendarYear: Number(event.target.value),
+                          }))
+                        }
+                        style={scheduleStyles.calendarSelect}
+                      >
+                        {scheduleYearOptions.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      type="button"
+                      style={scheduleStyles.calendarNav}
+                      onClick={handleRescheduleNextMonth}
+                    >
+                      <i className="fi fi-rr-angle-right"></i>
+                    </button>
+                  </div>
+
+                  <div style={scheduleStyles.currentMonthLabel}>
+                    {`${scheduleMonths[rescheduleModal.calendarMonth]} ${rescheduleModal.calendarYear}`}
+                  </div>
+
+                  <table style={scheduleStyles.calendarTable}>
+                    <thead>
+                      <tr>
+                        <th style={scheduleStyles.calendarTh}>Su</th>
+                        <th style={scheduleStyles.calendarTh}>Mo</th>
+                        <th style={scheduleStyles.calendarTh}>Tu</th>
+                        <th style={scheduleStyles.calendarTh}>We</th>
+                        <th style={scheduleStyles.calendarTh}>Th</th>
+                        <th style={scheduleStyles.calendarTh}>Fr</th>
+                        <th style={scheduleStyles.calendarTh}>Sa</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {buildScheduleCalendarWeeks(
+                        rescheduleModal.calendarYear,
+                        rescheduleModal.calendarMonth,
+                        new Date()
+                      ).map((week, weekIndex) => (
+                        <tr key={`week-${weekIndex}`}>
+                          {week.map((dayItem, dayIndex) => {
+                            const isEmptyCell = !dayItem.dateKey;
+                            const isSelected = dayItem.dateKey === rescheduleModal.selectedDate;
+                            const isDisabled = dayItem.disabled;
+
+                            return (
+                              <td
+                                key={`day-${weekIndex}-${dayIndex}`}
+                                style={{
+                                  ...scheduleStyles.calendarTd,
+                                  ...(isEmptyCell ? scheduleStyles.calendarTdEmpty : {}),
+                                  ...(isDisabled && !isEmptyCell
+                                    ? scheduleStyles.calendarTdDisabled
+                                    : {}),
+                                  ...(isSelected ? scheduleStyles.calendarTdSelected : {}),
+                                }}
+                                onClick={() =>
+                                  !isEmptyCell &&
+                                  !isDisabled &&
+                                  setRescheduleModal((current) => ({
+                                    ...current,
+                                    selectedDate: dayItem.dateKey,
+                                    selectedTime: '',
+                                  }))
+                                }
+                              >
+                                {dayItem.day || ''}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={scheduleStyles.calendarDivider}></div>
+
+                <div style={scheduleStyles.timeSection}>
+                  <label style={scheduleStyles.label}>
+                    Available Time Slots <span style={scheduleStyles.required}>*</span>
+                  </label>
+
+                  {rescheduleModal.appointment?.dentistId && rescheduleModal.dentistOnLeave && (
+                    <p style={scheduleStyles.slotEmptyText}>
+                      This dentist is on approved leave
+                      {rescheduleModal.dentistLeaveInfo?.date_from && rescheduleModal.dentistLeaveInfo?.date_to
+                        ? ` (${rescheduleModal.dentistLeaveInfo.date_from} to ${rescheduleModal.dentistLeaveInfo.date_to})`
+                        : ''}
+                      . Please choose another date.
+                    </p>
+                  )}
+
+                  {rescheduleModal.loadingSlots ? (
+                    <p style={scheduleStyles.slotLoadingText}>Loading available slots...</p>
+                  ) : rescheduleModal.availableSlots.filter((s) => s.available).length === 0 ? (
+                    <p style={scheduleStyles.slotEmptyText}>No available slots on this date.</p>
+                  ) : (
+                    <div style={scheduleStyles.slotGrid}>
+                      {rescheduleModal.availableSlots.map((slot) => {
+                        const isSelected = slot.value === rescheduleModal.selectedTime;
+                        return (
+                          <button
+                            key={slot.value}
+                            type="button"
+                            disabled={!slot.available}
+                            style={{
+                              ...scheduleStyles.slotChip,
+                              ...(!slot.available ? scheduleStyles.slotChipBlocked : {}),
+                              ...(isSelected && slot.available ? scheduleStyles.slotChipSelected : {}),
+                            }}
+                            onClick={() => slot.available && handleSelectRescheduleSlot(slot)}
+                          >
+                            {slot.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div style={scheduleStyles.infoRows}>
+                    <div style={scheduleStyles.infoRow}>
+                      <i className="fi fi-rr-clock" style={scheduleStyles.infoIconBlue}></i>
+                      <div>
+                        <p style={scheduleStyles.infoText}>
+                          Estimated Duration: {rescheduleEstimatedTimeRange}
+                        </p>
+                        <p style={scheduleStyles.infoSubText}>
+                          Estimated duration is based on the selected purpose of visit. A
+                          15-minute cleaning/preparation buffer is blocked after each
+                          appointment.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={scheduleStyles.infoRow}>
+                      <i className="fi fi-rr-info" style={scheduleStyles.infoIconGray}></i>
+                      <div>
+                        <p style={scheduleStyles.infoText}>Clinic Hours: 10:00 AM - 7:00 PM</p>
+                        <p style={scheduleStyles.infoSubText}>
+                          Time slots are limited to clinic operating hours.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ ...scheduleStyles.field, marginTop: 18 }}>
+                <div style={styles.reasonHeaderRow}>
+                  <label style={scheduleStyles.label}>Reschedule Reason</label>
+                  <button
+                    type="button"
+                    style={styles.reasonTemplateBtn}
+                    onClick={() => {
+                      if (rescheduleReasonText.trim()) return;
+                      setRescheduleReasonText('Patient requested to reschedule.');
+                    }}
+                  >
+                    Use template
+                  </button>
+                </div>
+
+                <textarea
+                  value={rescheduleReasonText}
+                  onChange={(event) => setRescheduleReasonText(event.target.value)}
+                  placeholder="Add a reason for rescheduling (optional)"
+                  style={{ ...scheduleStyles.input, ...scheduleStyles.textarea }}
+                />
+              </div>
+
+              <div style={styles.rescheduleActions}>
+                <button
+                  type="button"
+                  style={styles.modalSecondaryBtn}
+                  onClick={closeRescheduleModal}
+                  disabled={rescheduleModal.saving}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  style={{
+                    ...styles.modalPrimaryBtn,
+                    ...(rescheduleModal.saving ? styles.pageBtnDisabled : {}),
+                  }}
+                  onClick={handleConfirmReschedule}
+                  disabled={rescheduleModal.saving}
+                >
+                  {rescheduleModal.saving ? 'Rescheduling...' : 'Reschedule'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
           <div style={styles.modalContent}>
@@ -1212,6 +2102,154 @@ export default function RecepAppointments() {
           </div>
         </div>
       )}
+
+      {showKitModal && selectedKitAppointment && (
+        <div style={styles.modal} onClick={closeKitModal}>
+          <div
+            style={{
+              ...styles.modalContentReschedule,
+              maxWidth: '680px',
+              width: '92vw',
+              maxHeight: '80vh',
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={styles.modalHeaderRow}>
+              <div>
+                <h2 style={styles.modalHeaderTitle}>Service Kit</h2>
+                <p style={styles.modalHeaderSub}>
+                  {kitAlreadySubmitted
+                    ? 'Dentist already filled up and submitted the service kit for this appointment.'
+                    : 'Service kit template for this appointment.'}
+                </p>
+              </div>
+              <button type="button" style={styles.modalCloseBtn} onClick={closeKitModal}>
+                <i className="fi fi-rr-cross-small"></i>
+              </button>
+            </div>
+
+            <div style={{ ...styles.scheduleItem, marginBottom: 12 }}>
+              <div style={styles.scheduleDetail}><strong>Patient:</strong> {selectedKitAppointment.name}</div>
+              <div style={styles.scheduleDetail}><strong>Service:</strong> {selectedKitAppointment.treatment}</div>
+              <div style={styles.scheduleDetail}>
+                <strong>Schedule:</strong> {selectedKitAppointment.fullDate} | {selectedKitAppointment.time}
+              </div>
+              {!kitAlreadySubmitted && (
+                <div style={styles.scheduleDetail}>
+                  <strong>Kit Note:</strong> {kitNotes || 'No kit note added.'}
+                </div>
+              )}
+            </div>
+
+            {kitLoading ? (
+              <p style={styles.scheduleDetail}>Loading kit...</p>
+            ) : kitError ? (
+              <p style={{ ...styles.scheduleDetail, color: '#b91c1c' }}>{kitError}</p>
+            ) : kitItems.length === 0 ? (
+              <p style={styles.scheduleDetail}>
+                {/consultation/i.test(String(selectedKitAppointment?.treatment || ''))
+                  ? 'No inventory items was used for consultation service.'
+                  : 'No items defined for this service kit.'}
+              </p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Category</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
+                        {kitAlreadySubmitted ? 'Used' : 'Qty'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kitItems.map((item, index) => (
+                      <tr key={`${item.item_name}-${index}`}>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                          {item.item_name}
+                          {!item.inventory_id && !kitAlreadySubmitted && (
+                            <span style={{ color: '#b91c1c', fontSize: 11, display: 'block' }}>
+                              Not linked to branch inventory
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.category || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                          {kitAlreadySubmitted ? (
+                            item.quantity_used || 0
+                          ) : (
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.quantity_used || 0}
+                              onChange={(event) => handleKitQtyChange(index, event.target.value)}
+                              disabled={!item.inventory_id}
+                              style={{
+                                width: '60px',
+                                padding: '4px 8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
+                                cursor: !item.inventory_id ? 'not-allowed' : 'text',
+                              }}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {kitAlreadySubmitted && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: '#ecfeff',
+                  border: '1px solid #a5f3fc',
+                  color: '#0f766e',
+                  fontSize: 13,
+                }}
+              >
+                Display only: Dentist already submitted this service kit.
+              </div>
+            )}
+
+            {!kitLoading && !kitError && kitItems.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, gap: 10 }}>
+                <button
+                  type="button"
+                  style={styles.modalSecondaryBtn}
+                  onClick={closeKitModal}
+                  disabled={kitSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.modalPrimaryBtn,
+                    ...((kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems) ? styles.pageBtnDisabled : {}),
+                  }}
+                  onClick={handleConfirmKitDeduction}
+                  disabled={kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems}
+                >
+                  {kitAlreadySubmitted
+                    ? 'Already Submitted by Dentist'
+                    : (!hasDeductibleKitItems
+                      ? 'No Deductible Items'
+                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct'))}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1222,9 +2260,13 @@ function PendingAppointmentCard({
   openDropdownId,
   setOpenDropdownId,
   handlePendingAction,
+  onReschedule,
   isUpdating,
 }) {
   const isOpen = String(openDropdownId) === String(appointment.id);
+  const todayDateKey = toDateKey(new Date());
+  const scheduleDateKey = appointment.sourceDateKey || appointment.fullDate;
+  const canMarkArrivedToday = scheduleDateKey === todayDateKey;
 
   return (
     <div style={{
@@ -1243,6 +2285,17 @@ function PendingAppointmentCard({
           </div>
 
           <strong style={styles.patientName}>{appointment.name}</strong>
+
+          {(appointment.originalSchedule || appointment.rescheduledSchedule) && (
+            <div style={{ marginBottom: 10, fontSize: 12, color: '#475569', lineHeight: 1.35 }}>
+              <div>
+                <strong>Original Schedule:</strong> {appointment.originalSchedule || 'Not recorded'}
+              </div>
+              <div>
+                <strong>Rescheduled:</strong> {appointment.rescheduledSchedule}
+              </div>
+            </div>
+          )}
 
           <div style={styles.gridInfo}>
             <InfoRow
@@ -1286,11 +2339,24 @@ function PendingAppointmentCard({
             <div style={styles.editDropdownMenu}>
               <button
                 type="button"
-                style={styles.editDropdownItem}
+                disabled={!canMarkArrivedToday}
+                style={{
+                  ...styles.editDropdownItem,
+                  ...(!canMarkArrivedToday ? styles.pageBtnDisabled : {}),
+                }}
                 onClick={() => handlePendingAction('arrived', appointment.id)}
               >
                 <i className="fi fi-rr-check"></i>
                 Mark Arrived
+              </button>
+
+              <button
+                type="button"
+                style={styles.editDropdownItem}
+                onClick={() => onReschedule && onReschedule(appointment)}
+              >
+                <i className="fi fi-rr-calendar-pen"></i>
+                Reschedule
               </button>
 
               <button
@@ -1449,8 +2515,31 @@ function normalizeAppointments(items) {
       item.time
     );
 
+    const unifiedNote =
+      item.dentist_note ||
+      item.dentistNote ||
+      item.note ||
+      item.notes ||
+      '';
+    const scheduleMeta = extractRescheduleScheduleMeta(unifiedNote);
+    const hasRescheduleText = /reschedul/i.test(unifiedNote);
+    const isRescheduledPending =
+      String(item.status || '').toLowerCase() === 'scheduled' &&
+      (Boolean(scheduleMeta.rescheduledSchedule) || hasRescheduleText);
+
+    const normalizedBranchId =
+      Number(
+        item.branch_id ||
+        item.branchId ||
+        item.branch?.id ||
+        item.branch?.branch_id ||
+        0
+      ) || null;
+
     return {
       id: item.id || item.appointmentId || index + 1,
+      patientId: item.patient_id || item.patientId || item.patient?.id || '',
+      branchId: normalizedBranchId,
       name:
         item.name ||
         item.patient_name ||
@@ -1478,13 +2567,25 @@ function normalizeAppointments(items) {
       paymentId: item.payment_id || null,
       paymentStatus: item.payment_status || '',
       paymentMethod: item.payment_method || '',
+      paymentMethodLabel: paymentMethodLabels[item.payment_method] || 'Not recorded',
+      paymentProvider: item.ewallet_provider || item.bank_provider || item.provider || '',
+      paymentAmount: Number(item.payment_amount || 0),
+      durationMinutes: Number(item.duration_min || 30),
       date: displayDate.week,
       day: displayDate.day,
       time: displayDate.time,
       fullDate: displayDate.fullDate,
+      sourceDateKey: extractDateKey(rawDateTime),
       status: item.status || 'scheduled',
-      type: item.type || item.bookingType || formatStatus(item.status || 'scheduled'),
-      notes: item.notes || '',
+      type: isRescheduledPending
+        ? 'Rescheduled'
+        : (item.type || item.bookingType || formatStatus(item.status || 'scheduled')),
+      originalSchedule: scheduleMeta.originalSchedule,
+      rescheduledSchedule:
+        scheduleMeta.rescheduledSchedule ||
+        `${displayDate.fullDate || '-'} ${displayDate.time || '-'}`,
+      notes: unifiedNote,
+      note: unifiedNote,
     };
   });
 }
@@ -1681,4 +2782,219 @@ function toDateKey(date) {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function getServiceDurationMinutes(services, serviceId) {
+  const service = (Array.isArray(services) ? services : []).find(
+    (s) => String(s.id) === String(serviceId)
+  );
+  const duration = Number(service?.duration_min || service?.duration || 30);
+  return Number.isFinite(duration) && duration > 0 ? duration : 30;
+}
+
+function buildScheduleCalendarWeeks(year, month, todayInput) {
+  const today = new Date(todayInput || new Date());
+  today.setHours(0, 0, 0, 0);
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDay = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+
+  const weeks = [];
+  let currentWeek = [];
+
+  for (let index = 0; index < startDay; index += 1) {
+    currentWeek.push({ day: '', dateKey: '', disabled: true });
+  }
+
+  for (let day = 1; day <= totalDays; day += 1) {
+    const date = new Date(year, month, day);
+    date.setHours(0, 0, 0, 0);
+
+    currentWeek.push({
+      day,
+      dateKey: toDateKey(date),
+      disabled: date < today,
+    });
+
+    if (currentWeek.length === 7) {
+      weeks.push(currentWeek);
+      currentWeek = [];
+    }
+  }
+
+  while (currentWeek.length > 0 && currentWeek.length < 7) {
+    currentWeek.push({ day: '', dateKey: '', disabled: true });
+  }
+
+  if (currentWeek.length > 0) {
+    weeks.push(currentWeek);
+  }
+
+  return weeks;
+}
+
+function dayBoundsUTC(dateKey) {
+  const [year, month, day] = String(dateKey || '').split('-').map(Number);
+  const start = new Date(year, (month || 1) - 1, day || 1, 0, 0, 0, 0);
+  const end = new Date(year, (month || 1) - 1, (day || 1) + 1, 0, 0, 0, 0);
+
+  return { fromUTC: start.toISOString(), toUTC: end.toISOString() };
+}
+
+const clinicStartMinutes = 10 * 60;
+const clinicEndMinutes = 19 * 60;
+const lunchStartMinutes = 12 * 60;
+const lunchEndMinutes = 13 * 60 + 30;
+const appointmentBufferMinutes = 15;
+
+function computeAvailableSlotsForSchedule({ appointments, dateKey, durationMinutes }) {
+  const now = Date.now();
+  const [year, month, day] = String(dateKey || '').split('-').map(Number);
+
+  const busyIntervals = (Array.isArray(appointments) ? appointments : [])
+    .filter((a) => ['scheduled', 'arrived'].includes(String(a?.status || '').toLowerCase()))
+    .map((a) => {
+      const start = new Date(a.start_time).getTime();
+      const end = start + (Number(a.duration_min || 30) + appointmentBufferMinutes) * 60 * 1000;
+      return { start, end };
+    })
+    .filter((interval) => Number.isFinite(interval.start) && Number.isFinite(interval.end));
+
+  const slots = [];
+
+  for (let minutes = clinicStartMinutes; minutes < clinicEndMinutes; minutes += 30) {
+    if (minutes >= lunchStartMinutes && minutes < lunchEndMinutes) continue;
+
+    const hour24 = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    const slotDate = new Date(year, (month || 1) - 1, day || 1, hour24, minute, 0, 0);
+    const slotStart = slotDate.getTime();
+    const slotEnd = slotStart + (durationMinutes + appointmentBufferMinutes) * 60 * 1000;
+
+    const isPast = slotStart <= now;
+    const isBlocked = !isPast && busyIntervals.some((b) => slotStart < b.end && slotEnd > b.start);
+
+    const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+    const period = hour24 >= 12 ? 'PM' : 'AM';
+
+    slots.push({
+      label: `${hour12}:${String(minute).padStart(2, '0')} ${period}`,
+      value: `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+      hour: String(hour24 > 12 ? hour24 - 12 : hour24),
+      minute: String(minute).padStart(2, '0'),
+      available: !isPast && !isBlocked,
+    });
+  }
+
+  return slots;
+}
+
+function formatTimePickerValue(value) {
+  const [hourPart = '10', minutePart = '00'] = String(value || '10:00').split(':');
+  const hour24 = Number(hourPart);
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+
+  return `${hour12}:${minutePart} ${period}`;
+}
+
+function parseTimeToMinutes(timeString) {
+  const [time, period] = String(timeString || '').split(' ');
+  const [hourValue, minuteValue] = String(time || '10:00').split(':').map(Number);
+
+  let hour = hourValue;
+
+  if (period === 'PM' && hour !== 12) {
+    hour += 12;
+  }
+
+  if (period === 'AM' && hour === 12) {
+    hour = 0;
+  }
+
+  return hour * 60 + (Number(minuteValue) || 0);
+}
+
+function formatPaymentAmount(amount) {
+  const value = Number(amount || 0);
+  if (!Number.isFinite(value) || value <= 0) return 'Not recorded';
+  return `PHP ${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function extractDateKey(rawDateTime) {
+  const value = String(rawDateTime || '').trim();
+  const matched = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  return matched ? matched[1] : '';
+}
+
+function extractRescheduleScheduleMeta(noteText) {
+  const note = String(noteText || '');
+  if (!note.trim()) {
+    return { originalSchedule: '', rescheduledSchedule: '' };
+  }
+
+  const originalMatch = note.match(/^\s*Original\s*Schedule\s*:\s*(.+)$/im);
+  const rescheduledMatch = note.match(/^\s*Rescheduled\s*:\s*(.+)$/im);
+  const legacyMatch = note.match(/^\s*Rescheduled\s+to\s+(.+)$/im);
+
+  return {
+    originalSchedule: originalMatch?.[1]?.trim() || '',
+    rescheduledSchedule: rescheduledMatch?.[1]?.trim() || legacyMatch?.[1]?.trim() || '',
+  };
+}
+
+function getEstimatedTimeRange(startTime, durationMinutes) {
+  const startMinutes = parseTimeToMinutes(startTime);
+  const endMinutes = startMinutes + Number(durationMinutes || 30);
+
+  return `${formatMinutesToTime(startMinutes)} - ${formatMinutesToTime(endMinutes)}`;
+}
+
+function formatMinutesToTime(totalMinutes) {
+  const hour24 = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+
+  return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
+}
+
+function buildAppointmentStartISO(dateKey, displayTime) {
+  const [year, month, day] = String(dateKey || '').split('-').map(Number);
+  const minutes = parseTimeToMinutes(displayTime);
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  const date = new Date(year, (month || 1) - 1, day || 1, hour, minute, 0, 0);
+
+  return date.toISOString();
+}
+
+function buildRescheduleNote({
+  existing,
+  reason,
+  originalDate,
+  originalTime,
+  newDate,
+  newTime,
+}) {
+  const prefix = String(existing || '').trim();
+  const cleanReason = String(reason || '').trim();
+  const originalLine = `Original Schedule: ${formatScheduleStamp(originalDate, originalTime)}`;
+  const rescheduledLine = `Rescheduled: ${formatScheduleStamp(newDate, newTime)}`;
+  const reasonLine = cleanReason ? `Reschedule reason: ${cleanReason}` : 'Reschedule reason: (none)';
+
+  if (!prefix) {
+    return `${originalLine}\n${rescheduledLine}\n${reasonLine}`;
+  }
+
+  return `${prefix}\n\n${originalLine}\n${rescheduledLine}\n${reasonLine}`;
+}
+
+function formatScheduleStamp(dateKey, timeValue) {
+  const normalizedDate = String(dateKey || '').trim() || '-';
+  const normalizedTime = String(timeValue || '').trim() || '-';
+
+  return `${normalizedDate} ${normalizedTime}`;
 }

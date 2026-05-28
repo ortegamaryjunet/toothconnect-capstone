@@ -294,12 +294,19 @@
       borderRadius: 14,
       border: '1px solid #dbe3ef',
       background: '#ffffff',
-      padding: '0 14px',
+      padding: '0 36px 0 14px',
       outline: 'none',
       fontSize: 14,
       color: '#334155',
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+      appearance: 'none',
+      WebkitAppearance: 'none',
+      MozAppearance: 'none',
+      backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23334155' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'right 14px center',
+      cursor: 'pointer',
     },
 
     filterInput: {
@@ -314,6 +321,14 @@
       color: '#334155',
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+    },
+
+    filterActionGroup: {
+      display: 'flex',
+      alignItems: 'flex-end',
+      gap: 10,
+      flexDirection: isMobile ? 'column' : 'row',
+      width: isSmallScreen ? '100%' : 'auto',
     },
 
     filterBtn: {
@@ -511,29 +526,33 @@
     },
 
     exportBtn: {
-      height: 43,
+      height: 48,
+      minWidth: isSmallScreen ? '100%' : 110,
       border: 'none',
       borderRadius: 14,
-      padding: '0 14px',
       color: '#ffffff',
+      padding: '0 18px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
       cursor: 'pointer',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      fontSize: 13,
-      fontWeight: 700,
-      fontFamily: 'Arial, sans-serif',
-      width: isMobile ? '100%' : 'auto',
-      minWidth: 82,
+      transition: '0.2s ease',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
     },
 
     exportCsv: {
-      background: '#16a34a',
+      background: 'linear-gradient(135deg, #15803d, #22c55e)',
+      boxShadow: '0 8px 18px rgba(34, 197, 94, 0.24)',
     },
 
     exportPdf: {
-      background: '#dc2626',
+      background: 'linear-gradient(135deg, #991b1b, #dc2626)',
+      boxShadow: '0 8px 18px rgba(220, 38, 38, 0.24)',
     },
 
     tableContainer: {
@@ -688,7 +707,6 @@
     modalIconText: {
       fontSize: 30,
       lineHeight: 1,
-
     },
 
     modalTitle: {
@@ -779,7 +797,7 @@
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
     },
 
     saveExpenseModalBtn: {
@@ -791,7 +809,65 @@
     cancelBtn: {
       background: '#f1f5f9',
       color: 'black',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
+    },
+
+    exportModalOverlay: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 10000,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    exportModalContent: {
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
+      background: '#ffffff',
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
+    },
+
+    exportModalTitle: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 24 : 28,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    exportModalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
+    },
+
+    exportModalText: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
+    },
+
+    exportModalButton: {
+      width: '100%',
+      height: 38,
+      border: 'none',
+      borderRadius: 8,
+      background: '#d4af37',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
     },
 
     notificationBadge: {
@@ -804,6 +880,7 @@
       fontWeight: 700,
       display: isMobile ? 'none' : 'inline-flex',
     },
+
     revenueContent: {
       width: '100%',
       boxSizing: 'border-box',

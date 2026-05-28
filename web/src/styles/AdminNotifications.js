@@ -93,12 +93,6 @@
       borderTop: '1px solid #e5e7eb',
     },
 
-    dropdownDivider: {
-      height: 1,
-      background: '#e5e7eb',
-      marginBottom: 12,
-    },
-
     logoutItem: {
       color: '#dc2626',
     },
