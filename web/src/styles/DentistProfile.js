@@ -309,6 +309,15 @@
       fontFamily: 'Arial, sans-serif',
     },
 
+    profileActions: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: isMobile ? 'stretch' : 'flex-end',
+      gap: 10,
+      width: isMobile ? '100%' : 'auto',
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
     editBtn: {
       border: 'none',
       background: '#b8860b',
@@ -323,6 +332,34 @@
       gap: 8,
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
+    },
+
+    pdfBtn: {
+      border: 'none',
+      background: 'linear-gradient(135deg, #f87171, #dc2626)',
+      color: '#ffffff',
+      padding: '13px 18px',
+      borderRadius: 14,
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      width: isMobile ? '100%' : 'auto',
+      fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 8px 18px rgba(220, 38, 38, 0.24)',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
+    },
+
+    pdfBtnIcon: {
+      fontSize: 14,
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     disabledBtn: {

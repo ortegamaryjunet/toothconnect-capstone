@@ -331,6 +331,30 @@ const createRecepInquiriesStyles = ({
       fontFamily: 'Arial, sans-serif',
     },
 
+    filterCard: {
+      background: '#ffffff',
+      border: '1px solid #edf0f5',
+      borderRadius: isVerySmall || isMobile ? 18 : 22,
+      padding: isVerySmall ? 14 : isMobile ? 18 : 20,
+      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+      boxSizing: 'border-box',
+      display: 'flex',
+      alignItems: isSmallScreen ? 'stretch' : 'center',
+      justifyContent: 'space-between',
+      gap: 15,
+      marginBottom: 18,
+      flexDirection: isSmallScreen ? 'column' : 'row',
+    },
+
+    filterRight: {
+      display: 'flex',
+      alignItems: isSmallScreen ? 'stretch' : 'flex-end',
+      justifyContent: isSmallScreen ? 'flex-start' : 'flex-end',
+      gap: 10,
+      width: isSmallScreen ? '100%' : 'auto',
+      flexDirection: isSmallScreen ? 'column' : 'row',
+    },
+
     tableCard: {
       background: '#ffffff',
       border: '1px solid #edf0f5',
@@ -377,15 +401,6 @@ const createRecepInquiriesStyles = ({
       fontFamily: 'Arial, sans-serif',
     },
 
-    filterRow: {
-      display: 'flex',
-      alignItems: 'flex-end',
-      justifyContent: 'space-between',
-      gap: 12,
-      flexWrap: isSmallScreen ? 'wrap' : 'nowrap',
-      marginBottom: 16,
-    },
-
     searchBox: {
       width: isSmallScreen ? '100%' : 350,
       height: isVerySmall ? 42 : 43,
@@ -396,7 +411,6 @@ const createRecepInquiriesStyles = ({
       border: '1px solid #dbe3ef',
       borderRadius: isVerySmall ? 12 : 14,
       padding: '0 13px',
-      marginBottom: 0,
       boxSizing: 'border-box',
     },
 
@@ -421,29 +435,29 @@ const createRecepInquiriesStyles = ({
       flexWrap: 'wrap',
       alignItems: 'flex-end',
       gap: 10,
-      marginBottom: 0,
       justifyContent: isSmallScreen ? 'flex-start' : 'flex-end',
-      flex: 1,
+      width: isSmallScreen ? '100%' : 'auto',
     },
 
     dateRangeGroup: {
       display: 'flex',
       flexDirection: 'column',
-      minWidth: isVerySmall ? '100%' : 170,
+      minWidth: isVerySmall ? '100%' : 150,
       flex: isMobile ? '1 1 100%' : '0 0 auto',
       gap: 6,
     },
 
     dateRangeLabel: {
       fontSize: 12,
-      color: '#64748b',
+      color: '#1e3a8a',
+      fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
     },
 
     dateRangeInput: {
-      height: 40,
+      height: 43,
       border: '1px solid #dbe3ef',
-      borderRadius: 12,
+      borderRadius: 14,
       padding: '0 12px',
       background: '#ffffff',
       color: '#172033',
@@ -453,10 +467,10 @@ const createRecepInquiriesStyles = ({
     },
 
     dateRangeClearBtn: {
-      height: 40,
+      height: 43,
       padding: '0 16px',
       border: '1px solid #dbe3ef',
-      borderRadius: 12,
+      borderRadius: 14,
       background: '#f8fafc',
       color: '#475569',
       cursor: 'pointer',

@@ -1,8 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 import { useAuth } from '../auth/AuthContext';
-import { getPatientProfile, listPatients, updateStaffPatientProfile } from '../api/patients';
+import {
+  getPatientProfile,
+  listPatients,
+  updateStaffPatientProfile,
+} from '../api/patients';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createRecepRecordsStyles from '../styles/RecepRecords';
@@ -10,20 +16,85 @@ import createRecepRecordsStyles from '../styles/RecepRecords';
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
 
 const rowsPerPage = 10;
-const CIVIL_STATUS_OPTIONS = ['Single', 'Married', 'Widowed', 'Separated', 'Divorced'];
-const NATIONALITY_OPTIONS = [
-  'Afghan', 'Albanian', 'Algerian', 'American', 'Andorran', 'Angolan',
-  'Argentine', 'Armenian', 'Australian', 'Austrian', 'Bangladeshi',
-  'Belgian', 'Brazilian', 'British', 'Bulgarian', 'Cambodian', 'Canadian',
-  'Chilean', 'Chinese', 'Colombian', 'Croatian', 'Czech', 'Danish', 'Dutch',
-  'Egyptian', 'Emirati', 'Filipino', 'Finnish', 'French', 'German', 'Greek',
-  'Hungarian', 'Icelandic', 'Indian', 'Indonesian', 'Irish', 'Israeli',
-  'Italian', 'Japanese', 'Jordanian', 'Kenyan', 'Korean', 'Kuwaiti',
-  'Malaysian', 'Mexican', 'Moroccan', 'Nepalese', 'New Zealander',
-  'Nigerian', 'Norwegian', 'Pakistani', 'Peruvian', 'Polish', 'Portuguese',
-  'Qatari', 'Romanian', 'Russian', 'Saudi', 'Singaporean', 'South African',
-  'Spanish', 'Swedish', 'Swiss', 'Thai', 'Turkish', 'Ukrainian', 'Vietnamese',
+
+const CIVIL_STATUS_OPTIONS = [
+  'Single',
+  'Married',
+  'Widowed',
+  'Separated',
+  'Divorced',
 ];
+
+const NATIONALITY_OPTIONS = [
+  'Afghan',
+  'Albanian',
+  'Algerian',
+  'American',
+  'Andorran',
+  'Angolan',
+  'Argentine',
+  'Armenian',
+  'Australian',
+  'Austrian',
+  'Bangladeshi',
+  'Belgian',
+  'Brazilian',
+  'British',
+  'Bulgarian',
+  'Cambodian',
+  'Canadian',
+  'Chilean',
+  'Chinese',
+  'Colombian',
+  'Croatian',
+  'Czech',
+  'Danish',
+  'Dutch',
+  'Egyptian',
+  'Emirati',
+  'Filipino',
+  'Finnish',
+  'French',
+  'German',
+  'Greek',
+  'Hungarian',
+  'Icelandic',
+  'Indian',
+  'Indonesian',
+  'Irish',
+  'Israeli',
+  'Italian',
+  'Japanese',
+  'Jordanian',
+  'Kenyan',
+  'Korean',
+  'Kuwaiti',
+  'Malaysian',
+  'Mexican',
+  'Moroccan',
+  'Nepalese',
+  'New Zealander',
+  'Nigerian',
+  'Norwegian',
+  'Pakistani',
+  'Peruvian',
+  'Polish',
+  'Portuguese',
+  'Qatari',
+  'Romanian',
+  'Russian',
+  'Saudi',
+  'Singaporean',
+  'South African',
+  'Spanish',
+  'Swedish',
+  'Swiss',
+  'Thai',
+  'Turkish',
+  'Ukrainian',
+  'Vietnamese',
+];
+
 const PH_PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 
 export default function RecepRecords() {
@@ -32,9 +103,11 @@ export default function RecepRecords() {
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const profileMenuRef = useRef(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  const profileMenuRef = useRef(null);
 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [editPatient, setEditPatient] = useState(null);
@@ -61,6 +134,37 @@ export default function RecepRecords() {
     isVerySmall,
     isSmallScreen,
   });
+
+  const filteredPatients = useMemo(() => {
+    const searchValue = searchText.trim().toLowerCase();
+    const genderValue = genderFilter.toLowerCase();
+
+    return patients.filter((patient) => {
+      const searchData =
+        `${patient.id} ${patient.lastName} ${patient.firstName} ${patient.middleName} ${patient.email} ${patient.contactNumber}`.toLowerCase();
+
+      const matchesSearch = searchData.includes(searchValue);
+
+      const matchesGender =
+        genderValue === 'all' ||
+        String(patient.gender).toLowerCase() === genderValue;
+
+      return matchesSearch && matchesGender;
+    });
+  }, [patients, searchText, genderFilter]);
+
+  const totalPages =
+    filteredPatients.length === 0
+      ? 0
+      : Math.ceil(filteredPatients.length / rowsPerPage);
+
+  const pagedPatients = useMemo(() => {
+    const start = currentPage > 0 ? (currentPage - 1) * rowsPerPage : 0;
+
+    return filteredPatients.slice(start, start + rowsPerPage);
+  }, [filteredPatients, currentPage]);
+
+  const receptionistName = user?.name || user?.email || 'Receptionist';
 
   useEffect(() => {
     function handleResize() {
@@ -97,16 +201,18 @@ export default function RecepRecords() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showDetailsModal || showEditModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    const modalOpen =
+      showLogoutModal ||
+      showDetailsModal ||
+      showEditModal ||
+      showExportModal;
+
+    document.body.style.overflow = modalOpen ? 'hidden' : '';
 
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showDetailsModal, showEditModal]);
+  }, [showLogoutModal, showDetailsModal, showEditModal, showExportModal]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -143,37 +249,9 @@ export default function RecepRecords() {
     setCurrentPage(1);
   }, [searchText, genderFilter]);
 
-  const filteredPatients = useMemo(() => {
-    const searchValue = searchText.trim().toLowerCase();
-    const genderValue = genderFilter.toLowerCase();
-
-    return patients.filter((patient) => {
-      const searchData = `${patient.id} ${patient.lastName} ${patient.firstName} ${patient.middleName} ${patient.email} ${patient.contactNumber}`.toLowerCase();
-      const matchesSearch = searchData.includes(searchValue);
-      const matchesGender =
-        genderValue === 'all' ||
-        String(patient.gender).toLowerCase() === genderValue;
-
-      return matchesSearch && matchesGender;
-    });
-  }, [patients, searchText, genderFilter]);
-
-  const totalPages =
-    filteredPatients.length === 0
-      ? 0
-      : Math.ceil(filteredPatients.length / rowsPerPage);
-
   useEffect(() => {
     setCurrentPage((page) => fixPage(page, totalPages));
   }, [totalPages]);
-
-  const pagedPatients = useMemo(() => {
-    const start = currentPage > 0 ? (currentPage - 1) * rowsPerPage : 0;
-
-    return filteredPatients.slice(start, start + rowsPerPage);
-  }, [filteredPatients, currentPage]);
-
-  const receptionistName = user?.name || user?.email || 'Receptionist';
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -191,6 +269,7 @@ export default function RecepRecords() {
     setShowLogoutModal(false);
     setShowDetailsModal(false);
     setShowEditModal(false);
+    setShowExportModal(false);
   }
 
   async function fetchPatients() {
@@ -235,6 +314,7 @@ export default function RecepRecords() {
       medications: '',
       dentalHistory: '',
     });
+
     setEditModalReadOnly(true);
     setEditErrors({});
     setShowEditModal(true);
@@ -256,9 +336,13 @@ export default function RecepRecords() {
 
   async function hydrateEditPatientProfile(patientId) {
     setEditProfileLoading(true);
+
     try {
       const profile = await getPatientProfile(patientId);
-      if (!profile) return;
+
+      if (!profile) {
+        return;
+      }
 
       const nameParts = splitFullName(profile.full_name || '');
 
@@ -286,7 +370,6 @@ export default function RecepRecords() {
         dentalHistory: profile.dental_history || '',
       }));
     } catch {
-      // Keep fallback list data in the edit modal when profile fetch fails.
     } finally {
       setEditProfileLoading(false);
     }
@@ -305,7 +388,10 @@ export default function RecepRecords() {
 
     if (field === 'contactNumber' || field === 'emergencyContactNumber') {
       const digitsOnly = String(value || '').replace(/[^0-9]/g, '');
-      sanitized = String(value || '').startsWith('+') ? `+${digitsOnly}` : digitsOnly;
+      sanitized = String(value || '').startsWith('+')
+        ? `+${digitsOnly}`
+        : digitsOnly;
+
       const maxLen = sanitized.startsWith('+') ? 13 : 11;
       sanitized = sanitized.slice(0, maxLen);
     }
@@ -316,7 +402,10 @@ export default function RecepRecords() {
       age: field === 'dateOfBirth' ? calculateAge(sanitized) : current.age,
     }));
 
-    setEditErrors((current) => ({ ...current, [field]: '' }));
+    setEditErrors((current) => ({
+      ...current,
+      [field]: '',
+    }));
   }
 
   async function savePatientChanges(event) {
@@ -338,6 +427,7 @@ export default function RecepRecords() {
       ['contactNumber', editPatient.contactNumber],
       ['email', editPatient.email],
     ];
+
     const nextErrors = {};
 
     requiredFieldChecks.forEach(([key, value]) => {
@@ -349,20 +439,29 @@ export default function RecepRecords() {
     if (editPatient.dateOfBirth) {
       const dobDate = new Date(editPatient.dateOfBirth);
       const todayDate = new Date();
+
       todayDate.setHours(0, 0, 0, 0);
+
       if (Number.isNaN(dobDate.getTime()) || dobDate > todayDate) {
         nextErrors.dateOfBirth = 'Date of birth cannot be in the future.';
       }
     }
 
-    if (editPatient.contactNumber && !PH_PHONE_REGEX.test(String(editPatient.contactNumber).trim())) {
+    if (
+      editPatient.contactNumber &&
+      !PH_PHONE_REGEX.test(String(editPatient.contactNumber).trim())
+    ) {
       nextErrors.contactNumber = 'Use 09XXXXXXXXX or +639XXXXXXXXX format.';
     }
 
     if (editPatient.emergencyContactNumber) {
-      const emergencyNumber = String(editPatient.emergencyContactNumber).trim();
+      const emergencyNumber = String(
+        editPatient.emergencyContactNumber
+      ).trim();
+
       if (!PH_PHONE_REGEX.test(emergencyNumber)) {
-        nextErrors.emergencyContactNumber = 'Use 09XXXXXXXXX or +639XXXXXXXXX format.';
+        nextErrors.emergencyContactNumber =
+          'Use 09XXXXXXXXX or +639XXXXXXXXX format.';
       }
     }
 
@@ -372,7 +471,11 @@ export default function RecepRecords() {
     }
 
     try {
-      const fullName = [editPatient.firstName, editPatient.middleName, editPatient.lastName]
+      const fullName = [
+        editPatient.firstName,
+        editPatient.middleName,
+        editPatient.lastName,
+      ]
         .filter(Boolean)
         .join(' ')
         .trim();
@@ -406,14 +509,347 @@ export default function RecepRecords() {
         )
       );
 
-      if (selectedPatient && String(selectedPatient.infoId) === String(editPatient.infoId)) {
+      if (
+        selectedPatient &&
+        String(selectedPatient.infoId) === String(editPatient.infoId)
+      ) {
         setSelectedPatient(normalized);
       }
 
       closeEditPatient();
     } catch (err) {
-      window.alert(err.response?.data?.message || 'Failed to save patient record.');
+      window.alert(
+        err.response?.data?.message || 'Failed to save patient record.'
+      );
     }
+  }
+
+  function exportPatientsToCSV() {
+    if (filteredPatients.length === 0) {
+      setShowExportModal(true);
+      return;
+    }
+
+    const headers = [
+      'Patient ID',
+      'Last Name',
+      'First Name',
+      'Middle Name',
+      'Age',
+      'Gender',
+      'Email',
+      'Contact Number',
+    ];
+
+    const rows = filteredPatients.map((patient) => [
+      patient.id,
+      patient.lastName || 'N/A',
+      patient.firstName || 'N/A',
+      patient.middleName || 'N/A',
+      patient.age || 'N/A',
+      patient.gender || 'N/A',
+      patient.email || 'N/A',
+      patient.contactNumber || 'N/A',
+    ]);
+
+    const csv = [];
+
+    csv.push(['Smile Empress Dental Hub']);
+    csv.push(['Receptionist Patient Records']);
+    csv.push(['Generated Date', new Date().toLocaleString('en-PH')]);
+    csv.push(['Generated By', receptionistName]);
+    csv.push([
+      'Gender Filter',
+      genderFilter === 'all' ? 'All Patients' : genderFilter,
+    ]);
+    csv.push([]);
+    csv.push(headers);
+    rows.forEach((row) => csv.push(row));
+
+    const csvContent =
+      '\uFEFF' +
+      csv.map((row) => row.map(formatCSVValue).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'receptionist_patient_records.csv';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }
+
+  async function exportPatientToPDF(patient) {
+    let fullPatient = patient;
+
+    try {
+      const profile = await getPatientProfile(patient.infoId);
+
+      if (profile) {
+        const nameParts = splitFullName(profile.full_name || '');
+
+        fullPatient = {
+          ...patient,
+          fullName: profile.full_name || patient.fullName,
+          email: profile.email || patient.email,
+          contactNumber: profile.contact_number || patient.contactNumber,
+          address: profile.address || patient.address,
+          dateOfBirth: profile.birthday || patient.dateOfBirth,
+          age: profile.age || calculateAge(profile.birthday) || patient.age,
+          gender: profile.sex || patient.gender,
+          firstName: patient.firstName || nameParts.firstName,
+          middleName: patient.middleName || nameParts.middleName,
+          lastName: patient.lastName || nameParts.lastName,
+          nationality: profile.nationality || patient.nationality,
+          occupation: profile.occupation || patient.occupation,
+          civilStatus: profile.civil_status || patient.civilStatus,
+          emergencyContactName:
+            profile.emergency_contact_name || patient.emergencyContactName,
+          emergencyContactNumber:
+            profile.emergency_contact_number ||
+            patient.emergencyContactNumber,
+          medicalConditions:
+            profile.medical_conditions || patient.medicalConditions,
+          allergies: profile.allergies || patient.allergies,
+          medications: profile.medications || patient.medications,
+          dentalHistory: profile.dental_history || patient.dentalHistory,
+        };
+      }
+    } catch {
+      fullPatient = patient;
+    }
+
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const generatedDate = new Date().toLocaleString('en-PH');
+
+    function safeValue(value) {
+      if (value === null || value === undefined || value === '') {
+        return 'N/A';
+      }
+
+      return String(value);
+    }
+
+    function drawHeader() {
+      doc.setFillColor(255, 248, 220);
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      doc.setFillColor(139, 101, 8);
+      doc.rect(0, 0, pageWidth, 28, 'F');
+
+      doc.setFillColor(212, 175, 55);
+      doc.rect(0, 28, pageWidth, 3, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('Smile Empress Dental Hub', 14, 12);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Patient Record Report', 14, 20);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('ToothConnect', pageWidth - 14, 12, {
+        align: 'right',
+      });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`Generated: ${generatedDate}`, pageWidth - 14, 20, {
+        align: 'right',
+      });
+    }
+
+    function drawFooter() {
+      doc.setDrawColor(212, 175, 55);
+      doc.setLineWidth(0.3);
+      doc.line(14, pageHeight - 15, pageWidth - 14, pageHeight - 15);
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.text('Generated by ToothConnect', 14, pageHeight - 9);
+      doc.text(
+        `Page ${doc.internal.getCurrentPageInfo().pageNumber}`,
+        pageWidth - 14,
+        pageHeight - 9,
+        { align: 'right' }
+      );
+    }
+
+    function drawSectionTitle(title, yPosition) {
+      doc.setFillColor(254, 243, 199);
+      doc.roundedRect(14, yPosition, pageWidth - 28, 9, 2, 2, 'F');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(title, 18, yPosition + 6);
+
+      return yPosition + 13;
+    }
+
+    function addSection(title, rows, startY) {
+      let yPosition = startY;
+
+      if (yPosition > pageHeight - 45) {
+        doc.addPage();
+        drawHeader();
+        yPosition = 40;
+      }
+
+      yPosition = drawSectionTitle(title, yPosition);
+
+      autoTable(doc, {
+        startY: yPosition,
+        theme: 'grid',
+        head: [['Field', 'Details']],
+        body: rows,
+        margin: {
+          left: 14,
+          right: 14,
+        },
+        styles: {
+          font: 'helvetica',
+          fontSize: 9,
+          cellPadding: 3,
+          textColor: [15, 23, 42],
+          lineColor: [229, 231, 235],
+          lineWidth: 0.25,
+          valign: 'middle',
+        },
+        headStyles: {
+          fillColor: [212, 175, 55],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [255, 253, 242],
+        },
+        columnStyles: {
+          0: {
+            cellWidth: 58,
+            fontStyle: 'bold',
+            textColor: [51, 65, 85],
+          },
+          1: {
+            cellWidth: 'auto',
+          },
+        },
+        didDrawPage() {
+          drawFooter();
+        },
+      });
+
+      return doc.lastAutoTable.finalY + 8;
+    }
+
+    drawHeader();
+
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(14, 39, pageWidth - 28, 29, 3, 3, 'F');
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text(safeValue(fullPatient.fullName), 20, 50);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Patient ID: ${safeValue(fullPatient.id)}`, 20, 58);
+    doc.text(`Generated By: ${safeValue(receptionistName)}`, 20, 64);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(139, 101, 8);
+    doc.text(`Gender: ${safeValue(fullPatient.gender)}`, pageWidth - 20, 58, {
+      align: 'right',
+    });
+    doc.text(`Age: ${safeValue(fullPatient.age)}`, pageWidth - 20, 64, {
+      align: 'right',
+    });
+
+    let nextY = 76;
+
+    nextY = addSection(
+      'Table Record Summary',
+      [
+        ['Patient ID', safeValue(fullPatient.id)],
+        ['Last Name', safeValue(fullPatient.lastName)],
+        ['First Name', safeValue(fullPatient.firstName)],
+        ['Middle Name', safeValue(fullPatient.middleName)],
+        ['Age', safeValue(fullPatient.age)],
+        ['Gender', safeValue(fullPatient.gender)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Patient Profile Details',
+      [
+        ['Full Name', safeValue(fullPatient.fullName)],
+        ['Email', safeValue(fullPatient.email)],
+        ['Contact Number', safeValue(fullPatient.contactNumber)],
+        ['Date of Birth', safeValue(fullPatient.dateOfBirth)],
+        ['Address', safeValue(fullPatient.address)],
+        ['Nationality', safeValue(fullPatient.nationality)],
+        ['Occupation', safeValue(fullPatient.occupation)],
+        ['Civil Status', safeValue(fullPatient.civilStatus)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Emergency Contact',
+      [
+        ['Emergency Contact Name', safeValue(fullPatient.emergencyContactName)],
+        [
+          'Emergency Contact Number',
+          safeValue(fullPatient.emergencyContactNumber),
+        ],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Medical Assessment',
+      [['Dental History', safeValue(fullPatient.dentalHistory)]],
+      nextY
+    );
+
+    nextY = addSection(
+      'Health Condition',
+      [
+        ['Medical Conditions', safeValue(fullPatient.medicalConditions)],
+        ['Allergies', safeValue(fullPatient.allergies)],
+        ['Medications', safeValue(fullPatient.medications)],
+      ],
+      nextY
+    );
+
+    const totalPdfPages = doc.internal.getNumberOfPages();
+
+    for (let page = 1; page <= totalPdfPages; page += 1) {
+      doc.setPage(page);
+      drawFooter();
+    }
+
+    doc.save(`${safeValue(fullPatient.id)}_patient_record.pdf`);
   }
 
   return (
@@ -425,7 +861,10 @@ export default function RecepRecords() {
 
         <nav style={styles.menu}>
           <Link to="/receptionist" style={styles.menuItem}>
-            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-chart-histogram"
+              style={styles.menuItemIcon}
+            ></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
@@ -561,35 +1000,44 @@ export default function RecepRecords() {
             )}
           </section>
 
+          <section style={styles.filterCard}>
+            <div style={styles.searchBox}>
+              <i className="fi fi-rr-search" style={styles.searchIcon}></i>
+
+              <input
+                type="text"
+                placeholder="Search patient name or ID"
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                style={styles.searchInput}
+              />
+            </div>
+
+            <select
+              value={genderFilter}
+              onChange={(event) => setGenderFilter(event.target.value)}
+              style={styles.genderFilter}
+            >
+              <option value="all">All Patients</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </section>
+
           <section style={styles.dashboardCard}>
             <div style={styles.cardHeader}>
               <div>
                 <h3 style={styles.cardTitle}>Patient List</h3>
               </div>
-            </div>
 
-            <div style={styles.filters}>
-              <div style={styles.searchBox}>
-                <i className="fi fi-rr-search" style={styles.searchIcon}></i>
-
-                <input
-                  type="text"
-                  placeholder="Search patient name"
-                  value={searchText}
-                  onChange={(event) => setSearchText(event.target.value)}
-                  style={styles.searchInput}
-                />
-              </div>
-
-              <select
-                value={genderFilter}
-                onChange={(event) => setGenderFilter(event.target.value)}
-                style={styles.genderFilter}
+              <button
+                type="button"
+                style={styles.exportCsvBtn}
+                onClick={exportPatientsToCSV}
               >
-                <option value="all">All Patients</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
+                <i className="fi fi-rr-file-csv"></i>
+                CSV
+              </button>
             </div>
 
             <div style={styles.tableScroll}>
@@ -602,7 +1050,9 @@ export default function RecepRecords() {
                     <th style={styles.th}>Middle Name</th>
                     <th style={styles.th}>Age</th>
                     <th style={styles.th}>Gender</th>
-                    <th style={{ ...styles.th, ...styles.actionTh }}>Action</th>
+                    <th style={{ ...styles.th, ...styles.actionTh }}>
+                      Action
+                    </th>
                   </tr>
                 </thead>
 
@@ -630,7 +1080,10 @@ export default function RecepRecords() {
                           <div style={styles.btnGroup}>
                             <button
                               type="button"
-                              style={{ ...styles.actionBtn, ...styles.viewBtn }}
+                              style={{
+                                ...styles.actionBtn,
+                                ...styles.viewBtn,
+                              }}
                               onClick={() => openPatientDetails(patient)}
                               title="View Patient"
                             >
@@ -639,11 +1092,28 @@ export default function RecepRecords() {
 
                             <button
                               type="button"
-                              style={{ ...styles.actionBtn, ...styles.editBtn }}
-                              onClick={(event) => openEditPatient(patient, event)}
+                              style={{
+                                ...styles.actionBtn,
+                                ...styles.editBtn,
+                              }}
+                              onClick={(event) =>
+                                openEditPatient(patient, event)
+                              }
                               title="Edit Patient"
                             >
                               <i className="fi fi-rr-edit"></i>
+                            </button>
+
+                            <button
+                              type="button"
+                              style={{
+                                ...styles.actionBtn,
+                                ...styles.pdfBtn,
+                              }}
+                              onClick={() => exportPatientToPDF(patient)}
+                              title="Export PDF"
+                            >
+                              <i className="fi fi-rr-file-pdf"></i>
                             </button>
                           </div>
                         </td>
@@ -667,98 +1137,6 @@ export default function RecepRecords() {
         </main>
       </div>
 
-      {showDetailsModal && selectedPatient && (
-        <div
-          style={styles.modal}
-          onClick={(event) => handleModalOverlayClick(event, closePatientDetails)}
-        >
-          <div style={{ ...styles.modalContent, ...styles.largeModal }}>
-            <div style={styles.modalHeader}>
-              <div>
-                <h2 style={styles.modalHeaderTitle}>Patient Details</h2>
-                <p style={styles.modalHeaderText}>
-                  Review complete patient profile information.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                style={styles.modalX}
-                onClick={closePatientDetails}
-              >
-                ×
-              </button>
-            </div>
-
-            <div style={styles.detailsGrid}>
-              <DetailBox
-                styles={styles}
-                label="Patient ID"
-                value={selectedPatient.id}
-              />
-
-              <DetailBox
-                styles={styles}
-                label="Email"
-                value={selectedPatient.email}
-              />
-
-              <DetailBox
-                styles={styles}
-                label="Contact Number"
-                value={selectedPatient.contactNumber}
-              />
-
-              <DetailBox
-                styles={styles}
-                label="Last Name"
-                value={selectedPatient.lastName}
-              />
-
-              <DetailBox
-                styles={styles}
-                label="First Name"
-                value={selectedPatient.firstName}
-              />
-
-              <DetailBox
-                styles={styles}
-                label="Middle Name"
-                value={selectedPatient.middleName}
-              />
-
-              <DetailBox
-                styles={styles}
-                label="Date of Birth"
-                value={selectedPatient.dateOfBirth}
-              />
-
-              <DetailBox
-                styles={styles}
-                label="Age"
-                value={selectedPatient.age}
-              />
-
-              <DetailBox
-                styles={styles}
-                label="Gender"
-                value={selectedPatient.gender}
-              />
-            </div>
-
-            <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={styles.cancelModalBtn}
-                onClick={closePatientDetails}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showEditModal && editPatient && (
         <div
           style={styles.modal}
@@ -773,7 +1151,8 @@ export default function RecepRecords() {
               <div>
                 <h2 style={styles.modalHeaderTitle}>Edit Patient</h2>
                 <p style={styles.modalHeaderText}>
-                  Review patient profile details, then click Edit to enable fields.
+                  Review patient profile details, then click Edit to enable
+                  fields.
                 </p>
               </div>
 
@@ -787,7 +1166,13 @@ export default function RecepRecords() {
             </div>
 
             {editProfileLoading && (
-              <p style={{ ...styles.modalHeaderText, marginTop: 0, marginBottom: 16 }}>
+              <p
+                style={{
+                  ...styles.modalHeaderText,
+                  marginTop: 0,
+                  marginBottom: 16,
+                }}
+              >
                 Loading patient profile...
               </p>
             )}
@@ -795,133 +1180,68 @@ export default function RecepRecords() {
             <div style={styles.formGrid}>
               <div style={styles.formSectionTitle}>Personal Information</div>
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>First Name</label>
-                <input
-                  type="text"
-                  value={editPatient.firstName}
-                  onChange={(event) =>
-                    handleEditChange('firstName', event.target.value)
-                  }
-                  readOnly={editModalReadOnly}
-                  style={{
-                    ...styles.fieldInput,
-                    ...(editErrors.firstName ? { borderColor: '#dc2626' } : {}),
-                  }}
-                />
-                {editErrors.firstName && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.firstName}
-                  </p>
-                )}
-              </div>
+              <FieldInput
+                styles={styles}
+                label="First Name"
+                value={editPatient.firstName}
+                readOnly={editModalReadOnly}
+                error={editErrors.firstName}
+                onChange={(value) => handleEditChange('firstName', value)}
+              />
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Middle Name</label>
-                <input
-                  type="text"
-                  value={editPatient.middleName}
-                  onChange={(event) =>
-                    handleEditChange('middleName', event.target.value)
-                  }
-                  readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
-                />
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Middle Name"
+                value={editPatient.middleName}
+                readOnly={editModalReadOnly}
+                onChange={(value) => handleEditChange('middleName', value)}
+              />
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Last Name</label>
-                <input
-                  type="text"
-                  value={editPatient.lastName}
-                  onChange={(event) =>
-                    handleEditChange('lastName', event.target.value)
-                  }
-                  readOnly={editModalReadOnly}
-                  style={{
-                    ...styles.fieldInput,
-                    ...(editErrors.lastName ? { borderColor: '#dc2626' } : {}),
-                  }}
-                />
-                {editErrors.lastName && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.lastName}
-                  </p>
-                )}
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Last Name"
+                value={editPatient.lastName}
+                readOnly={editModalReadOnly}
+                error={editErrors.lastName}
+                onChange={(value) => handleEditChange('lastName', value)}
+              />
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Date of Birth</label>
-                <input
-                  type="date"
-                  value={editPatient.dateOfBirth}
-                  onChange={(event) =>
-                    handleEditChange('dateOfBirth', event.target.value)
-                  }
-                  disabled={editModalReadOnly}
-                  style={{
-                    ...styles.fieldInput,
-                    ...(editErrors.dateOfBirth ? { borderColor: '#dc2626' } : {}),
-                  }}
-                />
-                {editErrors.dateOfBirth && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.dateOfBirth}
-                  </p>
-                )}
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Date of Birth"
+                type="date"
+                value={editPatient.dateOfBirth}
+                disabled={editModalReadOnly}
+                error={editErrors.dateOfBirth}
+                onChange={(value) => handleEditChange('dateOfBirth', value)}
+              />
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Email</label>
-                <input
-                  type="email"
-                  value={editPatient.email}
-                  onChange={(event) =>
-                    handleEditChange('email', event.target.value)
-                  }
-                  readOnly={editModalReadOnly}
-                  style={{
-                    ...styles.fieldInput,
-                    ...(editErrors.email ? { borderColor: '#dc2626' } : {}),
-                  }}
-                />
-                {editErrors.email && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.email}
-                  </p>
-                )}
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Email"
+                type="email"
+                value={editPatient.email}
+                readOnly={editModalReadOnly}
+                error={editErrors.email}
+                onChange={(value) => handleEditChange('email', value)}
+              />
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Contact Number</label>
-                <input
-                  type="tel"
-                  value={editPatient.contactNumber}
-                  onChange={(event) =>
-                    handleEditChange('contactNumber', event.target.value)
-                  }
-                  readOnly={editModalReadOnly}
-                  style={{
-                    ...styles.fieldInput,
-                    ...(editErrors.contactNumber ? { borderColor: '#dc2626' } : {}),
-                  }}
-                />
-                {editErrors.contactNumber && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.contactNumber}
-                  </p>
-                )}
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Contact Number"
+                type="tel"
+                value={editPatient.contactNumber}
+                readOnly={editModalReadOnly}
+                error={editErrors.contactNumber}
+                onChange={(value) => handleEditChange('contactNumber', value)}
+              />
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Age</label>
-                <input
-                  type="text"
-                  value={editPatient.age}
-                  readOnly
-                  style={styles.fieldInput}
-                />
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Age"
+                value={editPatient.age}
+                readOnly
+              />
 
               <div style={styles.field}>
                 <label style={styles.fieldLabel}>Gender</label>
@@ -940,175 +1260,150 @@ export default function RecepRecords() {
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                 </select>
+
                 {editErrors.gender && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.gender}
-                  </p>
+                  <p style={styles.fieldErrorText}>{editErrors.gender}</p>
                 )}
               </div>
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Address</label>
-                <input
-                  type="text"
-                  value={editPatient.address || ''}
-                  onChange={(event) => handleEditChange('address', event.target.value)}
-                  readOnly={editModalReadOnly}
-                  style={{
-                    ...styles.fieldInput,
-                    ...(editErrors.address ? { borderColor: '#dc2626' } : {}),
-                  }}
-                />
-                {editErrors.address && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.address}
-                  </p>
-                )}
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Address"
+                value={editPatient.address || ''}
+                readOnly={editModalReadOnly}
+                error={editErrors.address}
+                onChange={(value) => handleEditChange('address', value)}
+              />
 
               <div style={styles.field}>
                 <label style={styles.fieldLabel}>Nationality</label>
                 <select
                   value={editPatient.nationality || ''}
-                  onChange={(event) => handleEditChange('nationality', event.target.value)}
+                  onChange={(event) =>
+                    handleEditChange('nationality', event.target.value)
+                  }
                   disabled={editModalReadOnly}
                   style={{
                     ...styles.fieldInput,
-                    ...(editErrors.nationality ? { borderColor: '#dc2626' } : {}),
+                    ...(editErrors.nationality
+                      ? { borderColor: '#dc2626' }
+                      : {}),
                   }}
                 >
                   <option value="">Select Nationality</option>
+
                   {NATIONALITY_OPTIONS.map((option) => (
                     <option key={option} value={option}>
                       {option}
                     </option>
                   ))}
                 </select>
+
                 {editErrors.nationality && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                  <p style={styles.fieldErrorText}>
                     {editErrors.nationality}
                   </p>
                 )}
               </div>
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Occupation</label>
-                <input
-                  type="text"
-                  value={editPatient.occupation || ''}
-                  onChange={(event) => handleEditChange('occupation', event.target.value)}
-                  readOnly={editModalReadOnly}
-                  style={{
-                    ...styles.fieldInput,
-                    ...(editErrors.occupation ? { borderColor: '#dc2626' } : {}),
-                  }}
-                />
-                {editErrors.occupation && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.occupation}
-                  </p>
-                )}
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Occupation"
+                value={editPatient.occupation || ''}
+                readOnly={editModalReadOnly}
+                error={editErrors.occupation}
+                onChange={(value) => handleEditChange('occupation', value)}
+              />
 
               <div style={styles.field}>
                 <label style={styles.fieldLabel}>Civil Status</label>
                 <select
                   value={editPatient.civilStatus || ''}
-                  onChange={(event) => handleEditChange('civilStatus', event.target.value)}
+                  onChange={(event) =>
+                    handleEditChange('civilStatus', event.target.value)
+                  }
                   disabled={editModalReadOnly}
                   style={{
                     ...styles.fieldInput,
-                    ...(editErrors.civilStatus ? { borderColor: '#dc2626' } : {}),
+                    ...(editErrors.civilStatus
+                      ? { borderColor: '#dc2626' }
+                      : {}),
                   }}
                 >
                   <option value="">Select Civil Status</option>
+
                   {CIVIL_STATUS_OPTIONS.map((option) => (
                     <option key={option} value={option}>
                       {option}
                     </option>
                   ))}
                 </select>
+
                 {editErrors.civilStatus && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
+                  <p style={styles.fieldErrorText}>
                     {editErrors.civilStatus}
                   </p>
                 )}
               </div>
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Emergency Contact Name</label>
-                <input
-                  type="text"
-                  value={editPatient.emergencyContactName || ''}
-                  onChange={(event) => handleEditChange('emergencyContactName', event.target.value)}
-                  readOnly={editModalReadOnly}
-                  style={styles.fieldInput}
-                />
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Emergency Contact Name"
+                value={editPatient.emergencyContactName || ''}
+                readOnly={editModalReadOnly}
+                onChange={(value) =>
+                  handleEditChange('emergencyContactName', value)
+                }
+              />
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Emergency Contact Number</label>
-                <input
-                  type="text"
-                  value={editPatient.emergencyContactNumber || ''}
-                  onChange={(event) => handleEditChange('emergencyContactNumber', event.target.value)}
-                  maxLength={13}
-                  readOnly={editModalReadOnly}
-                  style={{
-                    ...styles.fieldInput,
-                    ...(editErrors.emergencyContactNumber ? { borderColor: '#dc2626' } : {}),
-                  }}
-                />
-                {editErrors.emergencyContactNumber && (
-                  <p style={{ margin: '4px 0 0', color: '#dc2626', fontSize: 12 }}>
-                    {editErrors.emergencyContactNumber}
-                  </p>
-                )}
-              </div>
+              <FieldInput
+                styles={styles}
+                label="Emergency Contact Number"
+                value={editPatient.emergencyContactNumber || ''}
+                readOnly={editModalReadOnly}
+                error={editErrors.emergencyContactNumber}
+                onChange={(value) =>
+                  handleEditChange('emergencyContactNumber', value)
+                }
+              />
 
               <div style={styles.formSectionTitle}>Medical Assessment</div>
 
-              <div style={{ ...styles.field, gridColumn: isMobile ? 'auto' : '1 / -1' }}>
-                <label style={styles.fieldLabel}>Dental History (Medical Assessment)</label>
-                <textarea
-                  value={editPatient.dentalHistory || ''}
-                  onChange={(event) => handleEditChange('dentalHistory', event.target.value)}
-                  readOnly={editModalReadOnly}
-                  style={{ ...styles.fieldInput, height: 96, padding: '10px 12px' }}
-                />
-              </div>
+              <TextAreaField
+                styles={styles}
+                label="Dental History"
+                value={editPatient.dentalHistory || ''}
+                readOnly={editModalReadOnly}
+                onChange={(value) => handleEditChange('dentalHistory', value)}
+              />
 
               <div style={styles.formSectionTitle}>Health Condition</div>
 
-              <div style={{ ...styles.field, gridColumn: isMobile ? 'auto' : '1 / -1' }}>
-                <label style={styles.fieldLabel}>Medical Conditions (Health Condition)</label>
-                <textarea
-                  value={editPatient.medicalConditions || ''}
-                  onChange={(event) => handleEditChange('medicalConditions', event.target.value)}
-                  readOnly={editModalReadOnly}
-                  style={{ ...styles.fieldInput, height: 96, padding: '10px 12px' }}
-                />
-              </div>
+              <TextAreaField
+                styles={styles}
+                label="Medical Conditions"
+                value={editPatient.medicalConditions || ''}
+                readOnly={editModalReadOnly}
+                onChange={(value) =>
+                  handleEditChange('medicalConditions', value)
+                }
+              />
 
-              <div style={{ ...styles.field, gridColumn: isMobile ? 'auto' : '1 / -1' }}>
-                <label style={styles.fieldLabel}>Allergies</label>
-                <textarea
-                  value={editPatient.allergies || ''}
-                  onChange={(event) => handleEditChange('allergies', event.target.value)}
-                  readOnly={editModalReadOnly}
-                  style={{ ...styles.fieldInput, height: 96, padding: '10px 12px' }}
-                />
-              </div>
+              <TextAreaField
+                styles={styles}
+                label="Allergies"
+                value={editPatient.allergies || ''}
+                readOnly={editModalReadOnly}
+                onChange={(value) => handleEditChange('allergies', value)}
+              />
 
-              <div style={{ ...styles.field, gridColumn: isMobile ? 'auto' : '1 / -1' }}>
-                <label style={styles.fieldLabel}>Medications</label>
-                <textarea
-                  value={editPatient.medications || ''}
-                  onChange={(event) => handleEditChange('medications', event.target.value)}
-                  readOnly={editModalReadOnly}
-                  style={{ ...styles.fieldInput, height: 96, padding: '10px 12px' }}
-                />
-              </div>
+              <TextAreaField
+                styles={styles}
+                label="Medications"
+                value={editPatient.medications || ''}
+                readOnly={editModalReadOnly}
+                onChange={(value) => handleEditChange('medications', value)}
+              />
             </div>
 
             <div style={styles.modalActions}>
@@ -1152,6 +1447,33 @@ export default function RecepRecords() {
               )}
             </div>
           </form>
+        </div>
+      )}
+
+      {showExportModal && (
+        <div
+          style={styles.exportModalOverlay}
+          onClick={(event) =>
+            handleModalOverlayClick(event, () => setShowExportModal(false))
+          }
+        >
+          <div style={styles.exportModalContent}>
+            <h2 style={styles.exportModalTitle}>No Patient Records</h2>
+
+            <div style={styles.exportModalDivider}></div>
+
+            <p style={styles.exportModalText}>
+              No patient records available to export.
+            </p>
+
+            <button
+              type="button"
+              style={styles.exportModalButton}
+              onClick={() => setShowExportModal(false)}
+            >
+              Okay
+            </button>
+          </div>
         </div>
       )}
 
@@ -1210,9 +1532,7 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
         <i className="fi fi-rr-angle-left"></i>
       </button>
 
-      <span style={styles.pageInfo}>
-        Page {page} of {totalPages}
-      </span>
+      <span style={styles.pageInfo}>Page {page} of {totalPages}</span>
 
       <button
         type="button"
@@ -1231,11 +1551,48 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
   );
 }
 
-function DetailBox({ styles, label, value }) {
+function FieldInput({
+  styles,
+  label,
+  value,
+  onChange,
+  type = 'text',
+  readOnly = false,
+  disabled = false,
+  error = '',
+}) {
   return (
-    <div style={styles.detailBox}>
-      <label style={styles.detailLabel}>{label}</label>
-      <p style={styles.detailValue}>{value || '-'}</p>
+    <div style={styles.field}>
+      <label style={styles.fieldLabel}>{label}</label>
+
+      <input
+        type={type}
+        value={value || ''}
+        onChange={(event) => onChange?.(event.target.value)}
+        readOnly={readOnly}
+        disabled={disabled}
+        style={{
+          ...styles.fieldInput,
+          ...(error ? { borderColor: '#dc2626' } : {}),
+        }}
+      />
+
+      {error && <p style={styles.fieldErrorText}>{error}</p>}
+    </div>
+  );
+}
+
+function TextAreaField({ styles, label, value, onChange, readOnly = false }) {
+  return (
+    <div style={styles.textAreaField}>
+      <label style={styles.fieldLabel}>{label}</label>
+
+      <textarea
+        value={value || ''}
+        onChange={(event) => onChange?.(event.target.value)}
+        readOnly={readOnly}
+        style={styles.textAreaInput}
+      />
     </div>
   );
 }
@@ -1254,8 +1611,12 @@ function normalizePatients(items) {
     const nameParts = splitFullName(fullName);
 
     return {
-      id: item.id || item.user_id ? `P${item.id || item.user_id}` : item.patientId || item.userId || index + 1,
-      infoId: item.infoId || item.userInfoId || item.id || item.user_id || index + 1,
+      id:
+        item.id || item.user_id
+          ? `P${item.id || item.user_id}`
+          : item.patientId || item.userId || index + 1,
+      infoId:
+        item.infoId || item.userInfoId || item.id || item.user_id || index + 1,
       fullName: item.full_name || item.name || '',
       email: item.email || '',
       contactNumber: item.contact_number || item.contactNumber || '',
@@ -1330,4 +1691,10 @@ function fixPage(page, totalPages) {
   }
 
   return page;
+}
+
+function formatCSVValue(value) {
+  const stringValue = value === null || value === undefined ? '' : String(value);
+
+  return `"${stringValue.replace(/"/g, '""')}"`;
 }

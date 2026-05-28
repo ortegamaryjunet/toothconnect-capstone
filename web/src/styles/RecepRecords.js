@@ -80,7 +80,7 @@
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
     },
-    
+
     menuItemActive: {
       background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
@@ -284,32 +284,16 @@
       fontSize: isMobile ? 28 : 36,
     },
 
-    dashboardCard: {
+    filterCard: {
       background: '#ffffff',
       border: '1px solid #edf0f5',
       borderRadius: isVerySmall || isMobile ? 18 : 22,
-      padding: isVerySmall ? 15 : isMobile ? 18 : 22,
+      padding: isVerySmall ? 15 : isMobile ? 18 : 20,
       boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
       boxSizing: 'border-box',
-      width: '100%',
-      minWidth: 0,
-    },
-
-    cardHeader: {
-      marginBottom: 18,
-    },
-
-    cardTitle: {
-      fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: isVerySmall ? 17 : 18,
-      color: '#0f172a',
-      margin: 0,
-    },
-
-    filters: {
       display: 'flex',
-      justifyContent: 'space-between',
       alignItems: isSmallScreen ? 'stretch' : 'center',
+      justifyContent: 'space-between',
       gap: 15,
       marginBottom: 18,
       flexDirection: isSmallScreen ? 'column' : 'row',
@@ -359,6 +343,55 @@
       boxSizing: 'border-box',
     },
 
+    dashboardCard: {
+      background: '#ffffff',
+      border: '1px solid #edf0f5',
+      borderRadius: isVerySmall || isMobile ? 18 : 22,
+      padding: isVerySmall ? 15 : isMobile ? 18 : 22,
+      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+      boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
+    },
+
+    cardHeader: {
+      marginBottom: 18,
+      display: 'flex',
+      alignItems: isVerySmall ? 'stretch' : 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      flexDirection: isVerySmall ? 'column' : 'row',
+    },
+
+    cardTitle: {
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: isVerySmall ? 17 : 18,
+      color: '#0f172a',
+      margin: 0,
+    },
+
+    exportCsvBtn: {
+      height: 43,
+      minWidth: isVerySmall ? '100%' : 110,
+      border: 'none',
+      borderRadius: 14,
+      background: 'linear-gradient(135deg, #15803d, #22c55e)',
+      color: '#ffffff',
+      padding: '0 18px',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      boxShadow: '0 8px 18px rgba(34, 197, 94, 0.24)',
+      transition: '0.2s ease',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
+    },
+
     tableScroll: {
       width: '100%',
       overflowX: 'auto',
@@ -368,7 +401,7 @@
 
     patientTable: {
       width: '100%',
-      minWidth: isVerySmall ? 820 : 900,
+      minWidth: isVerySmall ? 900 : 1000,
       borderCollapse: 'collapse',
     },
 
@@ -400,12 +433,12 @@
 
     actionTh: {
       textAlign: 'center',
-      width: 110,
+      width: 150,
     },
 
     actionTd: {
       textAlign: 'center',
-      width: 110,
+      width: 150,
     },
 
     genderBadge: {
@@ -432,6 +465,7 @@
       display: 'flex',
       justifyContent: 'center',
       gap: 8,
+      flexWrap: 'wrap',
     },
 
     actionBtn: {
@@ -456,6 +490,13 @@
       background: '#eff6ff',
       color: '#2563eb',
       border: '1px solid #bfdbfe',
+    },
+
+    pdfBtn: {
+      background: 'linear-gradient(135deg, #f87171, #dc2626)',
+      color: '#ffffff',
+      border: 'none',
+      boxShadow: '0 8px 18px rgba(220, 38, 38, 0.24)',
     },
 
     pagination: {
@@ -557,34 +598,6 @@
       lineHeight: 1,
     },
 
-    detailsGrid: {
-      display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-      gap: 14,
-    },
-
-    detailBox: {
-      background: '#f8fbff',
-      border: '1px solid #dbeafe',
-      borderRadius: 16,
-      padding: 14,
-      minWidth: 0,
-    },
-
-    detailLabel: {
-      fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 13,
-      color: '#475569',
-    },
-
-    detailValue: {
-      marginTop: 6,
-      marginBottom: 0,
-      color: '#0f172a',
-      fontSize: 15,
-      wordBreak: 'break-word',
-    },
-
     formGrid: {
       display: 'grid',
       gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
@@ -624,6 +637,34 @@
       boxSizing: 'border-box',
       background: '#ffffff',
       color: '#0f172a',
+    },
+
+    fieldErrorText: {
+      margin: '4px 0 0',
+      color: '#dc2626',
+      fontSize: 12,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    textAreaField: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 7,
+      gridColumn: isMobile ? 'auto' : '1 / -1',
+    },
+
+    textAreaInput: {
+      height: 96,
+      border: '1px solid #cbd5e1',
+      borderRadius: 12,
+      padding: '10px 12px',
+      outline: 'none',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+      background: '#ffffff',
+      color: '#0f172a',
+      resize: 'vertical',
     },
 
     modalActions: {
@@ -705,6 +746,64 @@
       marginTop: 0,
       marginBottom: 0,
       fontSize: 15,
+    },
+
+    exportModalOverlay: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 10000,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    exportModalContent: {
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
+      background: '#ffffff',
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
+    },
+
+    exportModalTitle: {
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    exportModalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
+    },
+
+    exportModalText: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
+    },
+
+    exportModalButton: {
+      width: '100%',
+      height: 38,
+      border: 'none',
+      borderRadius: 8,
+      background: '#d4af37',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
     },
   };
 };

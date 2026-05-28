@@ -43,37 +43,52 @@ export default function RecepInquiries() {
 
   const receptionistName = user?.name || 'Receptionist';
 
-  const s = createRecepInquiriesStyles({ isMobile, isVerySmall, isSmallScreen });
+  const s = createRecepInquiriesStyles({
+    isMobile,
+    isVerySmall,
+    isSmallScreen,
+  });
 
   useEffect(() => {
     function handleResize() {
       setScreenWidth(window.innerWidth);
     }
+
     handleResize();
+
     window.addEventListener('resize', handleResize);
+
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target)
+      ) {
         setShowProfileMenu(false);
       }
     }
+
     document.addEventListener('mousedown', handleClickOutside);
+
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
     const origMargin = document.body.style.margin;
     const origOverflowX = document.body.style.overflowX;
+    const origHtmlOverflowX = document.documentElement.style.overflowX;
+
     document.body.style.margin = '0';
     document.body.style.overflowX = 'hidden';
     document.documentElement.style.overflowX = 'hidden';
+
     return () => {
       document.body.style.margin = origMargin;
       document.body.style.overflowX = origOverflowX;
-      document.documentElement.style.overflowX = '';
+      document.documentElement.style.overflowX = origHtmlOverflowX;
     };
   }, []);
 
@@ -87,6 +102,7 @@ export default function RecepInquiries() {
 
   async function loadInquiries() {
     setLoading(true);
+
     try {
       const res = await api.get('/website/inquiries');
       setInquiries(res.data.inquiries || []);
@@ -101,38 +117,57 @@ export default function RecepInquiries() {
     const from = appliedRange.from;
     const to = appliedRange.to;
 
-    if (!from && !to) return inquiries;
+    if (!from && !to) {
+      return inquiries;
+    }
 
     return inquiries.filter((inq) => {
       const dateText = String(inq.created_at || '').slice(0, 10);
-      if (!dateText) return false;
-      if (from && dateText < from) return false;
-      if (to && dateText > to) return false;
+
+      if (!dateText) {
+        return false;
+      }
+
+      if (from && dateText < from) {
+        return false;
+      }
+
+      if (to && dateText > to) {
+        return false;
+      }
+
       return true;
     });
   }, [inquiries, appliedRange.from, appliedRange.to]);
 
   const filteredInquiries = useMemo(() => {
     const q = searchText.trim().toLowerCase();
-    if (!q) return selectedPeriodInquiries;
-    return selectedPeriodInquiries.filter(
-      (inq) =>
+
+    if (!q) {
+      return selectedPeriodInquiries;
+    }
+
+    return selectedPeriodInquiries.filter((inq) => {
+      return (
         (inq.full_name || '').toLowerCase().includes(q) ||
         (inq.phone_number || '').toLowerCase().includes(q) ||
         (inq.concern || '').toLowerCase().includes(q) ||
         (inq.branch || '').toLowerCase().includes(q)
-    );
+      );
+    });
   }, [selectedPeriodInquiries, searchText]);
 
   const totalPages = Math.ceil(filteredInquiries.length / rowsPerPage) || 0;
 
   const pagedInquiries = useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
+
     return filteredInquiries.slice(start, start + rowsPerPage);
   }, [filteredInquiries, currentPage]);
 
   const unansweredCount = useMemo(() => {
-    return inquiries.filter((inq) => Number(inq.reply_count || 0) === 0).length;
+    return inquiries.filter((inq) => Number(inq.reply_count || 0) === 0)
+      .length;
   }, [inquiries]);
 
   function handleClearDateRange() {
@@ -151,6 +186,7 @@ export default function RecepInquiries() {
     setReplyError('');
     setReplyHistory([]);
     setReplyHistoryLoading(true);
+
     try {
       const res = await api.get(`/website/inquiries/${inq.id}/replies`);
       setReplyHistory(res.data.replies || []);
@@ -173,15 +209,19 @@ export default function RecepInquiries() {
       setReplyError('Please enter a reply message.');
       return;
     }
+
     setReplySending(true);
     setReplyError('');
+
     try {
       await api.post(`/website/inquiries/${replyModal.id}/reply`, {
         reply_message: replyText.trim(),
       });
+
       const res = await api.get(`/website/inquiries/${replyModal.id}/replies`);
       setReplyHistory(res.data.replies || []);
       setReplyText('');
+
       setInquiries((prev) =>
         prev.map((inq) =>
           inq.id === replyModal.id
@@ -205,22 +245,34 @@ export default function RecepInquiries() {
 
         <nav style={s.menu}>
           <Link to="/receptionist" style={s.menuItem}>
-            <i className="fi fi-rr-chart-histogram" style={s.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-chart-histogram"
+              style={s.menuItemIcon}
+            ></i>
             <span style={s.menuItemText}>Dashboard</span>
           </Link>
 
           <Link to="/receptionistAppointments" style={s.menuItem}>
-            <i className="fi fi-rr-calendar-clock" style={s.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-calendar-clock"
+              style={s.menuItemIcon}
+            ></i>
             <span style={s.menuItemText}>Appointment</span>
           </Link>
 
           <Link to="/receptionistRecords" style={s.menuItem}>
-            <i className="fi fi-rr-clipboard-user" style={s.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-clipboard-user"
+              style={s.menuItemIcon}
+            ></i>
             <span style={s.menuItemText}>Patient Records</span>
           </Link>
 
           <Link to="/receptionistReceipts" style={s.menuItem}>
-            <i className="fi fi-rr-file-invoice-dollar" style={s.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-file-invoice-dollar"
+              style={s.menuItemIcon}
+            ></i>
             <span style={s.menuItemText}>Receipt Verification</span>
           </Link>
 
@@ -279,6 +331,7 @@ export default function RecepInquiries() {
                 <div style={s.avatar}>
                   <i className="fi fi-rr-user" style={s.avatarIcon}></i>
                 </div>
+
                 <div style={s.receptInfo}>
                   <div style={s.receptName}>{receptionistName}</div>
                   <div style={s.receptPosition}>Receptionist</div>
@@ -304,11 +357,15 @@ export default function RecepInquiries() {
           <section style={s.heroSection}>
             <div style={s.heroContent}>
               <span style={s.heroBadge}>ONLINE INQUIRIES</span>
+
               <h2 style={s.heroTitle}>Manage Online Inquiries</h2>
+
               <p style={s.heroText}>
-                View and track inquiries submitted through the website for your branch.
+                View and track inquiries submitted through the website for your
+                branch.
               </p>
             </div>
+
             {!isMobile && (
               <div style={s.heroIcon}>
                 <i className="fi fi-rr-inbox-in" style={s.heroIconText}></i>
@@ -319,8 +376,12 @@ export default function RecepInquiries() {
           <section style={s.summaryGrid}>
             <div style={s.summaryCard}>
               <div style={{ ...s.summaryIconWrap, background: '#eff6ff' }}>
-                <i className="fi fi-rr-inbox-in" style={{ fontSize: 20, color: '#2563eb' }}></i>
+                <i
+                  className="fi fi-rr-inbox-in"
+                  style={{ fontSize: 20, color: '#2563eb' }}
+                ></i>
               </div>
+
               <div>
                 <div style={s.summaryLabel}>Total Inquiries</div>
                 <div style={s.summaryValue}>{inquiries.length}</div>
@@ -329,18 +390,28 @@ export default function RecepInquiries() {
 
             <div style={s.summaryCard}>
               <div style={{ ...s.summaryIconWrap, background: '#fefce8' }}>
-                <i className="fi fi-rr-calendar" style={{ fontSize: 20, color: '#ca8a04' }}></i>
+                <i
+                  className="fi fi-rr-calendar"
+                  style={{ fontSize: 20, color: '#ca8a04' }}
+                ></i>
               </div>
+
               <div>
                 <div style={s.summaryLabel}>Selected Period</div>
-                <div style={s.summaryValue}>{selectedPeriodInquiries.length}</div>
+                <div style={s.summaryValue}>
+                  {selectedPeriodInquiries.length}
+                </div>
               </div>
             </div>
 
             <div style={s.summaryCard}>
               <div style={{ ...s.summaryIconWrap, background: '#f0fdf4' }}>
-                <i className="fi fi-rr-building" style={{ fontSize: 20, color: '#16a34a' }}></i>
+                <i
+                  className="fi fi-rr-building"
+                  style={{ fontSize: 20, color: '#16a34a' }}
+                ></i>
               </div>
+
               <div>
                 <div style={s.summaryLabel}>Unanswered</div>
                 <div style={s.summaryValue}>{unansweredCount}</div>
@@ -348,64 +419,72 @@ export default function RecepInquiries() {
             </div>
           </section>
 
-          <section style={s.tableCard}>
-            <div style={s.cardHeader}>
-              <div>
-                <h3 style={s.cardTitle}>Inquiry List</h3>
-                <p style={s.cardSubtitle}>
-                  Online inquiries submitted for your branch only.
-                </p>
-              </div>
-              <button
-                type="button"
-                style={s.refreshBtn}
-                onClick={loadInquiries}
-              >
-                <i className="fi fi-rr-refresh"></i>
-                <span>Refresh</span>
-              </button>
+          <section style={s.filterCard}>
+            <div style={s.searchBox}>
+              <i className="fi fi-rr-search" style={s.searchIcon}></i>
+
+              <input
+                type="text"
+                placeholder="Search name, phone, concern, or branch"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={s.searchInput}
+              />
             </div>
 
-            <div style={s.filterRow}>
-              <div style={s.searchBox}>
-                <i className="fi fi-rr-search" style={s.searchIcon}></i>
-                <input
-                  type="text"
-                  placeholder="Search name, phone, or concern..."
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  style={s.searchInput}
-                />
-              </div>
-
+            <div style={s.filterRight}>
               <div style={s.dateRangeRow}>
                 <label style={s.dateRangeGroup}>
-                  <span style={s.dateRangeLabel}>From Date</span>
+                  <span style={s.dateRangeLabel}>From</span>
+
                   <input
                     type="date"
                     value={rangeFromDate}
                     max={rangeToDate || ''}
                     onChange={(e) => {
                       const nextFrom = e.target.value;
-                      if (rangeToDate && nextFrom && nextFrom > rangeToDate) return;
+
+                      if (
+                        rangeToDate &&
+                        nextFrom &&
+                        nextFrom > rangeToDate
+                      ) {
+                        return;
+                      }
+
                       setRangeFromDate(nextFrom);
-                      setAppliedRange((prev) => ({ ...prev, from: nextFrom }));
+                      setAppliedRange((prev) => ({
+                        ...prev,
+                        from: nextFrom,
+                      }));
                     }}
                     style={s.dateRangeInput}
                   />
                 </label>
 
                 <label style={s.dateRangeGroup}>
-                  <span style={s.dateRangeLabel}>To Date</span>
+                  <span style={s.dateRangeLabel}>To</span>
+
                   <input
                     type="date"
                     value={rangeToDate}
                     min={rangeFromDate || ''}
                     onChange={(e) => {
                       const nextTo = e.target.value;
-                      if (rangeFromDate && nextTo && nextTo < rangeFromDate) return;
+
+                      if (
+                        rangeFromDate &&
+                        nextTo &&
+                        nextTo < rangeFromDate
+                      ) {
+                        return;
+                      }
+
                       setRangeToDate(nextTo);
-                      setAppliedRange((prev) => ({ ...prev, to: nextTo }));
+                      setAppliedRange((prev) => ({
+                        ...prev,
+                        to: nextTo,
+                      }));
                     }}
                     style={s.dateRangeInput}
                   />
@@ -415,7 +494,9 @@ export default function RecepInquiries() {
                   type="button"
                   style={{
                     ...s.dateRangeClearBtn,
-                    ...(isClearRangePressed ? s.dateRangeClearBtnPressed : {}),
+                    ...(isClearRangePressed
+                      ? s.dateRangeClearBtnPressed
+                      : {}),
                   }}
                   onMouseDown={() => setIsClearRangePressed(true)}
                   onMouseUp={() => setIsClearRangePressed(false)}
@@ -426,19 +507,48 @@ export default function RecepInquiries() {
                 </button>
               </div>
             </div>
+          </section>
+
+          <section style={s.tableCard}>
+            <div style={s.cardHeader}>
+              <div>
+                <h3 style={s.cardTitle}>Inquiry List</h3>
+
+                <p style={s.cardSubtitle}>
+                  Online inquiries submitted for your branch only.
+                </p>
+              </div>
+
+              <button type="button" style={s.refreshBtn} onClick={loadInquiries}>
+                <i className="fi fi-rr-refresh"></i>
+                <span>Refresh</span>
+              </button>
+            </div>
 
             {loading ? (
-              <p style={s.loadingText}>Loading inquiries…</p>
+              <p style={s.loadingText}>Loading inquiries...</p>
             ) : (
               <div style={s.tableScroll}>
                 <table style={s.inquiryTable}>
                   <thead>
                     <tr>
-                      {['Full Name', 'Email', 'Phone', 'Branch', 'Concern', 'Message', 'Date Submitted', 'Action'].map((col) => (
-                        <th key={col} style={s.th}>{col}</th>
+                      {[
+                        'Full Name',
+                        'Email',
+                        'Phone',
+                        'Branch',
+                        'Concern',
+                        'Message',
+                        'Date Submitted',
+                        'Action',
+                      ].map((col) => (
+                        <th key={col} style={s.th}>
+                          {col}
+                        </th>
                       ))}
                     </tr>
                   </thead>
+
                   <tbody>
                     {pagedInquiries.length === 0 ? (
                       <tr>
@@ -446,30 +556,41 @@ export default function RecepInquiries() {
                           No inquiries found for your branch.
                         </td>
                       </tr>
-                    ) : pagedInquiries.map((inq) => (
-                      <tr key={inq.id}>
-                        <td style={s.td}>{inq.full_name}</td>
-                        <td style={s.td}>{inq.email_address || '—'}</td>
-                        <td style={s.td}>{inq.phone_number}</td>
-                        <td style={s.td}>{inq.branch}</td>
-                        <td style={s.td}>{inq.concern}</td>
-                        <td style={{ ...s.td, maxWidth: 220 }}>{inq.message}</td>
-                        <td style={s.td}>{String(inq.created_at || '').slice(0, 10)}</td>
-                        <td style={s.td}>
-                          <button
-                            type="button"
-                            style={s.replyBtn}
-                            onClick={() => openReplyModal(inq)}
-                          >
-                            <i className="fi fi-rr-paper-plane" style={{ marginRight: 5 }}></i>
-                            Reply
-                            {inq.reply_count > 0 && (
-                              <span style={s.replyCountBadge}>{inq.reply_count}</span>
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    ) : (
+                      pagedInquiries.map((inq) => (
+                        <tr key={inq.id}>
+                          <td style={s.td}>{inq.full_name}</td>
+                          <td style={s.td}>{inq.email_address || '-'}</td>
+                          <td style={s.td}>{inq.phone_number}</td>
+                          <td style={s.td}>{inq.branch}</td>
+                          <td style={s.td}>{inq.concern}</td>
+                          <td style={{ ...s.td, maxWidth: 220 }}>
+                            {inq.message}
+                          </td>
+                          <td style={s.td}>
+                            {String(inq.created_at || '').slice(0, 10)}
+                          </td>
+                          <td style={s.td}>
+                            <button
+                              type="button"
+                              style={s.replyBtn}
+                              onClick={() => openReplyModal(inq)}
+                            >
+                              <i
+                                className="fi fi-rr-paper-plane"
+                                style={{ marginRight: 5 }}
+                              ></i>
+                              Reply
+                              {inq.reply_count > 0 && (
+                                <span style={s.replyCountBadge}>
+                                  {inq.reply_count}
+                                </span>
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -479,20 +600,32 @@ export default function RecepInquiries() {
               <div style={s.pagination}>
                 <button
                   type="button"
-                  style={{ ...s.pageBtn, ...(currentPage <= 1 ? s.pageBtnDisabled : {}) }}
+                  style={{
+                    ...s.pageBtn,
+                    ...(currentPage <= 1 ? s.pageBtnDisabled : {}),
+                  }}
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 >
                   ‹ Prev
                 </button>
+
                 <span style={s.pageInfo}>
                   Page {currentPage} of {totalPages}
                 </span>
+
                 <button
                   type="button"
-                  style={{ ...s.pageBtn, ...(currentPage >= totalPages ? s.pageBtnDisabled : {}) }}
+                  style={{
+                    ...s.pageBtn,
+                    ...(currentPage >= totalPages
+                      ? s.pageBtnDisabled
+                      : {}),
+                  }}
                   disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
                 >
                   Next ›
                 </button>
@@ -505,15 +638,26 @@ export default function RecepInquiries() {
       {replyModal && (
         <div
           style={s.replyOverlay}
-          onClick={(e) => { if (e.target === e.currentTarget) closeReplyModal(); }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeReplyModal();
+            }
+          }}
         >
           <div style={s.replyModalBox}>
             <div style={s.replyModalHeader}>
               <div>
                 <div style={s.replyModalTitle}>Reply to Inquiry</div>
-                <div style={s.replyModalSub}>{replyModal.full_name} · {replyModal.email_address}</div>
+                <div style={s.replyModalSub}>
+                  {replyModal.full_name} · {replyModal.email_address}
+                </div>
               </div>
-              <button type="button" style={s.replyCloseBtn} onClick={closeReplyModal}>
+
+              <button
+                type="button"
+                style={s.replyCloseBtn}
+                onClick={closeReplyModal}
+              >
                 <i className="fi fi-rr-cross-small"></i>
               </button>
             </div>
@@ -521,20 +665,29 @@ export default function RecepInquiries() {
             <div style={s.replyModalBody}>
               <div style={s.replyOriginalBox}>
                 <div style={s.replyOriginalLabel}>Original Inquiry</div>
-                <div style={s.replyOriginalConcern}>{replyModal.concern}</div>
+                <div style={s.replyOriginalConcern}>
+                  {replyModal.concern}
+                </div>
                 <div style={s.replyOriginalMsg}>{replyModal.message}</div>
               </div>
 
               {replyHistoryLoading ? (
-                <p style={s.replyHistoryLoading}>Loading reply history…</p>
+                <p style={s.replyHistoryLoading}>Loading reply history...</p>
               ) : replyHistory.length > 0 ? (
                 <div style={s.replyHistoryBox}>
-                  <div style={s.replyHistoryLabel}>Previous Replies ({replyHistory.length})</div>
+                  <div style={s.replyHistoryLabel}>
+                    Previous Replies ({replyHistory.length})
+                  </div>
+
                   {replyHistory.map((r) => (
                     <div key={r.id} style={s.replyHistoryItem}>
                       <div style={s.replyHistoryMeta}>
-                        {r.replied_by_name} · {String(r.created_at || '').slice(0, 16).replace('T', ' ')}
+                        {r.replied_by_name} ·{' '}
+                        {String(r.created_at || '')
+                          .slice(0, 16)
+                          .replace('T', ' ')}
                       </div>
+
                       <div style={s.replyHistoryText}>{r.reply_message}</div>
                     </div>
                   ))}
@@ -543,7 +696,7 @@ export default function RecepInquiries() {
 
               <textarea
                 style={s.replyTextarea}
-                placeholder="Type your reply here…"
+                placeholder="Type your reply here..."
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 rows={5}
@@ -553,12 +706,31 @@ export default function RecepInquiries() {
               {replyError && <div style={s.replyErrorText}>{replyError}</div>}
 
               <div style={s.replyModalActions}>
-                <button type="button" style={s.replyCancelBtn} onClick={closeReplyModal} disabled={replySending}>
+                <button
+                  type="button"
+                  style={s.replyCancelBtn}
+                  onClick={closeReplyModal}
+                  disabled={replySending}
+                >
                   Cancel
                 </button>
-                <button type="button" style={s.replySendBtn} onClick={sendReply} disabled={replySending}>
-                  {replySending ? 'Sending…' : (
-                    <><i className="fi fi-rr-paper-plane" style={{ marginRight: 6 }}></i>Send Reply</>
+
+                <button
+                  type="button"
+                  style={s.replySendBtn}
+                  onClick={sendReply}
+                  disabled={replySending}
+                >
+                  {replySending ? (
+                    'Sending...'
+                  ) : (
+                    <>
+                      <i
+                        className="fi fi-rr-paper-plane"
+                        style={{ marginRight: 6 }}
+                      ></i>
+                      Send Reply
+                    </>
                   )}
                 </button>
               </div>
@@ -571,15 +743,23 @@ export default function RecepInquiries() {
         <div
           style={s.modal}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setShowLogoutModal(false);
+            if (e.target === e.currentTarget) {
+              setShowLogoutModal(false);
+            }
           }}
         >
           <div style={s.modalContent}>
             <div style={s.modalIcon}>
-              <i className="fi fi-rr-sign-out-alt" style={s.modalIconText}></i>
+              <i
+                className="fi fi-rr-sign-out-alt"
+                style={s.modalIconText}
+              ></i>
             </div>
+
             <h2 style={s.modalTitle}>Confirm Logout</h2>
+
             <p style={s.modalText}>Are you sure you want to log out?</p>
+
             <div style={s.modalActions}>
               <button
                 type="button"
@@ -588,6 +768,7 @@ export default function RecepInquiries() {
               >
                 Logout
               </button>
+
               <button
                 type="button"
                 style={{ ...s.modalButton, ...s.cancelBtn }}

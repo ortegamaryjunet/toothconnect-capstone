@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 import { listMyPatients } from '../api/patients';
 import createDentistRecordsStyles from '../styles/DentistRecords';
@@ -13,7 +15,9 @@ const rowsPerPage = 10;
 
 export default function DentistRecords() {
   const { user } = useAuth();
+
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [serviceNames, setServiceNames] = useState('');
 
   const [screenWidth, setScreenWidth] = useState(
@@ -21,9 +25,11 @@ export default function DentistRecords() {
   );
 
   const [searchValue, setSearchValue] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [nameFilter, setNameFilter] = useState('most-recent');
   const [currentPage, setCurrentPage] = useState(1);
+
   const [patients, setPatients] = useState([]);
   const [patientsLoading, setPatientsLoading] = useState(true);
   const [patientsError, setPatientsError] = useState('');
@@ -39,8 +45,9 @@ export default function DentistRecords() {
   });
 
   useEffect(() => {
-    api.get('/auth/staff-profile/me')
-      .then(res => setServiceNames(res.data.profile?.serviceNames || ''))
+    api
+      .get('/auth/staff-profile/me')
+      .then((res) => setServiceNames(res.data.profile?.serviceNames || ''))
       .catch(() => {});
   }, []);
 
@@ -94,21 +101,19 @@ export default function DentistRecords() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow =
+      showLogoutModal || showExportModal ? 'hidden' : '';
 
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal]);
+  }, [showLogoutModal, showExportModal]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
+        setShowExportModal(false);
       }
     }
 
@@ -124,12 +129,15 @@ export default function DentistRecords() {
 
     const filtered = patients.filter((patient) => {
       const name = String(patient.name || '').toLowerCase();
-      const lastVisit = String(patient.lastVisit || '');
+      const lastVisit = patient.lastVisit
+        ? String(patient.lastVisit).slice(0, 10)
+        : '';
 
       const matchesSearch = name.includes(search);
-      const matchesDate = !dateFilter || lastVisit.startsWith(dateFilter);
+      const matchesFromDate = !fromDate || lastVisit >= fromDate;
+      const matchesToDate = !toDate || lastVisit <= toDate;
 
-      return matchesSearch && matchesDate;
+      return matchesSearch && matchesFromDate && matchesToDate;
     });
 
     return [...filtered].sort((a, b) => {
@@ -149,7 +157,7 @@ export default function DentistRecords() {
 
       return bDate - aDate;
     });
-  }, [patients, searchValue, dateFilter, nameFilter]);
+  }, [patients, searchValue, fromDate, toDate, nameFilter]);
 
   const totalPages = Math.ceil(filteredPatients.length / rowsPerPage);
 
@@ -162,7 +170,7 @@ export default function DentistRecords() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchValue, dateFilter, nameFilter]);
+  }, [searchValue, fromDate, toDate, nameFilter]);
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -182,9 +190,319 @@ export default function DentistRecords() {
     }
   }
 
+  function handleExportModalOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      setShowExportModal(false);
+    }
+  }
+
   function handleSearchChange(value) {
     const lettersOnly = value.replace(/[^a-zA-ZñÑ\s]/g, '');
     setSearchValue(lettersOnly);
+  }
+
+  function handleFromDateChange(value) {
+    setFromDate(value);
+
+    if (toDate && value && toDate < value) {
+      setToDate('');
+    }
+  }
+
+  function handleToDateChange(value) {
+    if (fromDate && value && value < fromDate) {
+      return;
+    }
+
+    setToDate(value);
+  }
+
+  function exportPatientsToCSV() {
+    if (filteredPatients.length === 0) {
+      setShowExportModal(true);
+      return;
+    }
+
+    const headers = [
+      'Patient No',
+      'Full Name',
+      'Contact',
+      'Email',
+      'Last Visit',
+      'Visits',
+    ];
+
+    const rows = filteredPatients.map((patient) => [
+      formatPatientNo(patient.id),
+      patient.name,
+      patient.contactNumber || 'N/A',
+      patient.email || 'N/A',
+      patient.lastVisit ? patient.lastVisit.slice(0, 10) : 'N/A',
+      patient.totalAppointments,
+    ]);
+
+    const csv = [];
+    csv.push(['Smile Empress Dental Hub']);
+    csv.push(['Dentist Patient Records']);
+    csv.push(['Generated Date', new Date().toLocaleString('en-PH')]);
+    csv.push(['Dentist', user?.name || 'Dentist']);
+    csv.push([
+      'Date Range',
+      `${fromDate || 'All'} to ${toDate || 'All'}`,
+    ]);
+    csv.push([]);
+    csv.push(headers);
+    rows.forEach((row) => csv.push(row));
+
+    const csvContent =
+      '\uFEFF' +
+      csv.map((row) => row.map(formatCSVValue).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'dentist_patient_records.csv';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }
+
+  function exportPatientToPDF(patient) {
+    const doc = new jsPDF('p', 'mm', 'a4');
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const generatedDate = new Date().toLocaleString('en-PH');
+
+    function safeValue(value) {
+      if (value === null || value === undefined || value === '') {
+        return 'N/A';
+      }
+
+      return String(value);
+    }
+
+    function drawHeader() {
+      doc.setFillColor(255, 248, 220);
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      doc.setFillColor(139, 101, 8);
+      doc.rect(0, 0, pageWidth, 28, 'F');
+
+      doc.setFillColor(212, 175, 55);
+      doc.rect(0, 28, pageWidth, 3, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('Smile Empress Dental Hub', 14, 12);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Dentist Patient Record Report', 14, 20);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('ToothConnect', pageWidth - 14, 12, {
+        align: 'right',
+      });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`Generated: ${generatedDate}`, pageWidth - 14, 20, {
+        align: 'right',
+      });
+    }
+
+    function drawFooter() {
+      doc.setDrawColor(212, 175, 55);
+      doc.setLineWidth(0.3);
+      doc.line(14, pageHeight - 15, pageWidth - 14, pageHeight - 15);
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.text('Generated by ToothConnect', 14, pageHeight - 9);
+      doc.text(
+        `Page ${doc.internal.getCurrentPageInfo().pageNumber}`,
+        pageWidth - 14,
+        pageHeight - 9,
+        { align: 'right' }
+      );
+    }
+
+    function drawSectionTitle(title, yPosition) {
+      doc.setFillColor(254, 243, 199);
+      doc.roundedRect(14, yPosition, pageWidth - 28, 9, 2, 2, 'F');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(title, 18, yPosition + 6);
+
+      return yPosition + 13;
+    }
+
+    function addSection(title, rows, startY) {
+      let yPosition = startY;
+
+      if (yPosition > pageHeight - 45) {
+        doc.addPage();
+        drawHeader();
+        yPosition = 40;
+      }
+
+      yPosition = drawSectionTitle(title, yPosition);
+
+      autoTable(doc, {
+        startY: yPosition,
+        theme: 'grid',
+        head: [['Field', 'Details']],
+        body: rows,
+        margin: {
+          left: 14,
+          right: 14,
+        },
+        styles: {
+          font: 'helvetica',
+          fontSize: 9,
+          cellPadding: 3,
+          textColor: [15, 23, 42],
+          lineColor: [229, 231, 235],
+          lineWidth: 0.25,
+          valign: 'middle',
+        },
+        headStyles: {
+          fillColor: [212, 175, 55],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [255, 253, 242],
+        },
+        columnStyles: {
+          0: {
+            cellWidth: 55,
+            fontStyle: 'bold',
+            textColor: [51, 65, 85],
+          },
+          1: {
+            cellWidth: 'auto',
+          },
+        },
+        didDrawPage() {
+          drawFooter();
+        },
+      });
+
+      return doc.lastAutoTable.finalY + 8;
+    }
+
+    drawHeader();
+
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(14, 39, pageWidth - 28, 29, 3, 3, 'F');
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text(safeValue(patient.name), 20, 50);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Patient No: ${formatPatientNo(patient.id)}`, 20, 58);
+    doc.text(`Dentist: ${safeValue(user?.name || 'Dentist')}`, 20, 64);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(139, 101, 8);
+    doc.text(
+      `Last Visit: ${
+        patient.lastVisit ? patient.lastVisit.slice(0, 10) : 'N/A'
+      }`,
+      pageWidth - 20,
+      58,
+      { align: 'right' }
+    );
+
+    doc.text(
+      `Visits: ${safeValue(patient.totalAppointments)}`,
+      pageWidth - 20,
+      64,
+      { align: 'right' }
+    );
+
+    let nextY = 76;
+
+    nextY = addSection(
+      'Table Record Summary',
+      [
+        ['Patient No', formatPatientNo(patient.id)],
+        ['Full Name', safeValue(patient.name)],
+        ['Contact', safeValue(patient.contactNumber)],
+        ['Email', safeValue(patient.email)],
+        [
+          'Last Visit',
+          patient.lastVisit ? patient.lastVisit.slice(0, 10) : 'N/A',
+        ],
+        ['Visits', safeValue(patient.totalAppointments)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Patient Profile Details',
+      [
+        ['Patient ID', safeValue(patient.id)],
+        ['User ID', safeValue(patient.userId)],
+        ['Full Name', safeValue(patient.name)],
+        ['Email Address', safeValue(patient.email)],
+        ['Contact Number', safeValue(patient.contactNumber)],
+        ['Gender', safeValue(patient.gender)],
+        ['Age', safeValue(patient.age)],
+        ['Birthday', safeValue(patient.birthday)],
+        ['Address', safeValue(patient.address)],
+        ['Account Status', safeValue(patient.status)],
+        [
+          'Last Visit',
+          patient.lastVisit ? patient.lastVisit.slice(0, 10) : 'N/A',
+        ],
+        ['Total Visits', safeValue(patient.totalAppointments)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Treatment and Appointment Details',
+      [
+        ['Latest Treatment', safeValue(patient.latestTreatment)],
+        ['Treatment Status', safeValue(patient.treatmentStatus)],
+        ['Appointment Status', safeValue(patient.appointmentStatus)],
+        ['Reason for Visit', safeValue(patient.reasonForVisit)],
+        ['Notes', safeValue(patient.notes)],
+      ],
+      nextY
+    );
+
+    const totalPdfPages = doc.internal.getNumberOfPages();
+
+    for (let page = 1; page <= totalPdfPages; page += 1) {
+      doc.setPage(page);
+      drawFooter();
+    }
+
+    doc.save(`${formatPatientNo(patient.id)}_dentist_patient_record.pdf`);
   }
 
   function nextPage() {
@@ -208,7 +526,10 @@ export default function DentistRecords() {
 
         <nav style={styles.menu}>
           <Link to="/dentist" style={styles.menuItem}>
-            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-chart-histogram"
+              style={styles.menuItemIcon}
+            ></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
@@ -273,7 +594,9 @@ export default function DentistRecords() {
 
               <div style={styles.doctorInfo}>
                 <div style={styles.doctorName}>{user?.name || 'Dentist'}</div>
-                <div style={styles.doctorSpecialization}>{serviceNames || 'Dentist'}</div>
+                <div style={styles.doctorSpecialization}>
+                  {serviceNames || 'Dentist'}
+                </div>
               </div>
             </div>
           </div>
@@ -316,12 +639,34 @@ export default function DentistRecords() {
             </div>
 
             <div style={styles.filterGroup}>
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(event) => setDateFilter(event.target.value)}
-                style={styles.filterInput}
-              />
+              <div style={styles.dateRangeGroup}>
+                <div style={styles.dateRangeField}>
+                  <label style={styles.dateRangeLabel}>From</label>
+
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(event) =>
+                      handleFromDateChange(event.target.value)
+                    }
+                    style={styles.filterInput}
+                  />
+                </div>
+
+                <div style={styles.dateRangeField}>
+                  <label style={styles.dateRangeLabel}>To</label>
+
+                  <input
+                    type="date"
+                    value={toDate}
+                    min={fromDate || undefined}
+                    onChange={(event) =>
+                      handleToDateChange(event.target.value)
+                    }
+                    style={styles.filterInput}
+                  />
+                </div>
+              </div>
 
               <select
                 value={nameFilter}
@@ -340,6 +685,15 @@ export default function DentistRecords() {
               <div>
                 <h3 style={styles.tableTitle}>Patient List</h3>
               </div>
+
+              <button
+                type="button"
+                style={styles.exportCsvBtn}
+                onClick={exportPatientsToCSV}
+              >
+                <i className="fi fi-rr-file-csv"></i>
+                CSV
+              </button>
             </div>
 
             <div style={styles.tableWrapper}>
@@ -382,8 +736,12 @@ export default function DentistRecords() {
                           {formatPatientNo(patient.id)}
                         </td>
                         <td style={styles.tableCell}>{patient.name}</td>
-                        <td style={styles.tableCell}>{patient.contactNumber || '—'}</td>
-                        <td style={styles.tableCell}>{patient.email || '—'}</td>
+                        <td style={styles.tableCell}>
+                          {patient.contactNumber || '—'}
+                        </td>
+                        <td style={styles.tableCell}>
+                          {patient.email || '—'}
+                        </td>
                         <td style={styles.tableCell}>
                           {patient.lastVisit
                             ? patient.lastVisit.slice(0, 10)
@@ -393,13 +751,28 @@ export default function DentistRecords() {
                           {patient.totalAppointments}
                         </td>
                         <td style={styles.tableCell}>
-                          <Link
-                            to={`/dentistRecords/${patient.id}`}
-                            style={styles.viewBtn}
-                            title="View patient profile"
-                          >
-                            View
-                          </Link>
+                          <div style={styles.actionGroup}>
+                            <Link
+                              to={`/dentistRecords/${patient.id}`}
+                              style={styles.viewBtn}
+                              title="View patient profile"
+                            >
+                              View
+                            </Link>
+
+                            <button
+                              type="button"
+                              style={styles.pdfBtn}
+                              title="Export patient as PDF"
+                              onClick={() => exportPatientToPDF(patient)}
+                            >
+                              <i
+                                className="fi fi-rr-file-pdf"
+                                style={styles.pdfBtnIcon}
+                              ></i>
+                              PDF
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -477,6 +850,31 @@ export default function DentistRecords() {
           </div>
         </div>
       )}
+
+      {showExportModal && (
+        <div
+          style={styles.exportModalOverlay}
+          onClick={handleExportModalOverlayClick}
+        >
+          <div style={styles.exportModalContent}>
+            <h2 style={styles.exportModalTitle}>No Records Found</h2>
+
+            <div style={styles.exportModalDivider}></div>
+
+            <p style={styles.exportModalText}>
+              No patient records available to export.
+            </p>
+
+            <button
+              type="button"
+              style={styles.exportModalButton}
+              onClick={() => setShowExportModal(false)}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -486,14 +884,50 @@ function normalizePatients(items) {
 
   return items.map((item) => ({
     id: item.id,
-    name: item.name || 'Unknown',
-    email: item.email || '',
-    contactNumber: item.phone || item.contact_number || '',
-    lastVisit: item.last_visit || '',
-    totalAppointments: item.total_appointments || 0,
+    userId: item.user_id || item.userId || item.id,
+    name: item.name || item.full_name || item.fullName || 'Unknown',
+    email: item.email || item.email_address || '',
+    contactNumber:
+      item.phone ||
+      item.contact_number ||
+      item.contactNumber ||
+      item.phone_number ||
+      '',
+    lastVisit: item.last_visit || item.lastVisit || '',
+    totalAppointments:
+      item.total_appointments || item.totalAppointments || 0,
+    gender: item.gender || '',
+    age: item.age || '',
+    birthday: item.birthday || item.birthdate || item.date_of_birth || '',
+    address:
+      item.address ||
+      item.home_address ||
+      item.homeAddress ||
+      item.patient_address ||
+      '',
+    status: item.status || item.account_status || '',
+    latestTreatment:
+      item.latest_treatment ||
+      item.latestTreatment ||
+      item.treatment ||
+      '',
+    treatmentStatus: item.treatment_status || item.treatmentStatus || '',
+    appointmentStatus:
+      item.appointment_status || item.appointmentStatus || '',
+    reasonForVisit:
+      item.reason_for_visit ||
+      item.reasonForVisit ||
+      item.reason_for_booking ||
+      '',
+    notes: item.notes || item.remarks || '',
   }));
 }
 
 function formatPatientNo(id) {
   return `P-${String(id).padStart(4, '0')}`;
+}
+
+function formatCSVValue(value) {
+  const stringValue = value === null || value === undefined ? '' : String(value);
+  return `"${stringValue.replace(/"/g, '""')}"`;
 }
