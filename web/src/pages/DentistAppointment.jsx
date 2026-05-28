@@ -1037,12 +1037,13 @@ export default function DentistAppointment() {
               </div>
             )}
 
-            {!kitAlreadySubmitted && !kitLoading && (
-              <div style={styles.noteModalActions}>
+            {!kitLoading && !kitError && kitItems.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, gap: 10 }}>
                 <button
                   type="button"
                   style={styles.modalSecondaryBtn}
                   onClick={closeKitModal}
+                  disabled={kitSubmitting}
                 >
                   Cancel
                 </button>
@@ -1069,18 +1070,6 @@ export default function DentistAppointment() {
                     : (!hasDeductibleKitItems
                       ? 'No Deductible Items'
                       : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct')))}
-                </button>
-              </div>
-            )}
-
-            {kitAlreadySubmitted && !kitEditMode && (
-              <div style={{ textAlign: 'right', marginTop: '16px' }}>
-                <button
-                  type="button"
-                  style={styles.modalSecondaryBtn}
-                  onClick={closeKitModal}
-                >
-                  Close
                 </button>
               </div>
             )}
