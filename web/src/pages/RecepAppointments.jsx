@@ -1986,7 +1986,7 @@ export default function RecepAppointments() {
                 <h2 style={styles.modalHeaderTitle}>Service Kit</h2>
                 <p style={styles.modalHeaderSub}>
                   {kitAlreadySubmitted
-                    ? 'Items used for this appointment were already submitted.'
+                    ? 'Dentist already filled up and submitted the service kit for this appointment.'
                     : 'Service kit template for this appointment.'}
                 </p>
               </div>
@@ -2036,6 +2036,22 @@ export default function RecepAppointments() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {kitAlreadySubmitted && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: '#ecfeff',
+                  border: '1px solid #a5f3fc',
+                  color: '#0f766e',
+                  fontSize: 13,
+                }}
+              >
+                Display only: Dentist already submitted this service kit.
               </div>
             )}
 
