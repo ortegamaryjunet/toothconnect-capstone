@@ -109,6 +109,7 @@ export default function RecepAppointments() {
   const [kitError, setKitError] = useState('');
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
   const [kitSubmitting, setKitSubmitting] = useState(false);
+  const [calendarDetailsOpenById, setCalendarDetailsOpenById] = useState({});
 
   const isMobile = screenWidth <= 850;
   const isVerySmall = screenWidth <= 560;
@@ -523,6 +524,13 @@ export default function RecepAppointments() {
     setKitError('');
     setKitAlreadySubmitted(false);
     setKitSubmitting(false);
+  }
+
+  function toggleCalendarDetails(appointmentId) {
+    setCalendarDetailsOpenById((current) => ({
+      ...current,
+      [appointmentId]: !current[appointmentId],
+    }));
   }
 
   async function handleConfirmKitDeduction() {
@@ -1151,11 +1159,12 @@ export default function RecepAppointments() {
                       ) : (
                         selectedDateSchedules.map((appointment) => {
                           const calendarStatus = getAppointmentCalendarStatus(appointment);
+                          const showDetails = Boolean(calendarDetailsOpenById[appointment.id]);
 
                           return (
                           <div
                             key={appointment.id}
-                            style={styles.scheduleItem}
+                            style={{ ...styles.scheduleItem, position: 'relative', paddingBottom: 56 }}
                           >
                             <div style={styles.scheduleItemTop}>
                               <div style={styles.scheduleTime}>
@@ -1200,8 +1209,21 @@ export default function RecepAppointments() {
                               Estimated Duration: {getEstimatedTimeRange(appointment.time, appointment.durationMinutes)}
                             </div>
 
-                            {calendarStatus === 'Done' && (
-                              <div style={styles.scheduleDetail}>
+                            {showDetails && (
+                              <div
+                                style={{
+                                  ...styles.scheduleDetail,
+                                  position: 'absolute',
+                                  right: 14,
+                                  bottom: 14,
+                                  textAlign: 'right',
+                                  maxWidth: '75%',
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 10,
+                                  padding: '8px 10px',
+                                }}
+                              >
                                 <strong>Original Schedule:</strong> {appointment.originalSchedule || 'Not recorded'}
                                 <br />
                                 <strong>Rescheduled:</strong> {appointment.rescheduledSchedule || 'Not recorded'}
@@ -1213,6 +1235,23 @@ export default function RecepAppointments() {
                                 <strong>Payment Amount:</strong> {formatPaymentAmount(appointment.paymentAmount)}
                               </div>
                             )}
+
+                            <button
+                              type="button"
+                              style={{
+                                ...styles.serviceKitCalendarButton,
+                                position: 'absolute',
+                                right: 14,
+                                bottom: 14,
+                                margin: 0,
+                                borderColor: '#cbd5e1',
+                                background: '#ffffff',
+                                color: '#334155',
+                              }}
+                              onClick={() => toggleCalendarDetails(appointment.id)}
+                            >
+                              {showDetails ? 'Hide Details' : 'Details'}
+                            </button>
                           </div>
                         );
                         })
