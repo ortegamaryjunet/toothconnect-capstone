@@ -228,7 +228,7 @@ export default function RecepAppointments() {
 
   useEffect(() => {
     fetchCalendarAppointments(currentDate);
-  }, [currentDate]);
+  }, [currentDate, recepBranchId]);
 
   useEffect(() => {
     if (!rescheduleModal.show || !rescheduleModal.appointment || !rescheduleModal.selectedDate) {
@@ -338,6 +338,8 @@ export default function RecepAppointments() {
   const safeQueuePage = fixPage(queuePage, queueTotalPages);
 
   const receptionistName = user?.name || user?.email || 'Receptionist';
+  const recepBranchId =
+    Number(user?.home_branch_id || user?.branches?.[0] || 0) || undefined;
 
   const pagedPending = useMemo(() => {
     const start = safePendingPage > 0 ? (safePendingPage - 1) * pendingPerPage : 0;
@@ -738,7 +740,9 @@ export default function RecepAppointments() {
     setAppointmentsError('');
 
     try {
-      const data = await listAppointments();
+      const data = await listAppointments(
+        recepBranchId ? { branch_id: recepBranchId } : {}
+      );
       const normalized = normalizeAppointments(data);
 
       setPendingAppointments(
@@ -765,6 +769,7 @@ export default function RecepAppointments() {
       const data = await listAppointments({
         from: bounds.fromUTC,
         to: bounds.toUTC,
+        ...(recepBranchId ? { branch_id: recepBranchId } : {}),
       });
 
       setCalendarAppointments(normalizeAppointments(data));
