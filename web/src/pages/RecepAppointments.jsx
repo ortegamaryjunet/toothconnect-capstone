@@ -48,6 +48,8 @@ const bankProviders = ['Metrobank', 'BDO', 'BPI', 'GoTyme', 'UnionBank', 'RCBC']
 
 export default function RecepAppointments() {
   const { user } = useAuth();
+  const recepBranchId =
+    Number(user?.home_branch_id || user?.branches?.[0] || 0) || undefined;
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [activeView, setActiveView] = useState('queue');
 
@@ -338,8 +340,6 @@ export default function RecepAppointments() {
   const safeQueuePage = fixPage(queuePage, queueTotalPages);
 
   const receptionistName = user?.name || user?.email || 'Receptionist';
-  const recepBranchId =
-    Number(user?.home_branch_id || user?.branches?.[0] || 0) || undefined;
 
   const pagedPending = useMemo(() => {
     const start = safePendingPage > 0 ? (safePendingPage - 1) * pendingPerPage : 0;
