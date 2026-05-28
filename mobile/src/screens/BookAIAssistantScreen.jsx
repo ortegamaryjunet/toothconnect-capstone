@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import { formatTimeOnly, formatRelativeDate } from '../utils/datetime';
 import styles from '../styles/BookAIAssistantScreen';
 
 const BOT_GREETING =
-  "I'm ToothConnect, your appointment scheduling assistant for Smile Empress Dental Hub. How can I assist you today?";
+  'Hello! Describe your dental concern or service request, and I will help prepare it for booking.';
 
 const DENTAL_KEYWORDS = [
   'tooth', 'teeth', 'dental', 'dentist', 'cavity', 'caries', 'filling',
@@ -118,6 +118,7 @@ function buildClinicISO(dateKey, timeKey) {
 
 export default function BookAIAssistantScreen({ navigation }) {
   const { height: windowHeight } = useWindowDimensions();
+  const chatScrollRef = useRef(null);
   const [branches, setBranches] = useState([]);
   const [services, setServices] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -137,6 +138,7 @@ export default function BookAIAssistantScreen({ navigation }) {
     },
   ]);
   const [selectedQuick, setSelectedQuick] = useState(null);
+  const [readyToProceed, setReadyToProceed] = useState(false);
   const [inputError, setInputError] = useState('');
   const [nonDentalModal, setNonDentalModal] = useState(false);
 
@@ -153,6 +155,7 @@ export default function BookAIAssistantScreen({ navigation }) {
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => {
       setAssistantKeyboardOpen(true);
+      scrollChatToEnd(140);
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       setAssistantKeyboardOpen(false);
@@ -163,6 +166,12 @@ export default function BookAIAssistantScreen({ navigation }) {
       hideSub.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (readyToProceed || assistantMessages.length > 1) {
+      scrollChatToEnd(80);
+    }
+  }, [readyToProceed, assistantMessages.length]);
 
   const assistantPanelHeight = assistantKeyboardOpen
     ? Math.max(260, Math.min(300, windowHeight * 0.32))
@@ -192,24 +201,44 @@ export default function BookAIAssistantScreen({ navigation }) {
     );
   }
 
+  function scrollChatToEnd(delay = 80) {
+    setTimeout(() => {
+      chatScrollRef.current?.scrollToEnd({ animated: true });
+    }, delay);
+  }
+
   function handleQuickPick(service) {
+    if (!selectedBranch) {
+      setInputError('Please select a branch.');
+      return;
+    }
+
     setSelectedQuick(service);
     setConcern('');
     setInputError('');
-    setAssistantMessages(prev => [
-      ...prev,
+    setReadyToProceed(true);
+    setAssistantMessages([
+      assistantMessages[0],
+      {
+        id: `quick-user-${service.id}-${Date.now()}`,
+        role: 'user',
+        text: service.name,
+        time: getChatTime(),
+      },
       {
         id: `quick-${service.id}-${Date.now()}`,
         role: 'assistant',
-        text: `${service.name} is selected. You can add details in the assistant panel or send it for analysis.`,
+        text: `You selected ${service.name}. Would you like to proceed with appointment booking?`,
         time: getChatTime(),
       },
     ]);
+    scrollChatToEnd(160);
   }
 
   function handleConcernChange(text) {
     setConcern(text);
     if (text.trim()) setSelectedQuick(null);
+    setReadyToProceed(false);
     setInputError('');
   }
 
@@ -301,6 +330,56 @@ export default function BookAIAssistantScreen({ navigation }) {
         time: getChatTime(),
       },
     ]);
+  }
+
+  function appendUserMessage(text) {
+    setAssistantMessages(prev => [
+      ...prev,
+      {
+        id: `user-${Date.now()}-${prev.length}`,
+        role: 'user',
+        text,
+        time: getChatTime(),
+      },
+    ]);
+  }
+
+  async function prepareMainBookingPrompt() {
+    setInputError('');
+
+    if (readyToProceed) {
+      await handleContinue();
+      return;
+    }
+
+    if (!selectedBranch) {
+      setInputError('Please select a branch.');
+      return;
+    }
+
+    const messageText = selectedQuick ? selectedQuick.name : concern.trim();
+    if (!messageText) {
+      setInputError('Please describe your concern or pick a service.');
+      return;
+    }
+
+    if (!selectedQuick && !isDentalRelated(messageText)) {
+      setNonDentalModal(true);
+      return;
+    }
+
+    if (!selectedQuick && messageText.length < 10) {
+      setInputError('Please describe your dental concern in more detail.');
+      return;
+    }
+
+    appendUserMessage(messageText);
+    appendAssistantMessage(
+      'Thanks for sharing your concern. I can analyze this and suggest the right dental service. Would you like me to proceed with appointment booking?'
+    );
+    setReadyToProceed(true);
+    Keyboard.dismiss();
+    scrollChatToEnd(160);
   }
 
   async function handleAssistantSend() {
@@ -401,6 +480,7 @@ export default function BookAIAssistantScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
+          ref={chatScrollRef}
           style={styles.chatArea}
           contentContainerStyle={styles.chatContent}
           showsVerticalScrollIndicator={false}
@@ -457,9 +537,6 @@ export default function BookAIAssistantScreen({ navigation }) {
               {/* Quick service picks */}
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionLabel}>Quick Picks</Text>
-                <Text style={styles.sectionSub}>
-                  Already know what you need? Tap a service directly.
-                </Text>
                 <View style={styles.chipGrid}>
                   {getFilteredServices().map(s => (
                     <TouchableOpacity
@@ -481,6 +558,66 @@ export default function BookAIAssistantScreen({ navigation }) {
                     </TouchableOpacity>
                   ))}
                 </View>
+              </View>
+
+              <View style={styles.mainMessages}>
+                {assistantMessages
+                  .filter(message => message.id !== 'assistant-welcome')
+                  .map((message, index, visibleMessages) => {
+                    const isLastAssistant =
+                      message.role === 'assistant' &&
+                      index === visibleMessages.length - 1 &&
+                      readyToProceed;
+
+                    return (
+                      <View
+                        key={message.id}
+                        style={[
+                          styles.mainMessageRow,
+                          message.role === 'user' && styles.mainMessageRowUser,
+                        ]}
+                      >
+                        {message.role === 'assistant' ? (
+                          <View style={styles.mainMiniAvatar}>
+                            <Text style={styles.mainMiniAvatarText}>TC</Text>
+                          </View>
+                        ) : null}
+                        <View
+                          style={[
+                            styles.mainBubble,
+                            message.role === 'user' ? styles.mainBubbleUser : styles.mainBubbleBot,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.mainBubbleText,
+                              message.role === 'user' && styles.mainBubbleTextUser,
+                            ]}
+                          >
+                            {message.text}
+                          </Text>
+                          {isLastAssistant ? (
+                            <TouchableOpacity
+                              style={[
+                                styles.inlineBookButton,
+                                (loading || conflictChecking) && styles.inlineBookButtonDisabled,
+                              ]}
+                              onPress={handleContinue}
+                              disabled={loading || conflictChecking}
+                            >
+                              {conflictChecking ? (
+                                <ActivityIndicator color="#ffffff" size="small" />
+                              ) : (
+                                <Text style={styles.inlineBookButtonText}>
+                                  Proceed to Book Appointment
+                                </Text>
+                              )}
+                            </TouchableOpacity>
+                          ) : null}
+                        </View>
+                      </View>
+                    );
+                  })}
               </View>
             </>
           )}
@@ -631,11 +768,11 @@ export default function BookAIAssistantScreen({ navigation }) {
               style={styles.textInput}
               value={concern}
               onChangeText={handleConcernChange}
-              onFocus={() => setAssistantOpen(true)}
+              onFocus={() => scrollChatToEnd(260)}
               placeholder={
                 selectedQuick
                   ? 'Add details or tap send...'
-                  : 'Type your message...'
+                  : 'Describe your dental concern'
               }
               placeholderTextColor="#b8b8b8"
               multiline
@@ -644,7 +781,7 @@ export default function BookAIAssistantScreen({ navigation }) {
             />
             <TouchableOpacity
               style={[styles.sendButton, (loading || conflictChecking) && styles.sendButtonDisabled]}
-              onPress={() => setAssistantOpen(true)}
+              onPress={prepareMainBookingPrompt}
               disabled={loading || conflictChecking}
               accessibilityRole="button"
               accessibilityLabel="Analyze and continue"
@@ -657,12 +794,12 @@ export default function BookAIAssistantScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <Text style={styles.inputHint}>
-            {conflictChecking ? 'Checking availability...' : 'Tap send to analyze and continue.'}
+            {conflictChecking ? 'Checking availability...' : 'AI will analyze your message before booking.'}
           </Text>
 
           <TouchableOpacity
-            style={[styles.continueButton, (loading || conflictChecking) && styles.continueButtonDisabled]}
-            onPress={() => setAssistantOpen(true)}
+            style={[styles.continueButton, styles.continueButtonHidden, (loading || conflictChecking) && styles.continueButtonDisabled]}
+            onPress={prepareMainBookingPrompt}
             disabled={loading || conflictChecking}
           >
             {conflictChecking ? (

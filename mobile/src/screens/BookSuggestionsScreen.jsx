@@ -26,6 +26,12 @@ const BREAKDOWN_LABELS = {
 const HOUR_OPTIONS = Array.from({ length: 10 }, (_, index) => 10 + index);
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => index);
 
+function formatDentistName(name) {
+  if (!name) return '';
+  const cleaned = String(name).trim().replace(/^(Dr\.\s*)+/i, '');
+  return `Dr. ${cleaned}`;
+}
+
 export default function BookSuggestionsScreen({ navigation, route }) {
   const { service, branchId, branchName, rescheduleAppointmentId, preferredDate: aiDate, preferredTime: aiTime } = route.params;
   const [data, setData] = useState(null);
@@ -279,7 +285,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
                         {formatTimeOnly(s.start_time)}
                       </Text>
 
-                      <Text style={styles.suggestionDentist}>Dr. {s.dentist_name}</Text>
+                      <Text style={styles.suggestionDentist}>{formatDentistName(s.dentist_name)}</Text>
                     </View>
 
                   </View>
