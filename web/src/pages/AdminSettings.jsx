@@ -1038,7 +1038,14 @@ export default function AdminSettings() {
       if (field === 'item_name') updated.item_name = value ? '' : 'Item is required';
       if (field === 'default_quantity') {
         const n = Number(value || 0);
-        updated.default_quantity = n >= 1 ? '' : 'Default quantity must be at least 1';
+        const stock = serviceKitItems[index]?.current_stock;
+        if (n < 1) {
+          updated.default_quantity = 'Default quantity must be at least 1';
+        } else if (stock !== null && stock !== undefined && n > Number(stock)) {
+          updated.default_quantity = 'Exceeds current stock';
+        } else {
+          updated.default_quantity = '';
+        }
       }
       next[index] = updated;
       return next;
@@ -1059,16 +1066,22 @@ export default function AdminSettings() {
     if (!serviceKitOverlay || !serviceKitServiceId) return;
 
     const branchId = Number(serviceKitBranchId || 0);
-    if (!branchId) return alert('Please select a branch.');
+    if (!branchId) return;
 
-    const hasInvalid = serviceKitItems.some((row) => {
+    const newErrors = serviceKitItems.map((row) => {
       const qty = Number(row.default_quantity || 0);
-      return !row.category || !row.item_name || qty < 1;
+      const stock = row.current_stock;
+      let qtyErr = '';
+      if (qty < 1) qtyErr = 'Default quantity must be at least 1';
+      else if (stock !== null && stock !== undefined && qty > Number(stock)) qtyErr = 'Exceeds current stock';
+      return {
+        category: row.category ? '' : 'Category is required',
+        item_name: row.item_name ? '' : 'Item is required',
+        default_quantity: qtyErr,
+      };
     });
-    if (hasInvalid) {
-      alert('Please complete all required fields. Default quantity must be at least 1.');
-      return;
-    }
+    setServiceKitItemErrors(newErrors);
+    if (newErrors.some((e) => e.category || e.item_name || e.default_quantity)) return;
 
     const payload = {
       notes: null,
@@ -1139,6 +1152,7 @@ export default function AdminSettings() {
   const serviceKitBranchSelected = !!Number(serviceKitBranchId || 0);
   const serviceKitServiceSelected = !!Number(serviceKitServiceId || 0);
   const serviceKitRowInputsDisabled = !(serviceKitBranchSelected && serviceKitServiceSelected);
+  const kitSaveDisabled = serviceKitRowInputsDisabled || (Array.isArray(serviceKitItemErrors) && serviceKitItemErrors.some((e) => e?.default_quantity || e?.item_name || e?.category));
   const serviceKitGridStyles = {
     display: 'grid',
     gridTemplateColumns: '140px minmax(0, 1fr) 90px 100px 100px',
@@ -2744,7 +2758,11 @@ export default function AdminSettings() {
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  border: `1px solid ${Number(item.default_quantity || 0) < 1 ? '#ef4444' : '#d1d5db'}`,
+                  border: `1px solid ${
+                    Number(item.default_quantity || 0) < 1 ||
+                    (item.current_stock !== null && item.current_stock !== undefined && Number(item.default_quantity || 0) > Number(item.current_stock))
+                      ? '#ef4444' : '#d1d5db'
+                  }`,
                   borderRadius: 8,
                   overflow: 'hidden',
                   height: 40,
@@ -2800,21 +2818,26 @@ export default function AdminSettings() {
               </div>
             ))}
             {!serviceKitRowInputsDisabled && serviceKitItemErrors.some((row) => row?.default_quantity) && (
-              <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 8 }}>
-                Default quantity must be at least 1.
+              <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {serviceKitItemErrors.some((row) => row?.default_quantity === 'Default quantity must be at least 1') && (
+                  <span>Default quantity must be at least 1.</span>
+                )}
+                {serviceKitItemErrors.some((row) => row?.default_quantity === 'Exceeds current stock') && (
+                  <span>Default quantity exceeds current stock for one or more items.</span>
+                )}
               </div>
             )}
           </div>
           <div style={styles.formActions}>
             <button type="button" style={styles.secondaryBtn} onClick={addServiceKitItem} disabled={serviceKitRowInputsDisabled}>Add Item</button>
-            <button type="button" style={styles.saveBtn} onClick={saveServiceKit} disabled={serviceKitRowInputsDisabled}>Save Service Kit</button>
+            <button type="button" style={styles.saveBtn} onClick={saveServiceKit} disabled={kitSaveDisabled}>Save Service Kit</button>
           </div>
         </FormOverlay>
       )}
 
       {removeKitItemIndex !== null && (
         <div style={{
-          position: 'fixed', inset: 0, zIndex: 3000,
+          position: 'fixed', inset: 0, zIndex: 99999,
           background: 'rgba(15,23,42,0.45)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
