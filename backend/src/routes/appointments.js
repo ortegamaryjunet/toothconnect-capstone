@@ -12,10 +12,16 @@ const { clinicDateKeyFromUtcDate } = require('../utils/clinic');
 const { getApprovedLeaveForDentistOnDate } = require('../utils/leaves');
 const { sendPushToUser } = require('../services/push');
 const { suggestSlots } = require('../services/scheduler');
+const { getServiceKitAvailability } = require('../utils/serviceKitAvailability');
 
 const router = express.Router();
 
 router.use(authenticate);
+
+function normalizeBufferMinutes(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : APPOINTMENT_BUFFER_MINUTES;
+}
 
 async function notifyDentist(dentistId, notification) {
   await pool.query(
@@ -134,18 +140,15 @@ async function getAvailableRoundRobinDentists(conn, {
     if (leave) continue;
 
     const [conflicts] = await conn.query(
-      `SELECT id FROM appointments
-       WHERE dentist_id = ?
-         AND status IN ('scheduled','arrived')
-         AND start_time < ?
-         AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
+      `SELECT a.id
+       FROM appointments a
+       LEFT JOIN services s ON s.id = a.service_id
+       WHERE a.dentist_id = ?
+         AND a.status IN ('scheduled','arrived')
+         AND a.start_time < ?
+         AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(s.time_buffer_min, ?), a.start_time) > ?
        LIMIT 1`,
-      [
-        dentist.id,
-        toMySQLDateTime(blockedEnd),
-        APPOINTMENT_BUFFER_MINUTES,
-        toMySQLDateTime(start),
-      ]
+      [dentist.id, toMySQLDateTime(blockedEnd), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(start)]
     );
 
     if (conflicts.length === 0) available.push(dentist);
@@ -220,18 +223,15 @@ async function validateExplicitDentistAssignment(conn, {
   }
 
   const [conflicts] = await conn.query(
-    `SELECT id FROM appointments
-     WHERE dentist_id = ?
-       AND status IN ('scheduled','arrived')
-       AND start_time < ?
-       AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
+    `SELECT a.id
+     FROM appointments a
+     LEFT JOIN services s ON s.id = a.service_id
+     WHERE a.dentist_id = ?
+       AND a.status IN ('scheduled','arrived')
+       AND a.start_time < ?
+       AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(s.time_buffer_min, ?), a.start_time) > ?
      LIMIT 1`,
-    [
-      dentistId,
-      toMySQLDateTime(blockedEnd),
-      APPOINTMENT_BUFFER_MINUTES,
-      toMySQLDateTime(start),
-    ]
+    [dentistId, toMySQLDateTime(blockedEnd), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(start)]
   );
   if (conflicts.length > 0) {
     throw httpError(409, 'This dentist already has an appointment at that time');
@@ -435,7 +435,7 @@ router.get('/_meta/services-and-branches', async (req, res) => {
     const role = req.user.role;
     const userBranches = req.user.branches || [];
     const [services] = await pool.query(
-      `SELECT id, name, duration_min, price FROM services
+      `SELECT id, name, duration_min, time_buffer_min, price FROM services
        WHERE status = 'Active'
        ORDER BY name ASC`
     );
@@ -483,10 +483,22 @@ router.get('/_meta/services-and-branches', async (req, res) => {
       branchIdsByService[row.service_id].push(row.branch_id);
     }
 
-    const annotatedServices = services.map(s => ({
-      ...s,
-      available_branch_ids: branchIdsByService[s.id] || [],
-    }));
+    const annotatedServices = [];
+    for (const s of services) {
+      const dentistBranches = branchIdsByService[s.id] || [];
+      const kitAvailableBranchIds = [];
+      for (const bid of dentistBranches) {
+        const kitAvailability = await getServiceKitAvailability(pool, { serviceId: s.id, branchId: bid });
+        if (kitAvailability.available) {
+          kitAvailableBranchIds.push(bid);
+        }
+      }
+      annotatedServices.push({
+        ...s,
+        available_branch_ids: kitAvailableBranchIds,
+        kit_stock_available: kitAvailableBranchIds.length > 0,
+      });
+    }
 
     // Attach service_ids to each dentist so the web form can filter by service
     const dentistIds = dentists.map(d => d.id);
@@ -549,11 +561,13 @@ router.get('/_meta/dentist-busy-slots', async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      `SELECT start_time, duration_min, status FROM appointments
-       WHERE dentist_id = ?
-         AND status IN ('scheduled','arrived')
-         AND start_time >= ? AND start_time < ?`,
-      [dentistId, toMySQLDateTime(dayStart), toMySQLDateTime(dayEnd)]
+      `SELECT a.start_time, a.duration_min, a.status, COALESCE(s.time_buffer_min, ?) AS service_buffer_min
+       FROM appointments a
+       LEFT JOIN services s ON s.id = a.service_id
+       WHERE a.dentist_id = ?
+         AND a.status IN ('scheduled','arrived')
+         AND a.start_time >= ? AND a.start_time < ?`,
+      [APPOINTMENT_BUFFER_MINUTES, dentistId, toMySQLDateTime(dayStart), toMySQLDateTime(dayEnd)]
     );
     res.json({
       appointments: rows,
@@ -637,7 +651,7 @@ router.get('/', async (req, res) => {
          b.name AS branch_name, b.address AS branch_address,
          p.name AS patient_name, p.email AS patient_email,
          d.name AS dentist_name,
-         s.name AS service_name, s.price AS service_price,
+         s.name AS service_name, s.price AS service_price, s.time_buffer_min AS service_buffer_min,
          pay.id AS payment_id, pay.status AS payment_status,
          pay.amount AS payment_amount, pay.payment_method,
          pay.ewallet_provider, pay.reference_number, pay.receipt_url,
@@ -757,16 +771,21 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     await conn.beginTransaction();
 
     const [services] = await conn.query(
-      `SELECT id, duration_min FROM services WHERE id = ? AND status = 'Active'`,
+      `SELECT id, duration_min, time_buffer_min FROM services WHERE id = ? AND status = 'Active'`,
       [service_id]
     );
     if (services.length === 0) throw httpError(400, 'Invalid service');
     const service = services[0];
+    const kitAvailability = await getServiceKitAvailability(conn, {
+      serviceId: Number(service_id),
+      branchId: effectiveBranchId,
+    });
+    if (!kitAvailability.available) {
+      throw httpError(409, 'This service is currently unavailable due to insufficient service kit stock.');
+    }
 
-    const blockedEnd = addMinutes(
-      start,
-      service.duration_min + APPOINTMENT_BUFFER_MINUTES
-    );
+    const serviceBufferMin = normalizeBufferMinutes(service.time_buffer_min);
+    const blockedEnd = addMinutes(start, service.duration_min + serviceBufferMin);
 
     // Block conflicts with website-submitted (online) holds for the same branch + time window
     try {
@@ -782,7 +801,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
         [
           effectiveBranchId,
           toMySQLDateTime(blockedEnd),
-          APPOINTMENT_BUFFER_MINUTES,
+          serviceBufferMin,
           toMySQLDateTime(start),
         ]
       );
@@ -799,18 +818,15 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     // Branch-wide rule: block overlapping windows across the branch.
     // This blocks the slot span for all dentists at that branch.
     const [branchSlotConflicts] = await conn.query(
-      `SELECT id FROM appointments
-       WHERE branch_id = ?
-         AND status IN ('scheduled','arrived')
-         AND start_time < ?
-         AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
+      `SELECT a.id
+       FROM appointments a
+       LEFT JOIN services s ON s.id = a.service_id
+       WHERE a.branch_id = ?
+         AND a.status IN ('scheduled','arrived')
+         AND a.start_time < ?
+         AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(s.time_buffer_min, ?), a.start_time) > ?
        LIMIT 1`,
-      [
-        effectiveBranchId,
-        toMySQLDateTime(blockedEnd),
-        APPOINTMENT_BUFFER_MINUTES,
-        toMySQLDateTime(start),
-      ]
+      [effectiveBranchId, toMySQLDateTime(blockedEnd), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(start)]
     );
     if (branchSlotConflicts.length > 0) {
       throw httpError(409, 'This time slot is already taken at this branch');
@@ -1139,7 +1155,6 @@ router.patch('/:id/note', requireRole('dentist'), async (req, res) => {
 router.post('/conflict-check', requireRole('patient'), async (req, res) => {
   const { branch_id, service_id, requested_start, duration_min } = req.body;
   const patientId = req.user.user_id;
-  const BUFFER = APPOINTMENT_BUFFER_MINUTES;
 
   if (!branch_id || !requested_start) {
     return res.status(400).json({ message: 'branch_id and requested_start are required.' });
@@ -1152,25 +1167,31 @@ router.post('/conflict-check', requireRole('patient'), async (req, res) => {
     return res.status(400).json({ message: 'Invalid requested_start.' });
   }
 
+  let serviceBufferMin = APPOINTMENT_BUFFER_MINUTES;
+  if (service_id) {
+    const [[serviceRow]] = await pool.query(
+      `SELECT duration_min, time_buffer_min FROM services WHERE id = ? AND status = 'Active' LIMIT 1`,
+      [parseInt(service_id, 10)]
+    );
+    if (serviceRow) {
+      serviceBufferMin = normalizeBufferMinutes(serviceRow.time_buffer_min);
+    }
+  }
   const effectiveDuration = Math.max(15, parseInt(duration_min, 10) || 30);
-  const reqEnd = addMinutes(reqStart, effectiveDuration + BUFFER);
+  const reqEnd = addMinutes(reqStart, effectiveDuration + serviceBufferMin);
 
   try {
     // Branch-wide rule: block overlapping windows across the branch.
     const [branchSlot] = await pool.query(
-      `SELECT id
-       FROM appointments
-       WHERE branch_id = ?
-         AND status IN ('scheduled','arrived')
-         AND start_time < ?
-         AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
+      `SELECT a.id
+       FROM appointments a
+       LEFT JOIN services sv ON sv.id = a.service_id
+       WHERE a.branch_id = ?
+         AND a.status IN ('scheduled','arrived')
+         AND a.start_time < ?
+         AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(sv.time_buffer_min, ?), a.start_time) > ?
        LIMIT 1`,
-      [
-        parseInt(branch_id, 10),
-        toMySQLDateTime(reqEnd),
-        BUFFER,
-        toMySQLDateTime(reqStart),
-      ]
+      [parseInt(branch_id, 10), toMySQLDateTime(reqEnd), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(reqStart)]
     );
     if (branchSlot.length > 0) {
       return res.json({
@@ -1190,8 +1211,8 @@ router.post('/conflict-check', requireRole('patient'), async (req, res) => {
        WHERE a.patient_id = ?
          AND a.status IN ('scheduled', 'arrived')
          AND a.start_time < ?
-         AND DATE_ADD(a.start_time, INTERVAL (a.duration_min + ?) MINUTE) > ?`,
-      [patientId, toMySQLDateTime(reqEnd), BUFFER, toMySQLDateTime(reqStart)]
+         AND DATE_ADD(a.start_time, INTERVAL (a.duration_min + COALESCE(sv.time_buffer_min, ?)) MINUTE) > ?`,
+      [patientId, toMySQLDateTime(reqEnd), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(reqStart)]
     );
 
     const hasPatientConflict = patientConflicts.length > 0;

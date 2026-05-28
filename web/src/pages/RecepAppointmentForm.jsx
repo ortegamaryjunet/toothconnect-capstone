@@ -103,6 +103,16 @@ export default function RecepAppointmentForm() {
     return services.find((service) => String(service.id) === String(formData.serviceId));
   }, [services, formData.serviceId]);
 
+  const availableServices = useMemo(() => {
+    if (!formData.branchId) return services;
+    const branchId = Number(formData.branchId);
+    return services.filter((service) =>
+      Array.isArray(service.available_branch_ids)
+        ? service.available_branch_ids.includes(branchId)
+        : true
+    );
+  }, [services, formData.branchId]);
+
   const filteredDentists = useMemo(() => {
     return dentists.filter((d) => {
       if (formData.serviceId) {
@@ -118,6 +128,7 @@ export default function RecepAppointmentForm() {
   }, [dentists, dentistsByService, dentistBranchIds, formData.serviceId, formData.branchId]);
 
   const estimatedDuration = Number(selectedService?.duration_min || 30);
+  const selectedServiceBuffer = Number(selectedService?.time_buffer_min ?? appointmentBufferMinutes);
 
   const estimatedTimeRange = useMemo(() => {
     if (!selectedTime) return '—';
@@ -132,6 +143,7 @@ export default function RecepAppointmentForm() {
       appointments: appointmentsForSlots,
       dateKey: selectedDate,
       durationMinutes: estimatedDuration,
+      bufferMinutes: selectedServiceBuffer,
     });
 
     if (formData.dentistId && dentistOnLeave) {
@@ -139,7 +151,7 @@ export default function RecepAppointmentForm() {
     }
 
     return slots;
-  }, [dentistBusySlots, dayAppointments, formData.dentistId, selectedDate, estimatedDuration, dentistOnLeave]);
+  }, [dentistBusySlots, dayAppointments, formData.dentistId, selectedDate, estimatedDuration, selectedServiceBuffer, dentistOnLeave]);
 
   const calendarDays = useMemo(() => {
     return buildCalendarDays(calendarYear, calendarMonth, today);
@@ -244,6 +256,14 @@ export default function RecepAppointmentForm() {
       setFormData((current) => ({ ...current, dentistId: '' }));
     }
   }, [formData.branchId, dentistBranchIds]);
+
+  useEffect(() => {
+    if (!formData.serviceId) return;
+    const exists = availableServices.some((service) => String(service.id) === String(formData.serviceId));
+    if (!exists) {
+      setFormData((current) => ({ ...current, serviceId: '', dentistId: '' }));
+    }
+  }, [availableServices, formData.serviceId]);
 
   // Fetch selected dentist's appointments across all branches for the chosen date
   useEffect(() => {
@@ -702,7 +722,7 @@ export default function RecepAppointmentForm() {
                     Select purpose
                   </option>
 
-                  {services.map((service) => (
+                  {availableServices.map((service) => (
                     <option key={service.id} value={service.id}>
                       {service.name}
                     </option>
@@ -1196,7 +1216,7 @@ function validateContactNumber(value) {
 // Returns all 30-min slots within clinic hours for the selected date.
 // Each slot has { label, value, hour, minute, available }.
 // available=false when the slot is in the past or blocked by an existing appointment + buffer.
-function computeAvailableSlots({ appointments, dateKey, durationMinutes }) {
+function computeAvailableSlots({ appointments, dateKey, durationMinutes, bufferMinutes = appointmentBufferMinutes }) {
   const now = Date.now();
   const [year, month, day] = dateKey.split('-').map(Number);
 
@@ -1209,7 +1229,7 @@ function computeAvailableSlots({ appointments, dateKey, durationMinutes }) {
     .map((a) => {
       const s = new Date(a.start_time).getTime();
       const e =
-        s + (Number(a.duration_min || 30) + appointmentBufferMinutes) * 60 * 1000;
+        s + (Number(a.duration_min || 30) + Number(a.service_buffer_min ?? appointmentBufferMinutes)) * 60 * 1000;
       return { start: s, end: e };
     });
 
@@ -1222,7 +1242,7 @@ function computeAvailableSlots({ appointments, dateKey, durationMinutes }) {
     const slotDate = new Date(year, month - 1, day, h24, min, 0, 0);
     const slotStart = slotDate.getTime();
     const slotEnd =
-      slotStart + (durationMinutes + appointmentBufferMinutes) * 60 * 1000;
+      slotStart + (durationMinutes + bufferMinutes) * 60 * 1000;
 
     const isPast = slotStart <= now;
     const isBlocked =

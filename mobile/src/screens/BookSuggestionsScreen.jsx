@@ -104,7 +104,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
         service_id: service.id,
         from: now.toISOString(),
         to: future.toISOString(),
-        limit: 8,
+        limit: 3,
       });
       setData(result);
       setSuggestionMode('earliest');

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import { listAppointments, saveAppointmentNote } from '../api/appointments';
-import { getServiceKit, getConsumption, submitConsumption } from '../api/inventory';
+import { getServiceKit, getConsumption, submitConsumption, updateConsumption } from '../api/inventory';
 import createDentistAppointmentStyles from '../styles/DentistAppointment';
 import { useAuth } from '../auth/AuthContext';
 import api from '../api/axios';
@@ -44,13 +44,10 @@ export default function DentistAppointment() {
   const [kitError, setKitError] = useState('');
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
-
-  const [manualKitOpen, setManualKitOpen] = useState(false);
-  const [manualKitCategory, setManualKitCategory] = useState('');
-  const [manualKitInventoryId, setManualKitInventoryId] = useState('');
-  const [manualKitQty, setManualKitQty] = useState(1);
-  const [manualKitError, setManualKitError] = useState('');
-  const [manualInventoryItems, setManualInventoryItems] = useState([]);
+  const [kitSubmittedBy, setKitSubmittedBy] = useState(null);
+  const [kitEditedBy, setKitEditedBy] = useState(null);
+  const [kitEditedAt, setKitEditedAt] = useState('');
+  const [kitEditMode, setKitEditMode] = useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -186,24 +183,20 @@ export default function DentistAppointment() {
     return filteredAppointments.slice(start, end);
   }, [filteredAppointments, currentPage]);
 
-  const manualKitCategories = useMemo(() => {
-    const sourceItems = manualInventoryItems.length > 0 ? manualInventoryItems : kitItems;
+  const hasDeductibleKitItems = useMemo(
+    () => kitItems.some((item) => Number(item.quantity_used) > 0 && item.inventory_id),
+    [kitItems]
+  );
 
-    const categories = sourceItems
-      .map((item) => item.category)
-      .filter(Boolean)
-      .map((category) => String(category));
-
-    return [...new Set(categories)];
-  }, [manualInventoryItems, kitItems]);
-
-  const manualKitCategoryItems = useMemo(() => {
-    const sourceItems = manualInventoryItems.length > 0 ? manualInventoryItems : kitItems;
-
-    return sourceItems.filter(
-      (item) => String(item.category) === String(manualKitCategory)
-    );
-  }, [manualInventoryItems, kitItems, manualKitCategory]);
+  const kitHasStockError = useMemo(
+    () => kitItems.some((item) =>
+      item.inventory_id &&
+      item.current_stock !== null &&
+      item.current_stock !== undefined &&
+      Number(item.quantity_used) > Number(item.current_stock)
+    ),
+    [kitItems]
+  );
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -283,12 +276,10 @@ export default function DentistAppointment() {
     setKitNotes('');
     setKitError('');
     setKitAlreadySubmitted(false);
-    setManualKitOpen(false);
-    setManualKitCategory('');
-    setManualKitInventoryId('');
-    setManualKitQty(1);
-    setManualKitError('');
-    setManualInventoryItems([]);
+    setKitSubmittedBy(null);
+    setKitEditedBy(null);
+    setKitEditedAt('');
+    setKitEditMode(false);
     setShowKitModal(true);
     setKitLoading(true);
 
@@ -305,28 +296,36 @@ export default function DentistAppointment() {
 
       if (isConsultation) {
         setKitAlreadySubmitted(Boolean(consumptionData?.submitted));
+        setKitSubmittedBy(consumptionData?.submitted_by || null);
+        setKitEditedBy(consumptionData?.edited_by || null);
+        setKitEditedAt(consumptionData?.edited_at || '');
         setKitNotes('No inventory items was used for consultation service.');
         setKitItems([]);
-        setManualInventoryItems([]);
         return;
       }
 
       if (consumptionData.submitted) {
         setKitAlreadySubmitted(true);
+        setKitSubmittedBy(consumptionData?.submitted_by || null);
+        setKitEditedBy(consumptionData?.edited_by || null);
+        setKitEditedAt(consumptionData?.edited_at || '');
 
+        const kitStockMap = {};
+        (kitData?.items || []).forEach((ki) => {
+          if (ki.inventory_id != null) kitStockMap[ki.inventory_id] = ki.current_stock;
+        });
         const submittedItems = consumptionData.items.map((item) => ({
           category: item.category,
           item_name: item.item_name,
           inventory_id: item.item_id,
           quantity_used: item.quantity_used,
-          current_stock: null,
+          current_stock: item.item_id != null ? (kitStockMap[item.item_id] ?? null) : null,
           available: true,
           sufficient: true,
           submitted: true,
         }));
 
         setKitItems(submittedItems);
-        setManualInventoryItems(submittedItems);
       } else {
         const normalizedKitItems = (kitData.items || []).map((item) => ({
           category: item.category,
@@ -339,30 +338,8 @@ export default function DentistAppointment() {
           sufficient: item.sufficient,
         }));
 
-        const inventorySource =
-          kitData.inventory_items ||
-          kitData.inventoryItems ||
-          kitData.all_items ||
-          kitData.allItems ||
-          kitData.branch_items ||
-          kitData.branchItems ||
-          kitData.items ||
-          [];
-
-        const normalizedInventoryItems = inventorySource.map((item) => ({
-          category: item.category,
-          item_name: item.item_name || item.name,
-          inventory_id: item.inventory_id || item.item_id || item.id,
-          quantity_used: item.default_quantity || 1,
-          current_stock: item.current_stock ?? item.quantity ?? item.stock ?? null,
-          unit: item.unit,
-          available: item.available ?? true,
-          sufficient: item.sufficient ?? true,
-        }));
-
         setKitNotes(kitData.notes || '');
         setKitItems(normalizedKitItems);
-        setManualInventoryItems(normalizedInventoryItems);
       }
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to load service kit.');
@@ -378,12 +355,10 @@ export default function DentistAppointment() {
     setKitError('');
     setKitSubmitting(false);
     setKitAlreadySubmitted(false);
-    setManualKitOpen(false);
-    setManualKitCategory('');
-    setManualKitInventoryId('');
-    setManualKitQty(1);
-    setManualKitError('');
-    setManualInventoryItems([]);
+    setKitSubmittedBy(null);
+    setKitEditedBy(null);
+    setKitEditedAt('');
+    setKitEditMode(false);
   }
 
   function handleKitModalOverlayClick(event) {
@@ -399,74 +374,9 @@ export default function DentistAppointment() {
     );
   }
 
-  function handleManualKitCategoryChange(value) {
-    setManualKitCategory(value);
-    setManualKitInventoryId('');
-    setManualKitError('');
-  }
-
-  function handleManualKitAddItem() {
-    if (!manualKitCategory) {
-      setManualKitError('Please choose a category.');
-      return;
-    }
-
-    if (!manualKitInventoryId) {
-      setManualKitError('Please choose an item.');
-      return;
-    }
-
-    const qty = Math.max(1, parseInt(manualKitQty, 10) || 1);
-
-    const selectedItem = manualKitCategoryItems.find(
-      (item) => String(item.inventory_id) === String(manualKitInventoryId)
-    );
-
-    if (!selectedItem) {
-      setManualKitError('Selected item was not found.');
-      return;
-    }
-
-    setKitItems((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) => String(item.inventory_id) === String(selectedItem.inventory_id)
-      );
-
-      if (existingIndex !== -1) {
-        return prev.map((item, index) =>
-          index === existingIndex
-            ? {
-                ...item,
-                quantity_used: Number(item.quantity_used || 0) + qty,
-                manual: item.manual || selectedItem.manual || false,
-              }
-            : item
-        );
-      }
-
-      return [
-        ...prev,
-        {
-          category: selectedItem.category,
-          item_name: selectedItem.item_name,
-          inventory_id: selectedItem.inventory_id,
-          quantity_used: qty,
-          current_stock: selectedItem.current_stock,
-          unit: selectedItem.unit,
-          available: selectedItem.available ?? true,
-          sufficient: selectedItem.sufficient ?? true,
-          manual: true,
-        },
-      ];
-    });
-
-    setManualKitInventoryId('');
-    setManualKitQty(1);
-    setManualKitError('');
-  }
-
   async function handleKitConfirm() {
     if (!selectedKitAppointment || kitSubmitting) return;
+    const isEditingSubmitted = kitAlreadySubmitted && kitEditMode;
 
     const itemsToSubmit = kitItems
       .filter((item) => item.quantity_used > 0 && item.inventory_id)
@@ -477,7 +387,18 @@ export default function DentistAppointment() {
       }));
 
     if (itemsToSubmit.length === 0) {
-      closeKitModal();
+      setKitError('No valid inventory items to deduct.');
+      return;
+    }
+
+    const hasOverStock = kitItems.some((item) =>
+      item.inventory_id &&
+      item.current_stock !== null &&
+      item.current_stock !== undefined &&
+      Number(item.quantity_used) > Number(item.current_stock)
+    );
+    if (hasOverStock) {
+      setKitError('One or more quantities exceed current stock. Please correct before deducting.');
       return;
     }
 
@@ -485,8 +406,24 @@ export default function DentistAppointment() {
     setKitError('');
 
     try {
-      await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
-      closeKitModal();
+      if (isEditingSubmitted) {
+        await updateConsumption(selectedKitAppointment.id, itemsToSubmit);
+      } else {
+        await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
+      }
+      setKitAlreadySubmitted(true);
+      setKitEditMode(false);
+      setKitSubmittedBy({
+        name: user?.name || 'Dentist',
+        role: user?.role || 'dentist',
+      });
+      if (isEditingSubmitted) {
+        setKitEditedBy({
+          name: user?.name || 'Dentist',
+          role: user?.role || 'dentist',
+        });
+        setKitEditedAt(new Date().toISOString());
+      }
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to submit consumption.');
     } finally {
@@ -1029,8 +966,8 @@ export default function DentistAppointment() {
                 <h2 style={styles.noteModalTitle}>Service Kit</h2>
                 <p style={styles.noteModalSubtitle}>
                   {kitAlreadySubmitted
-                    ? 'Items used for this appointment already submitted.'
-                    : 'Review, adjust, and confirm items used for this appointment.'}
+                    ? `Service kit already submitted by ${formatConsumptionSubmitter(kitSubmittedBy)}.`
+                    : 'Service kit template for this appointment.'}
                 </p>
               </div>
             </div>
@@ -1049,6 +986,30 @@ export default function DentistAppointment() {
                   {selectedKitAppointment.reason}
                 </strong>
               </div>
+              {kitAlreadySubmitted && (
+                <div style={styles.noteDetailItem}>
+                  <span style={styles.noteDetailLabel}>Submitted By</span>
+                  <strong style={styles.noteDetailValue}>
+                    {formatConsumptionSubmitter(kitSubmittedBy)}
+                  </strong>
+                </div>
+              )}
+              {kitEditedBy && (
+                <div style={styles.noteDetailItem}>
+                  <span style={styles.noteDetailLabel}>Edited By</span>
+                  <strong style={styles.noteDetailValue}>
+                    {formatConsumptionSubmitter(kitEditedBy)}
+                  </strong>
+                </div>
+              )}
+              {kitEditedAt && (
+                <div style={styles.noteDetailItem}>
+                  <span style={styles.noteDetailLabel}>Edited When</span>
+                  <strong style={styles.noteDetailValue}>
+                    {formatDateTime(kitEditedAt)}
+                  </strong>
+                </div>
+              )}
             </div>
 
             {!kitAlreadySubmitted && !kitLoading && (
@@ -1056,87 +1017,6 @@ export default function DentistAppointment() {
                 <p style={styles.kitNoteText}>
                   {kitNotes ? `Kit note: ${kitNotes}` : 'Kit note: No kit note added.'}
                 </p>
-
-                <button
-                  type="button"
-                  style={styles.kitAddButton}
-                  onClick={() => {
-                    setManualKitOpen((prev) => !prev);
-                    setManualKitError('');
-                  }}
-                >
-                  {manualKitOpen ? 'Hide Add Item' : 'Add Other Item'}
-                </button>
-              </div>
-            )}
-
-            {!kitAlreadySubmitted && manualKitOpen && !kitLoading && (
-              <div style={styles.kitManualPanel}>
-                <div style={styles.kitManualGrid}>
-                  <div style={styles.kitManualField}>
-                    <label style={styles.kitManualLabel}>Category</label>
-                    <select
-                      value={manualKitCategory}
-                      onChange={(event) =>
-                        handleManualKitCategoryChange(event.target.value)
-                      }
-                      style={styles.kitManualSelect}
-                    >
-                      <option value="">Choose category</option>
-                      {manualKitCategories.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={styles.kitManualField}>
-                    <label style={styles.kitManualLabel}>Item</label>
-                    <select
-                      value={manualKitInventoryId}
-                      onChange={(event) => {
-                        setManualKitInventoryId(event.target.value);
-                        setManualKitError('');
-                      }}
-                      style={styles.kitManualSelect}
-                      disabled={!manualKitCategory}
-                    >
-                      <option value="">Choose item</option>
-                      {manualKitCategoryItems.map((item) => (
-                        <option
-                          key={item.inventory_id}
-                          value={item.inventory_id}
-                        >
-                          {item.item_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={styles.kitManualField}>
-                    <label style={styles.kitManualLabel}>Qty</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={manualKitQty}
-                      onChange={(event) => setManualKitQty(event.target.value)}
-                      style={styles.kitQtyInput}
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    style={styles.kitAddButton}
-                    onClick={handleManualKitAddItem}
-                  >
-                    Add
-                  </button>
-                </div>
-
-                {manualKitError && (
-                  <p style={styles.kitInlineError}>{manualKitError}</p>
-                )}
               </div>
             )}
 
@@ -1161,8 +1041,9 @@ export default function DentistAppointment() {
                     <tr>
                       <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>Item</th>
                       <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>Category</th>
+                      <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>Current Stock</th>
                       <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>
-                        {kitAlreadySubmitted ? 'Used' : 'Qty'}
+                        {kitAlreadySubmitted && !kitEditMode ? 'Used' : 'Qty'}
                       </th>
                     </tr>
                   </thead>
@@ -1173,13 +1054,9 @@ export default function DentistAppointment() {
                         <td style={{ ...styles.tableCell, padding: '10px 12px' }}>
                           {item.item_name}
 
-                          {item.manual && (
-                            <span style={styles.kitManualBadge}>Manual</span>
-                          )}
-
-                          {!kitAlreadySubmitted && !item.available && (
+                          {!item.inventory_id && (!kitAlreadySubmitted || kitEditMode) && (
                             <span style={{ color: '#ef4444', fontSize: '11px', display: 'block' }}>
-                              Not in branch inventory
+                              Not linked to branch inventory
                             </span>
                           )}
                         </td>
@@ -1188,24 +1065,47 @@ export default function DentistAppointment() {
                           {item.category}
                         </td>
 
+                        <td style={{ ...styles.tableCell, padding: '10px 12px', color: '#374151' }}>
+                          {item.current_stock !== null && item.current_stock !== undefined
+                            ? item.current_stock
+                            : <span style={{ color: '#94a3b8' }}>—</span>}
+                        </td>
+
                         <td style={{ ...styles.tableCell, padding: '10px 12px' }}>
-                          {kitAlreadySubmitted ? (
+                          {kitAlreadySubmitted && !kitEditMode ? (
                             item.quantity_used
-                          ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.quantity_used}
-                              onChange={(e) => handleKitQtyChange(index, e.target.value)}
-                              style={{
-                                width: '60px',
-                                padding: '4px 8px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                              }}
-                            />
-                          )}
+                          ) : (() => {
+                            const exceedsStock =
+                              item.inventory_id &&
+                              item.current_stock !== null &&
+                              item.current_stock !== undefined &&
+                              Number(item.quantity_used) > Number(item.current_stock);
+                            return (
+                              <>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.quantity_used}
+                                  onChange={(e) => handleKitQtyChange(index, e.target.value)}
+                                  disabled={!item.inventory_id}
+                                  style={{
+                                    width: '60px',
+                                    padding: '4px 8px',
+                                    border: `1px solid ${exceedsStock ? '#ef4444' : '#d1d5db'}`,
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
+                                    cursor: !item.inventory_id ? 'not-allowed' : 'text',
+                                  }}
+                                />
+                                {exceedsStock && (
+                                  <span style={{ display: 'block', color: '#b91c1c', fontSize: 11, marginTop: 2 }}>
+                                    Exceeds stock
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
@@ -1214,35 +1114,39 @@ export default function DentistAppointment() {
               </div>
             )}
 
-            {!kitAlreadySubmitted && !kitLoading && (
-              <div style={styles.noteModalActions}>
+            {!kitLoading && !kitError && kitItems.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, gap: 10 }}>
                 <button
                   type="button"
-                  style={{ ...styles.noteActionButton, ...styles.noteCancelBtn }}
+                  style={styles.modalSecondaryBtn}
                   onClick={closeKitModal}
+                  disabled={kitSubmitting}
                 >
                   Cancel
                 </button>
 
                 <button
                   type="button"
-                  style={{ ...styles.noteActionButton, ...styles.noteSaveBtn }}
-                  onClick={handleKitConfirm}
-                  disabled={kitSubmitting}
+                  style={{
+                    ...styles.modalPrimaryBtn,
+                    ...((!kitAlreadySubmitted || kitEditMode) && (kitSubmitting || !hasDeductibleKitItems || kitHasStockError) ? styles.pageBtnDisabled : {}),
+                  }}
+                  onClick={() => {
+                    if (kitAlreadySubmitted && !kitEditMode) {
+                      setKitEditMode(true);
+                      return;
+                    }
+                    handleKitConfirm();
+                  }}
+                  disabled={(!kitAlreadySubmitted || kitEditMode) && (kitSubmitting || !hasDeductibleKitItems || kitHasStockError)}
                 >
-                  {kitSubmitting ? 'Submitting…' : 'Confirm & Deduct'}
-                </button>
-              </div>
-            )}
-
-            {kitAlreadySubmitted && (
-              <div style={{ textAlign: 'right', marginTop: '16px' }}>
-                <button
-                  type="button"
-                  style={{ ...styles.noteActionButton, ...styles.noteCancelBtn }}
-                  onClick={closeKitModal}
-                >
-                  Close
+                  {kitAlreadySubmitted && !kitEditMode
+                    ? 'Edit'
+                    : (kitAlreadySubmitted && kitEditMode
+                      ? (kitSubmitting ? 'Saving...' : 'Save Changes')
+                    : (!hasDeductibleKitItems
+                      ? 'No Deductible Items'
+                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct')))}
                 </button>
               </div>
             )}
@@ -1380,6 +1284,28 @@ function formatAppointmentStatus(status) {
   };
 
   return statusMap[status] || 'Scheduled';
+}
+
+function formatConsumptionSubmitter(submitter) {
+  if (!submitter) return 'Staff';
+  const role = String(submitter.role || '').toLowerCase();
+  const roleLabel =
+    role === 'dentist' ? 'Dentist' : role === 'receptionist' ? 'Receptionist' : 'Staff';
+  return submitter.name ? `${submitter.name} (${roleLabel})` : roleLabel;
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 function extractRescheduleInfo(noteText) {

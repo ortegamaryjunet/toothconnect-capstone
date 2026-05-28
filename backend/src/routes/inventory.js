@@ -1,6 +1,11 @@
 const express = require('express');
 const pool = require('../config/db');
+<<<<<<< HEAD
 const { authenticate, requireRole } = require('../middleware/auth');
+=======
+const { authenticate, requireRole, requireBranchAccess } = require('../middleware/auth');
+const { getServiceKitAvailability, getServiceKitRows } = require('../utils/serviceKitAvailability');
+>>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
 
 const router = express.Router();
 
@@ -1563,6 +1568,78 @@ router.get('/usage-history', requireRole('admin', 'receptionist'), async (req, r
   }
 });
 
+router.get('/service-kit-history', requireRole('admin'), async (req, res) => {
+  const startDate = req.query.start_date ? String(req.query.start_date).slice(0, 10) : '';
+  const endDate = req.query.end_date ? String(req.query.end_date).slice(0, 10) : '';
+  const branchId = req.query.branch_id ? parseInt(req.query.branch_id, 10) : null;
+
+  if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
+    return res.status(400).json({ message: 'Invalid date format (expected YYYY-MM-DD)' });
+  }
+
+  try {
+    const whereParts = [`al.action = 'service_kit_managed'`];
+    const params = [];
+
+    if (startDate && endDate) {
+      whereParts.push(`al.created_at >= ? AND al.created_at < DATE_ADD(?, INTERVAL 1 DAY)`);
+      params.push(`${startDate} 00:00:00`, endDate);
+    } else if (startDate) {
+      whereParts.push(`al.created_at >= ? AND al.created_at < DATE_ADD(?, INTERVAL 1 DAY)`);
+      params.push(`${startDate} 00:00:00`, startDate);
+    }
+
+    if (branchId) {
+      const [branchServiceRows] = await pool.query(
+        `SELECT DISTINCT dsv.service_id
+         FROM dentist_services dsv
+         JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id
+         WHERE dsch.branch_id = ?`,
+        [branchId]
+      );
+      const serviceIds = branchServiceRows.map((r) => r.service_id);
+      if (serviceIds.length === 0) {
+        return res.json({ records: [] });
+      }
+      whereParts.push(`JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.service_id')) IN (${serviceIds.map(() => '?').join(',')})`);
+      params.push(...serviceIds);
+    }
+
+    const [rows] = await pool.query(
+      `SELECT al.id, al.created_at, al.details, al.branch_id,
+              u.name AS changed_by_name, u.role AS changed_by_role,
+              b.address AS branch_address, b.name AS branch_name
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.user_id
+       LEFT JOIN branches b ON b.id = al.branch_id
+       WHERE ${whereParts.join(' AND ')}
+       ORDER BY al.created_at DESC
+       LIMIT 500`,
+      params
+    );
+
+    const records = rows.map((row) => {
+      const details = typeof row.details === 'string' ? JSON.parse(row.details) : (row.details || {});
+      const branchDisplay = row.branch_address || details.branch_address || row.branch_name || '—';
+      return {
+        id: row.id,
+        service_id: details.service_id || null,
+        service_name: details.service_name || '—',
+        items: Array.isArray(details.items) ? details.items : [],
+        status: details.was_new ? 'Added' : 'Updated',
+        changed_by: row.changed_by_name || row.changed_by_role || 'Admin',
+        branch_address: branchDisplay,
+        changed_at: row.created_at,
+      };
+    });
+
+    res.json({ records });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.get('/service-kits/:serviceId', async (req, res) => {
   const serviceId = parseInt(req.params.serviceId, 10);
   const branchId = parseInt(req.query.branch_id, 10);
@@ -1578,6 +1655,7 @@ router.get('/service-kits/:serviceId', async (req, res) => {
   }
 
   try {
+<<<<<<< HEAD
     const [kitRows] = await pool.query(
       `SELECT id, service_id, notes
        FROM service_kits
@@ -1586,6 +1664,10 @@ router.get('/service-kits/:serviceId', async (req, res) => {
     );
 
     if (kitRows.length === 0) {
+=======
+    const [kitRows] = await pool.query(`SELECT id, service_id, notes FROM service_kits WHERE service_id = ?`, [serviceId]);
+    if (!kitRows.length) {
+>>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
       return res.json({
         service_id: serviceId,
         kit_exists: false,
@@ -1596,6 +1678,7 @@ router.get('/service-kits/:serviceId', async (req, res) => {
 
     const kit = kitRows[0];
 
+<<<<<<< HEAD
     const [items] = await pool.query(
       `SELECT id, category, item_name, default_quantity
        FROM service_kit_items
@@ -1718,13 +1801,24 @@ router.get('/service-kits/:serviceId', async (req, res) => {
           Number(inventoryRow.quantity || 0) >= Number(item.default_quantity || 0),
       });
     }
+=======
+    const availability = await getServiceKitAvailability(pool, { serviceId, branchId });
+>>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
 
     res.json({
       service_id: serviceId,
       kit_id: kit.id,
       kit_exists: true,
       notes: kit.notes,
-      items: resolved,
+      items: availability.items.map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: item.required_quantity,
+        inventory_id: item.inventory_id,
+        current_stock: item.current_stock,
+        available: item.inventory_id !== null,
+        sufficient: item.sufficient,
+      })),
     });
   } catch (err) {
     console.error(err);
@@ -1732,6 +1826,83 @@ router.get('/service-kits/:serviceId', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
+=======
+router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) => {
+  const serviceId = parseInt(req.params.serviceId, 10);
+  const { notes = null, items = [], branch_id = null } = req.body || {};
+  const auditBranchId = branch_id ? parseInt(branch_id, 10) : null;
+
+  if (!serviceId) return res.status(400).json({ message: 'Invalid service id' });
+  if (!Array.isArray(items)) return res.status(400).json({ message: 'items must be an array' });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [serviceRows] = await conn.query('SELECT id, name FROM services WHERE id = ? LIMIT 1', [serviceId]);
+    if (!serviceRows.length) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Service not found' });
+    }
+    const serviceName = serviceRows[0].name;
+
+    const [kitRows] = await conn.query('SELECT id FROM service_kits WHERE service_id = ? LIMIT 1', [serviceId]);
+    let kitId = kitRows[0]?.id || null;
+    const wasNew = !kitId;
+
+    if (!kitId) {
+      const [insertKit] = await conn.query('INSERT INTO service_kits (service_id, notes) VALUES (?, ?)', [serviceId, notes]);
+      kitId = insertKit.insertId;
+    } else {
+      await conn.query('UPDATE service_kits SET notes = ? WHERE id = ?', [notes, kitId]);
+      await conn.query('DELETE FROM service_kit_items WHERE service_kit_id = ?', [kitId]);
+    }
+
+    const cleanItems = items
+      .map((item) => ({
+        category: String(item?.category || '').trim(),
+        item_name: String(item?.item_name || '').trim(),
+        default_quantity: Number.parseInt(item?.default_quantity, 10),
+      }))
+      .filter((item) => ['supply', 'medicine', 'equipment'].includes(item.category) && item.item_name && item.default_quantity > 0);
+
+    if (cleanItems.length > 0) {
+      await conn.query(
+        `INSERT INTO service_kit_items (service_kit_id, category, item_name, default_quantity)
+         VALUES ${cleanItems.map(() => '(?, ?, ?, ?)').join(', ')}`,
+        cleanItems.flatMap((item) => [kitId, item.category, item.item_name, item.default_quantity])
+      );
+    }
+
+    let branchAddress = null;
+    if (auditBranchId) {
+      const [branchRows] = await conn.query('SELECT address, name FROM branches WHERE id = ? LIMIT 1', [auditBranchId]);
+      branchAddress = branchRows[0]?.address || branchRows[0]?.name || null;
+    }
+
+    await conn.query(
+      `INSERT INTO audit_logs (user_id, action, branch_id, details) VALUES (?, 'service_kit_managed', ?, ?)`,
+      [req.user.user_id, auditBranchId, JSON.stringify({ service_id: serviceId, service_name: serviceName, items: cleanItems, was_new: wasNew, branch_address: branchAddress })]
+    );
+
+    await conn.commit();
+    const savedItems = await getServiceKitRows(pool, serviceId);
+    res.json({ service_id: serviceId, kit_id: kitId, notes, items: savedItems });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// CONSUMPTION LOOKUP — what was used for a completed appointment?
+// ─────────────────────────────────────────────────────────────
+
+>>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
 router.get('/appointments/:appointmentId/consumption', async (req, res) => {
   const appointmentId = parseInt(req.params.appointmentId, 10);
   const userId = req.user.user_id;
@@ -1763,15 +1934,57 @@ router.get('/appointments/:appointmentId/consumption', async (req, res) => {
     }
 
     const [items] = await pool.query(
+<<<<<<< HEAD
       `SELECT category, item_id, item_name, quantity_used
        FROM appointment_consumption
        WHERE appointment_id = ?`,
+=======
+      `SELECT ac.category, ac.item_id, ac.item_name, ac.quantity_used, ac.recorded_by,
+              u.role AS recorded_by_role, u.name AS recorded_by_name
+       FROM appointment_consumption ac
+       LEFT JOIN users u ON u.id = ac.recorded_by
+       WHERE ac.appointment_id = ?`,
+>>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
       [appointmentId]
     );
+    const submittedBy = items.length > 0
+      ? {
+          user_id: items[0].recorded_by || null,
+          name: items[0].recorded_by_name || null,
+          role: items[0].recorded_by_role || null,
+        }
+      : null;
+    const [editedRows] = await pool.query(
+      `SELECT al.user_id, al.created_at, u.name AS edited_by_name, u.role AS edited_by_role
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.user_id
+       WHERE al.action = 'appointment_consumption_updated'
+         AND (
+           al.details LIKE ?
+           OR al.details LIKE ?
+         )
+       ORDER BY al.created_at DESC, al.id DESC
+       LIMIT 1`,
+      [`%"appointment_id":${appointmentId}%`, `%"appointment_id": ${appointmentId}%`]
+    );
+    const editedBy = editedRows.length > 0
+      ? {
+          user_id: editedRows[0].user_id || null,
+          name: editedRows[0].edited_by_name || null,
+          role: editedRows[0].edited_by_role || null,
+        }
+      : null;
+    const editedAt = editedRows.length > 0 ? editedRows[0].created_at || null : null;
 
     res.json({
       appointment_id: appointmentId,
       submitted: items.length > 0,
+<<<<<<< HEAD
+=======
+      submitted_by: submittedBy,
+      edited_by: editedBy,
+      edited_at: editedAt,
+>>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
       items,
     });
   } catch (err) {
@@ -2064,11 +2277,262 @@ router.post(
       await connection.rollback();
       console.error(err);
 
+<<<<<<< HEAD
       res.status(500).json({ message: 'Server error' });
     } finally {
       connection.release();
     }
+=======
+    if (role === 'receptionist' && appt.dentist_id) {
+      const receptionistName = req.user?.name || 'Receptionist';
+      await conn.query(
+        `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
+         VALUES (?, 'service_kit_submitted', 'Service Kit Submitted', ?, 'appointment', ?)`,
+        [
+          appt.dentist_id,
+          `${receptionistName} submitted the service kit for your completed appointment #${appointmentId}.`,
+          appointmentId,
+        ]
+      );
+    }
+
+    await conn.commit();
+
+    res.json({
+      message: 'Consumption recorded',
+      appointment_id: appointmentId,
+      status: mark_complete ? 'completed' : appt.status,
+      items: decrementResults,
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
+>>>>>>> 08c262977fe5817cb41df31d687521a4643edd52
   }
 );
 
+<<<<<<< HEAD
 module.exports = router;
+=======
+router.put('/appointments/:appointmentId/consumption', requireRole('dentist', 'receptionist', 'admin'), async (req, res) => {
+  const appointmentId = parseInt(req.params.appointmentId, 10);
+  const { items } = req.body;
+  const userId = req.user.user_id;
+  const role = req.user.role;
+
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ message: 'items must be an array' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [apptRows] = await conn.query(
+      `SELECT id, dentist_id, branch_id, service_id, start_time, status
+       FROM appointments WHERE id = ? FOR UPDATE`,
+      [appointmentId]
+    );
+    if (apptRows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+    const appt = apptRows[0];
+
+    if (role === 'dentist' && appt.dentist_id !== userId) {
+      await conn.rollback();
+      return res.status(403).json({ message: 'You are not the dentist for this appointment' });
+    }
+    if (!validateBranchAccess(req, appt.branch_id)) {
+      await conn.rollback();
+      return res.status(403).json({ message: 'No access to this branch' });
+    }
+
+    const [existingRows] = await conn.query(
+      `SELECT category, item_id, quantity_used
+       FROM appointment_consumption
+       WHERE appointment_id = ?`,
+      [appointmentId]
+    );
+    if (existingRows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'No existing service kit submission to edit' });
+    }
+
+    const [existingReceptionistSubmitters] = await conn.query(
+      `SELECT DISTINCT ac.recorded_by AS user_id
+       FROM appointment_consumption ac
+       JOIN users u ON u.id = ac.recorded_by
+       WHERE ac.appointment_id = ?
+         AND u.role = 'receptionist'`,
+      [appointmentId]
+    );
+
+    const tableByCategory = { supply: 'supplies', medicine: 'medicines', equipment: 'equipment' };
+    for (const row of existingRows) {
+      const table = tableByCategory[row.category];
+      if (!table) continue;
+
+      await conn.query(
+        `UPDATE ${table} SET quantity = quantity + ? WHERE id = ? AND branch_id = ?`,
+        [Number(row.quantity_used || 0), row.item_id, appt.branch_id]
+      );
+    }
+
+    await conn.query(`DELETE FROM appointment_consumption WHERE appointment_id = ?`, [appointmentId]);
+    await conn.query(`DELETE FROM inventory_usage_history WHERE appointment_id = ?`, [appointmentId]);
+
+    const serviceId = appt.service_id || null;
+    let serviceName = null;
+    try {
+      const [serviceRows] = await conn.query(`SELECT name FROM services WHERE id = ?`, [serviceId]);
+      serviceName = serviceRows.length ? serviceRows[0].name : null;
+    } catch {
+      serviceName = null;
+    }
+
+    const decrementResults = [];
+    for (const item of items) {
+      const { category, inventory_id, quantity_used } = item;
+      if (!category || !inventory_id || !quantity_used || quantity_used <= 0) {
+        await conn.rollback();
+        return res.status(400).json({
+          message: 'Each item needs category, inventory_id, and positive quantity_used',
+        });
+      }
+
+      const validCategories = { supply: 'supplies', medicine: 'medicines', equipment: 'equipment' };
+      const nameColumns = { supply: 'supply_name', medicine: 'medicine_name', equipment: 'equipment_name' };
+      if (!validCategories[category]) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Invalid category: ${category}` });
+      }
+      const table = validCategories[category];
+      const nameCol = nameColumns[category];
+
+      const [invRows] = await conn.query(
+        `SELECT id, branch_id, ${nameCol} AS name, category AS item_category, quantity
+         FROM ${table} WHERE id = ? FOR UPDATE`,
+        [inventory_id]
+      );
+      if (invRows.length === 0) {
+        await conn.rollback();
+        return res.status(404).json({ message: `${category} id ${inventory_id} not found` });
+      }
+      const invItem = invRows[0];
+      const previousInventoryRow = await fetchInventoryAlertRow(conn, category, inventory_id);
+
+      if (invItem.branch_id !== appt.branch_id) {
+        await conn.rollback();
+        return res.status(400).json({ message: `${invItem.name} is not at this appointment's branch` });
+      }
+      if (invItem.quantity < quantity_used) {
+        await conn.rollback();
+        return res.status(400).json({
+          message: `Insufficient stock for ${invItem.name}: have ${invItem.quantity}, need ${quantity_used}`,
+        });
+      }
+
+      await conn.query(`UPDATE ${table} SET quantity = quantity - ? WHERE id = ?`, [quantity_used, inventory_id]);
+      const updatedInventoryRow = await fetchInventoryAlertRow(conn, category, inventory_id);
+      await createInventoryStatusNotifications(conn, previousInventoryRow, updatedInventoryRow);
+
+      await conn.query(
+        `INSERT INTO appointment_consumption (appointment_id, category, item_id, item_name, quantity_used, recorded_by)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [appointmentId, category, inventory_id, invItem.name, quantity_used, userId]
+      );
+
+      const inventoryType =
+        category === 'medicine' ? 'medicine' : category === 'equipment' ? 'equipment' : 'supply';
+      await conn.query(
+        `INSERT INTO inventory_usage_history
+         (appointment_id, branch_id, inventory_type, item_id, item_name, item_category, quantity_deducted,
+          service_id, service_name, appointment_start_time, deducted_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          appointmentId,
+          appt.branch_id,
+          inventoryType,
+          inventory_id,
+          invItem.name,
+          invItem.item_category || null,
+          quantity_used,
+          serviceId,
+          serviceName,
+          appt.start_time || null,
+          userId,
+        ]
+      );
+
+      decrementResults.push({
+        category,
+        item_id: inventory_id,
+        item_name: invItem.name,
+        quantity_used,
+        new_quantity: invItem.quantity - quantity_used,
+      });
+    }
+
+    await conn.query(
+      `INSERT INTO audit_logs (user_id, action, branch_id, details)
+       VALUES (?, 'appointment_consumption_updated', ?, ?)`,
+      [userId, appt.branch_id, JSON.stringify({
+        appointment_id: appointmentId,
+        items_count: items.length,
+        items: decrementResults,
+      })]
+    );
+
+    if (role === 'receptionist' && appt.dentist_id) {
+      const receptionistName = req.user?.name || 'Receptionist';
+      await conn.query(
+        `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
+         VALUES (?, 'service_kit_updated', 'Service Kit Updated', ?, 'appointment', ?)`,
+        [
+          appt.dentist_id,
+          `${receptionistName} edited the service kit for your completed appointment #${appointmentId}.`,
+          appointmentId,
+        ]
+      );
+    }
+
+    if (role === 'dentist' && existingReceptionistSubmitters.length > 0) {
+      const dentistName = req.user?.name || 'Dentist';
+      const appointmentSchedule = appt.start_time
+        ? String(appt.start_time)
+        : 'the recorded schedule';
+      const rowsToInsert = existingReceptionistSubmitters.filter((row) => Number(row.user_id) > 0);
+      if (rowsToInsert.length > 0) {
+        await conn.query(
+          `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
+           VALUES ${rowsToInsert.map(() => "(?, 'service_kit_updated_by_dentist', 'Service Kit Edited', ?, 'appointment', ?)").join(', ')}`,
+          rowsToInsert.flatMap((row) => [
+            row.user_id,
+            `${dentistName} edited the service kit you submitted for appointment #${appointmentId} scheduled at ${appointmentSchedule}.`,
+            appointmentId,
+          ])
+        );
+      }
+    }
+
+    await conn.commit();
+    res.json({
+      message: 'Consumption updated',
+      appointment_id: appointmentId,
+      items: decrementResults,
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
+  }
+});
+
+module.exports = router;
+>>>>>>> 08c262977fe5817cb41df31d687521a4643edd52

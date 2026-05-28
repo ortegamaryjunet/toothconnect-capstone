@@ -2,6 +2,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import api from '../api/axios';
+import {
+  getManageServiceKit,
+  saveManageServiceKit,
+  listSupplies,
+  listMedicines,
+  listEquipment,
+  listServiceKitHistory,
+} from '../api/inventory';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminSettingsStyles from '../styles/AdminSettings';
 
@@ -46,6 +54,7 @@ const sectionConfig = {
       'Category',
       'Price',
       'Duration',
+      'Time Buffer',
       'Status',
       'Action',
     ],
@@ -92,6 +101,7 @@ const initialServiceForm = {
   category: '',
   price: '',
   duration: '',
+  time_buffer_min: 30,
   status: '',
 };
 
@@ -185,6 +195,24 @@ export default function AdminSettings() {
 
   const [branchForm, setBranchForm] = useState(initialBranchForm);
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
+  const [serviceKitOverlay, setServiceKitOverlay] = useState(false);
+  const [serviceKitServiceId, setServiceKitServiceId] = useState('');
+  const [serviceKitBranchId, setServiceKitBranchId] = useState('');
+  const [serviceKitItems, setServiceKitItems] = useState([]);
+  const [serviceKitItemErrors, setServiceKitItemErrors] = useState([]);
+  const [serviceKitServicesForBranch, setServiceKitServicesForBranch] = useState([]);
+  const [serviceKitInventory, setServiceKitInventory] = useState({
+    supplies: [],
+    medicines: [],
+    equipment: [],
+  });
+  const [removeKitItemIndex, setRemoveKitItemIndex] = useState(null);
+  const [showServiceKitHistory, setShowServiceKitHistory] = useState(false);
+  const [serviceKitHistoryRows, setServiceKitHistoryRows] = useState([]);
+  const [serviceKitHistoryLoading, setServiceKitHistoryLoading] = useState(false);
+  const [serviceKitHistoryError, setServiceKitHistoryError] = useState('');
+  const [serviceKitHistoryFilters, setServiceKitHistoryFilters] = useState({ startDate: '', endDate: '', branchId: '' });
+
   const [userForm, setUserForm] = useState(initialUserForm);
 
   const [filters, setFilters] = useState({
@@ -252,7 +280,7 @@ export default function AdminSettings() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay || websiteValidationModal) {
+    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay || websiteValidationModal || serviceKitOverlay || showServiceKitHistory) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -261,7 +289,7 @@ export default function AdminSettings() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay, websiteValidationModal]);
+  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay, websiteValidationModal, serviceKitOverlay, showServiceKitHistory]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -272,6 +300,7 @@ export default function AdminSettings() {
         setWebsiteServiceOverlay(null);
         setWebsiteAnnouncementOverlay(null);
         setWebsiteValidationModal(null);
+        setServiceKitOverlay(false);
       }
     }
 
@@ -727,8 +756,11 @@ export default function AdminSettings() {
       newValue = allowLettersOnly(value);
     }
 
-    if (['price', 'duration'].includes(name)) {
+    if (name === 'price') {
       newValue = allowPriceOnly(value);
+    }
+    if (['duration', 'time_buffer_min'].includes(name)) {
+      newValue = value.replace(/[^0-9]/g, '');
     }
 
     setServiceForm((prev) => ({
@@ -834,6 +866,7 @@ export default function AdminSettings() {
       category: serviceForm.category,
       price: serviceForm.price,
       duration_min: serviceForm.duration,
+      time_buffer_min: Number(serviceForm.time_buffer_min || 30),
       status: serviceForm.status,
     };
 
@@ -848,6 +881,284 @@ export default function AdminSettings() {
       alert(err.response?.data?.message || 'Failed to save service');
     }
   }
+
+  async function openServiceKitManager(service = null) {
+    const resolvedServiceId = service?.id ? String(service.id) : String(services?.[0]?.id || '');
+    if (!resolvedServiceId) return alert('No service available.');
+
+    const branchId = Number(branches?.[0]?.id || 0);
+    if (!branchId) return alert('No branch available.');
+
+    setServiceKitOverlay(true);
+    setServiceKitBranchId(String(branchId));
+    setServiceKitServiceId(resolvedServiceId);
+    setServiceKitItemErrors([]);
+    setServiceKitServicesForBranch([]);
+
+    try {
+      const [supplies, medicines, equipment, data] = await Promise.all([
+        listSupplies(branchId),
+        listMedicines(branchId),
+        listEquipment(branchId),
+        getManageServiceKit(Number(resolvedServiceId), branchId),
+      ]);
+
+      setServiceKitInventory({
+        supplies: Array.isArray(supplies) ? supplies : [],
+        medicines: Array.isArray(medicines) ? medicines : [],
+        equipment: Array.isArray(equipment) ? equipment : [],
+      });
+
+      // Load services for this branch (best-effort); fallback to all services.
+      try {
+        const meta = await api.get('/appointments/_meta/services-and-branches');
+        const metaServices = Array.isArray(meta.data?.services) ? meta.data.services : [];
+        const filtered = metaServices.filter((s) =>
+          Array.isArray(s.available_branch_ids)
+            ? s.available_branch_ids.includes(Number(branchId))
+            : true
+        );
+        const serviceOptions = filtered.length ? filtered : services;
+        setServiceKitServicesForBranch(serviceOptions);
+        if (!serviceOptions.some((s) => String(s.id) === String(resolvedServiceId))) {
+          const nextId = String(serviceOptions[0]?.id || '');
+          if (nextId) setServiceKitServiceId(nextId);
+        }
+      } catch {
+        setServiceKitServicesForBranch(services);
+      }
+
+      setServiceKitItems((data.items || []).map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: String(item.default_quantity || ''),
+        current_stock: item.current_stock,
+      })));
+      setServiceKitItemErrors(
+        (data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' }))
+      );
+    } catch (err) {
+      setServiceKitItems([]);
+      alert(err.response?.data?.message || 'Failed to load service kit.');
+    }
+  }
+
+  async function reloadServiceKitBranch(branchId) {
+    if (!serviceKitOverlay || !branchId) return;
+    setServiceKitBranchId(String(branchId));
+    try {
+      const [supplies, medicines, equipment] = await Promise.all([
+        listSupplies(branchId),
+        listMedicines(branchId),
+        listEquipment(branchId),
+      ]);
+      setServiceKitInventory({
+        supplies: Array.isArray(supplies) ? supplies : [],
+        medicines: Array.isArray(medicines) ? medicines : [],
+        equipment: Array.isArray(equipment) ? equipment : [],
+      });
+
+      // Load services "available" for this branch (based on appointment meta).
+      // Fallback: if meta fails or yields empty, show all services.
+      let serviceOptions = services;
+      try {
+        const meta = await api.get('/appointments/_meta/services-and-branches');
+        const metaServices = Array.isArray(meta.data?.services) ? meta.data.services : [];
+        const filtered = metaServices.filter((s) =>
+          Array.isArray(s.available_branch_ids)
+            ? s.available_branch_ids.includes(Number(branchId))
+            : true
+        );
+        serviceOptions = filtered.length ? filtered : services;
+      } catch {
+        serviceOptions = services;
+      }
+      setServiceKitServicesForBranch(serviceOptions);
+
+      // If the currently selected service is not in this branch's list, reset to first.
+      const branchServiceIds = new Set(serviceOptions.map((s) => String(s.id)));
+      const nextServiceId = branchServiceIds.has(String(serviceKitServiceId))
+        ? String(serviceKitServiceId)
+        : String(serviceOptions[0]?.id || '');
+      if (nextServiceId && nextServiceId !== String(serviceKitServiceId)) {
+        setServiceKitServiceId(nextServiceId);
+      }
+
+      const data = nextServiceId
+        ? await getManageServiceKit(Number(nextServiceId), branchId)
+        : { items: [] };
+      setServiceKitItems((data.items || []).map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: String(item.default_quantity || ''),
+        current_stock: item.current_stock,
+      })));
+      setServiceKitItemErrors((data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' })));
+    } catch {
+      setServiceKitItems([]);
+    }
+  }
+
+  async function reloadServiceKitService(nextServiceId) {
+    const sid = String(nextServiceId || '');
+    if (!sid) return;
+    if (!serviceKitOverlay) return;
+
+    setServiceKitServiceId(sid);
+
+    const branchId = Number(serviceKitBranchId || 0);
+    if (!branchId) return;
+
+    try {
+      const data = await getManageServiceKit(Number(sid), branchId);
+      setServiceKitItems((data.items || []).map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: String(item.default_quantity || ''),
+        current_stock: item.current_stock,
+      })));
+      setServiceKitItemErrors((data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' })));
+    } catch {
+      setServiceKitItems([]);
+    }
+  }
+
+  function updateServiceKitItem(index, field, value) {
+    setServiceKitItems((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
+    );
+    setServiceKitItemErrors((prev) => {
+      const next = Array.isArray(prev) ? [...prev] : [];
+      while (next.length < serviceKitItems.length) {
+        next.push({ category: '', item_name: '', default_quantity: '' });
+      }
+      const row = next[index] || { category: '', item_name: '', default_quantity: '' };
+      const updated = { ...row };
+      if (field === 'category') updated.category = value ? '' : 'Category is required';
+      if (field === 'item_name') updated.item_name = value ? '' : 'Item is required';
+      if (field === 'default_quantity') {
+        const n = Number(value || 0);
+        const stock = serviceKitItems[index]?.current_stock;
+        if (n < 1) {
+          updated.default_quantity = 'Default quantity must be at least 1';
+        } else if (stock !== null && stock !== undefined && n > Number(stock)) {
+          updated.default_quantity = 'Exceeds current stock';
+        } else {
+          updated.default_quantity = '';
+        }
+      }
+      next[index] = updated;
+      return next;
+    });
+  }
+
+  function addServiceKitItem() {
+    setServiceKitItems((prev) => [...prev, { category: 'supply', item_name: '', default_quantity: '1', current_stock: null }]);
+    setServiceKitItemErrors((prev) => [...(Array.isArray(prev) ? prev : []), { category: '', item_name: 'Item is required', default_quantity: '' }]);
+  }
+
+  function removeServiceKitItem(index) {
+    setServiceKitItems((prev) => prev.filter((_, idx) => idx !== index));
+    setServiceKitItemErrors((prev) => (Array.isArray(prev) ? prev.filter((_, idx) => idx !== index) : []));
+  }
+
+  async function saveServiceKit() {
+    if (!serviceKitOverlay || !serviceKitServiceId) return;
+
+    const branchId = Number(serviceKitBranchId || 0);
+    if (!branchId) return;
+
+    const newErrors = serviceKitItems.map((row) => {
+      const qty = Number(row.default_quantity || 0);
+      const stock = row.current_stock;
+      let qtyErr = '';
+      if (qty < 1) qtyErr = 'Default quantity must be at least 1';
+      else if (stock !== null && stock !== undefined && qty > Number(stock)) qtyErr = 'Exceeds current stock';
+      return {
+        category: row.category ? '' : 'Category is required',
+        item_name: row.item_name ? '' : 'Item is required',
+        default_quantity: qtyErr,
+      };
+    });
+    setServiceKitItemErrors(newErrors);
+    if (newErrors.some((e) => e.category || e.item_name || e.default_quantity)) return;
+
+    const payload = {
+      notes: null,
+      branch_id: branchId,
+      items: serviceKitItems.map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: Number(item.default_quantity || 0),
+      })),
+    };
+    try {
+      await saveManageServiceKit(Number(serviceKitServiceId), payload);
+      setServiceKitOverlay(false);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to save service kit.');
+    }
+  }
+
+  async function openServiceKitHistory() {
+    setShowServiceKitHistory(true);
+    setServiceKitHistoryError('');
+    setServiceKitHistoryRows([]);
+    setServiceKitHistoryFilters({ startDate: '', endDate: '', branchId: '' });
+    await loadServiceKitHistory({ startDate: '', endDate: '', branchId: '' });
+  }
+
+  function closeServiceKitHistory() {
+    setShowServiceKitHistory(false);
+  }
+
+  async function loadServiceKitHistory(overrideFilters) {
+    const f = overrideFilters || serviceKitHistoryFilters;
+    setServiceKitHistoryLoading(true);
+    setServiceKitHistoryError('');
+    try {
+      const params = {};
+      if (f.startDate) params.start_date = f.startDate;
+      if (f.endDate) params.end_date = f.endDate;
+      if (f.branchId) params.branch_id = f.branchId;
+      const records = await listServiceKitHistory(params);
+      setServiceKitHistoryRows(records);
+    } catch (err) {
+      setServiceKitHistoryError(err.response?.data?.message || 'Failed to load service kit history.');
+    } finally {
+      setServiceKitHistoryLoading(false);
+    }
+  }
+
+  function getInventoryOptionsForCategory(category) {
+    if (category === 'medicine') {
+      return serviceKitInventory.medicines.map((m) => ({
+        name: m.medicine_name,
+        stock: Number(m.quantity || 0),
+      }));
+    }
+    if (category === 'equipment') {
+      return serviceKitInventory.equipment.map((e) => ({
+        name: e.equipment_name,
+        stock: Number(e.quantity || 0),
+      }));
+    }
+    return serviceKitInventory.supplies.map((s) => ({
+      name: s.supply_name,
+      stock: Number(s.quantity || 0),
+    }));
+  }
+
+  const serviceKitBranchSelected = !!Number(serviceKitBranchId || 0);
+  const serviceKitServiceSelected = !!Number(serviceKitServiceId || 0);
+  const serviceKitRowInputsDisabled = !(serviceKitBranchSelected && serviceKitServiceSelected);
+  const kitSaveDisabled = serviceKitRowInputsDisabled || (Array.isArray(serviceKitItemErrors) && serviceKitItemErrors.some((e) => e?.default_quantity || e?.item_name || e?.category));
+  const serviceKitGridStyles = {
+    display: 'grid',
+    gridTemplateColumns: '140px minmax(0, 1fr) 90px 100px 100px',
+    gap: 10,
+    alignItems: 'center',
+  };
 
   async function saveUser(event) {
     event.preventDefault();
@@ -1775,6 +2086,12 @@ export default function AdminSettings() {
           addIcon={sectionConfig.services.addIcon}
           onAdd={() => openServiceForm()}
         >
+          <button type="button" style={styles.secondaryBtn} onClick={() => openServiceKitManager(filteredServices[0])} disabled={!filteredServices.length}>
+            Manage Service Kit
+          </button>
+          <button type="button" style={styles.secondaryBtn} onClick={openServiceKitHistory}>
+            Service Kit History
+          </button>
           <select
             value={filters.serviceCategory}
             onChange={(event) => updateFilter('serviceCategory', event.target.value)}
@@ -1887,6 +2204,7 @@ export default function AdminSettings() {
           <td style={styles.tableCell}>{service.category}</td>
           <td style={styles.tableCell}>₱{service.price}</td>
           <td style={styles.tableCell}>{service.duration}</td>
+          <td style={styles.tableCell}>{service.time_buffer_min ?? 30} min</td>
           <td style={styles.tableCell}>
             <span style={getStatusStyle(service.status)}>{service.status}</span>
           </td>
@@ -1897,6 +2215,13 @@ export default function AdminSettings() {
               onClick={() => openServiceForm(service)}
             >
               <i className="fi fi-rr-file-edit"></i>
+            </button>
+            <button
+              type="button"
+              style={{ ...styles.editBtn, marginLeft: 6 }}
+              onClick={() => openServiceKitManager(service)}
+            >
+              <i className="fi fi-rr-box"></i>
             </button>
           </td>
         </tr>
@@ -2311,6 +2636,18 @@ export default function AdminSettings() {
                 />
               </Field>
 
+              <Field label="Time Buffer (minutes)" styles={styles}>
+                <input
+                  type="text"
+                  value={serviceForm.time_buffer_min}
+                  onChange={(event) =>
+                    handleServiceChange('time_buffer_min', event.target.value)
+                  }
+                  style={styles.formInput}
+                  required
+                />
+              </Field>
+
               <Field label="Status" styles={styles}>
                 <select
                   value={serviceForm.status}
@@ -2334,6 +2671,386 @@ export default function AdminSettings() {
             <FormActions styles={styles} label="Save Service" />
           </form>
         </FormOverlay>
+      )}
+
+      {serviceKitOverlay && (
+        <FormOverlay
+          styles={styles}
+          title="Manage Service Kit"
+          onClose={() => setServiceKitOverlay(false)}
+          onOverlayClick={handleOverlayClick}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={styles.field}>
+              <label style={styles.fieldLabel}>Branch</label>
+              <select
+                value={serviceKitBranchId}
+                onChange={(e) => reloadServiceKitBranch(Number(e.target.value))}
+                style={styles.formInput}
+              >
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.address || branch.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={styles.field}>
+              <label style={styles.fieldLabel}>Service</label>
+              <select
+                value={serviceKitServiceId}
+                onChange={(e) => reloadServiceKitService(e.target.value)}
+                style={styles.formInput}
+                disabled={!serviceKitBranchSelected}
+              >
+                {(serviceKitServicesForBranch.length ? serviceKitServicesForBranch : services).map((svc) => (
+                  <option key={svc.id} value={svc.id}>
+                    {svc.name}
+                  </option>
+                ))}
+              </select>
+              {!serviceKitBranchSelected && (
+                <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>
+                  Select a branch first to load services.
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <div style={{ ...serviceKitGridStyles, marginBottom: 6 }}>
+              <div style={styles.fieldLabel}>Category</div>
+              <div style={styles.fieldLabel}>Item</div>
+              <div style={styles.fieldLabel}>Default Quantity</div>
+              <div style={styles.fieldLabel}>Current Stock</div>
+              <div style={styles.fieldLabel}>Action</div>
+            </div>
+            {serviceKitItems.map((item, index) => (
+              <div key={`${item.category}-${index}`} style={{ ...serviceKitGridStyles, marginBottom: 8 }}>
+                <select
+                  value={item.category}
+                  onChange={(e) => {
+                    const nextCategory = e.target.value;
+                    updateServiceKitItem(index, 'category', nextCategory);
+                    updateServiceKitItem(index, 'item_name', '');
+                    updateServiceKitItem(index, 'current_stock', null);
+                  }}
+                  style={styles.formInput}
+                  disabled={serviceKitRowInputsDisabled}
+                >
+                  <option value="supply">Supply</option>
+                  <option value="medicine">Medicine</option>
+                  <option value="equipment">Equipment</option>
+                </select>
+                <select
+                  value={item.item_name}
+                  onChange={(e) => {
+                    const nextName = e.target.value;
+                    const options = getInventoryOptionsForCategory(item.category);
+                    const match = options.find((o) => o.name === nextName) || null;
+                    updateServiceKitItem(index, 'item_name', nextName);
+                    updateServiceKitItem(index, 'current_stock', match ? match.stock : null);
+                  }}
+                  style={styles.formInput}
+                  disabled={serviceKitRowInputsDisabled}
+                >
+                  <option value="" disabled>
+                    Select Item
+                  </option>
+                  {getInventoryOptionsForCategory(item.category).map((opt) => (
+                    <option key={opt.name} value={opt.name}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  border: `1px solid ${
+                    Number(item.default_quantity || 0) < 1 ||
+                    (item.current_stock !== null && item.current_stock !== undefined && Number(item.default_quantity || 0) > Number(item.current_stock))
+                      ? '#ef4444' : '#d1d5db'
+                  }`,
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  height: 40,
+                  background: serviceKitRowInputsDisabled ? '#f8fafc' : '#fff',
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => updateServiceKitItem(index, 'default_quantity', String(Math.max(1, Number(item.default_quantity || 1) - 1)))}
+                    disabled={serviceKitRowInputsDisabled}
+                    style={{
+                      width: 28, height: '100%', border: 'none', borderRight: '1px solid #e5e7eb',
+                      background: 'transparent', cursor: serviceKitRowInputsDisabled ? 'not-allowed' : 'pointer',
+                      fontSize: 16, color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, padding: 0,
+                    }}
+                  >
+                    −
+                  </button>
+                  <input
+                    value={item.default_quantity}
+                    onChange={(e) =>
+                      updateServiceKitItem(index, 'default_quantity', e.target.value.replace(/[^0-9]/g, ''))
+                    }
+                    placeholder="Qty"
+                    style={{
+                      flex: 1, minWidth: 0, border: 'none', outline: 'none',
+                      textAlign: 'center', fontSize: 13, fontFamily: 'Arial, sans-serif',
+                      background: 'transparent', padding: '0 2px',
+                    }}
+                    disabled={serviceKitRowInputsDisabled}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => updateServiceKitItem(index, 'default_quantity', String(Number(item.default_quantity || 0) + 1))}
+                    disabled={serviceKitRowInputsDisabled}
+                    style={{
+                      width: 28, height: '100%', border: 'none', borderLeft: '1px solid #e5e7eb',
+                      background: 'transparent', cursor: serviceKitRowInputsDisabled ? 'not-allowed' : 'pointer',
+                      fontSize: 16, color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, padding: 0,
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+                <input
+                  value={item.current_stock ?? ''}
+                  readOnly
+                  placeholder="Current Stock"
+                  style={{ ...styles.formInput, ...styles.readOnlyInput }}
+                />
+                <button type="button" style={styles.secondaryBtn} onClick={() => setRemoveKitItemIndex(index)}>Remove</button>
+              </div>
+            ))}
+            {!serviceKitRowInputsDisabled && serviceKitItemErrors.some((row) => row?.default_quantity) && (
+              <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {serviceKitItemErrors.some((row) => row?.default_quantity === 'Default quantity must be at least 1') && (
+                  <span>Default quantity must be at least 1.</span>
+                )}
+                {serviceKitItemErrors.some((row) => row?.default_quantity === 'Exceeds current stock') && (
+                  <span>Default quantity exceeds current stock for one or more items.</span>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={styles.formActions}>
+            <button type="button" style={styles.secondaryBtn} onClick={addServiceKitItem} disabled={serviceKitRowInputsDisabled}>Add Item</button>
+            <button type="button" style={styles.saveBtn} onClick={saveServiceKit} disabled={kitSaveDisabled}>Save Service Kit</button>
+          </div>
+        </FormOverlay>
+      )}
+
+      {removeKitItemIndex !== null && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          background: 'rgba(15,23,42,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: '32px 36px',
+            maxWidth: 380, width: '92%', boxShadow: '0 16px 40px rgba(15,23,42,0.18)',
+            textAlign: 'center',
+          }}>
+            <p style={{ fontSize: 16, fontWeight: 600, color: '#1e293b', marginBottom: 8 }}>
+              Remove Item
+            </p>
+            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28 }}>
+              Do you want to remove this item?
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                type="button"
+                style={{ ...styles.secondaryBtn, minWidth: 100 }}
+                onClick={() => setRemoveKitItemIndex(null)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.saveBtn, minWidth: 120 }}
+                onClick={() => { removeServiceKitItem(removeKitItemIndex); setRemoveKitItemIndex(null); }}
+              >
+                Yes, Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showServiceKitHistory && (
+        <div
+          style={styles.modal}
+          onClick={(e) => { if (e.target === e.currentTarget) closeServiceKitHistory(); }}
+        >
+          <div style={{
+            background: '#fff',
+            borderRadius: 22,
+            width: '96%',
+            maxWidth: 960,
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 22px 50px rgba(15,23,42,0.2)',
+            boxSizing: 'border-box',
+            overflow: 'hidden',
+          }}>
+            {/* Sticky header — never scrolls away */}
+            <div style={{
+              padding: '22px 28px 16px',
+              borderBottom: '1px solid #edf0f5',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              flexShrink: 0,
+            }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 20, color: '#0f172a', fontFamily: 'Arial, sans-serif' }}>Service Kit History</h2>
+                <p style={{ margin: '4px 0 0', fontSize: 14, color: '#64748b', fontFamily: 'Arial, sans-serif' }}>
+                  Changes to service kit configurations across all branches.
+                </p>
+              </div>
+              <button type="button" onClick={closeServiceKitHistory} style={{ ...styles.secondaryBtn, height: 36, padding: '0 16px', fontSize: 13, flexShrink: 0, marginLeft: 12 }}>
+                X
+              </button>
+            </div>
+
+            {/* Scrollable body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 28px 24px' }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 14 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160, flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Branch</span>
+                  <select
+                    value={serviceKitHistoryFilters.branchId}
+                    onChange={(e) => setServiceKitHistoryFilters((prev) => ({ ...prev, branchId: e.target.value }))}
+                    style={styles.formInput}
+                  >
+                    <option value="">All Branches</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.address || b.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160, flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>From</span>
+                  <input
+                    type="date"
+                    value={serviceKitHistoryFilters.startDate}
+                    max={serviceKitHistoryFilters.endDate || ''}
+                    onChange={(e) => setServiceKitHistoryFilters((prev) => ({ ...prev, startDate: e.target.value }))}
+                    style={styles.formInput}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160, flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>To</span>
+                  <input
+                    type="date"
+                    value={serviceKitHistoryFilters.endDate}
+                    min={serviceKitHistoryFilters.startDate || ''}
+                    onChange={(e) => setServiceKitHistoryFilters((prev) => ({ ...prev, endDate: e.target.value }))}
+                    style={styles.formInput}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  style={{ ...styles.secondaryBtn, height: 48 }}
+                  onClick={() => setServiceKitHistoryFilters({ startDate: '', endDate: '', branchId: '' })}
+                >
+                  Clear
+                </button>
+
+                <button
+                  type="button"
+                  style={{ ...styles.saveBtn, height: 48 }}
+                  onClick={() => loadServiceKitHistory()}
+                >
+                  Apply
+                </button>
+              </div>
+
+              {serviceKitHistoryError && (
+                <p style={{ color: '#b91c1c', fontSize: 13, marginBottom: 10 }}>{serviceKitHistoryError}</p>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {serviceKitHistoryLoading ? (
+                  <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, padding: '24px 0', fontFamily: 'Arial, sans-serif' }}>
+                    Loading service kit history...
+                  </p>
+                ) : serviceKitHistoryRows.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14, padding: '24px 0', fontFamily: 'Arial, sans-serif' }}>
+                    No service kit history records found.
+                  </p>
+                ) : (
+                  serviceKitHistoryRows.map((row) => (
+                    <div key={row.id} style={{
+                      background: '#fff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 14,
+                      padding: '18px 20px',
+                      boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
+                      fontFamily: 'Arial, sans-serif',
+                    }}>
+                      {/* Card header: service name + status badge */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{row.service_name}</span>
+                        <span style={{
+                          ...styles.statusBadge,
+                          background: row.status === 'Added' ? '#dcfce7' : '#dbeafe',
+                          color: row.status === 'Added' ? '#15803d' : '#1d4ed8',
+                          flexShrink: 0,
+                          marginLeft: 12,
+                        }}>
+                          {row.status}
+                        </span>
+                      </div>
+
+                      {/* Metadata row */}
+                      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 13, color: '#64748b', marginBottom: 12 }}>
+                        <span><span style={{ fontWeight: 600, color: '#475569' }}>Branch:</span> {row.branch_address || '—'}</span>
+                        <span><span style={{ fontWeight: 600, color: '#475569' }}>Updated By:</span> {row.changed_by || '—'}</span>
+                        <span><span style={{ fontWeight: 600, color: '#475569' }}>Date:</span> {row.changed_at
+                          ? new Date(row.changed_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
+                          : '—'}
+                        </span>
+                      </div>
+
+                      {/* Divider */}
+                      <div style={{ borderTop: '1px solid #f1f5f9', marginBottom: 12 }} />
+
+                      {/* Kit items as pills */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {row.items.length === 0
+                          ? <span style={{ color: '#94a3b8', fontSize: 13 }}>No items</span>
+                          : row.items.map((item, i) => (
+                              <span key={i} style={{
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 8,
+                                padding: '4px 12px',
+                                fontSize: 13,
+                                color: '#1e293b',
+                              }}>
+                                <span style={{ fontWeight: 600 }}>{item.item_name}</span>
+                                {' '}
+                                <span style={{ color: '#94a3b8' }}>({item.category})</span>
+                                <span style={{ color: '#475569' }}>{' ×'}{item.default_quantity}</span>
+                              </span>
+                            ))
+                        }
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {activeOverlay === 'users' && (

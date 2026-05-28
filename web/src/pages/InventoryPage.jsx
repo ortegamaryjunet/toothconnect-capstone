@@ -270,6 +270,7 @@ export default function InventoryPage() {
   const [usageHistoryLoading, setUsageHistoryLoading] = useState(false);
   const [usageHistoryError, setUsageHistoryError] = useState('');
   const [usageHistoryRows, setUsageHistoryRows] = useState([]);
+  const [usageHistorySearch, setUsageHistorySearch] = useState('');
   const [isUsageClearRangePressed, setIsUsageClearRangePressed] = useState(false);
   const [usageHistoryFilters, setUsageHistoryFilters] = useState({
     startDate: '',
@@ -582,6 +583,14 @@ export default function InventoryPage() {
       (row) => Number(row.branch_id) === branchId
     );
   }, [expenseForm.branchId, expenseForm.category, expenseInventoryRows]);
+
+  const filteredUsageHistoryRows = useMemo(() => {
+    const keyword = String(usageHistorySearch || '').trim().toLowerCase();
+    if (!keyword) return usageHistoryRows;
+    return usageHistoryRows.filter((row) =>
+      String(row?.item_name || '').toLowerCase().includes(keyword)
+    );
+  }, [usageHistoryRows, usageHistorySearch]);
 
   const expenseSupplierOptions = useMemo(
     () => uniqueSortedNames(selectedExpenseInventoryRows, 'supplier'),
@@ -2318,6 +2327,19 @@ export default function InventoryPage() {
               </button>
             </div>
 
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ ...styles.formGroup, marginBottom: 0 }}>
+                <span style={styles.formLabel}>Search Item Name</span>
+                <input
+                  type="text"
+                  value={usageHistorySearch}
+                  onChange={(e) => setUsageHistorySearch(e.target.value)}
+                  placeholder="Search deducted item name"
+                  style={styles.formInput}
+                />
+              </label>
+            </div>
+
             {usageHistoryError && (
               <p style={{ ...styles.tableSubtitle, color: '#b91c1c', marginBottom: 10 }}>
                 {usageHistoryError}
@@ -2346,14 +2368,14 @@ export default function InventoryPage() {
                         Loading usage history...
                       </td>
                     </tr>
-                  ) : usageHistoryRows.length === 0 ? (
+                  ) : filteredUsageHistoryRows.length === 0 ? (
                     <tr>
                       <td colSpan={9} style={styles.emptyRow}>
-                        No usage history records found.
+                        No usage history records found matching your search.
                       </td>
                     </tr>
                   ) : (
-                    usageHistoryRows.map((row) => (
+                    filteredUsageHistoryRows.map((row) => (
                       <tr key={row.id} style={styles.tableRow}>
                         <td style={styles.tableCell}>{String(row.type || '').toUpperCase()}</td>
                         <td style={{ ...styles.tableCell, fontWeight: 700 }}>{fallback(row.item_name)}</td>
