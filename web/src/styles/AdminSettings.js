@@ -379,6 +379,132 @@
       boxSizing: 'border-box',
     },
 
+    websiteFieldRow: {
+      marginBottom: 14,
+    },
+
+    websiteFieldLabel: {
+      display: 'block',
+      fontSize: 13,
+      color: '#1e3a8a',
+      fontWeight: 700,
+      marginBottom: 6,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    websiteDesignBox: {
+      margin: '18px 0',
+      padding: isMobile ? 14 : 16,
+      borderRadius: 16,
+      border: '1px solid #e5e7eb',
+      background: '#fffaf0',
+      boxSizing: 'border-box',
+    },
+
+    websiteDesignTitle: {
+      margin: '0 0 14px',
+      color: '#8b6508',
+      fontSize: 15,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    websiteTextarea: {
+      minHeight: 92,
+      resize: 'vertical',
+      width: '100%',
+      paddingTop: 12,
+      lineHeight: 1.5,
+      boxSizing: 'border-box',
+    },
+
+    websiteAppearanceGrid: {
+      display: 'grid',
+      gridTemplateColumns: isSmallScreen ? '1fr' : '280px minmax(0, 1fr)',
+      gap: 20,
+      alignItems: 'start',
+    },
+
+    websiteLogoCard: {
+      border: '1px solid #e5e7eb',
+      borderRadius: 18,
+      padding: 16,
+      background: '#f8fafc',
+      boxSizing: 'border-box',
+    },
+
+    websiteLogoPreviewBox: {
+      width: '100%',
+      minHeight: 180,
+      borderRadius: 16,
+      border: '1px dashed #d4af37',
+      background: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      boxSizing: 'border-box',
+      marginBottom: 14,
+    },
+
+    websiteLogoPreview: {
+      maxWidth: '90%',
+      maxHeight: 150,
+      objectFit: 'contain',
+      display: 'block',
+    },
+
+    websiteLogoPlaceholder: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      color: '#94a3b8',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      textAlign: 'center',
+    },
+
+    websiteLogoPlaceholderIcon: {
+      fontSize: 34,
+      color: '#d4af37',
+    },
+
+    websiteUploadBox: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+    },
+
+    fileInput: {
+      width: '100%',
+      border: '1px solid #dbe3ef',
+      borderRadius: 12,
+      padding: 10,
+      background: '#ffffff',
+      color: '#334155',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+    },
+
+    websiteUploadHint: {
+      margin: 0,
+      fontSize: 12,
+      color: '#64748b',
+      lineHeight: 1.5,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    websiteAppearanceFields: {
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+      columnGap: 16,
+      rowGap: 2,
+      minWidth: 0,
+    },
+
     tableCard: {
       background: '#ffffff',
       border: '1px solid #e5e7eb',
@@ -811,7 +937,6 @@
     modalIconText: {
       fontSize: 30,
       lineHeight: 1,
-
     },
 
     modalTitle: {
@@ -851,13 +976,71 @@
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
       color: 'black',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
+    },
+
+    validationModalOverlay: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 10000,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    validationModalContent: {
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
+      background: '#ffffff',
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
+    },
+
+    validationModalTitle: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    validationModalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
+    },
+
+    validationModalText: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
+    },
+
+    validationModalButton: {
+      width: '100%',
+      height: 38,
+      border: 'none',
+      borderRadius: 8,
+      background: '#d4af37',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
     },
 
     notificationBadge: {

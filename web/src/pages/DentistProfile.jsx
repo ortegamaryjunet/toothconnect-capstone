@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 import api from '../api/axios';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
@@ -45,7 +47,13 @@ export default function DentistProfile() {
 
   const [previousWork, setPreviousWork] = useState([]);
   const [showWorkModal, setShowWorkModal] = useState(false);
-  const [workForm, setWorkForm] = useState({ company_name: '', position: '', start_month: '', end_month: '', reason_for_leaving: '' });
+  const [workForm, setWorkForm] = useState({
+    company_name: '',
+    position: '',
+    start_month: '',
+    end_month: '',
+    reason_for_leaving: '',
+  });
   const [savingWork, setSavingWork] = useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
@@ -83,6 +91,7 @@ export default function DentistProfile() {
       try {
         const res = await api.get('/auth/staff-profile/me');
         const mappedProfile = staffProfileToDentistProfile(res.data.profile);
+
         setProfileId(res.data.profile.profileId);
         setProfile(mappedProfile);
         setEditForm(mappedProfile);
@@ -103,8 +112,9 @@ export default function DentistProfile() {
   }, []);
 
   function loadPreviousWork() {
-    api.get('/auth/staff-profile/me/previous-work')
-      .then(res => setPreviousWork(res.data.previousWork || []))
+    api
+      .get('/auth/staff-profile/me/previous-work')
+      .then((res) => setPreviousWork(res.data.previousWork || []))
       .catch(() => {});
   }
 
@@ -200,7 +210,13 @@ export default function DentistProfile() {
   }
 
   function openWorkModal() {
-    setWorkForm({ company_name: '', position: '', start_month: '', end_month: '', reason_for_leaving: '' });
+    setWorkForm({
+      company_name: '',
+      position: '',
+      start_month: '',
+      end_month: '',
+      reason_for_leaving: '',
+    });
     setShowWorkModal(true);
   }
 
@@ -209,13 +225,20 @@ export default function DentistProfile() {
   }
 
   function handleWorkOverlayClick(event) {
-    if (event.target === event.currentTarget) closeWorkModal();
+    if (event.target === event.currentTarget) {
+      closeWorkModal();
+    }
   }
 
   async function handleAddWork(event) {
     event.preventDefault();
-    if (!workForm.company_name.trim()) return;
+
+    if (!workForm.company_name.trim()) {
+      return;
+    }
+
     setSavingWork(true);
+
     try {
       await api.post('/auth/staff-profile/me/previous-work', {
         company_name: workForm.company_name.trim(),
@@ -224,6 +247,7 @@ export default function DentistProfile() {
         end_month: workForm.end_month || null,
         reason_for_leaving: workForm.reason_for_leaving.trim() || null,
       });
+
       loadPreviousWork();
       closeWorkModal();
     } catch (err) {
@@ -234,19 +258,29 @@ export default function DentistProfile() {
   }
 
   async function handleDeleteWork(id) {
-    if (!window.confirm('Remove this work history entry?')) return;
+    if (!window.confirm('Remove this work history entry?')) {
+      return;
+    }
+
     try {
       await api.delete(`/auth/staff-profile/me/previous-work/${id}`);
-      setPreviousWork(prev => prev.filter(w => w.id !== id));
+      setPreviousWork((prev) => prev.filter((work) => work.id !== id));
     } catch {
       loadPreviousWork();
     }
   }
 
   function formatWorkMonth(dateStr) {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!dateStr) {
+      return '';
+    }
+
+    const date = new Date(dateStr);
+
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    });
   }
 
   function handleEditChange(name, value) {
@@ -268,8 +302,13 @@ export default function DentistProfile() {
     setProfileError('');
 
     try {
-      const res = await api.patch('/auth/staff-profile/me', dentistProfileToStaffPayload(nextProfile));
+      const res = await api.patch(
+        '/auth/staff-profile/me',
+        dentistProfileToStaffPayload(nextProfile)
+      );
+
       const mappedProfile = staffProfileToDentistProfile(res.data.profile);
+
       setProfileId(res.data.profile.profileId || profileId);
       setProfile(mappedProfile);
       setEditForm(mappedProfile);
@@ -284,6 +323,260 @@ export default function DentistProfile() {
     }
   }
 
+  function exportProfileToPDF() {
+    const doc = new jsPDF('p', 'mm', 'a4');
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const generatedDate = new Date().toLocaleString('en-PH');
+
+    function safeValue(value) {
+      if (value === null || value === undefined || value === '') {
+        return 'N/A';
+      }
+
+      return String(value);
+    }
+
+    function drawHeader() {
+      doc.setFillColor(255, 248, 220);
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      doc.setFillColor(139, 101, 8);
+      doc.rect(0, 0, pageWidth, 28, 'F');
+
+      doc.setFillColor(212, 175, 55);
+      doc.rect(0, 28, pageWidth, 3, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('Smile Empress Dental Hub', 14, 12);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Dentist Profile Report', 14, 20);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('ToothConnect', pageWidth - 14, 12, {
+        align: 'right',
+      });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`Generated: ${generatedDate}`, pageWidth - 14, 20, {
+        align: 'right',
+      });
+    }
+
+    function drawFooter() {
+      doc.setDrawColor(212, 175, 55);
+      doc.setLineWidth(0.3);
+      doc.line(14, pageHeight - 15, pageWidth - 14, pageHeight - 15);
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.text('Generated by ToothConnect', 14, pageHeight - 9);
+      doc.text(
+        `Page ${doc.internal.getCurrentPageInfo().pageNumber}`,
+        pageWidth - 14,
+        pageHeight - 9,
+        { align: 'right' }
+      );
+    }
+
+    function drawSectionTitle(title, yPosition) {
+      doc.setFillColor(254, 243, 199);
+      doc.roundedRect(14, yPosition, pageWidth - 28, 9, 2, 2, 'F');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(title, 18, yPosition + 6);
+
+      return yPosition + 13;
+    }
+
+    function addSection(title, rows, startY) {
+      let yPosition = startY;
+
+      if (yPosition > pageHeight - 45) {
+        doc.addPage();
+        drawHeader();
+        yPosition = 40;
+      }
+
+      yPosition = drawSectionTitle(title, yPosition);
+
+      autoTable(doc, {
+        startY: yPosition,
+        theme: 'grid',
+        head: [['Field', 'Details']],
+        body: rows,
+        margin: {
+          left: 14,
+          right: 14,
+        },
+        styles: {
+          font: 'helvetica',
+          fontSize: 9,
+          cellPadding: 3,
+          textColor: [15, 23, 42],
+          lineColor: [229, 231, 235],
+          lineWidth: 0.25,
+          valign: 'middle',
+        },
+        headStyles: {
+          fillColor: [212, 175, 55],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [255, 253, 242],
+        },
+        columnStyles: {
+          0: {
+            cellWidth: 60,
+            fontStyle: 'bold',
+            textColor: [51, 65, 85],
+          },
+          1: {
+            cellWidth: 'auto',
+          },
+        },
+        didDrawPage() {
+          drawFooter();
+        },
+      });
+
+      return doc.lastAutoTable.finalY + 8;
+    }
+
+    drawHeader();
+
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(14, 39, pageWidth - 28, 29, 3, 3, 'F');
+
+    doc.setFillColor(212, 175, 55);
+    doc.circle(26, 53.5, 9, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text(avatarLetter, 26, 57, {
+      align: 'center',
+    });
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text(safeValue(profile.fullName), 40, 50);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Dentist Profile', 40, 58);
+    doc.text(`Profile ID: ${safeValue(profileId)}`, 40, 64);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(139, 101, 8);
+    doc.text(`Specialization: ${safeValue(profile.specialization)}`, pageWidth - 20, 58, {
+      align: 'right',
+    });
+    doc.text(`Experience: ${safeValue(profile.yearsOfExperience)}`, pageWidth - 20, 64, {
+      align: 'right',
+    });
+
+    let nextY = 76;
+
+    nextY = addSection(
+      'Profile Summary',
+      [
+        ['Full Name', safeValue(profile.fullName)],
+        ['Specialization', safeValue(profile.specialization)],
+        ['Medical Degree', safeValue(profile.medicalDegree)],
+        ['Medical License Number', safeValue(profile.medicalLicenseNumber)],
+        ['Years of Experience', safeValue(profile.yearsOfExperience)],
+        ['Employment Type', safeValue(profile.employmentType)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Personal Information',
+      [
+        ['Full Name', safeValue(profile.fullName)],
+        ['Preferred Nickname', safeValue(profile.preferredNickname)],
+        ['Suffix', safeValue(displaySuffix)],
+        ['Birthday', safeValue(profile.birthday)],
+        ['Age', safeValue(age)],
+        ['Religion', safeValue(profile.religion)],
+        ['Nationality', safeValue(profile.nationality)],
+        ['Home Address', safeValue(profile.homeAddress)],
+        ['Contact Number', safeValue(profile.contactNumber)],
+        ['Email Address', safeValue(profile.emailAddress)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Work Details',
+      [
+        ['Specialization', safeValue(profile.specialization)],
+        ['Start Date', safeValue(profile.startDate)],
+        ['Employment Type', safeValue(profile.employmentType)],
+        ['Shift Type', safeValue(profile.shiftType)],
+        ['Work Schedule Days', safeValue(profile.workScheduleDays)],
+        ['Work Hours', safeValue(profile.workHours)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Professional Information',
+      [
+        ['Medical Degree', safeValue(profile.medicalDegree)],
+        ['Medical License Number', safeValue(profile.medicalLicenseNumber)],
+        ['Specialization', safeValue(profile.specialization)],
+        ['Years of Experience', safeValue(profile.yearsOfExperience)],
+      ],
+      nextY
+    );
+
+    const previousWorkRows =
+      previousWork.length === 0
+        ? [['Previous Work', 'No previous work found.']]
+        : previousWork.map((entry, index) => [
+            `Work ${index + 1}`,
+            [
+              `Company: ${safeValue(entry.company_name)}`,
+              `Position: ${safeValue(entry.position)}`,
+              `Period: ${entry.start_month ? formatWorkMonth(entry.start_month) : 'N/A'}${
+                entry.end_month
+                  ? ` - ${formatWorkMonth(entry.end_month)}`
+                  : ' - Present'
+              }`,
+              `Reason for Leaving: ${safeValue(entry.reason_for_leaving)}`,
+            ].join('\n'),
+          ]);
+
+    nextY = addSection('Previous Work History', previousWorkRows, nextY);
+
+    const totalPdfPages = doc.internal.getNumberOfPages();
+
+    for (let page = 1; page <= totalPdfPages; page += 1) {
+      doc.setPage(page);
+      drawFooter();
+    }
+
+    doc.save('dentist_profile_report.pdf');
+  }
+
   return (
     <div style={styles.page}>
       <aside style={styles.sidebar}>
@@ -293,7 +586,10 @@ export default function DentistProfile() {
 
         <nav style={styles.menu}>
           <Link to="/dentist" style={styles.menuItem}>
-            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
+            <i
+              className="fi fi-rr-chart-histogram"
+              style={styles.menuItemIcon}
+            ></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
@@ -369,9 +665,7 @@ export default function DentistProfile() {
         </header>
 
         <main style={styles.mainContent}>
-          {profileError && (
-            <div style={styles.errorBanner}>{profileError}</div>
-          )}
+          {profileError && <div style={styles.errorBanner}>{profileError}</div>}
 
           <section style={styles.heroCard}>
             <div>
@@ -393,221 +687,320 @@ export default function DentistProfile() {
           </section>
 
           {loadingProfile ? (
-            <div style={{ textAlign: 'center', padding: '80px 0', color: '#64748b', fontSize: '15px' }}>
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '80px 0',
+                color: '#64748b',
+                fontSize: '15px',
+              }}
+            >
               <i className="fi fi-rr-spinner" style={{ marginRight: 8 }}></i>
               Loading profile...
             </div>
           ) : (
             <>
-          <section style={styles.profileHeader}>
-            <div style={styles.profileLeft}>
-              <div style={styles.profileAvatar}>{avatarLetter}</div>
+              <section style={styles.profileHeader}>
+                <div style={styles.profileLeft}>
+                  <div style={styles.profileAvatar}>{avatarLetter}</div>
 
-              <div>
-                <h1 style={styles.profileName}>{profile.fullName}</h1>
-                <p style={styles.profileSubtext}>Dentist Profile</p>
-              </div>
-            </div>
+                  <div>
+                    <h1 style={styles.profileName}>{profile.fullName}</h1>
+                    <p style={styles.profileSubtext}>Dentist Profile</p>
+                  </div>
+                </div>
 
-            <button
-              type="button"
-              style={styles.editBtn}
-              onClick={openEditModal}
-            >
-              <i className="fi fi-rr-edit"></i>
-              Edit Profile
-            </button>
-          </section>
+                <div style={styles.profileActions}>
+                  <button
+                    type="button"
+                    style={styles.editBtn}
+                    onClick={openEditModal}
+                  >
+                    <i className="fi fi-rr-edit"></i>
+                    Edit Profile
+                  </button>
 
-          <section style={styles.profileGrid}>
-            <div style={styles.card}>
-              <CardTitle
-                styles={styles}
-                icon="fi fi-rr-user"
-                title="Personal Information"
-              />
+                  <button
+                    type="button"
+                    style={styles.pdfBtn}
+                    onClick={exportProfileToPDF}
+                  >
+                    <i className="fi fi-rr-file-pdf" style={styles.pdfBtnIcon}></i>
+                    PDF
+                  </button>
+                </div>
+              </section>
 
-              <div style={styles.infoGrid}>
-                <InfoItem
-                  styles={styles}
-                  label="Full Name"
-                  value={profile.fullName}
-                />
+              <section style={styles.profileGrid}>
+                <div style={styles.card}>
+                  <CardTitle
+                    styles={styles}
+                    icon="fi fi-rr-user"
+                    title="Personal Information"
+                  />
 
-                <InfoItem
-                  styles={styles}
-                  label="Preferred Nickname"
-                  value={profile.preferredNickname}
-                />
+                  <div style={styles.infoGrid}>
+                    <InfoItem
+                      styles={styles}
+                      label="Full Name"
+                      value={profile.fullName}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Suffix"
-                  value={displaySuffix}
-                />
+                    <InfoItem
+                      styles={styles}
+                      label="Preferred Nickname"
+                      value={profile.preferredNickname}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Birthday"
-                  value={profile.birthday || 'N/A'}
-                />
+                    <InfoItem
+                      styles={styles}
+                      label="Suffix"
+                      value={displaySuffix}
+                    />
 
-                <InfoItem styles={styles} label="Age" value={age} />
+                    <InfoItem
+                      styles={styles}
+                      label="Birthday"
+                      value={profile.birthday || 'N/A'}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Religion"
-                  value={profile.religion}
-                />
+                    <InfoItem styles={styles} label="Age" value={age} />
 
-                <InfoItem
-                  styles={styles}
-                  label="Nationality"
-                  value={profile.nationality}
-                />
+                    <InfoItem
+                      styles={styles}
+                      label="Religion"
+                      value={profile.religion}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Home Address"
-                  value={profile.homeAddress}
-                  full
-                />
+                    <InfoItem
+                      styles={styles}
+                      label="Nationality"
+                      value={profile.nationality}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Contact Number"
-                  value={profile.contactNumber}
-                />
+                    <InfoItem
+                      styles={styles}
+                      label="Home Address"
+                      value={profile.homeAddress}
+                      full
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Email Address"
-                  value={profile.emailAddress}
-                />
-              </div>
-            </div>
+                    <InfoItem
+                      styles={styles}
+                      label="Contact Number"
+                      value={profile.contactNumber}
+                    />
 
-            <div style={styles.card}>
-              <CardTitle
-                styles={styles}
-                icon="fi fi-rr-calendar-clock"
-                title="Work Details"
-              />
+                    <InfoItem
+                      styles={styles}
+                      label="Email Address"
+                      value={profile.emailAddress}
+                    />
+                  </div>
+                </div>
 
-              <div style={styles.infoGrid}>
-                <InfoItem
-                  styles={styles}
-                  label="Specialization"
-                  value={profile.specialization}
-                />
+                <div style={styles.card}>
+                  <CardTitle
+                    styles={styles}
+                    icon="fi fi-rr-calendar-clock"
+                    title="Work Details"
+                  />
 
-                <InfoItem
-                  styles={styles}
-                  label="Start Date"
-                  value={profile.startDate}
-                />
+                  <div style={styles.infoGrid}>
+                    <InfoItem
+                      styles={styles}
+                      label="Specialization"
+                      value={profile.specialization}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Employment Type"
-                  value={profile.employmentType}
-                />
+                    <InfoItem
+                      styles={styles}
+                      label="Start Date"
+                      value={profile.startDate}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Shift Type"
-                  value={profile.shiftType}
-                />
+                    <InfoItem
+                      styles={styles}
+                      label="Employment Type"
+                      value={profile.employmentType}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Work Schedule Days"
-                  value={profile.workScheduleDays}
-                  full
-                />
+                    <InfoItem
+                      styles={styles}
+                      label="Shift Type"
+                      value={profile.shiftType}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Work Hours"
-                  value={profile.workHours}
-                />
-              </div>
-            </div>
+                    <InfoItem
+                      styles={styles}
+                      label="Work Schedule Days"
+                      value={profile.workScheduleDays}
+                      full
+                    />
 
-            <div style={{ ...styles.card, ...styles.fullCard }}>
-              <CardTitle
-                styles={styles}
-                icon="fi fi-rr-briefcase"
-                title="Professional Information"
-              />
+                    <InfoItem
+                      styles={styles}
+                      label="Work Hours"
+                      value={profile.workHours}
+                    />
+                  </div>
+                </div>
 
-              <div style={styles.infoGridFour}>
-                <InfoItem
-                  styles={styles}
-                  label="Medical Degree"
-                  value={profile.medicalDegree}
-                />
+                <div style={{ ...styles.card, ...styles.fullCard }}>
+                  <CardTitle
+                    styles={styles}
+                    icon="fi fi-rr-briefcase"
+                    title="Professional Information"
+                  />
 
-                <InfoItem
-                  styles={styles}
-                  label="Medical License Number"
-                  value={profile.medicalLicenseNumber}
-                />
+                  <div style={styles.infoGridFour}>
+                    <InfoItem
+                      styles={styles}
+                      label="Medical Degree"
+                      value={profile.medicalDegree}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Specialization"
-                  value={profile.specialization}
-                />
+                    <InfoItem
+                      styles={styles}
+                      label="Medical License Number"
+                      value={profile.medicalLicenseNumber}
+                    />
 
-                <InfoItem
-                  styles={styles}
-                  label="Years of Experience"
-                  value={profile.yearsOfExperience}
-                />
-              </div>
+                    <InfoItem
+                      styles={styles}
+                      label="Specialization"
+                      value={profile.specialization}
+                    />
 
-              <div style={{ ...styles.subTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                Previous Work
-                <button
-                  type="button"
-                  onClick={openWorkModal}
-                  style={{ fontSize: 13, padding: '6px 14px', borderRadius: 10, border: 'none', background: '#b8860b', color: '#fff', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontWeight: 600 }}
-                >
-                  + Add
-                </button>
-              </div>
+                    <InfoItem
+                      styles={styles}
+                      label="Years of Experience"
+                      value={profile.yearsOfExperience}
+                    />
+                  </div>
 
-              {previousWork.length === 0 ? (
-                <div style={styles.emptyBox}>No previous work found.</div>
-              ) : (
-                previousWork.map((entry) => (
-                  <div key={entry.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', fontFamily: 'Arial, sans-serif' }}>{entry.company_name}</div>
-                      {entry.position && <div style={{ fontSize: 13, color: '#475569', marginTop: 2, fontFamily: 'Arial, sans-serif' }}>{entry.position}</div>}
-                      {(entry.start_month || entry.end_month) && (
-                        <div style={{ fontSize: 13, color: '#64748b', marginTop: 2, fontFamily: 'Arial, sans-serif' }}>
-                          {formatWorkMonth(entry.start_month)}{entry.end_month ? ` – ${formatWorkMonth(entry.end_month)}` : ' – Present'}
-                        </div>
-                      )}
-                      {entry.reason_for_leaving && (
-                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4, fontFamily: 'Arial, sans-serif' }}>Reason: {entry.reason_for_leaving}</div>
-                      )}
-                    </div>
+                  <div
+                    style={{
+                      ...styles.subTitle,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    Previous Work
+
                     <button
                       type="button"
-                      onClick={() => handleDeleteWork(entry.id)}
-                      style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 16, padding: 4 }}
-                      title="Remove"
+                      onClick={openWorkModal}
+                      style={{
+                        fontSize: 13,
+                        padding: '6px 14px',
+                        borderRadius: 10,
+                        border: 'none',
+                        background: '#b8860b',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        fontFamily: 'Arial, sans-serif',
+                        fontWeight: 600,
+                      }}
                     >
-                      <i className="fi fi-rr-trash"></i>
+                      + Add
                     </button>
                   </div>
-                ))
-              )}
-            </div>
-          </section>
+
+                  {previousWork.length === 0 ? (
+                    <div style={styles.emptyBox}>No previous work found.</div>
+                  ) : (
+                    previousWork.map((entry) => (
+                      <div
+                        key={entry.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 12,
+                          padding: '14px 16px',
+                          marginBottom: 10,
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 14,
+                              color: '#0f172a',
+                              fontFamily: 'Arial, sans-serif',
+                            }}
+                          >
+                            {entry.company_name}
+                          </div>
+
+                          {entry.position && (
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: '#475569',
+                                marginTop: 2,
+                                fontFamily: 'Arial, sans-serif',
+                              }}
+                            >
+                              {entry.position}
+                            </div>
+                          )}
+
+                          {(entry.start_month || entry.end_month) && (
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: '#64748b',
+                                marginTop: 2,
+                                fontFamily: 'Arial, sans-serif',
+                              }}
+                            >
+                              {formatWorkMonth(entry.start_month)}
+                              {entry.end_month
+                                ? ` - ${formatWorkMonth(entry.end_month)}`
+                                : ' - Present'}
+                            </div>
+                          )}
+
+                          {entry.reason_for_leaving && (
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: '#94a3b8',
+                                marginTop: 4,
+                                fontFamily: 'Arial, sans-serif',
+                              }}
+                            >
+                              Reason: {entry.reason_for_leaving}
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteWork(entry.id)}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            fontSize: 16,
+                            padding: 4,
+                          }}
+                          title="Remove"
+                        >
+                          <i className="fi fi-rr-trash"></i>
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
             </>
           )}
         </main>
@@ -664,6 +1057,7 @@ export default function DentistProfile() {
                     style={styles.formInput}
                   >
                     <option value="">None</option>
+
                     {SUFFIX_OPTIONS.map((suffix) => (
                       <option key={suffix} value={suffix}>
                         {suffix}
@@ -895,59 +1289,108 @@ export default function DentistProfile() {
           <div style={{ ...styles.editModalBox, maxWidth: 520 }}>
             <div style={styles.editModalHeader}>
               <h2 style={styles.editModalTitle}>Add Work History</h2>
-              <button type="button" style={styles.modalClose} onClick={closeWorkModal}>
+
+              <button
+                type="button"
+                style={styles.modalClose}
+                onClick={closeWorkModal}
+              >
                 <i className="fi fi-rr-cross-small"></i>
               </button>
             </div>
+
             <form style={styles.editForm} onSubmit={handleAddWork}>
               <div style={styles.formGrid}>
                 <FormGroup styles={styles} label="Company Name *" full>
                   <input
                     type="text"
                     value={workForm.company_name}
-                    onChange={e => setWorkForm(f => ({ ...f, company_name: e.target.value }))}
+                    onChange={(event) =>
+                      setWorkForm((form) => ({
+                        ...form,
+                        company_name: event.target.value,
+                      }))
+                    }
                     style={styles.formInput}
                     required
                   />
                 </FormGroup>
+
                 <FormGroup styles={styles} label="Position">
                   <input
                     type="text"
                     value={workForm.position}
-                    onChange={e => setWorkForm(f => ({ ...f, position: e.target.value }))}
+                    onChange={(event) =>
+                      setWorkForm((form) => ({
+                        ...form,
+                        position: event.target.value,
+                      }))
+                    }
                     style={styles.formInput}
                   />
                 </FormGroup>
+
                 <FormGroup styles={styles} label="Start Month">
                   <input
                     type="month"
                     value={workForm.start_month}
-                    onChange={e => setWorkForm(f => ({ ...f, start_month: e.target.value }))}
+                    onChange={(event) =>
+                      setWorkForm((form) => ({
+                        ...form,
+                        start_month: event.target.value,
+                      }))
+                    }
                     style={styles.formInput}
                   />
                 </FormGroup>
+
                 <FormGroup styles={styles} label="End Month">
                   <input
                     type="month"
                     value={workForm.end_month}
-                    onChange={e => setWorkForm(f => ({ ...f, end_month: e.target.value }))}
+                    onChange={(event) =>
+                      setWorkForm((form) => ({
+                        ...form,
+                        end_month: event.target.value,
+                      }))
+                    }
                     style={styles.formInput}
                   />
                 </FormGroup>
+
                 <FormGroup styles={styles} label="Reason for Leaving" full>
                   <input
                     type="text"
                     value={workForm.reason_for_leaving}
-                    onChange={e => setWorkForm(f => ({ ...f, reason_for_leaving: e.target.value }))}
+                    onChange={(event) =>
+                      setWorkForm((form) => ({
+                        ...form,
+                        reason_for_leaving: event.target.value,
+                      }))
+                    }
                     style={styles.formInput}
                   />
                 </FormGroup>
               </div>
+
               <div style={styles.editModalActions}>
-                <button type="submit" style={{ ...styles.saveBtn, ...(savingWork ? styles.disabledBtn : {}) }} disabled={savingWork}>
+                <button
+                  type="submit"
+                  style={{
+                    ...styles.saveBtn,
+                    ...(savingWork ? styles.disabledBtn : {}),
+                  }}
+                  disabled={savingWork}
+                >
                   {savingWork ? 'Saving...' : 'Save'}
                 </button>
-                <button type="button" style={styles.cancelEditBtn} onClick={closeWorkModal} disabled={savingWork}>
+
+                <button
+                  type="button"
+                  style={styles.cancelEditBtn}
+                  onClick={closeWorkModal}
+                  disabled={savingWork}
+                >
                   Cancel
                 </button>
               </div>
@@ -995,11 +1438,22 @@ export default function DentistProfile() {
 }
 
 function toDateInputValue(value) {
-  if (!value || value === 'N/A') return '';
+  if (!value || value === 'N/A') {
+    return '';
+  }
+
   const text = String(value);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text;
+  }
+
   const date = new Date(text);
-  if (Number.isNaN(date.getTime())) return '';
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
   return date.toISOString().slice(0, 10);
 }
 
@@ -1008,9 +1462,14 @@ function staffProfileToDentistProfile(staffProfile = {}) {
   const workEnd = staffProfile.workEndTime || '';
 
   return {
-    fullName: [staffProfile.firstName, staffProfile.middleName, staffProfile.lastName]
-      .filter(Boolean)
-      .join(' ') || initialProfile.fullName,
+    fullName:
+      [
+        staffProfile.firstName,
+        staffProfile.middleName,
+        staffProfile.lastName,
+      ]
+        .filter(Boolean)
+        .join(' ') || initialProfile.fullName,
     firstName: staffProfile.firstName || '',
     middleName: staffProfile.middleName || '',
     lastName: staffProfile.lastName || '',
@@ -1023,7 +1482,10 @@ function staffProfileToDentistProfile(staffProfile = {}) {
     contactNumber: staffProfile.contactNumber || 'N/A',
     emailAddress: staffProfile.email || 'N/A',
 
-    specialization: staffProfile.serviceNames || staffProfile.specialization || 'Specialization',
+    specialization:
+      staffProfile.serviceNames ||
+      staffProfile.specialization ||
+      'Specialization',
     startDate: toDateInputValue(staffProfile.startDate) || 'N/A',
     employmentType: staffProfile.employmentType || 'N/A',
     shiftType: staffProfile.shiftType || 'N/A',
@@ -1039,9 +1501,17 @@ function staffProfileToDentistProfile(staffProfile = {}) {
 }
 
 function splitFullName(profile) {
-  const parts = String(profile.fullName || '').trim().split(/\s+/).filter(Boolean);
+  const parts = String(profile.fullName || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
   if (parts.length <= 1) {
-    return { firstName: parts[0] || '', middleName: '', lastName: parts[0] || '' };
+    return {
+      firstName: parts[0] || '',
+      middleName: '',
+      lastName: parts[0] || '',
+    };
   }
 
   return {
@@ -1057,7 +1527,10 @@ function emptyIfNa(value) {
 
 function dentistProfileToStaffPayload(profile) {
   const nameParts = splitFullName(profile);
-  const [workStartTime, workEndTime] = String(profile.workHours || '').includes('-')
+
+  const [workStartTime, workEndTime] = String(profile.workHours || '').includes(
+    '-'
+  )
     ? profile.workHours.split('-').map((part) => part.trim())
     : [profile.workStartTime || '', profile.workEndTime || ''];
 
@@ -1068,7 +1541,10 @@ function dentistProfileToStaffPayload(profile) {
     nickname: emptyIfNa(profile.preferredNickname),
     suffix: profile.suffix || '',
     birthday: profile.birthday || null,
-    age: calculateAge(profile.birthday) === 'N/A' ? null : calculateAge(profile.birthday),
+    age:
+      calculateAge(profile.birthday) === 'N/A'
+        ? null
+        : calculateAge(profile.birthday),
     religion: emptyIfNa(profile.religion),
     nationality: emptyIfNa(profile.nationality),
     homeAddress: emptyIfNa(profile.homeAddress),
@@ -1089,11 +1565,15 @@ function dentistProfileToStaffPayload(profile) {
 }
 
 function calculateAge(dateValue) {
-  if (!dateValue || dateValue === 'N/A') return 'N/A';
+  if (!dateValue || dateValue === 'N/A') {
+    return 'N/A';
+  }
 
   const birthDate = new Date(dateValue);
 
-  if (Number.isNaN(birthDate.getTime())) return 'N/A';
+  if (Number.isNaN(birthDate.getTime())) {
+    return 'N/A';
+  }
 
   const today = new Date();
 

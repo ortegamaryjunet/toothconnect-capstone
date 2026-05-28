@@ -118,6 +118,25 @@ const initialAdminAccountForm = {
   created_at: '',
 };
 
+const WEBSITE_FONT_OPTIONS = [
+  'Arial, sans-serif',
+  'Inter, sans-serif',
+  'Poppins, sans-serif',
+  'Roboto, sans-serif',
+  'Montserrat, sans-serif',
+  'Georgia, serif',
+  'Times New Roman, serif',
+];
+
+const WEBSITE_FONT_SIZE_OPTIONS = ['12px', '13px', '14px', '15px', '16px', '18px', '20px', '24px', '28px', '32px', '36px', '42px', '48px'];
+
+const WEBSITE_ALIGNMENT_OPTIONS = [
+  { value: 'left', label: 'Left' },
+  { value: 'center', label: 'Center' },
+  { value: 'right', label: 'Right' },
+  { value: 'justify', label: 'Justify' },
+];
+
 export default function AdminSettings() {
   const location = useLocation();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -154,6 +173,7 @@ export default function AdminSettings() {
   const [websiteContentSaving, setWebsiteContentSaving] = useState(false);
   const [websiteContentEditing, setWebsiteContentEditing] = useState(false);
   const [websiteContentMsg, setWebsiteContentMsg] = useState({ text: '', type: '' });
+  const [websiteValidationModal, setWebsiteValidationModal] = useState(null);
   const [websiteFaqOverlay, setWebsiteFaqOverlay] = useState(null);
   const [websiteServiceOverlay, setWebsiteServiceOverlay] = useState(null);
   const [websiteAnnouncementOverlay, setWebsiteAnnouncementOverlay] = useState(null);
@@ -232,7 +252,7 @@ export default function AdminSettings() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay) {
+    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay || websiteValidationModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -241,7 +261,7 @@ export default function AdminSettings() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay]);
+  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay, websiteValidationModal]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -251,6 +271,7 @@ export default function AdminSettings() {
         setWebsiteFaqOverlay(null);
         setWebsiteServiceOverlay(null);
         setWebsiteAnnouncementOverlay(null);
+        setWebsiteValidationModal(null);
       }
     }
 
@@ -351,17 +372,53 @@ export default function AdminSettings() {
     }
   }
 
-  async function saveWebsiteContent(sectionFields) {
+  function showWebsiteValidationModal(title, message, type = 'error') {
+    setWebsiteValidationModal({
+      title,
+      message,
+      type,
+    });
+  }
+
+  function validateWebsiteFields(fields, requiredKeys = []) {
+    const missing = requiredKeys.filter((key) => !String(fields[key] || '').trim());
+
+    if (missing.length > 0) {
+      showWebsiteValidationModal(
+        'Required Fields Missing',
+        'Please complete all required website content fields before saving.'
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  async function saveWebsiteContent(sectionFields, requiredKeys = []) {
+    if (!validateWebsiteFields(sectionFields, requiredKeys)) {
+      return;
+    }
+
     setWebsiteContentSaving(true);
     setWebsiteContentMsg({ text: '', type: '' });
+
     try {
       const res = await api.put('/website/content', { fields: sectionFields });
       const updated = res.data.content || {};
+
       setWebsiteContent(updated);
       setWebsiteContentForm(updated);
-      setWebsiteContentMsg({ text: 'Content saved successfully.', type: 'success' });
+      setWebsiteContentEditing(false);
+      showWebsiteValidationModal(
+        'Content Saved',
+        'Website content has been updated successfully.',
+        'success'
+      );
     } catch (err) {
-      setWebsiteContentMsg({ text: err.response?.data?.message || 'Failed to save content.', type: 'error' });
+      showWebsiteValidationModal(
+        'Save Failed',
+        err.response?.data?.message || 'Failed to save website content.'
+      );
     } finally {
       setWebsiteContentSaving(false);
     }
@@ -378,7 +435,7 @@ export default function AdminSettings() {
       }
       setWebsiteFaqOverlay(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to save FAQ.');
+      showWebsiteValidationModal('Save Failed', err.response?.data?.message || 'Failed to save FAQ.');
     }
   }
 
@@ -388,7 +445,7 @@ export default function AdminSettings() {
       const res = await api.delete(`/website/faqs/${id}`);
       setWebsiteFaqs(res.data.faqs || []);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete FAQ.');
+      showWebsiteValidationModal('Delete Failed', err.response?.data?.message || 'Failed to delete FAQ.');
     }
   }
 
@@ -403,7 +460,7 @@ export default function AdminSettings() {
       }
       setWebsiteServiceOverlay(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to save service.');
+      showWebsiteValidationModal('Save Failed', err.response?.data?.message || 'Failed to save service.');
     }
   }
 
@@ -413,7 +470,7 @@ export default function AdminSettings() {
       const res = await api.delete(`/website/website-services/${id}`);
       setWebsiteServices(res.data.services || []);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete service.');
+      showWebsiteValidationModal('Delete Failed', err.response?.data?.message || 'Failed to delete service.');
     }
   }
 
@@ -428,7 +485,7 @@ export default function AdminSettings() {
       }
       setWebsiteAnnouncementOverlay(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to save announcement.');
+      showWebsiteValidationModal('Save Failed', err.response?.data?.message || 'Failed to save announcement.');
     }
   }
 
@@ -438,7 +495,7 @@ export default function AdminSettings() {
       const res = await api.delete(`/website/announcements/${id}`);
       setWebsiteAnnouncements(res.data.announcements || []);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete announcement.');
+      showWebsiteValidationModal('Delete Failed', err.response?.data?.message || 'Failed to delete announcement.');
     }
   }
 
@@ -910,43 +967,132 @@ export default function AdminSettings() {
     return styles.statusBadge;
   }
 
+  function handleWebsiteLogoFile(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setWebsiteContentForm((prev) => ({
+        ...prev,
+        website_logo_path: reader.result,
+        website_logo_file_name: file.name,
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  }
+
   function renderWebsitePanel() {
 
     const contentSectionBtnStyle = (active) => ({
       padding: '6px 14px',
       borderRadius: 8,
-      border: '1px solid #e2e8f0',
+      borderWidth: 1,
+      borderStyle: 'solid',
+      borderColor: active ? '#2563eb' : '#e2e8f0',
       background: active ? '#2563eb' : '#fff',
       color: active ? '#fff' : '#475569',
       cursor: 'pointer',
       fontSize: 13,
       fontWeight: active ? 600 : 400,
+      fontFamily: 'Arial, sans-serif',
     });
 
-    const fieldRow = (label, key, type = 'text') => (
-      <div key={key} style={{ marginBottom: 14 }}>
-        <label style={{ display: 'block', fontSize: 13, color: '#64748b', marginBottom: 4 }}>{label}</label>
-        {websiteContentEditing ? (
-          type === 'textarea' ? (
-            <textarea
-              value={websiteContentForm[key] || ''}
-              onChange={(e) => setWebsiteContentForm((prev) => ({ ...prev, [key]: e.target.value }))}
-              rows={3}
-              style={{ ...styles.formInput, resize: 'vertical', width: '100%', boxSizing: 'border-box' }}
-            />
+    const fieldRow = (label, key, type = 'text', options = []) => {
+      const value = websiteContentForm[key] || '';
+
+      return (
+        <div key={key} style={styles.websiteFieldRow}>
+          <label style={styles.websiteFieldLabel}>{label}</label>
+
+          {websiteContentEditing ? (
+            type === 'textarea' ? (
+              <textarea
+                value={value}
+                onChange={(event) =>
+                  setWebsiteContentForm((prev) => ({
+                    ...prev,
+                    [key]: event.target.value,
+                  }))
+                }
+                rows={3}
+                style={{ ...styles.formInput, ...styles.websiteTextarea }}
+              />
+            ) : type === 'select' ? (
+              <select
+                value={value}
+                onChange={(event) =>
+                  setWebsiteContentForm((prev) => ({
+                    ...prev,
+                    [key]: event.target.value,
+                  }))
+                }
+                style={{ ...styles.formInput, width: '100%' }}
+              >
+                <option value="">Select {label}</option>
+
+                {options.map((option) => {
+                  const optionValue = typeof option === 'string' ? option : option.value;
+                  const optionLabel = typeof option === 'string' ? option : option.label;
+
+                  return (
+                    <option key={optionValue} value={optionValue}>
+                      {optionLabel}
+                    </option>
+                  );
+                })}
+              </select>
+            ) : (
+              <input
+                type={type}
+                value={value}
+                onChange={(event) =>
+                  setWebsiteContentForm((prev) => ({
+                    ...prev,
+                    [key]: event.target.value,
+                  }))
+                }
+                style={{ ...styles.formInput, width: '100%' }}
+              />
+            )
           ) : (
-            <input
-              type="text"
-              value={websiteContentForm[key] || ''}
-              onChange={(e) => setWebsiteContentForm((prev) => ({ ...prev, [key]: e.target.value }))}
-              style={{ ...styles.formInput, width: '100%', boxSizing: 'border-box' }}
-            />
-          )
-        ) : (
-          <div style={{ ...styles.formInput, ...styles.readOnlyInput, minHeight: type === 'textarea' ? 72 : undefined, whiteSpace: type === 'textarea' ? 'pre-wrap' : 'normal', lineHeight: 1.5 }}>
-            {websiteContentForm[key] || <span style={{ color: '#94a3b8' }}>—</span>}
-          </div>
-        )}
+            <div
+              style={{
+                ...styles.formInput,
+                ...styles.readOnlyInput,
+                minHeight: type === 'textarea' ? 72 : undefined,
+                whiteSpace: type === 'textarea' ? 'pre-wrap' : 'normal',
+                lineHeight: 1.5,
+              }}
+            >
+              {value || <span style={{ color: '#94a3b8' }}>—</span>}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const collectFieldsByPrefixes = (prefixes) => {
+      return Object.fromEntries(
+        Object.entries(websiteContentForm).filter(([key]) =>
+          prefixes.some((prefix) => key.startsWith(prefix))
+        )
+      );
+    };
+
+    const sectionDesignFields = (prefix, title) => (
+      <div style={styles.websiteDesignBox}>
+        <h4 style={styles.websiteDesignTitle}>{title} Text Design</h4>
+
+        {fieldRow('Font Style', `${prefix}_font_family`, 'select', WEBSITE_FONT_OPTIONS)}
+        {fieldRow('Title Font Size', `${prefix}_title_font_size`, 'select', WEBSITE_FONT_SIZE_OPTIONS)}
+        {fieldRow('Description Font Size', `${prefix}_description_font_size`, 'select', WEBSITE_FONT_SIZE_OPTIONS)}
+        {fieldRow('Text Alignment', `${prefix}_text_alignment`, 'select', WEBSITE_ALIGNMENT_OPTIONS)}
       </div>
     );
 
@@ -965,14 +1111,13 @@ export default function AdminSettings() {
             {fieldRow('Stat 3 Label', 'hero_stat3_label')}
             {fieldRow('Featured Dentist Name', 'hero_dentist_name')}
             {fieldRow('Featured Dentist Title', 'hero_dentist_title')}
+            {sectionDesignFields('hero', 'Hero')}
             {websiteContentEditing && (
               <button
                 type="button"
                 style={styles.saveBtn}
                 disabled={websiteContentSaving}
-                onClick={() => saveWebsiteContent(Object.fromEntries(
-                  Object.entries(websiteContentForm).filter(([k]) => k.startsWith('hero_'))
-                ))}
+                onClick={() => saveWebsiteContent(collectFieldsByPrefixes(['hero_']), ['hero_heading', 'hero_description'])}
               >
                 {websiteContentSaving ? 'Saving…' : 'Save Hero Content'}
               </button>
@@ -986,14 +1131,13 @@ export default function AdminSettings() {
             {fieldRow('Paragraph 1', 'about_paragraph1', 'textarea')}
             {fieldRow('Paragraph 2', 'about_paragraph2', 'textarea')}
             {fieldRow('Paragraph 3', 'about_paragraph3', 'textarea')}
+            {sectionDesignFields('about', 'About')}
             {websiteContentEditing && (
               <button
                 type="button"
                 style={styles.saveBtn}
                 disabled={websiteContentSaving}
-                onClick={() => saveWebsiteContent(Object.fromEntries(
-                  Object.entries(websiteContentForm).filter(([k]) => k.startsWith('about_'))
-                ))}
+                onClick={() => saveWebsiteContent(collectFieldsByPrefixes(['about_']), ['about_paragraph1'])}
               >
                 {websiteContentSaving ? 'Saving…' : 'Save About Content'}
               </button>
@@ -1013,14 +1157,13 @@ export default function AdminSettings() {
             {fieldRow('Weekday Hours (e.g. 10:00 AM - 7:00 PM)', 'hours_weekday_time')}
             {fieldRow('Sunday Label', 'hours_sunday')}
             {fieldRow('Sunday Note (e.g. By Appointment)', 'hours_sunday_note')}
+            {sectionDesignFields('contact', 'Contact & Hours')}
             {websiteContentEditing && (
               <button
                 type="button"
                 style={styles.saveBtn}
                 disabled={websiteContentSaving}
-                onClick={() => saveWebsiteContent(Object.fromEntries(
-                  Object.entries(websiteContentForm).filter(([k]) => k.startsWith('contact_') || k.startsWith('hours_'))
-                ))}
+                onClick={() => saveWebsiteContent(collectFieldsByPrefixes(['contact_', 'hours_']), ['contact_phone1', 'contact_email'])}
               >
                 {websiteContentSaving ? 'Saving…' : 'Save Contact & Hours'}
               </button>
@@ -1033,18 +1176,97 @@ export default function AdminSettings() {
           <div>
             {fieldRow('Brand Name', 'footer_brand_name')}
             {fieldRow('Team / Subtitle', 'footer_team_name')}
+            {sectionDesignFields('footer', 'Footer')}
             {websiteContentEditing && (
               <button
                 type="button"
                 style={styles.saveBtn}
                 disabled={websiteContentSaving}
-                onClick={() => saveWebsiteContent(Object.fromEntries(
-                  Object.entries(websiteContentForm).filter(([k]) => k.startsWith('footer_'))
-                ))}
+                onClick={() => saveWebsiteContent(collectFieldsByPrefixes(['footer_']), ['footer_brand_name'])}
               >
                 {websiteContentSaving ? 'Saving…' : 'Save Footer Content'}
               </button>
             )}
+          </div>
+        );
+      }
+      if (websiteContentSection === 'appearance') {
+        const logoValue = websiteContentForm.website_logo_path || '';
+
+        return (
+          <div style={styles.websiteAppearanceGrid}>
+            <div style={styles.websiteLogoCard}>
+              <div style={styles.websiteLogoPreviewBox}>
+                {logoValue ? (
+                  <img
+                    src={logoValue}
+                    alt="Website Logo Preview"
+                    style={styles.websiteLogoPreview}
+                  />
+                ) : (
+                  <div style={styles.websiteLogoPlaceholder}>
+                    <i className="fi fi-rr-picture" style={styles.websiteLogoPlaceholderIcon}></i>
+                    <span>No logo selected</span>
+                  </div>
+                )}
+              </div>
+
+              {websiteContentEditing && (
+                <div style={styles.websiteUploadBox}>
+                  <label style={styles.websiteFieldLabel}>Upload Logo</label>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleWebsiteLogoFile}
+                    style={styles.fileInput}
+                  />
+
+                  <p style={styles.websiteUploadHint}>
+                    This stores a preview path in the website content fields. Use the logo path below if you already uploaded the file in your project folder.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div style={styles.websiteAppearanceFields}>
+              {fieldRow('Logo Image Path or URL', 'website_logo_path')}
+              {fieldRow('Logo Alt Text', 'website_logo_alt')}
+              {fieldRow('Website Font Style', 'website_font_family', 'select', WEBSITE_FONT_OPTIONS)}
+              {fieldRow('Base Font Size', 'website_base_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
+              {fieldRow('Heading Font Size', 'website_heading_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
+              {fieldRow('Paragraph Font Size', 'website_paragraph_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
+              {fieldRow('Text Alignment', 'website_text_alignment', 'select', WEBSITE_ALIGNMENT_OPTIONS)}
+              {fieldRow('Hero Text Alignment', 'website_hero_alignment', 'select', WEBSITE_ALIGNMENT_OPTIONS)}
+              {fieldRow('Button Alignment', 'website_button_alignment', 'select', WEBSITE_ALIGNMENT_OPTIONS)}
+              {fieldRow('Hero Font Style', 'hero_font_family', 'select', WEBSITE_FONT_OPTIONS)}
+              {fieldRow('Hero Title Size', 'hero_title_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
+              {fieldRow('About Font Style', 'about_font_family', 'select', WEBSITE_FONT_OPTIONS)}
+              {fieldRow('About Title Size', 'about_title_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
+              {fieldRow('Contact Font Style', 'contact_font_family', 'select', WEBSITE_FONT_OPTIONS)}
+              {fieldRow('Contact Title Size', 'contact_title_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
+              {fieldRow('Footer Font Style', 'footer_font_family', 'select', WEBSITE_FONT_OPTIONS)}
+              {fieldRow('Footer Title Size', 'footer_title_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
+
+              {websiteContentEditing && (
+                <button
+                  type="button"
+                  style={styles.saveBtn}
+                  disabled={websiteContentSaving}
+                  onClick={() =>
+                    saveWebsiteContent(
+                      Object.fromEntries(
+                        Object.entries(websiteContentForm).filter(
+                          ([key]) => key.startsWith('website_') || key.startsWith('hero_') || key.startsWith('about_') || key.startsWith('contact_') || key.startsWith('footer_')
+                        )
+                      )
+                    )
+                  }
+                >
+                  {websiteContentSaving ? 'Saving…' : 'Save Website Design'}
+                </button>
+              )}
+            </div>
           </div>
         );
       }
@@ -1226,9 +1448,9 @@ export default function AdminSettings() {
       { key: 'about', label: 'About' },
       { key: 'contact', label: 'Contact & Hours' },
       { key: 'footer', label: 'Footer' },
+      { key: 'appearance', label: 'Logo, Fonts & Alignment' },
       { key: 'faqs', label: 'FAQs' },
       { key: 'services', label: 'Services' },
-      { key: 'announcements', label: 'Announcements' },
     ];
 
     return (
@@ -1261,7 +1483,7 @@ export default function AdminSettings() {
                 </p>
               )}
 
-              {['hero', 'about', 'contact', 'footer'].includes(websiteContentSection) && (
+              {['hero', 'about', 'contact', 'footer', 'appearance'].includes(websiteContentSection) && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
                   {!websiteContentEditing ? (
                     <button
@@ -1293,10 +1515,11 @@ export default function AdminSettings() {
             title={websiteFaqOverlay.id ? 'Edit FAQ' : 'New FAQ'}
             onClose={() => setWebsiteFaqOverlay(null)}
             onSave={(data) => saveFaq(data)}
+            onValidationError={(message) => showWebsiteValidationModal('Required Fields Missing', message)}
             data={websiteFaqOverlay}
             fields={[
-              { key: 'question', label: 'Question', type: 'textarea' },
-              { key: 'answer', label: 'Answer', type: 'textarea' },
+              { key: 'question', label: 'Question', type: 'textarea', required: true },
+              { key: 'answer', label: 'Answer', type: 'textarea', required: true },
               { key: 'sort_order', label: 'Sort Order (number)', type: 'number' },
               { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'hidden', label: 'Hidden' }] },
             ]}
@@ -1309,35 +1532,19 @@ export default function AdminSettings() {
             title={websiteServiceOverlay.id ? 'Edit Service Card' : 'New Service Card'}
             onClose={() => setWebsiteServiceOverlay(null)}
             onSave={(data) => saveWebsiteService(data)}
+            onValidationError={(message) => showWebsiteValidationModal('Required Fields Missing', message)}
             data={websiteServiceOverlay}
             fields={[
-              { key: 'name', label: 'Service Name' },
+              { key: 'name', label: 'Service Name', required: true },
               { key: 'image_path', label: 'Image Path (e.g. ./images/crowns.jpeg)' },
-              { key: 'description', label: 'Modal Description', type: 'textarea' },
+              { key: 'description', label: 'Modal Description', type: 'textarea', required: true },
               { key: 'slug', label: 'Slug (for Services.html link, e.g. crowns)' },
               { key: 'sort_order', label: 'Sort Order (number)', type: 'number' },
               { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'hidden', label: 'Hidden' }] },
             ]}
           />
         )}
-
-        {websiteAnnouncementOverlay && (
-          <WebsiteItemOverlay
-            styles={styles}
-            title={websiteAnnouncementOverlay.id ? 'Edit Announcement' : 'New Announcement'}
-            onClose={() => setWebsiteAnnouncementOverlay(null)}
-            onSave={(data) => saveAnnouncement(data)}
-            data={websiteAnnouncementOverlay}
-            fields={[
-              { key: 'title', label: 'Title' },
-              { key: 'message', label: 'Message', type: 'textarea' },
-              { key: 'start_date', label: 'Start Date (YYYY-MM-DD, leave blank for no start limit)', type: 'date' },
-              { key: 'end_date', label: 'End Date (YYYY-MM-DD, leave blank for no end limit)', type: 'date' },
-              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'hidden', label: 'Hidden' }] },
-            ]}
-          />
-        )}
-      </>
+</>
     );
   }
 
@@ -2231,6 +2438,37 @@ export default function AdminSettings() {
         </FormOverlay>
       )}
 
+      {websiteValidationModal && (
+        <div
+          style={styles.validationModalOverlay}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setWebsiteValidationModal(null);
+            }
+          }}
+        >
+          <div style={styles.validationModalContent}>
+            <h2 style={styles.validationModalTitle}>
+              {websiteValidationModal.title}
+            </h2>
+
+            <div style={styles.validationModalDivider}></div>
+
+            <p style={styles.validationModalText}>
+              {websiteValidationModal.message}
+            </p>
+
+            <button
+              type="button"
+              style={styles.validationModalButton}
+              onClick={() => setWebsiteValidationModal(null)}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
+
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
           <div style={styles.modalContent}>
@@ -2351,7 +2589,7 @@ function FormActions({ styles, label }) {
   );
 }
 
-function WebsiteItemOverlay({ styles, title, onClose, onSave, data, fields }) {
+function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError, data, fields }) {
   const [form, setForm] = useState(() => {
     const initial = {};
     fields.forEach(f => { initial[f.key] = data[f.key] ?? ''; });
@@ -2364,6 +2602,16 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, data, fields }) {
 
   function handleSubmit(e) {
     e.preventDefault();
+
+    const missingFields = fields.filter((field) => {
+      return field.required && !String(form[field.key] || '').trim();
+    });
+
+    if (missingFields.length > 0) {
+      onValidationError?.('Please complete all required fields before saving.');
+      return;
+    }
+
     onSave({ ...data, ...form });
   }
 
@@ -2383,7 +2631,9 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, data, fields }) {
             <div style={styles.formGrid}>
               {fields.map(f => (
                 <div key={f.key} style={{ ...styles.field, ...styles.fieldWide }}>
-                  <label style={styles.fieldLabel}>{f.label}</label>
+                  <label style={styles.fieldLabel}>
+                    {f.label}{f.required ? ' *' : ''}
+                  </label>
                   {f.type === 'textarea' ? (
                     <textarea
                       style={{ ...styles.formInput, minHeight: 80, resize: 'vertical' }}

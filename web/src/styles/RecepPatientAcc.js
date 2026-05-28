@@ -33,7 +33,7 @@
       flexDirection: 'column',
       boxSizing: 'border-box',
     },
-    
+
     logo: {
       textAlign: 'center',
       paddingBottom: 22,
@@ -316,56 +316,23 @@
       color: '#0f172a',
     },
 
-    dashboardCard: {
+    filterCard: {
       background: '#ffffff',
       border: '1px solid #edf0f5',
       borderRadius: isSingleColumn ? 18 : 22,
       boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
-      padding: isVerySmall ? 16 : isSingleColumn ? 18 : 22,
+      padding: isVerySmall ? 16 : isSingleColumn ? 18 : 20,
       boxSizing: 'border-box',
-    },
-
-    cardHeader: {
       display: 'flex',
-      alignItems: isSingleColumn ? 'flex-start' : 'center',
-      justifyContent: 'space-between',
-      gap: 18,
-      marginBottom: 18,
-      flexDirection: isSingleColumn ? 'column' : 'row',
-    },
-
-    cardTitle: {
-      fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: isVerySmall ? 16 : 18,
-      color: '#0f172a',
-      margin: 0,
-    },
-
-    cardSubtitle: {
-      marginTop: 3,
-      marginBottom: 0,
-      fontSize: 13,
-      color: '#64748b',
-    },
-
-    filters: {
-      display: 'flex',
-      justifyContent: 'space-between',
       alignItems: isStacked ? 'stretch' : 'center',
-      gap: 16,
+      justifyContent: 'space-between',
+      gap: 15,
       marginBottom: 18,
-      flexWrap: 'wrap',
       flexDirection: isStacked ? 'column' : 'row',
     },
 
-    leftActions: {
-      display: 'flex',
-      flex: 1,
-      minWidth: isSmallScreen ? '100%' : 320,
-    },
-
     searchBox: {
-      width: '100%',
+      width: isStacked ? '100%' : 330,
       height: 43,
       display: 'flex',
       alignItems: 'center',
@@ -392,9 +359,10 @@
       color: '#172033',
     },
 
-    rightActions: {
+    filterRight: {
       display: 'flex',
       alignItems: isStacked ? 'stretch' : 'center',
+      justifyContent: isStacked ? 'flex-start' : 'flex-end',
       gap: 10,
       width: isStacked ? '100%' : 'auto',
       flexDirection: isStacked ? 'column' : 'row',
@@ -431,6 +399,60 @@
       gap: 9,
       whiteSpace: 'nowrap',
       width: isStacked ? '100%' : 'auto',
+    },
+
+    dashboardCard: {
+      background: '#ffffff',
+      border: '1px solid #edf0f5',
+      borderRadius: isSingleColumn ? 18 : 22,
+      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+      padding: isVerySmall ? 16 : isSingleColumn ? 18 : 22,
+      boxSizing: 'border-box',
+    },
+
+    cardHeader: {
+      display: 'flex',
+      alignItems: isSingleColumn ? 'flex-start' : 'center',
+      justifyContent: 'space-between',
+      gap: 18,
+      marginBottom: 18,
+      flexDirection: isSingleColumn ? 'column' : 'row',
+    },
+
+    cardTitle: {
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: isVerySmall ? 16 : 18,
+      color: '#0f172a',
+      margin: 0,
+    },
+
+    cardSubtitle: {
+      marginTop: 3,
+      marginBottom: 0,
+      fontSize: 13,
+      color: '#64748b',
+    },
+
+    exportCsvBtn: {
+      height: 43,
+      minWidth: isSingleColumn ? '100%' : 110,
+      border: 'none',
+      borderRadius: 14,
+      background: 'linear-gradient(135deg, #15803d, #22c55e)',
+      color: '#ffffff',
+      padding: '0 18px',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      boxShadow: '0 8px 18px rgba(34, 197, 94, 0.24)',
+      transition: '0.2s ease',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
     },
 
     tableScroll: {
@@ -786,45 +808,104 @@
       color: '#334155',
       fontWeight: 'bold',
     },
+
+    exportModalOverlay: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 10000,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    exportModalContent: {
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
+      background: '#ffffff',
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
+    },
+
+    exportModalTitle: {
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    exportModalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
+    },
+
+    exportModalText: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
+    },
+
+    exportModalButton: {
+      width: '100%',
+      height: 38,
+      border: 'none',
+      borderRadius: 8,
+      background: '#d4af37',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+    },
+
     profileDropdownWrapper: {
-  position: 'relative',
-  display: 'inline-flex',
-  flexDirection: 'column',
-  alignItems: 'stretch',
-},
+      position: 'relative',
+      display: 'inline-flex',
+      flexDirection: 'column',
+      alignItems: 'stretch',
+    },
 
-profileDropdown: {
-  position: 'absolute',
-  top: 'calc(100% + 8px)',
-  right: 0,
-  width: '100%',
-  minWidth: 170,
-  background: '#ffffff',
-  border: '1px solid #e5e7eb',
-  borderRadius: 14,
-  padding: 8,
-  boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)',
-  zIndex: 300,
-  boxSizing: 'border-box',
-},
+    profileDropdown: {
+      position: 'absolute',
+      top: 'calc(100% + 8px)',
+      right: 0,
+      width: '100%',
+      minWidth: 170,
+      background: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: 14,
+      padding: 8,
+      boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)',
+      zIndex: 300,
+      boxSizing: 'border-box',
+    },
 
-viewProfileButton: {
-  width: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 'none',
-  background: '#eff6ff',
-  color: '#2563eb',
-  borderRadius: 10,
-  padding: '10px 12px',
-  fontSize: 14,
-  fontWeight: 700,
-  fontFamily: 'Arial, sans-serif',
-  textDecoration: 'none',
-  cursor: 'pointer',
-  boxSizing: 'border-box',
-},
+    viewProfileButton: {
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: 'none',
+      background: '#eff6ff',
+      color: '#2563eb',
+      borderRadius: 10,
+      padding: '10px 12px',
+      fontSize: 14,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      textDecoration: 'none',
+      cursor: 'pointer',
+      boxSizing: 'border-box',
+    },
   };
 };
 

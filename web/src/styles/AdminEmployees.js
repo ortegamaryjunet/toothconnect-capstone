@@ -441,8 +441,8 @@
     },
 
     exportBtn: {
-      height: 42,
-      minWidth: 145,
+      height: 43,
+      minWidth: isMobile ? '100%' : 110,
       border: 'none',
       borderRadius: 14,
       color: '#ffffff',
@@ -456,7 +456,7 @@
       justifyContent: 'center',
       gap: 8,
       background: 'linear-gradient(135deg, #15803d, #22c55e)',
-      boxShadow: '0 8px 18px rgba(34, 197, 94, 0.24)',
+      boxShadow: '0 8px 18px rgba(212, 175, 55, 0.25)',
       transition: '0.2s ease',
       whiteSpace: 'nowrap',
       width: isMobile ? '100%' : 'auto',
@@ -527,20 +527,32 @@
     },
 
     pdfBtn: {
-      minWidth: 70,
+      minWidth: 78,
       height: 36,
+      padding: '0 14px',
       borderRadius: 12,
-      background: 'linear-gradient(135deg, #991b1b, #dc2626)',
+      background: 'linear-gradient(135deg, #f87171, #dc2626)',
       color: '#ffffff',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 6,
       textDecoration: 'none',
       fontSize: 13,
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
       border: 'none',
       cursor: 'pointer',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
+    },
+
+    pdfBtnIcon: {
+      fontSize: 14,
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     emptyRow: {

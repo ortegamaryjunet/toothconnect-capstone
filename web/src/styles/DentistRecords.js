@@ -292,11 +292,35 @@
 
     filterGroup: {
       display: 'flex',
-      alignItems: isMobile ? 'stretch' : 'center',
+      alignItems: 'flex-end',
+      justifyContent: isSmallScreen ? 'flex-start' : 'flex-end',
       gap: 10,
       width: isSmallScreen ? '100%' : 'auto',
       flexDirection: isMobile ? 'column' : 'row',
       flexWrap: isSmallScreen && !isMobile ? 'wrap' : 'nowrap',
+    },
+
+    dateRangeGroup: {
+      display: 'flex',
+      alignItems: 'flex-end',
+      gap: 10,
+      width: isMobile ? '100%' : 'auto',
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    dateRangeField: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 6,
+      width: isMobile ? '100%' : 'auto',
+    },
+
+    dateRangeLabel: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: '#1e3a8a',
+      fontFamily: 'Arial, sans-serif',
+      marginLeft: 2,
     },
 
     filterInput: {
@@ -307,9 +331,8 @@
       padding: '0 12px',
       color: '#334155',
       outline: 'none',
-      width: isMobile ? '100%' : 'auto',
-      flex: isSmallScreen && !isMobile ? 1 : 'initial',
-      minWidth: isSmallScreen && !isMobile ? 190 : 'auto',
+      width: isMobile ? '100%' : 138,
+      minWidth: isMobile ? '100%' : 138,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
     },
@@ -322,10 +345,31 @@
       padding: '0 12px',
       color: '#334155',
       outline: 'none',
-      width: isMobile ? '100%' : 'auto',
-      flex: isSmallScreen && !isMobile ? 1 : 'initial',
-      minWidth: isSmallScreen && !isMobile ? 190 : 'auto',
+      width: isMobile ? '100%' : 122,
+      minWidth: isMobile ? '100%' : 122,
       fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+    },
+
+    exportCsvBtn: {
+      height: 43,
+      minWidth: isMobile ? '100%' : 110,
+      border: 'none',
+      borderRadius: 14,
+      background: 'linear-gradient(135deg, #15803d, #22c55e)',
+      color: '#ffffff',
+      padding: '0 18px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      boxShadow: '0 8px 18px rgba(34, 197, 94, 0.24)',
+      transition: '0.2s ease',
+      whiteSpace: 'nowrap',
       boxSizing: 'border-box',
     },
 
@@ -342,6 +386,11 @@
 
     tableHeader: {
       marginBottom: 18,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 14,
+      flexWrap: isMobile ? 'wrap' : 'nowrap',
     },
 
     tableTitle: {
@@ -388,16 +437,11 @@
       background: '#ffffff',
     },
 
-    treatmentPill: {
-      display: 'inline-flex',
+    actionGroup: {
+      display: 'flex',
       alignItems: 'center',
-      padding: '6px 10px',
-      borderRadius: 50,
-      background: '#eff6ff',
-      color: '#2563eb',
-      fontSize: 12,
-      fontWeight: 700,
-      fontFamily: 'Arial, sans-serif',
+      gap: 8,
+      flexWrap: 'wrap',
     },
 
     viewBtn: {
@@ -416,9 +460,34 @@
       cursor: 'pointer',
     },
 
-    viewBtnIcon: {
-      fontSize: 15,
+    pdfBtn: {
+      minWidth: 78,
+      height: 36,
+      padding: '0 14px',
+      borderRadius: 12,
+      background: 'linear-gradient(135deg, #f87171, #dc2626)',
       color: '#ffffff',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      textDecoration: 'none',
+      fontSize: 13,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 8px 18px rgba(220, 38, 38, 0.24)',
+      border: 'none',
+      cursor: 'pointer',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
+    },
+
+    pdfBtnIcon: {
+      fontSize: 14,
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     emptyRow: {
@@ -546,6 +615,64 @@
       background: '#f1f5f9',
       color: 'black',
       fontWeight: 'bold',
+    },
+
+    exportModalOverlay: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 10000,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    exportModalContent: {
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
+      background: '#ffffff',
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
+    },
+
+    exportModalTitle: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    exportModalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
+    },
+
+    exportModalText: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
+    },
+
+    exportModalButton: {
+      width: '100%',
+      height: 38,
+      border: 'none',
+      borderRadius: 8,
+      background: '#d4af37',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
     },
 
     notificationBadge: {
