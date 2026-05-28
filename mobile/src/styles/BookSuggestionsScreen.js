@@ -147,24 +147,6 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5
     },
 
-    scoreBox: {
-        alignItems: 'flex-end',
-        minWidth: 78,
-        paddingTop: 26
-    },
-    scoreValue: {
-        fontSize: 27,
-        color: '#b47a00',
-        fontWeight: '900',
-        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif'
-    },
-    scoreLabel: {
-        fontSize: 11,
-        color: '#777777',
-        fontWeight: '700',
-        marginTop: 1
-    },
-
     breakdownPanel: {
         borderTopWidth: 1,
         borderTopColor: '#eeeeee',
@@ -184,13 +166,6 @@ const styles = StyleSheet.create({
         lineHeight: 18,
         fontWeight: '500'
     },
-    breakdownPoints: {
-        fontSize: 13,
-        color: '#1f1f1f',
-        fontWeight: '700',
-        marginLeft: 10
-    },
-
     pickButton: {
         backgroundColor: '#ffffff',
         paddingVertical: 11,

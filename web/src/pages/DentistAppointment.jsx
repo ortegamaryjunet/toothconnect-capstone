@@ -274,6 +274,7 @@ export default function DentistAppointment() {
     const cleanStatus = String(appointment?.rawStatus || '')
       .toLowerCase()
       .replace(/[\s_]+/g, '');
+    const isConsultation = /consultation/i.test(String(appointment?.reason || ''));
 
     if (cleanStatus !== 'completed') return;
 
@@ -301,6 +302,14 @@ export default function DentistAppointment() {
             }))
           : Promise.resolve({ kit_exists: false, items: [] }),
       ]);
+
+      if (isConsultation) {
+        setKitAlreadySubmitted(Boolean(consumptionData?.submitted));
+        setKitNotes('No inventory items was used for consultation service.');
+        setKitItems([]);
+        setManualInventoryItems([]);
+        return;
+      }
 
       if (consumptionData.submitted) {
         setKitAlreadySubmitted(true);
@@ -1144,7 +1153,9 @@ export default function DentistAppointment() {
               </p>
             ) : kitItems.length === 0 ? (
               <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>
-                No items defined for this service kit.
+                {/consultation/i.test(String(selectedKitAppointment?.reason || ''))
+                  ? 'No inventory items was used for consultation service.'
+                  : 'No items defined for this service kit.'}
               </p>
             ) : (
               <div style={{ overflowX: 'auto' }}>

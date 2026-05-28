@@ -222,7 +222,7 @@ export default function AppointmentsScreen({ navigation, route }) {
         paid_at: new Date().toISOString(),
       });
 
-      Alert.alert('Receipt uploaded', 'Your receipt is waiting for receptionist validation.');
+      Alert.alert('Receipt uploaded', 'Your receipt is waiting for receptionist acknowledgement.');
       fetchAppointments();
     } catch (err) {
       Alert.alert(
@@ -947,7 +947,7 @@ function getPaymentTracker(appointment) {
 
     return {
       status: 'verified',
-      title: 'Receipt validated',
+      title: 'Receipt acknowledged',
       detail: `${amount} via ${method}${verifiedAt}`,
     };
   }
@@ -968,7 +968,7 @@ function getPaymentTracker(appointment) {
 
       return {
         status: 'pending',
-        title: 'Receipt uploaded waiting for validation',
+        title: 'Receipt uploaded waiting for acknowledgement',
         detail: `${amount} via ${method}.${uploadedAt}`,
       };
     }
@@ -976,7 +976,7 @@ function getPaymentTracker(appointment) {
     return {
       status: 'waiting',
       title: 'No receipt uploaded yet',
-      detail: `${amount} via ${method}. Upload your payment receipt for validation.`,
+      detail: `${amount} via ${method}. Upload your payment receipt for acknowledgement.`,
     };
   }
 

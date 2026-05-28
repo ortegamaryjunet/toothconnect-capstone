@@ -74,6 +74,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
             from: from.toISOString(),
             to: to.toISOString(),
             preferred_start: preferredStart,
+            limit: 3,
           });
           setData(result);
           setSuggestionMode('preferred');
@@ -103,6 +104,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
         service_id: service.id,
         from: now.toISOString(),
         to: future.toISOString(),
+        limit: 8,
       });
       setData(result);
       setSuggestionMode('earliest');
@@ -164,6 +166,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
         from: from.toISOString(),
         to: to.toISOString(),
         preferred_start: preferredStart,
+        limit: 3,
       });
 
       setData(result);
@@ -279,19 +282,14 @@ export default function BookSuggestionsScreen({ navigation, route }) {
                       <Text style={styles.suggestionDentist}>Dr. {s.dentist_name}</Text>
                     </View>
 
-                    <View style={styles.scoreBox}>
-                      <Text style={styles.scoreValue}>{s.score}%</Text>
-                      <Text style={styles.scoreLabel}>Match Score</Text>
-                    </View>
                   </View>
 
                   <View style={styles.breakdownPanel}>
-                    {Object.entries(s.breakdown).map(([reason, points]) => (
+                    {Object.entries(s.breakdown).map(([reason]) => (
                       <View key={reason} style={styles.breakdownRow}>
                         <Text style={styles.breakdownReason}>
                           {BREAKDOWN_LABELS[reason] || reason}
                         </Text>
-                        <Text style={styles.breakdownPoints}>+{points}</Text>
                       </View>
                     ))}
                   </View>

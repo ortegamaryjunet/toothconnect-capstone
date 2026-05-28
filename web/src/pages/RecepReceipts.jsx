@@ -49,6 +49,12 @@ function mapPaymentToReceipt(payment) {
   };
 }
 
+function receiptStatusLabel(status) {
+  if (status === 'Validated') return 'Acknowledged Receipt';
+  if (status === 'Pending Validation') return 'Pending Acknowledgement';
+  return status;
+}
+
 function formatPeso(value) {
   return `₱${Number(value || 0).toLocaleString('en-PH', {
     minimumFractionDigits: 2,
@@ -312,8 +318,8 @@ export default function RecepReceipts() {
 
       if (status === 'Validated') {
         showMessage(
-          'Payment Validated',
-          'The patient uploaded receipt has been verified successfully.',
+          'Payment Receipt Acknowledged',
+          'The patient uploaded receipt has been acknowledged successfully.',
           'success'
         );
         return;
@@ -593,8 +599,8 @@ export default function RecepReceipts() {
               style={styles.statusFilter}
             >
               <option value="all">All Status</option>
-              <option value="Pending Validation">Pending</option>
-              <option value="Validated">Acknowledged</option>
+              <option value="Pending Validation">Pending Acknowledgement</option>
+              <option value="Validated">Acknowledged Receipt</option>
               <option value="Rejected">Rejected</option>
             </select>
           </section>
@@ -778,7 +784,7 @@ function ReceiptCard({
             ...(receipt.status === 'Rejected' ? styles.statusRejected : {}),
           }}
         >
-          {getReceiptStatusLabel(receipt.status)}
+          {receiptStatusLabel(receipt.status)}
         </span>
       </div>
 
@@ -923,7 +929,7 @@ function ReceiptCard({
                 </h3>
                 <p style={styles.uploadedReceiptSubtitle}>
                   This receipt was submitted by the patient and is ready for
-                  validation.
+                  acknowledgement.
                 </p>
               </div>
 
@@ -989,7 +995,7 @@ function ReceiptCard({
               disabled={!canReviewReceipt}
             >
               <i className="fi fi-rr-money-check"></i>
-              Acknowledge Payment
+              Acknowledge Receipt
             </button>
           </div>
         </div>

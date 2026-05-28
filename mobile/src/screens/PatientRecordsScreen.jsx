@@ -87,7 +87,7 @@ function PaymentBadge({ status }) {
   const map = {
     verified:           { bg: '#dcfce7', color: '#15803d', label: 'Verified' },
     rejected:           { bg: '#fee2e2', color: '#dc2626', label: 'Rejected' },
-    pending_validation: { bg: '#fef9c3', color: '#a16207', label: 'Pending validation' },
+    pending_validation: { bg: '#fef9c3', color: '#a16207', label: 'Pending acknowledgement' },
     recorded:           { bg: '#dbeafe', color: '#2563eb', label: 'Recorded' },
   };
   const style = map[status] || { bg: '#f1f5f9', color: '#64748b', label: status };

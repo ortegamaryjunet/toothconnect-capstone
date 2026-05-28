@@ -49,7 +49,7 @@ async function notifyReceiptUploaded(paymentId, appointment, amount) {
 
   await notifyBranchReceptionists(appointment.branch_id, {
     type: 'receipt_pending_validation',
-    title: 'New receipt pending validation',
+    title: 'New receipt pending acknowledgement',
     body: `${detail.patient_name || 'A patient'} uploaded a receipt for ${detail.service_name || 'an appointment'} (${Number(amount || 0).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}).`,
     relatedType: 'payment',
     relatedId: paymentId,
@@ -453,11 +453,11 @@ router.patch('/:id/status', requireRole('admin', 'receptionist'), async (req, re
     if (existing.length === 0) return res.status(404).json({ message: 'Payment not found' });
 
     if (existing[0].status !== 'pending') {
-      return res.status(400).json({ message: 'Only pending receipts can be validated or rejected.' });
+      return res.status(400).json({ message: 'Only pending receipts can be acknowledged or rejected.' });
     }
 
     if (!existing[0].receipt_url) {
-      return res.status(400).json({ message: 'Receipt must be uploaded before validation.' });
+      return res.status(400).json({ message: 'Receipt must be uploaded before acknowledgement.' });
     }
 
     if (
@@ -486,7 +486,7 @@ router.patch('/:id/status', requireRole('admin', 'receptionist'), async (req, re
       if (status === 'verified') {
         await pool.query(
           `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
-           VALUES (?, 'receipt_validated', 'Receipt Validated', 'Your payment receipt has been verified successfully.', 'appointment', ?)`,
+           VALUES (?, 'receipt_validated', 'Receipt Acknowledged', 'Your payment receipt has been acknowledged successfully.', 'appointment', ?)`,
           [patient_id, appointment_id]
         );
       } else {

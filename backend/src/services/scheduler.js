@@ -256,7 +256,7 @@ async function suggestSlots({
   fromDate,
   toDate,
   preferredStartDate,
-  limit = 3,
+  limit = 8,
 }) {
   const [services] = await pool.query(
     `SELECT id, name, duration_min FROM services
@@ -394,9 +394,11 @@ async function suggestSlots({
       if (a.distance_to_preferred_minutes !== b.distance_to_preferred_minutes) {
         return a.distance_to_preferred_minutes - b.distance_to_preferred_minutes;
       }
+      if (b.score !== a.score) return b.score - a.score;
       return a.start_time.localeCompare(b.start_time);
     }
 
+    if (a.start_time !== b.start_time) return a.start_time.localeCompare(b.start_time);
     if (b.score !== a.score) return b.score - a.score;
     return a.start_time.localeCompare(b.start_time);
   });
