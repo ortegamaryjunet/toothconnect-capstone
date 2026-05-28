@@ -641,6 +641,11 @@
       background: '#ffffff',
     },
 
+    statusCancelled: {
+      background: '#fee2e2',
+      color: '#dc2626',
+    },
+
     statusBadge: {
       display: 'inline-flex',
       alignItems: 'center',

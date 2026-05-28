@@ -11,7 +11,7 @@ import {
   setAppointmentStatus,
 } from '../api/appointments';
 import { createStaffPayment } from '../api/payments';
-import { getConsumption, getServiceKit, submitConsumption } from '../api/inventory';
+import { getConsumption, getServiceKit, submitConsumption, updateConsumption } from '../api/inventory';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createRecepAppointmentsStyles from '../styles/RecepAppointments';
@@ -110,6 +110,10 @@ export default function RecepAppointments() {
   const [kitLoading, setKitLoading] = useState(false);
   const [kitError, setKitError] = useState('');
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
+  const [kitSubmittedBy, setKitSubmittedBy] = useState(null);
+  const [kitEditedBy, setKitEditedBy] = useState(null);
+  const [kitEditedAt, setKitEditedAt] = useState('');
+  const [kitEditMode, setKitEditMode] = useState(false);
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [calendarDetailsOpenById, setCalendarDetailsOpenById] = useState({});
   const [kitSubmittedByAppointmentId, setKitSubmittedByAppointmentId] = useState({});
@@ -253,6 +257,10 @@ export default function RecepAppointments() {
           treatmentOptions,
           rescheduleModal.appointment.serviceId
         );
+        const bufferMinutes = getServiceBufferMinutes(
+          treatmentOptions,
+          rescheduleModal.appointment.serviceId
+        );
         const bounds = dayBoundsUTC(rescheduleModal.selectedDate);
 
         const [dayAppointmentsRaw, dentistBusyMeta] = await Promise.all([
@@ -279,6 +287,7 @@ export default function RecepAppointments() {
           appointments: combined,
           dateKey: rescheduleModal.selectedDate,
           durationMinutes,
+          bufferMinutes,
         });
 
         setRescheduleModal((current) => ({
@@ -396,8 +405,8 @@ export default function RecepAppointments() {
           try {
             const [consumptionData, kitData] = await Promise.all([
               getConsumption(appointment.id),
-              appointment.serviceId && appointment.branchId
-                ? getServiceKit(appointment.serviceId, appointment.branchId).catch(() => ({
+              appointment.serviceId && recepBranchId
+                ? getServiceKit(appointment.serviceId, recepBranchId).catch(() => ({
                     kit_exists: false,
                     items: [],
                   }))
@@ -548,14 +557,18 @@ export default function RecepAppointments() {
     setKitNotes('');
     setKitError('');
     setKitAlreadySubmitted(false);
+    setKitSubmittedBy(null);
+    setKitEditedBy(null);
+    setKitEditedAt('');
+    setKitEditMode(false);
     setShowKitModal(true);
     setKitLoading(true);
 
     try {
       const [consumptionData, kitData] = await Promise.all([
         getConsumption(appointment.id).catch(() => ({ submitted: false, items: [] })),
-        appointment.serviceId && appointment.branchId
-          ? getServiceKit(appointment.serviceId, appointment.branchId).catch(() => ({
+        appointment.serviceId && recepBranchId
+          ? getServiceKit(appointment.serviceId, recepBranchId).catch(() => ({
               kit_exists: false,
               items: [],
             }))
@@ -564,6 +577,9 @@ export default function RecepAppointments() {
 
       if (isConsultation) {
         setKitAlreadySubmitted(Boolean(consumptionData?.submitted));
+        setKitSubmittedBy(consumptionData?.submitted_by || null);
+        setKitEditedBy(consumptionData?.edited_by || null);
+        setKitEditedAt(consumptionData?.edited_at || '');
         setKitNotes('No inventory items was used for consultation service.');
         setKitItems([]);
         return;
@@ -571,13 +587,24 @@ export default function RecepAppointments() {
 
       if (consumptionData.submitted) {
         setKitAlreadySubmitted(true);
+        setKitSubmittedBy(consumptionData?.submitted_by || null);
+        setKitEditedBy(consumptionData?.edited_by || null);
+        setKitEditedAt(consumptionData?.edited_at || '');
+        const kitStockMap = {};
+        (kitData?.items || []).forEach((ki) => {
+          if (ki.inventory_id != null) kitStockMap[ki.inventory_id] = ki.current_stock;
+        });
         setKitItems(
-          (consumptionData.items || []).map((item) => ({
-            category: item.category,
-            item_name: item.item_name,
-            inventory_id: item.item_id || item.inventory_id || null,
-            quantity_used: item.quantity_used,
-          }))
+          (consumptionData.items || []).map((item) => {
+            const invId = item.item_id || item.inventory_id || null;
+            return {
+              category: item.category,
+              item_name: item.item_name,
+              inventory_id: invId,
+              quantity_used: item.quantity_used,
+              current_stock: invId != null ? kitStockMap[invId] : undefined,
+            };
+          })
         );
       } else {
         setKitNotes(kitData.notes || '');
@@ -608,6 +635,10 @@ export default function RecepAppointments() {
     setKitNotes('');
     setKitError('');
     setKitAlreadySubmitted(false);
+    setKitSubmittedBy(null);
+    setKitEditedBy(null);
+    setKitEditedAt('');
+    setKitEditMode(false);
     setKitSubmitting(false);
   }
 
@@ -619,7 +650,8 @@ export default function RecepAppointments() {
   }
 
   async function handleConfirmKitDeduction() {
-    if (!selectedKitAppointment || kitSubmitting || kitAlreadySubmitted) return;
+    if (!selectedKitAppointment || kitSubmitting) return;
+    const isEditingSubmitted = kitAlreadySubmitted && kitEditMode;
 
     const itemsToSubmit = kitItems
       .filter((item) => Number(item.quantity_used) > 0 && item.inventory_id)
@@ -634,11 +666,38 @@ export default function RecepAppointments() {
       return;
     }
 
+    const hasOverStock = kitItems.some((item) =>
+      item.inventory_id &&
+      item.current_stock !== null &&
+      item.current_stock !== undefined &&
+      Number(item.quantity_used) > Number(item.current_stock)
+    );
+    if (hasOverStock) {
+      setKitError('One or more quantities exceed current stock. Please correct before deducting.');
+      return;
+    }
+
     setKitSubmitting(true);
     setKitError('');
     try {
-      await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
+      if (isEditingSubmitted) {
+        await updateConsumption(selectedKitAppointment.id, itemsToSubmit);
+      } else {
+        await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
+      }
       setKitAlreadySubmitted(true);
+      setKitEditMode(false);
+      setKitSubmittedBy({
+        name: user?.name || 'Receptionist',
+        role: user?.role || 'receptionist',
+      });
+      if (isEditingSubmitted) {
+        setKitEditedBy({
+          name: user?.name || 'Receptionist',
+          role: user?.role || 'receptionist',
+        });
+        setKitEditedAt(new Date().toISOString());
+      }
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to deduct inventory.');
     } finally {
@@ -655,6 +714,16 @@ export default function RecepAppointments() {
 
   const hasDeductibleKitItems = useMemo(
     () => kitItems.some((item) => Number(item.quantity_used) > 0 && item.inventory_id),
+    [kitItems]
+  );
+
+  const kitHasStockError = useMemo(
+    () => kitItems.some((item) =>
+      item.inventory_id &&
+      item.current_stock !== null &&
+      item.current_stock !== undefined &&
+      Number(item.quantity_used) > Number(item.current_stock)
+    ),
     [kitItems]
   );
 
@@ -2000,7 +2069,7 @@ export default function RecepAppointments() {
                         </p>
                         <p style={scheduleStyles.infoSubText}>
                           Estimated duration is based on the selected purpose of visit. A
-                          15-minute cleaning/preparation buffer is blocked after each
+                          30-minute cleaning/preparation buffer is blocked after each
                           appointment.
                         </p>
                       </div>
@@ -2119,7 +2188,7 @@ export default function RecepAppointments() {
                 <h2 style={styles.modalHeaderTitle}>Service Kit</h2>
                 <p style={styles.modalHeaderSub}>
                   {kitAlreadySubmitted
-                    ? 'Dentist already filled up and submitted the service kit for this appointment.'
+                    ? `Service kit already submitted by ${formatConsumptionSubmitter(kitSubmittedBy)}.`
                     : 'Service kit template for this appointment.'}
                 </p>
               </div>
@@ -2137,6 +2206,21 @@ export default function RecepAppointments() {
               {!kitAlreadySubmitted && (
                 <div style={styles.scheduleDetail}>
                   <strong>Kit Note:</strong> {kitNotes || 'No kit note added.'}
+                </div>
+              )}
+              {kitAlreadySubmitted && (
+                <div style={styles.scheduleDetail}>
+                  <strong>Submitted By:</strong> {formatConsumptionSubmitter(kitSubmittedBy)}
+                </div>
+              )}
+              {kitEditedBy && (
+                <div style={styles.scheduleDetail}>
+                  <strong>Edited By:</strong> {formatConsumptionSubmitter(kitEditedBy)}
+                </div>
+              )}
+              {kitEditedAt && (
+                <div style={styles.scheduleDetail}>
+                  <strong>Edited When:</strong> {formatDateTime(kitEditedAt)}
                 </div>
               )}
             </div>
@@ -2158,8 +2242,9 @@ export default function RecepAppointments() {
                     <tr>
                       <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
                       <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Category</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Current Stock</th>
                       <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
-                        {kitAlreadySubmitted ? 'Used' : 'Qty'}
+                        {kitAlreadySubmitted && !kitEditMode ? 'Used' : 'Qty'}
                       </th>
                     </tr>
                   </thead>
@@ -2168,55 +2253,58 @@ export default function RecepAppointments() {
                       <tr key={`${item.item_name}-${index}`}>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
                           {item.item_name}
-                          {!item.inventory_id && !kitAlreadySubmitted && (
+                          {!item.inventory_id && (!kitAlreadySubmitted || kitEditMode) && (
                             <span style={{ color: '#b91c1c', fontSize: 11, display: 'block' }}>
                               Not linked to branch inventory
                             </span>
                           )}
                         </td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.category || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', color: '#374151' }}>
+                          {item.current_stock !== null && item.current_stock !== undefined
+                            ? item.current_stock
+                            : <span style={{ color: '#94a3b8' }}>—</span>}
+                        </td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
-                          {kitAlreadySubmitted ? (
+                          {kitAlreadySubmitted && !kitEditMode ? (
                             item.quantity_used || 0
-                          ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.quantity_used || 0}
-                              onChange={(event) => handleKitQtyChange(index, event.target.value)}
-                              disabled={!item.inventory_id}
-                              style={{
-                                width: '60px',
-                                padding: '4px 8px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
-                                cursor: !item.inventory_id ? 'not-allowed' : 'text',
-                              }}
-                            />
-                          )}
+                          ) : (() => {
+                            const exceedsStock =
+                              item.inventory_id &&
+                              item.current_stock !== null &&
+                              item.current_stock !== undefined &&
+                              Number(item.quantity_used) > Number(item.current_stock);
+                            return (
+                              <>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.quantity_used || 0}
+                                  onChange={(event) => handleKitQtyChange(index, event.target.value)}
+                                  disabled={!item.inventory_id}
+                                  style={{
+                                    width: '60px',
+                                    padding: '4px 8px',
+                                    border: `1px solid ${exceedsStock ? '#ef4444' : '#d1d5db'}`,
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
+                                    cursor: !item.inventory_id ? 'not-allowed' : 'text',
+                                  }}
+                                />
+                                {exceedsStock && (
+                                  <span style={{ display: 'block', color: '#b91c1c', fontSize: 11, marginTop: 2 }}>
+                                    Exceeds stock
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
-            )}
-
-            {kitAlreadySubmitted && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  background: '#ecfeff',
-                  border: '1px solid #a5f3fc',
-                  color: '#0f766e',
-                  fontSize: 13,
-                }}
-              >
-                Display only: Dentist already submitted this service kit.
               </div>
             )}
 
@@ -2234,16 +2322,24 @@ export default function RecepAppointments() {
                   type="button"
                   style={{
                     ...styles.modalPrimaryBtn,
-                    ...((kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems) ? styles.pageBtnDisabled : {}),
+                    ...((kitSubmitting || !hasDeductibleKitItems || kitHasStockError) ? styles.pageBtnDisabled : {}),
                   }}
-                  onClick={handleConfirmKitDeduction}
-                  disabled={kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems}
+                  onClick={() => {
+                    if (kitAlreadySubmitted && !kitEditMode) {
+                      setKitEditMode(true);
+                      return;
+                    }
+                    handleConfirmKitDeduction();
+                  }}
+                  disabled={kitSubmitting || !hasDeductibleKitItems || kitHasStockError}
                 >
-                  {kitAlreadySubmitted
-                    ? 'Already Submitted by Dentist'
+                  {kitAlreadySubmitted && !kitEditMode
+                    ? 'Edit'
+                    : (kitAlreadySubmitted && kitEditMode
+                      ? (kitSubmitting ? 'Saving...' : 'Save Changes')
                     : (!hasDeductibleKitItems
                       ? 'No Deductible Items'
-                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct'))}
+                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct')))}
                 </button>
               </div>
             )}
@@ -2580,10 +2676,10 @@ function normalizeAppointments(items) {
       type: isRescheduledPending
         ? 'Rescheduled'
         : (item.type || item.bookingType || formatStatus(item.status || 'scheduled')),
-      originalSchedule: scheduleMeta.originalSchedule,
-      rescheduledSchedule:
-        scheduleMeta.rescheduledSchedule ||
+      originalSchedule:
+        scheduleMeta.originalSchedule ||
         `${displayDate.fullDate || '-'} ${displayDate.time || '-'}`,
+      rescheduledSchedule: scheduleMeta.rescheduledSchedule || '',
       notes: unifiedNote,
       note: unifiedNote,
     };
@@ -2792,6 +2888,14 @@ function getServiceDurationMinutes(services, serviceId) {
   return Number.isFinite(duration) && duration > 0 ? duration : 30;
 }
 
+function getServiceBufferMinutes(services, serviceId) {
+  const service = (Array.isArray(services) ? services : []).find(
+    (s) => String(s.id) === String(serviceId)
+  );
+  const buffer = Number(service?.time_buffer_min ?? appointmentBufferMinutes);
+  return Number.isFinite(buffer) && buffer >= 0 ? buffer : appointmentBufferMinutes;
+}
+
 function buildScheduleCalendarWeeks(year, month, todayInput) {
   const today = new Date(todayInput || new Date());
   today.setHours(0, 0, 0, 0);
@@ -2847,9 +2951,9 @@ const clinicStartMinutes = 10 * 60;
 const clinicEndMinutes = 19 * 60;
 const lunchStartMinutes = 12 * 60;
 const lunchEndMinutes = 13 * 60 + 30;
-const appointmentBufferMinutes = 15;
+const appointmentBufferMinutes = 30;
 
-function computeAvailableSlotsForSchedule({ appointments, dateKey, durationMinutes }) {
+function computeAvailableSlotsForSchedule({ appointments, dateKey, durationMinutes, bufferMinutes = appointmentBufferMinutes }) {
   const now = Date.now();
   const [year, month, day] = String(dateKey || '').split('-').map(Number);
 
@@ -2857,7 +2961,7 @@ function computeAvailableSlotsForSchedule({ appointments, dateKey, durationMinut
     .filter((a) => ['scheduled', 'arrived'].includes(String(a?.status || '').toLowerCase()))
     .map((a) => {
       const start = new Date(a.start_time).getTime();
-      const end = start + (Number(a.duration_min || 30) + appointmentBufferMinutes) * 60 * 1000;
+      const end = start + (Number(a.duration_min || 30) + Number(a.service_buffer_min ?? appointmentBufferMinutes)) * 60 * 1000;
       return { start, end };
     })
     .filter((interval) => Number.isFinite(interval.start) && Number.isFinite(interval.end));
@@ -2871,7 +2975,7 @@ function computeAvailableSlotsForSchedule({ appointments, dateKey, durationMinut
     const minute = minutes % 60;
     const slotDate = new Date(year, (month || 1) - 1, day || 1, hour24, minute, 0, 0);
     const slotStart = slotDate.getTime();
-    const slotEnd = slotStart + (durationMinutes + appointmentBufferMinutes) * 60 * 1000;
+    const slotEnd = slotStart + (durationMinutes + bufferMinutes) * 60 * 1000;
 
     const isPast = slotStart <= now;
     const isBlocked = !isPast && busyIntervals.some((b) => slotStart < b.end && slotEnd > b.start);
@@ -2915,6 +3019,28 @@ function parseTimeToMinutes(timeString) {
   }
 
   return hour * 60 + (Number(minuteValue) || 0);
+}
+
+function formatConsumptionSubmitter(submitter) {
+  if (!submitter) return 'Staff';
+  const role = String(submitter.role || '').toLowerCase();
+  const roleLabel =
+    role === 'dentist' ? 'Dentist' : role === 'receptionist' ? 'Receptionist' : 'Staff';
+  return submitter.name ? `${submitter.name} (${roleLabel})` : roleLabel;
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 function formatPaymentAmount(amount) {

@@ -158,12 +158,15 @@ async function getDentistSchedule(dentistId, branchId, weekday) {
 
 async function getDentistAppointmentsOnDay(dentistId, dayStart, dayEnd) {
   const [rows] = await pool.query(
-    `SELECT start_time, duration_min FROM appointments
-     WHERE dentist_id = ?
-        AND status IN ('scheduled','arrived')
-        AND start_time < ?
-        AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?`,
+    `SELECT a.start_time, a.duration_min, COALESCE(s.time_buffer_min, ?) AS time_buffer_min
+     FROM appointments a
+     LEFT JOIN services s ON s.id = a.service_id
+     WHERE a.dentist_id = ?
+        AND a.status IN ('scheduled','arrived')
+        AND a.start_time < ?
+        AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(s.time_buffer_min, ?), a.start_time) > ?`,
     [
+      APPOINTMENT_BUFFER_MINUTES,
       dentistId,
       toMySQLDateTime(dayEnd),
       APPOINTMENT_BUFFER_MINUTES,
@@ -172,18 +175,21 @@ async function getDentistAppointmentsOnDay(dentistId, dayStart, dayEnd) {
   );
   return rows.map(r => ({
     start: parseISOToDate(r.start_time),
-    end: addMinutes(parseISOToDate(r.start_time), r.duration_min + APPOINTMENT_BUFFER_MINUTES),
+    end: addMinutes(parseISOToDate(r.start_time), r.duration_min + Number(r.time_buffer_min || APPOINTMENT_BUFFER_MINUTES)),
   }));
 }
 
 async function getBranchBusyIntervalsOnDay(branchId, dayStart, dayEnd) {
   const [rows] = await pool.query(
-    `SELECT start_time, duration_min FROM appointments
-     WHERE branch_id = ?
-       AND status IN ('scheduled','arrived')
-       AND start_time < ?
-       AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?`,
+    `SELECT a.start_time, a.duration_min, COALESCE(s.time_buffer_min, ?) AS time_buffer_min
+     FROM appointments a
+     LEFT JOIN services s ON s.id = a.service_id
+     WHERE a.branch_id = ?
+       AND a.status IN ('scheduled','arrived')
+       AND a.start_time < ?
+       AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(s.time_buffer_min, ?), a.start_time) > ?`,
     [
+      APPOINTMENT_BUFFER_MINUTES,
       branchId,
       toMySQLDateTime(dayEnd),
       APPOINTMENT_BUFFER_MINUTES,
@@ -192,7 +198,7 @@ async function getBranchBusyIntervalsOnDay(branchId, dayStart, dayEnd) {
   );
   return rows.map((r) => {
     const start = parseISOToDate(r.start_time);
-    const end = addMinutes(start, Number(r.duration_min || 30) + APPOINTMENT_BUFFER_MINUTES);
+    const end = addMinutes(start, Number(r.duration_min || 30) + Number(r.time_buffer_min || APPOINTMENT_BUFFER_MINUTES));
     return { start, end };
   });
 }
@@ -279,7 +285,7 @@ async function suggestSlots({
   limit = 8,
 }) {
   const [services] = await pool.query(
-    `SELECT id, name, duration_min FROM services
+    `SELECT id, name, duration_min, time_buffer_min FROM services
      WHERE id = ? AND status = 'Active'`,
     [serviceId]
   );
@@ -287,11 +293,14 @@ async function suggestSlots({
     throw new Error('Service not found');
   }
   const service = services[0];
+  const serviceBufferMin = Number.isFinite(Number(service.time_buffer_min))
+    ? Number(service.time_buffer_min)
+    : APPOINTMENT_BUFFER_MINUTES;
 
   const dentists = await getEligibleDentists(serviceId, branchId);
   if (dentists.length === 0) {
     return {
-      service: { id: service.id, name: service.name, duration_min: service.duration_min },
+      service: { id: service.id, name: service.name, duration_min: service.duration_min, time_buffer_min: serviceBufferMin },
       suggestions: [],
       reason: 'No dentists at this branch offer this service',
     };
@@ -338,7 +347,7 @@ async function suggestSlots({
     if (preferredStart && isSameClinicDate(dayStart, preferredStart)) {
       const preferredEnd = addMinutes(
         preferredStart,
-        service.duration_min + APPOINTMENT_BUFFER_MINUTES
+        service.duration_min + serviceBufferMin
       );
       selectedSlotBooked = branchBusyIntervals.some((b) =>
         rangesOverlap(preferredStart, preferredEnd, b.start, b.end)
@@ -378,18 +387,18 @@ async function suggestSlots({
       if (
         preferredStart &&
         preferredStart >= candidateWorkStart &&
-        addMinutes(preferredStart, service.duration_min + APPOINTMENT_BUFFER_MINUTES) <= workEnd
+        addMinutes(preferredStart, service.duration_min + serviceBufferMin) <= workEnd
       ) {
         candidates.push({
           start: new Date(preferredStart),
-          end: addMinutes(preferredStart, service.duration_min + APPOINTMENT_BUFFER_MINUTES),
+          end: addMinutes(preferredStart, service.duration_min + serviceBufferMin),
         });
       }
 
       candidates.push(...generateCandidateSlots({
         workStart: candidateWorkStart,
         workEnd,
-        durationMin: service.duration_min + APPOINTMENT_BUFFER_MINUTES,
+        durationMin: service.duration_min + serviceBufferMin,
         stepMin: 15,
       }));
 
@@ -456,7 +465,7 @@ async function suggestSlots({
   });
 
   return {
-    service: { id: service.id, name: service.name, duration_min: service.duration_min },
+    service: { id: service.id, name: service.name, duration_min: service.duration_min, time_buffer_min: serviceBufferMin },
     branch_id: branchId,
     patient_preferences: {
       preferred_time_of_day: preferences.preferredBucket,

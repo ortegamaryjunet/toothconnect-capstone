@@ -3,7 +3,7 @@
   isTablet = false,
   isSmallScreen = false,
 } = {}) => {
-  const sidebarWidth = isMobile ? 80 : 230;
+  const sidebarWidth = isMobile ? 74 : isTablet ? 88 : 230;
 
   return {
     page: {
@@ -25,7 +25,7 @@
       height: '100vh',
       background: '#ffffff',
       borderRight: '1px solid #e5e7eb',
-      padding: isMobile ? '18px 10px' : '22px 16px',
+      padding: isMobile ? '16px 8px' : isTablet ? '18px 10px' : '22px 16px',
       zIndex: 300,
       display: 'flex',
       flexDirection: 'column',
@@ -40,8 +40,9 @@
     },
 
     logoImg: {
-      width: isMobile ? 55 : 125,
+      width: isMobile ? 52 : isTablet ? 58 : 125,
       height: 'auto',
+      maxWidth: '100%',
     },
 
     menu: {
@@ -54,9 +55,9 @@
     menuItem: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isMobile ? 'center' : 'flex-start',
-      gap: isMobile ? 0 : 12,
-      padding: isMobile ? '13px 10px' : '13px 14px',
+      justifyContent: isMobile || isTablet ? 'center' : 'flex-start',
+      gap: isMobile || isTablet ? 0 : 12,
+      padding: isMobile || isTablet ? '13px 0' : '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
@@ -70,13 +71,13 @@
     },
 
     menuItemIcon: {
-      marginRight: isMobile ? 0 : 12,
+      marginRight: isMobile || isTablet ? 0 : 12,
       fontSize: 18,
       verticalAlign: 'middle',
     },
 
     menuItemText: {
-      display: isMobile ? 'none' : 'inline',
+      display: isMobile || isTablet ? 'none' : 'inline',
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
     },
@@ -670,13 +671,13 @@
     },
 
     modalContent: {
-      width: isMobile ? '100%' : 380,
-      maxWidth: 380,
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
       background: '#ffffff',
-      borderRadius: 22,
-      padding: 30,
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.2)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
     },
 
@@ -686,15 +687,7 @@
     },
 
     modalIcon: {
-      width: 70,
-      height: 70,
-      margin: '0 auto 16px',
-      borderRadius: '50%',
-      background: '#fee2e2',
-      color: '#dc2626',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      display: 'none',
     },
 
     expenseModalIcon: {
@@ -705,24 +698,29 @@
     },
 
     modalIconText: {
-      fontSize: 30,
-      lineHeight: 1,
+      display: 'none',
     },
 
     modalTitle: {
       fontFamily: 'Arial, sans-serif',
-      fontSize: 21,
-      color: '#0f172a',
-      marginBottom: 8,
-      marginTop: 0,
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    modalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
     },
 
     modalText: {
-      fontSize: 15,
-      color: '#64748b',
-      marginBottom: 24,
-      marginTop: 0,
       fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
       textAlign: 'center',
     },
 
@@ -785,13 +783,14 @@
 
     modalButton: {
       flex: 1,
+      width: isMobile ? '100%' : 'auto',
+      height: 38,
       border: 'none',
-      borderRadius: 12,
-      padding: 12,
+      borderRadius: 8,
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
       fontWeight: 700,
-      fontSize: 15,
+      fontSize: 14,
     },
 
     logoutBtn: {
@@ -870,6 +869,78 @@
       cursor: 'pointer',
     },
 
+    interpretationCard: {
+      background: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: isMobile ? 18 : 22,
+      padding: isMobile ? 16 : 20,
+      marginBottom: 20,
+      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+      boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
+    },
+
+    interpretationHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+      gap: 12,
+    },
+
+    interpretationTitle: {
+      margin: 0,
+      color: '#0f172a',
+      fontSize: isMobile ? 17 : 18,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    interpretationSubtitle: {
+      margin: '4px 0 0',
+      color: '#64748b',
+      fontSize: 13,
+      lineHeight: 1.45,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    interpretationGrid: {
+      display: 'grid',
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : isSmallScreen
+          ? 'repeat(2, minmax(0, 1fr))'
+          : 'repeat(3, minmax(0, 1fr))',
+      gap: 12,
+      width: '100%',
+      minWidth: 0,
+    },
+
+    interpretationItem: {
+      background: '#f8fafc',
+      border: '1px solid #e2e8f0',
+      borderRadius: 16,
+      padding: 14,
+      boxSizing: 'border-box',
+      minWidth: 0,
+    },
+
+    interpretationItemTitle: {
+      margin: '0 0 6px',
+      color: '#1e3a8a',
+      fontSize: 13,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    interpretationItemText: {
+      margin: 0,
+      color: '#475569',
+      fontSize: 13,
+      lineHeight: 1.55,
+      fontFamily: 'Arial, sans-serif',
+    },
+
     notificationBadge: {
       marginLeft: 'auto',
       background: '#dc2626',
@@ -878,7 +949,7 @@
       padding: '2px 7px',
       fontSize: 11,
       fontWeight: 700,
-      display: isMobile ? 'none' : 'inline-flex',
+      display: isMobile || isTablet ? 'none' : 'inline-flex',
     },
 
     revenueContent: {

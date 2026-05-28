@@ -207,6 +207,7 @@ CREATE TABLE services (
   name VARCHAR(100) NOT NULL,
   category VARCHAR(100) NOT NULL DEFAULT 'General Dentistry',
   duration_min INT NOT NULL,
+  time_buffer_min INT NOT NULL DEFAULT 30,
   price DECIMAL(10,2) NOT NULL,
   status ENUM('Active','Inactive','Discontinued') NOT NULL DEFAULT 'Active',
   description TEXT NULL
@@ -390,12 +391,19 @@ CREATE TABLE supplies (
   supplier VARCHAR(255) NULL,
   category VARCHAR(100) NULL,
   unit VARCHAR(50) NOT NULL,
+
   quantity INT NOT NULL DEFAULT 0,
+  maximum_stock INT NOT NULL DEFAULT 0,
+  stock_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+
   price_per_item DECIMAL(10,2) NOT NULL DEFAULT 0,
   low_stock_threshold INT NOT NULL DEFAULT 10,
+
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
   FOREIGN KEY (branch_id) REFERENCES branches(id),
+
   INDEX idx_supplies_branch (branch_id),
   INDEX idx_supplies_low (branch_id, quantity, low_stock_threshold)
 );
@@ -403,6 +411,7 @@ CREATE TABLE supplies (
 CREATE TABLE medicines (
   id INT AUTO_INCREMENT PRIMARY KEY,
   branch_id INT NOT NULL,
+
   medicine_name VARCHAR(255) NOT NULL,
   generic_name VARCHAR(255) NULL,
   category VARCHAR(100) NULL,
@@ -411,12 +420,19 @@ CREATE TABLE medicines (
   brand VARCHAR(255) NULL,
   supplier VARCHAR(255) NULL,
   unit VARCHAR(50) NOT NULL,
+
   quantity INT NOT NULL DEFAULT 0,
+  maximum_stock INT NOT NULL DEFAULT 0,
+  stock_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+
   price_per_item DECIMAL(10,2) NOT NULL DEFAULT 0,
   low_stock_threshold INT NOT NULL DEFAULT 10,
+
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
   FOREIGN KEY (branch_id) REFERENCES branches(id),
+
   INDEX idx_medicines_branch (branch_id),
   INDEX idx_medicines_low (branch_id, quantity, low_stock_threshold)
 );
@@ -424,6 +440,7 @@ CREATE TABLE medicines (
 CREATE TABLE equipment (
   id INT AUTO_INCREMENT PRIMARY KEY,
   branch_id INT NOT NULL,
+
   equipment_name VARCHAR(255) NOT NULL,
   brand VARCHAR(255) NULL,
   supplier VARCHAR(255) NULL,
@@ -431,19 +448,28 @@ CREATE TABLE equipment (
   model_number VARCHAR(100) NULL,
   serial_number VARCHAR(100) NULL,
   location VARCHAR(100) NULL,
+
   purchase_date DATE NULL,
   warranty_date DATE NULL,
   last_maintenance DATE NULL,
   next_maintenance DATE NULL,
+
   maintenance_status VARCHAR(50) DEFAULT 'Available',
   assigned_to INT NULL,
+
   quantity INT NOT NULL DEFAULT 1,
+  maximum_stock INT NOT NULL DEFAULT 0,
+  stock_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+
   price_per_item DECIMAL(10,2) NOT NULL DEFAULT 0,
   low_stock_threshold INT NOT NULL DEFAULT 1,
+
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
   FOREIGN KEY (branch_id) REFERENCES branches(id),
   FOREIGN KEY (assigned_to) REFERENCES users(id),
+
   INDEX idx_equipment_branch (branch_id)
 );
 

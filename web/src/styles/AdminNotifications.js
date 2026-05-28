@@ -353,21 +353,41 @@
 
     cardHeader: {
       display: 'flex',
-      alignItems: 'center',
+      alignItems: isMobile ? 'stretch' : 'center',
       justifyContent: 'space-between',
-      marginBottom: 18,
+      marginBottom: 20,
+      gap: 14,
+      flexDirection: isMobile ? 'column' : 'row',
     },
 
     markAllBtn: {
-      border: 'none',
-      background: 'transparent',
-      color: '#2563eb',
+      border: '1px solid #f3d46b',
+      background: '#fff8e1',
+      color: '#b8860b',
+      height: 42,
+      padding: '0 18px',
+      borderRadius: 12,
       fontSize: 13,
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
       cursor: 'pointer',
-      padding: '4px 0',
-      textDecoration: 'underline',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      transition: '0.2s ease',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
+      textDecoration: 'none',
+      width: isMobile ? '100%' : 'auto',
+    },
+
+    markAllBtnIcon: {
+      fontSize: 14,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#b8860b',
     },
 
     cardTitle: {
@@ -500,53 +520,50 @@
       background: 'rgba(15, 23, 42, 0.45)',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: 20,
+      padding: isMobile ? 18 : 20,
       boxSizing: 'border-box',
     },
 
     modalContent: {
-      width: isMobile ? '92%' : '100%',
-      maxWidth: 380,
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
       background: '#ffffff',
-      borderRadius: isMobile ? 20 : 22,
-      padding: isMobile ? '24px 18px' : 30,
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.2)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
     },
 
     modalIcon: {
-      width: 72,
-      height: 72,
-      margin: '0 auto 16px',
-      borderRadius: '50%',
-      background: '#fee2e2',
-      color: '#dc2626',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      display: 'none',
     },
 
     modalIconText: {
-      fontSize: 32,
-      lineHeight: 1,
+      display: 'none',
     },
 
     modalTitle: {
-      fontSize: 21,
-      color: '#0f172a',
-      marginBottom: 8,
-      marginTop: 0,
       fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    modalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
     },
 
     modalText: {
-      fontSize: 15,
-      color: '#64748b',
-      marginBottom: 24,
-      marginTop: 0,
-      lineHeight: 1.5,
       fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
+      textAlign: 'center',
     },
 
     modalActions: {
@@ -557,13 +574,14 @@
 
     modalButton: {
       flex: 1,
+      width: isMobile ? '100%' : 'auto',
+      height: 38,
       border: 'none',
-      borderRadius: 12,
-      padding: 12,
+      borderRadius: 8,
       cursor: 'pointer',
-      fontSize: 14,
-      fontWeight: 600,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
+      fontSize: 14,
     },
 
     logoutBtn: {

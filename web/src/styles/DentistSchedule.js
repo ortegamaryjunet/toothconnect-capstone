@@ -1,13 +1,20 @@
-export default function createDentistScheduleStyles({ isMobile, isTablet, isSmallScreen }) {
+export default function createDentistScheduleStyles({
+  isMobile,
+  isTablet,
+  isSmallScreen,
+}) {
   const sidebarWidth = isMobile ? 74 : isTablet ? 88 : 230;
 
   return {
     page: {
       minHeight: '100vh',
+      width: '100%',
       display: 'flex',
       backgroundColor: '#f4f7fb',
-      fontFamily: "Arial, sans-serif",
+      fontFamily: 'Arial, sans-serif',
       color: '#0f1b3d',
+      overflowX: 'hidden',
+      boxSizing: 'border-box',
     },
 
     sidebar: {
@@ -18,23 +25,25 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       height: '100vh',
       background: '#ffffff',
       borderRight: '1px solid #e5e7eb',
-      padding: isMobile ? '18px 10px' : '22px 16px',
+      padding: isMobile ? '16px 8px' : isTablet ? '18px 10px' : '22px 16px',
       zIndex: 200,
       display: 'flex',
       flexDirection: 'column',
       boxSizing: 'border-box',
+      overflowX: 'hidden',
     },
 
     logo: {
       textAlign: 'center',
-      paddingBottom: 22,
-      marginBottom: 14,
+      paddingBottom: isMobile || isTablet ? 18 : 22,
+      marginBottom: isMobile || isTablet ? 12 : 14,
       borderBottom: '1px solid #e5e7eb',
     },
 
     logoImg: {
-      width: isMobile ? 55 : 125,
+      width: isMobile ? 52 : isTablet ? 58 : 125,
       height: 'auto',
+      maxWidth: '100%',
     },
 
     menu: {
@@ -47,9 +56,9 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
     menuItem: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isMobile ? 'center' : 'flex-start',
-      gap: 12,
-      padding: '13px 14px',
+      justifyContent: isMobile || isTablet ? 'center' : 'flex-start',
+      gap: isMobile || isTablet ? 0 : 12,
+      padding: isMobile || isTablet ? '13px 0' : '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
@@ -60,18 +69,22 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
     },
 
     menuItemIcon: {
-      marginRight: isMobile ? 0 : 12,
+      marginRight: isMobile || isTablet ? 0 : 12,
       fontSize: 18,
       verticalAlign: 'middle',
+      flexShrink: 0,
     },
 
     menuItemText: {
-      display: isMobile ? 'none' : 'inline',
+      display: isMobile || isTablet ? 'none' : 'inline',
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.15,
     },
 
     menuItemActive: {
@@ -83,16 +96,17 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
     notificationBadge: {
       marginLeft: 'auto',
       backgroundColor: '#ef4444',
-      color: '#fff',
+      color: '#ffffff',
       borderRadius: '999px',
       fontSize: '10px',
       fontWeight: '700',
       padding: '2px 7px',
+      display: isMobile || isTablet ? 'none' : 'inline-flex',
     },
 
     logoutSection: {
       marginTop: 'auto',
-      paddingTop: isTablet ? 14 : 18,
+      paddingTop: isMobile || isTablet ? 14 : 18,
       borderTop: '1px solid #e5e7eb',
     },
 
@@ -114,13 +128,13 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       top: 0,
       left: sidebarWidth,
       right: 0,
-      height: 78,
+      height: isMobile ? 72 : 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: isMobile ? '0 14px' : '0 28px',
+      padding: isMobile ? '0 12px' : isTablet ? '0 18px' : '0 28px',
       zIndex: 150,
       boxSizing: 'border-box',
     },
@@ -130,10 +144,11 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       alignItems: 'center',
       gap: 10,
       height: 52,
-      padding: '0 12px',
+      padding: isMobile ? '0 10px' : '0 12px',
       borderRadius: 16,
       background: '#ffffff',
       border: '1px solid #e5e7eb',
+      minWidth: 0,
     },
 
     avatar: {
@@ -145,6 +160,7 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
     },
 
     avatarIcon: {
@@ -153,6 +169,7 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
 
     doctorInfo: {
       display: isMobile ? 'none' : 'block',
+      minWidth: 0,
     },
 
     doctorName: {
@@ -160,6 +177,7 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       fontSize: 14,
       fontWeight: 600,
       color: '#0f172a',
+      whiteSpace: 'nowrap',
     },
 
     doctorSpecialization: {
@@ -168,15 +186,23 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       textAlign: 'left',
       color: '#64748b',
       marginTop: 2,
+      whiteSpace: 'nowrap',
     },
 
     headerActions: {
       display: 'flex',
       alignItems: 'center',
+      minWidth: 0,
     },
 
     mainContent: {
-      padding: isMobile ? '96px 14px 22px' : '104px 28px 28px',
+      padding: isMobile
+        ? '88px 12px 18px'
+        : isTablet
+          ? '96px 18px 22px'
+          : isSmallScreen
+            ? '98px 20px 24px'
+            : '104px 28px 28px',
       boxSizing: 'border-box',
       width: '100%',
       maxWidth: '100%',
@@ -186,16 +212,16 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
     heroCard: {
       position: 'relative',
       width: '100%',
-      minHeight: isMobile ? 170 : 225,
-      borderRadius: isMobile ? 22 : 28,
+      minHeight: isMobile ? 165 : isTablet ? 190 : 225,
+      borderRadius: isMobile ? 20 : 28,
       background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
-      padding: isMobile ? 20 : 30,
-      marginBottom: 22,
+      padding: isMobile ? 18 : isTablet ? 22 : 30,
+      marginBottom: isMobile ? 16 : 22,
       overflow: 'hidden',
       display: 'flex',
       alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'space-between',
-      gap: 24,
+      gap: 20,
       flexDirection: isMobile ? 'column' : 'row',
       textAlign: 'left',
       boxSizing: 'border-box',
@@ -216,7 +242,7 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
 
     heroTitle: {
       maxWidth: 760,
-      fontSize: isMobile ? 23 : 31,
+      fontSize: isMobile ? 22 : isTablet ? 26 : 31,
       color: '#ffffff',
       marginBottom: 12,
       marginTop: 0,
@@ -231,8 +257,8 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
     },
 
     heroIcon: {
-      width: isMobile ? 70 : 90,
-      height: isMobile ? 70 : 90,
+      width: isMobile ? 68 : isTablet ? 78 : 90,
+      height: isMobile ? 68 : isTablet ? 78 : 90,
       borderRadius: 24,
       background: 'rgba(255, 255, 255, 0.22)',
       display: 'flex',
@@ -243,93 +269,117 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
     },
 
     heroIconText: {
-      fontSize: isMobile ? 32 : 42,
+      fontSize: isMobile ? 32 : isTablet ? 36 : 42,
       color: '#ffffff',
       verticalAlign: 'middle',
     },
 
     infoGrid: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : 'minmax(220px, 0.7fr) minmax(280px, 0.95fr)',
-      gap: '12px',
-      marginBottom: '16px',
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : isTablet || isSmallScreen
+          ? 'repeat(2, minmax(0, 1fr))'
+          : 'minmax(220px, 0.7fr) minmax(280px, 0.95fr)',
+      gap: 12,
+      marginBottom: 16,
       alignItems: 'stretch',
+      width: '100%',
+      minWidth: 0,
     },
 
     infoCard: {
-      fontFamily: "Arial, sans-serif",
+      fontFamily: 'Arial, sans-serif',
       backgroundColor: '#ffffff',
-      borderRadius: '16px',
+      borderRadius: 16,
       border: '1px solid #e2e8f0',
       padding: '10px 14px',
       boxShadow: '0 6px 18px rgba(15,23,42,0.04)',
-      minHeight: '50px',
+      minHeight: 50,
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
+      boxSizing: 'border-box',
+      minWidth: 0,
+      overflow: 'hidden',
     },
 
     infoLabel: {
-      fontFamily: "Arial, sans-serif",
+      fontFamily: 'Arial, sans-serif',
       margin: '0 0 4px',
-      fontSize: '13px',
+      fontSize: 13,
       color: '#64748b',
-      fontWeight: '600',
+      fontWeight: 600,
     },
 
     infoValue: {
-      fontFamily: "Arial, sans-serif",
+      fontFamily: 'Arial, sans-serif',
       margin: 0,
-      fontSize: '15px',
-      color: 'black'
+      fontSize: 15,
+      color: 'black',
+      lineHeight: 1.35,
+      wordBreak: 'break-word',
     },
 
     mainGrid: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-      gap: '14px',
-      marginBottom: '14px',
+      gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr',
+      gap: isMobile ? 12 : 14,
+      marginBottom: 14,
+      width: '100%',
+      minWidth: 0,
     },
 
     card: {
       backgroundColor: '#ffffff',
-      borderRadius: '18px',
+      borderRadius: 18,
       border: '1px solid #e2e8f0',
-      padding: '22px',
+      padding: isMobile ? 16 : isTablet ? 18 : 22,
       boxShadow: '0 6px 18px rgba(15,23,42,0.04)',
+      boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
+      overflow: 'hidden',
     },
 
     sectionHeader: {
       display: 'flex',
-      alignItems: 'center',
+      alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'space-between',
-      marginBottom: '16px',
+      marginBottom: 16,
+      gap: 10,
+      flexDirection: isMobile ? 'column' : 'row',
     },
 
     sectionTitle: {
       margin: '0 0 16px',
-      fontSize: '18px',
-      fontWeight: '800',
+      fontSize: isMobile ? 17 : 18,
+      fontWeight: 800,
       color: '#0f1b3d',
+      lineHeight: 1.25,
     },
 
     tableWrapper: {
       width: '100%',
+      maxWidth: '100%',
       overflowX: 'auto',
+      boxSizing: 'border-box',
     },
 
     table: {
       width: '100%',
+      minWidth: 520,
       borderCollapse: 'collapse',
     },
 
     th: {
-      padding: '13px 14px',
+      padding: isMobile ? '12px 10px' : '13px 14px',
       backgroundColor: '#f1f5fb',
       color: '#0f1b3d',
-      fontSize: '12px',
-      fontWeight: '800',
+      fontSize: 12,
+      fontWeight: 800,
       textAlign: 'left',
+      whiteSpace: 'nowrap',
     },
 
     tr: {
@@ -337,37 +387,41 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
     },
 
     td: {
-      padding: '12px 14px',
-      fontSize: '12px',
+      padding: isMobile ? '12px 10px' : '12px 14px',
+      fontSize: 12,
       color: '#0f1b3d',
       verticalAlign: 'middle',
+      whiteSpace: 'nowrap',
     },
 
     workingText: {
       color: '#16a34a',
-      fontWeight: '800',
+      fontWeight: 800,
     },
 
     offText: {
       color: '#475569',
-      fontWeight: '500',
+      fontWeight: 500,
     },
 
     requestList: {
       display: 'flex',
       flexDirection: 'column',
-      gap: '10px',
+      gap: 10,
+      minWidth: 0,
     },
 
     requestItem: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : '84px 1fr 156px',
-      gap: '14px',
+      gridTemplateColumns: isMobile ? '1fr' : isTablet || isSmallScreen ? '82px minmax(0, 1fr)' : '84px minmax(0, 1fr) 176px',
+      gap: 14,
       alignItems: 'center',
-      padding: '14px',
+      padding: 14,
       border: '1px solid #e2e8f0',
-      borderRadius: '12px',
+      borderRadius: 12,
       backgroundColor: '#ffffff',
+      boxSizing: 'border-box',
+      minWidth: 0,
     },
 
     statusBadge: {
@@ -375,10 +429,11 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       alignItems: 'center',
       justifyContent: 'center',
       padding: '7px 12px',
-      borderRadius: '7px',
-      fontSize: '11px',
-      fontWeight: '700',
+      borderRadius: 7,
+      fontSize: 11,
+      fontWeight: 700,
       width: 'fit-content',
+      whiteSpace: 'nowrap',
     },
 
     pendingBadge: {
@@ -391,216 +446,368 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
       color: '#15803d',
     },
 
+    cancelledBadge: {
+      backgroundColor: '#e2e8f0',
+      color: '#475569',
+    },
+
     requestInfo: {
       minWidth: 0,
     },
 
     requestTitle: {
       margin: '0 0 4px',
-      fontSize: '13px',
-      fontWeight: '800',
+      fontSize: 13,
+      fontWeight: 800,
       color: '#0f1b3d',
+      lineHeight: 1.3,
     },
 
     requestSubtitle: {
       margin: 0,
-      fontSize: '11px',
+      fontSize: 11,
       color: '#50617c',
+      lineHeight: 1.4,
+      wordBreak: 'break-word',
     },
 
     requestDate: {
-      textAlign: isMobile ? 'left' : 'right',
+      textAlign: isMobile || isTablet || isSmallScreen ? 'left' : 'right',
       display: 'block',
+      gridColumn: isMobile ? 'auto' : isTablet || isSmallScreen ? '1 / -1' : 'auto',
     },
 
     requestDateText: {
-      margin: '0 0 4px',
-      fontSize: '11px',
+      margin: '0 0 8px',
+      fontSize: 11,
       color: '#0f1b3d',
-      fontWeight: '600',
+      fontWeight: 600,
     },
 
-    requestDuration: {
-      margin: 0,
-      fontSize: '11px',
-      color: '#50617c',
+    requestButtonGroup: {
+      display: 'flex',
+      justifyContent: isMobile || isTablet || isSmallScreen ? 'flex-start' : 'flex-end',
+      gap: 8,
+      flexWrap: 'wrap',
     },
 
     requestDetailsButton: {
       border: '1px solid #cfe0ff',
       backgroundColor: '#f8fbff',
       color: '#b8860b',
-      borderRadius: '8px',
-      fontSize: '11px',
-      fontWeight: '800',
+      borderRadius: 8,
+      fontSize: 11,
+      fontWeight: 800,
       padding: '8px 10px',
       cursor: 'pointer',
+      whiteSpace: 'nowrap',
+    },
+
+    requestCancelButton: {
+      border: '1px solid #fecaca',
+      backgroundColor: '#fef2f2',
+      color: '#dc2626',
+      borderRadius: 8,
+      fontSize: 11,
+      fontWeight: 800,
+      padding: '8px 10px',
+      cursor: 'pointer',
+      whiteSpace: 'nowrap',
     },
 
     requestCount: {
       margin: '16px 0 0',
       textAlign: 'center',
-      fontSize: '12px',
+      fontSize: 12,
       color: '#50617c',
+    },
+
+    emptyState: {
+      textAlign: 'center',
+      padding: '24px 0',
+      color: '#64748b',
+      fontSize: 13,
     },
 
     actionRow: {
       display: 'flex',
       flexDirection: 'column',
       textAlign: 'left',
+      minWidth: 0,
     },
 
     actionCard: {
       backgroundColor: '#ffffff',
-      borderRadius: '18px',
+      borderRadius: 18,
       border: '1px solid #e2e8f0',
-      padding: '10px 14px',
+      padding: isMobile ? '14px' : '10px 14px',
       boxShadow: '0 6px 18px rgba(15,23,42,0.04)',
       display: 'flex',
       flexDirection: isMobile ? 'column' : 'row',
       justifyContent: 'space-between',
       alignItems: isMobile ? 'stretch' : 'center',
       textAlign: 'left',
-      minHeight: '50px',
-      gap: isMobile ? '10px' : 0,
+      minHeight: 50,
+      gap: isMobile ? 12 : 14,
+      gridColumn: isMobile ? 'auto' : '1 / -1',
+      boxSizing: 'border-box',
+      minWidth: 0,
     },
 
     actionTitle: {
-      fontFamily: "Arial, sans-serif",
+      fontFamily: 'Arial, sans-serif',
       margin: '0 0 4px',
-      fontSize: '13px',
+      fontSize: 13,
       color: '#64748b',
-      fontWeight: '600',
+      fontWeight: 600,
     },
 
     actionText: {
-      fontFamily: "Arial, sans-serif",
+      fontFamily: 'Arial, sans-serif',
       margin: 0,
-      fontSize: '13px',
+      fontSize: 13,
       color: 'black',
-      fontWeight: '500',
+      fontWeight: 500,
+      lineHeight: 1.4,
+    },
+
+    warningText: {
+      margin: '8px 0 0',
+      fontSize: 12,
+      color: '#b45309',
+      fontWeight: 700,
+      lineHeight: 1.4,
     },
 
     primaryButton: {
-      height: '32px',
+      height: 36,
       border: 'none',
-      borderRadius: '6px',
+      borderRadius: 8,
       background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
-      fontSize: '11px',
-      fontWeight: '800',
+      fontSize: 11,
+      fontWeight: 800,
       padding: '0 22px',
       cursor: 'pointer',
-      alignSelf: 'center',
-      minWidth: isMobile ? '100%' : '148px',
+      alignSelf: isMobile ? 'stretch' : 'center',
+      minWidth: isMobile ? '100%' : 148,
+      whiteSpace: 'nowrap',
     },
 
     modal: {
       position: 'fixed',
       inset: 0,
-      backgroundColor: 'rgba(15,23,42,0.45)',
+      backgroundColor: 'rgba(15, 23, 42, 0.45)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
+      padding: isMobile ? 16 : 20,
+      boxSizing: 'border-box',
     },
 
     modalContent: {
-      backgroundColor: '#ffffff',
-      borderRadius: '20px',
-      padding: '36px 32px',
-      width: '340px',
-      maxWidth: '90vw',
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
+      background: '#ffffff',
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 20px 60px rgba(15,23,42,0.18)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
     },
 
     modalIcon: {
-      width: '56px',
-      height: '56px',
-      borderRadius: '16px',
-      backgroundColor: '#fff1f2',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      margin: '0 auto 18px',
+      display: 'none',
     },
 
     modalIconText: {
-      fontSize: '26px',
-      color: '#ef4444',
-      display: 'flex',
-      alignItems: 'center',
+      display: 'none',
     },
 
     modalTitle: {
-      margin: '0 0 10px',
-      fontSize: '20px',
-      fontWeight: '800',
-      color: '#0f1b3d',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    modalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
     },
 
     modalText: {
-      margin: '0 0 24px',
-      fontSize: '14px',
-      color: '#50617c',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
     },
 
     modalActions: {
       display: 'flex',
-      gap: '10px',
-      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isMobile ? 'column' : 'row',
     },
 
     modalButton: {
-      height: '42px',
+      flex: 1,
+      width: isMobile ? '100%' : 'auto',
+      height: 38,
       border: 'none',
-      borderRadius: '10px',
-      fontSize: '14px',
-      fontWeight: '700',
-      padding: '0 24px',
+      borderRadius: 8,
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
       cursor: 'pointer',
     },
 
     logoutBtn: {
-      backgroundColor: '#ef4444',
+      background: '#dc2626',
       color: '#ffffff',
     },
 
     cancelBtn: {
-      backgroundColor: '#f1f5f9',
-      color: '#344461',
+      background: '#f1f5f9',
+      color: '#334155',
+    },
+
+    submitLeaveButton: {
+      height: 42,
+      border: 'none',
+      borderRadius: 10,
+      fontSize: 14,
+      fontWeight: 700,
+      padding: '0 24px',
+      cursor: 'pointer',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      color: '#ffffff',
+      width: isMobile ? '100%' : 'auto',
+    },
+
+    leaveModalContent: {
+      backgroundColor: '#ffffff',
+      borderRadius: 20,
+      width: isMobile ? '100%' : 440,
+      maxWidth: '92vw',
+      textAlign: 'left',
+      padding: isMobile ? '22px 18px' : 28,
+      boxShadow: '0 20px 60px rgba(15,23,42,0.18)',
+      boxSizing: 'border-box',
+      maxHeight: '90vh',
+      overflowY: 'auto',
+    },
+
+    leaveModalHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 20,
+      gap: 12,
+    },
+
+    leaveDateRow: {
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      gap: 12,
+      marginBottom: 14,
+    },
+
+    leaveDateField: {
+      flex: 1,
+      minWidth: 0,
+    },
+
+    leaveLabel: {
+      display: 'block',
+      fontSize: 12,
+      fontWeight: 700,
+      color: '#0f1b3d',
+      marginBottom: 6,
+    },
+
+    leaveInput: {
+      width: '100%',
+      height: 38,
+      border: '1px solid #e2e8f0',
+      borderRadius: 8,
+      padding: '0 10px',
+      fontSize: 13,
+      color: '#0f1b3d',
+      boxSizing: 'border-box',
+    },
+
+    leaveDaysBox: {
+      marginBottom: 14,
+      padding: '10px 12px',
+      borderRadius: 10,
+      background: '#fffaf0',
+      border: '1px solid #f3e8c0',
+      color: '#8b6508',
+      fontSize: 13,
+      fontWeight: 600,
+      lineHeight: 1.4,
+    },
+
+    leaveReasonBox: {
+      marginBottom: 20,
+    },
+
+    leaveTextarea: {
+      width: '100%',
+      border: '1px solid #e2e8f0',
+      borderRadius: 8,
+      padding: 10,
+      fontSize: 13,
+      color: '#0f1b3d',
+      resize: 'vertical',
+      boxSizing: 'border-box',
+      fontFamily: 'inherit',
+      minHeight: 100,
+    },
+
+    submitErrorText: {
+      color: '#ef4444',
+      fontSize: 12,
+      marginBottom: 10,
     },
 
     detailsModalContent: {
-      width: '520px',
+      width: isMobile ? '100%' : 520,
       maxWidth: '92vw',
       textAlign: 'left',
-      padding: '28px 28px 24px',
+      padding: isMobile ? '22px 18px' : '28px 28px 24px',
+      maxHeight: '90vh',
+      overflowY: 'auto',
     },
 
     detailsModalHeader: {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: '20px',
+      marginBottom: 20,
+      gap: 12,
     },
 
     detailsCloseButton: {
       background: 'none',
       border: 'none',
       cursor: 'pointer',
-      fontSize: '24px',
+      fontSize: 24,
       color: '#64748b',
       lineHeight: 1,
       padding: 0,
+      flexShrink: 0,
     },
 
     detailsGrid: {
       display: 'grid',
       gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
       gap: '14px 16px',
-      marginBottom: '20px',
+      marginBottom: 20,
     },
 
     detailsField: {
@@ -612,38 +819,133 @@ export default function createDentistScheduleStyles({ isMobile, isTablet, isSmal
     },
 
     detailsLabel: {
-      fontSize: '11px',
-      fontWeight: '800',
+      fontSize: 11,
+      fontWeight: 800,
       color: '#64748b',
       textTransform: 'uppercase',
       letterSpacing: '0.03em',
-      marginBottom: '6px',
+      marginBottom: 6,
     },
 
     detailsValue: {
-      minHeight: '42px',
+      minHeight: 42,
       border: '1px solid #e2e8f0',
-      borderRadius: '10px',
+      borderRadius: 10,
       backgroundColor: '#f8fafc',
       padding: '11px 12px',
       boxSizing: 'border-box',
-      fontSize: '13px',
+      fontSize: 13,
       color: '#0f1b3d',
       display: 'flex',
       alignItems: 'center',
+      lineHeight: 1.4,
+      wordBreak: 'break-word',
     },
 
     detailsTextarea: {
-      minHeight: '112px',
+      minHeight: 112,
       border: '1px solid #e2e8f0',
-      borderRadius: '10px',
+      borderRadius: 10,
       backgroundColor: '#f8fafc',
-      padding: '12px',
+      padding: 12,
       boxSizing: 'border-box',
-      fontSize: '13px',
+      fontSize: 13,
       color: '#0f1b3d',
       lineHeight: 1.5,
       whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+    },
+
+    detailsCancelButton: {
+      height: 42,
+      border: 'none',
+      borderRadius: 10,
+      fontSize: 14,
+      fontWeight: 700,
+      padding: '0 24px',
+      cursor: 'pointer',
+      backgroundColor: '#ef4444',
+      color: '#ffffff',
+      width: isMobile ? '100%' : 'auto',
+    },
+
+    validationModalOverlay: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 10000,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    validationModalContent: {
+      width: isMobile ? '100%' : 460,
+      maxWidth: 460,
+      background: '#ffffff',
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
+    },
+
+    validationModalTitle: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 800,
+      color: '#111827',
+      margin: '0 0 16px',
+    },
+
+    validationModalDivider: {
+      height: 1,
+      background: '#d1d5db',
+      marginBottom: 22,
+    },
+
+    validationModalText: {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: isMobile ? 15 : 17,
+      lineHeight: 1.5,
+      color: '#666666',
+      margin: '0 0 28px',
+    },
+
+    validationModalActions: {
+      display: 'flex',
+      gap: 12,
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    validationModalButton: {
+      flex: 1,
+      width: isMobile ? '100%' : 'auto',
+      height: 38,
+      border: 'none',
+      borderRadius: 8,
+      background: '#d4af37',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+    },
+
+    validationModalCancelButton: {
+      flex: 1,
+      width: isMobile ? '100%' : 'auto',
+      height: 38,
+      border: 'none',
+      borderRadius: 8,
+      background: '#f1f5f9',
+      color: '#334155',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
     },
   };
 }

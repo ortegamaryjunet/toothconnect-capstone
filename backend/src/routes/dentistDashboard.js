@@ -3,13 +3,18 @@ const pool = require('../config/db');
 const { authenticate, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
+
 router.use(authenticate);
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+function getUserId(req) {
+  return req.user?.user_id || req.user?.id;
+}
+
 function formatTime12h(timeStr) {
   if (!timeStr) return '';
-  const [hh, mm] = timeStr.split(':');
+  const [hh, mm] = String(timeStr).split(':');
   const h = parseInt(hh, 10);
   const period = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
@@ -17,31 +22,24 @@ function formatTime12h(timeStr) {
 }
 
 async function notifyDentistAboutRequestDecision(dentistId, status, requestType) {
-  const title =
-    status === 'approved' ? 'Schedule request approved' : 'Schedule request rejected';
-  const body =
-    `Your ${requestType === 'leave' ? 'leave' : 'schedule transfer'} request was ${status}.`;
+  const title = status === 'approved' ? 'Schedule request approved' : 'Schedule request rejected';
+  const body = `Your ${requestType === 'leave' ? 'leave' : 'schedule transfer'} request was ${status}.`;
 
   await pool.query(
     `INSERT INTO notifications (user_id, type, title, body, related_type)
      VALUES (?, ?, ?, ?, ?)`,
-    [
-      dentistId,
-      `schedule_request_${status}`,
-      title,
-      body,
-      'schedule_request',
-    ]
+    [dentistId, `schedule_request_${status}`, title, body, 'schedule_request']
   );
 }
 
-// GET /api/dentist-dashboard — stats, upcoming appointments, and recent feedback
 router.get('/', requireRole('dentist'), async (req, res) => {
-  const dentistId = req.user.user_id;
+  const dentistId = getUserId(req);
+
   try {
     const [[totals]] = await pool.query(
       `SELECT COUNT(*) AS totalAppointments, COUNT(DISTINCT patient_id) AS totalPatients
-       FROM appointments WHERE dentist_id = ?`,
+       FROM appointments
+       WHERE dentist_id = ?`,
       [dentistId]
     );
 
@@ -52,16 +50,22 @@ router.get('/', requireRole('dentist'), async (req, res) => {
          AND YEAR(start_time) = YEAR(CURDATE())
          AND MONTH(start_time) = MONTH(CURDATE())
          AND patient_id NOT IN (
-           SELECT DISTINCT patient_id FROM appointments
-           WHERE dentist_id = ? AND start_time < DATE_FORMAT(CURDATE(), '%Y-%m-01')
+           SELECT DISTINCT patient_id
+           FROM appointments
+           WHERE dentist_id = ?
+             AND start_time < DATE_FORMAT(CURDATE(), '%Y-%m-01')
          )`,
       [dentistId, dentistId]
     );
 
     const [[{ returningPatients }]] = await pool.query(
-      `SELECT COUNT(*) AS returningPatients FROM (
-         SELECT patient_id FROM appointments WHERE dentist_id = ?
-         GROUP BY patient_id HAVING COUNT(*) > 1
+      `SELECT COUNT(*) AS returningPatients
+       FROM (
+         SELECT patient_id
+         FROM appointments
+         WHERE dentist_id = ?
+         GROUP BY patient_id
+         HAVING COUNT(*) > 1
        ) t`,
       [dentistId]
     );
@@ -72,7 +76,11 @@ router.get('/', requireRole('dentist'), async (req, res) => {
          SUM(CASE WHEN TIMESTAMPDIFF(YEAR, pp.birthday, CURDATE()) BETWEEN 13 AND 19 THEN 1 ELSE 0 END) AS teenCount,
          SUM(CASE WHEN TIMESTAMPDIFF(YEAR, pp.birthday, CURDATE()) BETWEEN 20 AND 59 THEN 1 ELSE 0 END) AS adultCount,
          SUM(CASE WHEN TIMESTAMPDIFF(YEAR, pp.birthday, CURDATE()) >= 60 THEN 1 ELSE 0 END) AS olderCount
-       FROM (SELECT DISTINCT patient_id FROM appointments WHERE dentist_id = ?) a
+       FROM (
+         SELECT DISTINCT patient_id
+         FROM appointments
+         WHERE dentist_id = ?
+       ) a
        LEFT JOIN patient_profile pp ON pp.user_id = a.patient_id`,
       [dentistId]
     );
@@ -86,7 +94,8 @@ router.get('/', requireRole('dentist'), async (req, res) => {
          SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) AS r2,
          SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) AS r1,
          COUNT(*) AS totalRatings
-       FROM patient_feedback WHERE dentist_id = ?`,
+       FROM patient_feedback
+       WHERE dentist_id = ?`,
       [dentistId]
     );
 
@@ -95,8 +104,11 @@ router.get('/', requireRole('dentist'), async (req, res) => {
        FROM appointments a
        JOIN users u ON u.id = a.patient_id
        JOIN services s ON s.id = a.service_id
-       WHERE a.dentist_id = ? AND a.start_time >= NOW() AND a.status = 'scheduled'
-       ORDER BY a.start_time ASC LIMIT 10`,
+       WHERE a.dentist_id = ?
+         AND a.start_time >= NOW()
+         AND a.status = 'scheduled'
+       ORDER BY a.start_time ASC
+       LIMIT 10`,
       [dentistId]
     );
 
@@ -105,16 +117,17 @@ router.get('/', requireRole('dentist'), async (req, res) => {
        FROM patient_feedback pf
        JOIN users u ON u.id = pf.patient_id
        WHERE pf.dentist_id = ?
-       ORDER BY pf.submitted_at DESC LIMIT 5`,
+       ORDER BY pf.submitted_at DESC
+       LIMIT 5`,
       [dentistId]
     );
 
     const totalRatings = Number(ratings?.totalRatings || 0);
     const pct = (n) => (totalRatings ? Math.round((Number(n || 0) / totalRatings) * 100) : 0);
 
-    res.json({
-      totalPatients: Number(totals.totalPatients || 0),
-      totalAppointments: Number(totals.totalAppointments || 0),
+    return res.json({
+      totalPatients: Number(totals?.totalPatients || 0),
+      totalAppointments: Number(totals?.totalAppointments || 0),
       newPatients: Number(newPatients || 0),
       returningPatients: Number(returningPatients || 0),
       childCount: Number(ageRows[0]?.childCount || 0),
@@ -147,13 +160,13 @@ router.get('/', requireRole('dentist'), async (req, res) => {
     });
   } catch (err) {
     console.error('[dentist-dashboard]', err);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 
-// GET /api/dentist-dashboard/schedule — weekly schedule from dentist_schedules
 router.get('/schedule', requireRole('dentist'), async (req, res) => {
-  const dentistId = req.user.user_id;
+  const dentistId = getUserId(req);
+
   try {
     const [scheduleRows] = await pool.query(
       `SELECT ds.weekday, ds.start_time, ds.end_time, b.name AS branchName, b.address AS branchAddress
@@ -168,14 +181,15 @@ router.get('/schedule', requireRole('dentist'), async (req, res) => {
       `SELECT b.name AS branchName
        FROM staff_profile sp
        LEFT JOIN branches b ON b.id = sp.branch_id
-       WHERE sp.user_id = ? LIMIT 1`,
+       WHERE sp.user_id = ?
+       LIMIT 1`,
       [dentistId]
     );
 
-    const branchName =
-      profileRows[0]?.branchName || scheduleRows[0]?.branchName || 'N/A';
+    const branchName = profileRows[0]?.branchName || scheduleRows[0]?.branchName || 'N/A';
 
     const scheduleMap = {};
+
     for (const row of scheduleRows) {
       if (!scheduleMap[row.weekday]) {
         scheduleMap[row.weekday] = {
@@ -188,27 +202,35 @@ router.get('/schedule', requireRole('dentist'), async (req, res) => {
 
     const weeklySchedule = DAY_NAMES.map((day, idx) => {
       const entry = scheduleMap[idx];
+
       if (entry) {
         return {
           day,
           status: 'Working',
-          time: `${formatTime12h(entry.startTime)} – ${formatTime12h(entry.endTime)}`,
+          time: `${formatTime12h(entry.startTime)} - ${formatTime12h(entry.endTime)}`,
           branchAddress: entry.branchAddress,
         };
       }
-      return { day, status: 'Off', time: '—', branchAddress: null };
+
+      return {
+        day,
+        status: 'Off',
+        time: '-',
+        branchAddress: null,
+      };
     });
 
     const workingDays = DAY_NAMES.filter((_, idx) => scheduleMap[idx]).join(', ') || 'N/A';
     const firstRow = scheduleRows[0];
+
     const workingTime = firstRow
-      ? `${formatTime12h(firstRow.start_time)} – ${formatTime12h(firstRow.end_time)}`
+      ? `${formatTime12h(firstRow.start_time)} - ${formatTime12h(firstRow.end_time)}`
       : 'N/A';
 
     const todayWeekday = new Date().getDay();
     const todayBranchAddress = scheduleMap[todayWeekday]?.branchAddress || null;
 
-    res.json({
+    return res.json({
       branchName,
       workingDays,
       workingTime,
@@ -217,21 +239,31 @@ router.get('/schedule', requireRole('dentist'), async (req, res) => {
     });
   } catch (err) {
     console.error('[dentist-schedule]', err);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 
-// POST /api/dentist-dashboard/schedule-requests — submit leave or transfer request
 router.post('/schedule-requests', requireRole('dentist'), async (req, res) => {
-  const dentistId = req.user.user_id;
-  const { request_type, date_from, date_to, reason, requested_branch_id, transfer_type, duration } = req.body;
+  const dentistId = getUserId(req);
+
+  const {
+    request_type,
+    date_from,
+    date_to,
+    reason,
+    requested_branch_id,
+    transfer_type,
+    duration,
+  } = req.body;
 
   if (!request_type || !['leave', 'transfer'].includes(request_type)) {
     return res.status(400).json({ message: 'Invalid request_type' });
   }
+
   if (request_type === 'leave' && (!date_from || !date_to)) {
     return res.status(400).json({ message: 'date_from and date_to are required for leave requests' });
   }
+
   if (request_type === 'transfer' && !requested_branch_id) {
     return res.status(400).json({ message: 'requested_branch_id is required for transfer requests' });
   }
@@ -254,36 +286,49 @@ router.post('/schedule-requests', requireRole('dentist'), async (req, res) => {
     );
 
     const requestId = result.insertId;
-    const [[dentistRow]] = await pool.query('SELECT name FROM users WHERE id = ?', [dentistId]);
+
+    const [[dentistRow]] = await pool.query(
+      `SELECT name FROM users WHERE id = ?`,
+      [dentistId]
+    );
+
     const dentistName = dentistRow?.name || 'A dentist';
     const requestLabel = request_type === 'leave' ? 'leave' : 'transfer';
+
     const [admins] = await pool.query(
-      "SELECT id FROM users WHERE role = 'Admin' AND status = 'Active'"
+      `SELECT id FROM users
+       WHERE LOWER(role) = 'admin'
+         AND LOWER(status) = 'active'`
     );
+
     for (const admin of admins) {
       await pool.query(
         `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
-         VALUES (?, 'schedule_request', ?, ?, 'schedule_request', ?)`,
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
           admin.id,
-          'New Leave Request',
+          'schedule_request',
+          request_type === 'leave' ? 'New Leave Request' : 'New Transfer Request',
           `${dentistName} submitted a ${requestLabel} request. Please review and take action.`,
+          'schedule_request',
           requestId,
         ]
       );
     }
 
-    res.status(201).json({ id: requestId, message: 'Request submitted' });
+    return res.status(201).json({
+      id: requestId,
+      message: 'Request submitted',
+    });
   } catch (err) {
     console.error('[schedule-requests POST]', err);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 
-// GET /api/dentist-dashboard/patient-visits — weekly new/returning breakdown for this dentist
 router.get('/patient-visits', requireRole('dentist'), async (req, res) => {
-  const dentistId = req.user.user_id;
-  const month = parseInt(req.query.month, 10) || (new Date().getMonth() + 1);
+  const dentistId = getUserId(req);
+  const month = parseInt(req.query.month, 10) || new Date().getMonth() + 1;
   const year = parseInt(req.query.year, 10) || new Date().getFullYear();
 
   try {
@@ -317,6 +362,7 @@ router.get('/patient-visits', requireRole('dentist'), async (req, res) => {
 
     for (const row of rows) {
       const weekIdx = Math.floor((row.day_of_month - 1) / 7);
+
       if (row.visit_type === 'new') {
         newPatients[weekIdx] += 1;
       } else {
@@ -324,16 +370,16 @@ router.get('/patient-visits', requireRole('dentist'), async (req, res) => {
       }
     }
 
-    res.json({ newPatients, returningPatients });
+    return res.json({ newPatients, returningPatients });
   } catch (err) {
     console.error('[dentist-patient-visits]', err);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 
-// GET /api/dentist-dashboard/schedule-requests — list my requests
 router.get('/schedule-requests', requireRole('dentist'), async (req, res) => {
-  const dentistId = req.user.user_id;
+  const dentistId = getUserId(req);
+
   try {
     const [rows] = await pool.query(
       `SELECT sr.id, sr.request_type, sr.status, sr.date_from, sr.date_to, sr.reason,
@@ -345,10 +391,58 @@ router.get('/schedule-requests', requireRole('dentist'), async (req, res) => {
        ORDER BY sr.submitted_at DESC`,
       [dentistId]
     );
-    res.json(rows);
+
+    return res.json(rows);
   } catch (err) {
     console.error('[schedule-requests GET]', err);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.patch('/schedule-requests/:id/cancel', requireRole('dentist'), async (req, res) => {
+  const requestId = Number.parseInt(req.params.id, 10);
+  const dentistId = getUserId(req);
+
+  if (!requestId) {
+    return res.status(400).json({ message: 'Invalid request id.' });
+  }
+
+  try {
+    const [existingRows] = await pool.query(
+      `SELECT id, dentist_id, request_type, status
+       FROM schedule_requests
+       WHERE id = ?
+         AND dentist_id = ?
+       LIMIT 1`,
+      [requestId, dentistId]
+    );
+
+    if (!existingRows.length) {
+      return res.status(404).json({ message: 'Leave request not found.' });
+    }
+
+    const request = existingRows[0];
+
+    if (request.request_type !== 'leave') {
+      return res.status(400).json({ message: 'Only leave requests can be cancelled.' });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending leave requests can be cancelled.' });
+    }
+
+    await pool.query(
+      `UPDATE schedule_requests
+       SET status = 'cancelled'
+       WHERE id = ?
+         AND dentist_id = ?`,
+      [requestId, dentistId]
+    );
+
+    return res.json({ message: 'Leave request cancelled successfully.' });
+  } catch (error) {
+    console.error('[cancel leave request]', error);
+    return res.status(500).json({ message: 'Failed to cancel leave request.' });
   }
 });
 
@@ -384,49 +478,66 @@ router.get('/admin/schedule-requests', requireRole('admin'), async (req, res) =>
       params
     );
 
-    // Load each dentist's working weekdays from dentist_schedules to compute working days
-    const dentistIds = [...new Set(rows.map(r => r.dentist_id))];
+    const dentistIds = [...new Set(rows.map((r) => r.dentist_id))];
     const dentistWorkdays = {};
 
     if (dentistIds.length > 0) {
       const [scheduleRows] = await pool.query(
-        `SELECT dentist_id, weekday FROM dentist_schedules WHERE dentist_id IN (?)`,
+        `SELECT dentist_id, weekday
+         FROM dentist_schedules
+         WHERE dentist_id IN (?)`,
         [dentistIds]
       );
+
       for (const s of scheduleRows) {
-        if (!dentistWorkdays[s.dentist_id]) dentistWorkdays[s.dentist_id] = new Set();
+        if (!dentistWorkdays[s.dentist_id]) {
+          dentistWorkdays[s.dentist_id] = new Set();
+        }
+
         dentistWorkdays[s.dentist_id].add(Number(s.weekday));
       }
     }
 
     function countWorkingDays(dateFrom, dateTo, workdays) {
       if (!dateFrom || !dateTo || !workdays || workdays.size === 0) return null;
+
       let count = 0;
-      const cur = new Date(dateFrom + 'T00:00:00');
-      const end = new Date(dateTo + 'T00:00:00');
+      const cur = new Date(`${dateFrom} 00:00:00`);
+      const end = new Date(`${dateTo} 00:00:00`);
+
       while (cur <= end) {
-        if (workdays.has(cur.getDay())) count++;
+        if (workdays.has(cur.getDay())) {
+          count++;
+        }
+
         cur.setDate(cur.getDate() + 1);
       }
+
       return count;
     }
 
-    const enrichedRows = rows.map(r => {
+    const enrichedRows = rows.map((r) => {
       const workdays = dentistWorkdays[r.dentist_id];
-      const working_days = (r.date_from && r.date_to)
-        ? countWorkingDays(
-            String(r.date_from).slice(0, 10),
-            String(r.date_to).slice(0, 10),
-            workdays
-          )
-        : null;
-      return { ...r, working_days };
+
+      const working_days =
+        r.date_from && r.date_to
+          ? countWorkingDays(
+              String(r.date_from).slice(0, 10),
+              String(r.date_to).slice(0, 10),
+              workdays
+            )
+          : null;
+
+      return {
+        ...r,
+        working_days,
+      };
     });
 
-    res.json({ requests: enrichedRows });
+    return res.json({ requests: enrichedRows });
   } catch (err) {
     console.error('[admin schedule-requests GET]', err);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -474,21 +585,32 @@ router.patch('/admin/schedule-requests/:id', requireRole('admin'), async (req, r
       request.request_type
     );
 
-    res.json({ message: `Request ${status}.` });
+    return res.json({ message: `Request ${status}.` });
   } catch (err) {
     console.error('[admin schedule-requests PATCH]', err);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.get('/admin/audit-logs', requireRole('admin'), async (req, res) => {
   const { from, to } = req.query;
+
   try {
     const conditions = [];
     const params = [];
-    if (from) { conditions.push('DATE(al.created_at) >= ?'); params.push(from); }
-    if (to) { conditions.push('DATE(al.created_at) <= ?'); params.push(to); }
+
+    if (from) {
+      conditions.push('DATE(al.created_at) >= ?');
+      params.push(from);
+    }
+
+    if (to) {
+      conditions.push('DATE(al.created_at) <= ?');
+      params.push(to);
+    }
+
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
     const [rows] = await pool.query(
       `SELECT al.id, al.action, al.created_at,
               al.device_browser, al.log_status,
@@ -500,10 +622,11 @@ router.get('/admin/audit-logs', requireRole('admin'), async (req, res) => {
        LIMIT 500`,
       params
     );
-    res.json({ logs: rows });
+
+    return res.json({ logs: rows });
   } catch (err) {
     console.error('[admin audit-logs]', err);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 

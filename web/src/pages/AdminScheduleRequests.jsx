@@ -1,231 +1,367 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import createAdminScheduleRequestsStyles from '../styles/AdminScheduleRequests';
-import { listAdminScheduleRequests, updateScheduleRequest } from '../api/scheduleRequests';
+import { useEffect, useMemo, useState } from 'react';
+
+import api from '../api/axios';
 
 const rowsPerPage = 10;
 
-function formatDateRange(from, to) {
-  const normalize = (v) => (v ? String(v).split('T')[0] : '');
-  const start = normalize(from);
-  const end = normalize(to);
-  if (start && end && start !== end) return `${start} – ${end}`;
-  return start || '—';
+const STATUS_OPTIONS = ['All', 'pending', 'approved', 'rejected', 'cancelled'];
+
+function formatDate(value) {
+  if (!value) return 'N/A';
+  return String(value).slice(0, 10);
 }
 
-function formatSubmittedOn(isoString) {
-  if (!isoString) return '';
-  const d = new Date(isoString);
-  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  return `${date} ${time}`;
+function formatDateTime(value) {
+  if (!value) return 'N/A';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(0, 19).replace('T', ' ');
+  }
+
+  return date.toLocaleString('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
-function extractCity(address) {
-  if (!address) return 'N/A';
-  const parts = String(address).split(',');
-  return parts[parts.length - 1].trim() || 'N/A';
+function formatStatus(status) {
+  const value = String(status || '').trim();
+
+  if (!value) return 'N/A';
+
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 }
 
-function mapRequest(row) {
-  const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
-  const fullReason = row.reason || '—';
-  const reason = fullReason.length > 40 ? fullReason.substring(0, 40) + '…' : fullReason;
-  return {
-    id: row.id,
-    dentistName: row.dentist_name || 'Unknown',
-    requestType: row.request_type === 'transfer' ? 'Transfer Request' : 'Leave Request',
-    currentBranch: extractCity(row.current_branch_address),
-    scheduleDates: formatDateRange(row.date_from, row.date_to),
-    workingDays: row.working_days,
-    reason,
-    fullReason,
-    submittedOn: formatSubmittedOn(row.submitted_at),
-    status: capitalize(row.status),
-  };
+function formatRequestType(type) {
+  const value = String(type || '').trim();
+
+  if (value === 'leave') return 'Leave';
+  if (value === 'transfer') return 'Transfer';
+
+  return value ? formatStatus(value) : 'N/A';
 }
 
 export default function AdminScheduleRequests({
-  adminSettingsStyles = {},
-  isMobile = false,
-  isSmallScreen = false,
-  highlightRequestId = null,
+  adminSettingsStyles,
+  getStatusStyle,
+  highlightRequestId,
 }) {
-  const styles = createAdminScheduleRequestsStyles({
-    adminSettingsStyles,
-    isMobile,
-    isSmallScreen,
-  });
+  const styles = adminSettingsStyles;
 
   const [requests, setRequests] = useState([]);
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [activeHighlightId, setActiveHighlightId] = useState(highlightRequestId);
-  const highlightRowRef = useRef(null);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [searchText, setSearchText] = useState('');
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [message, setMessage] = useState({ text: '', type: '' });
+
+  async function loadRequests(selectedStatus = statusFilter) {
+    setLoading(true);
+    setMessage({ text: '', type: '' });
+
+    try {
+      const params = {};
+
+      if (selectedStatus !== 'All') {
+        params.status = selectedStatus;
+      }
+
+      const res = await api.get('/dentist-dashboard/admin/schedule-requests', {
+        params,
+      });
+
+      setRequests(res.data.requests || []);
+    } catch (err) {
+      console.error('Failed to load schedule requests', err);
+      setRequests([]);
+      setMessage({
+        text: err.response?.data?.message || 'Failed to load leave requests.',
+        type: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    loadRequests();
+    loadRequests('All');
   }, []);
 
   useEffect(() => {
-    if (!activeHighlightId) return;
-    if (highlightRowRef.current) {
-      highlightRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (highlightRequestId) {
+      setPage(1);
     }
-    const timer = setTimeout(() => setActiveHighlightId(null), 5000);
-    return () => clearTimeout(timer);
-  }, [activeHighlightId, requests]);
+  }, [highlightRequestId]);
 
-  function loadRequests() {
-    listAdminScheduleRequests()
-      .then(data => setRequests((data.requests || []).map(mapRequest)))
-      .catch(() => {});
-  }
+  const filteredRequests = useMemo(() => {
+    const search = searchText.toLowerCase().trim();
 
-  const totalPages = Math.ceil(requests.length / rowsPerPage);
+    return requests.filter((request) => {
+      const status = String(request.status || '').toLowerCase();
+      const matchesStatus =
+        statusFilter === 'All' || status === statusFilter.toLowerCase();
+
+      const searchableText = [
+        request.id,
+        request.dentist_name,
+        request.request_type,
+        request.status,
+        request.date_from,
+        request.date_to,
+        request.reason,
+        request.current_branch_address,
+        request.requested_branch_name,
+        request.transfer_type,
+        request.duration,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return matchesStatus && searchableText.includes(search);
+    });
+  }, [requests, searchText, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / rowsPerPage));
 
   const paginatedRequests = useMemo(() => {
-    const start = (currentPage - 1) * rowsPerPage;
-    return requests.slice(start, start + rowsPerPage);
-  }, [requests, currentPage]);
+    const start = (page - 1) * rowsPerPage;
+    return filteredRequests.slice(start, start + rowsPerPage);
+  }, [filteredRequests, page]);
 
-  function handleView(request) {
-    setSelectedRequest(request);
+  function handleStatusFilterChange(value) {
+    setStatusFilter(value);
+    setPage(1);
+    loadRequests(value);
   }
 
-  function closeModal() {
-    setSelectedRequest(null);
+  function isFinalStatus(status) {
+    const normalized = String(status || '').trim().toLowerCase();
+    return ['approved', 'rejected', 'cancelled', 'canceled'].includes(normalized);
   }
 
-  function handleModalOverlayClick(event) {
-    if (event.target === event.currentTarget) {
-      closeModal();
+  async function updateRequestStatus(request, nextStatus) {
+    const currentStatus = String(request.status || '').toLowerCase();
+
+    if (isFinalStatus(currentStatus)) {
+      setMessage({
+        text: 'This request already has a final status. No action is allowed.',
+        type: 'error',
+      });
+      return;
     }
-  }
 
-  async function handleApprove() {
-    if (!selectedRequest) return;
+    setActionLoadingId(request.id);
+    setMessage({ text: '', type: '' });
+
     try {
-      await updateScheduleRequest(selectedRequest.id, 'approved');
-      setRequests((prev) =>
-        prev.map((r) => r.id === selectedRequest.id ? { ...r, status: 'Approved' } : r)
+      const res = await api.patch(
+        `/dentist-dashboard/admin/schedule-requests/${request.id}`,
+        { status: nextStatus }
       );
-    } catch {
-      loadRequests();
+
+      setMessage({
+        text: res.data.message || `Request ${nextStatus} successfully.`,
+        type: 'success',
+      });
+
+      await loadRequests(statusFilter);
+    } catch (err) {
+      console.error('Failed to update schedule request', err);
+      setMessage({
+        text: err.response?.data?.message || 'Failed to update request status.',
+        type: 'error',
+      });
+    } finally {
+      setActionLoadingId(null);
     }
-    setSelectedRequest(null);
   }
 
-  async function handleReject() {
-    if (!selectedRequest) return;
-    try {
-      await updateScheduleRequest(selectedRequest.id, 'rejected');
-      setRequests((prev) =>
-        prev.map((r) => r.id === selectedRequest.id ? { ...r, status: 'Rejected' } : r)
+  function renderActionButtons(request) {
+    const status = String(request.status || '').toLowerCase();
+
+    if (isFinalStatus(status)) {
+      return (
+        <span style={styles.actionMutedText}>
+          No action available
+        </span>
       );
-    } catch {
-      loadRequests();
-    }
-    setSelectedRequest(null);
-  }
-
-  function nextPage() {
-    if (currentPage < totalPages) {
-      setCurrentPage((prev) => prev + 1);
-    }
-  }
-
-  function prevPage() {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
-    }
-  }
-
-  function statusStyle(status) {
-    const statusKey = String(status || '').toLowerCase();
-
-    if (statusKey === 'approved') {
-      return { ...styles.statusBadge, ...styles.statusApproved };
     }
 
-    if (statusKey === 'rejected') {
-      return { ...styles.statusBadge, ...styles.statusRejected };
-    }
+    return (
+      <div style={styles.requestActionGroup}>
+        <button
+          type="button"
+          style={{
+            ...styles.approveBtn,
+            opacity: actionLoadingId === request.id ? 0.7 : 1,
+            cursor: actionLoadingId === request.id ? 'not-allowed' : 'pointer',
+          }}
+          disabled={actionLoadingId === request.id}
+          onClick={() => updateRequestStatus(request, 'approved')}
+        >
+          {actionLoadingId === request.id ? 'Saving...' : 'Approve'}
+        </button>
 
-    return { ...styles.statusBadge, ...styles.statusPending };
+        <button
+          type="button"
+          style={{
+            ...styles.rejectBtn,
+            opacity: actionLoadingId === request.id ? 0.7 : 1,
+            cursor: actionLoadingId === request.id ? 'not-allowed' : 'pointer',
+          }}
+          disabled={actionLoadingId === request.id}
+          onClick={() => updateRequestStatus(request, 'rejected')}
+        >
+          {actionLoadingId === request.id ? 'Saving...' : 'Reject'}
+        </button>
+      </div>
+    );
   }
 
   return (
     <>
-      <section style={styles.tableCard}>
-        <div style={styles.accountHeader}>
-          <div>
-            <h3 style={styles.accountTitle}>Leave Requests</h3>
-            <p style={styles.accountSubtitle}>
-              Review dentist leave requests before approving or rejecting schedule changes.
-            </p>
-          </div>
-
-          <span style={styles.totalBadge}>{requests.length} Requests</span>
+      <section style={styles.toolbar}>
+        <div style={styles.searchBox}>
+          <i className="fi fi-rr-search" style={styles.searchIcon}></i>
+          <input
+            type="text"
+            placeholder="Search dentist, reason, branch, or status"
+            value={searchText}
+            onChange={(event) => {
+              setSearchText(event.target.value);
+              setPage(1);
+            }}
+            style={styles.searchInput}
+          />
         </div>
 
+        <div style={styles.rightActions}>
+          <select
+            value={statusFilter}
+            onChange={(event) => handleStatusFilterChange(event.target.value)}
+            style={styles.selectInput}
+          >
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status === 'All' ? 'All Status' : formatStatus(status)}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            style={styles.primaryBtn}
+            onClick={() => loadRequests(statusFilter)}
+            disabled={loading}
+          >
+            <i className="fi fi-rr-refresh"></i>
+            <span>{loading ? 'Loading...' : 'Refresh'}</span>
+          </button>
+        </div>
+      </section>
+
+      {message.text && (
+        <p style={message.type === 'success' ? styles.successText : styles.errorText}>
+          {message.text}
+        </p>
+      )}
+
+      <section style={styles.tableCard}>
         <div style={styles.tableWrapper}>
-          <table style={styles.branchTable}>
+          <table style={{ ...styles.branchTable, minWidth: 1180 }}>
             <thead>
               <tr>
-                <th style={styles.tableHead}>Dentist Name</th>
-                <th style={styles.tableHead}>Branch</th>
-                <th style={styles.tableHead}>Leave Dates</th>
+                <th style={styles.tableHead}>Dentist</th>
+                <th style={styles.tableHead}>Request Type</th>
+                <th style={styles.tableHead}>Date From</th>
+                <th style={styles.tableHead}>Date To</th>
+                <th style={styles.tableHead}>Working Days</th>
+                <th style={styles.tableHead}>Current Branch</th>
+                <th style={styles.tableHead}>Requested Branch</th>
                 <th style={styles.tableHead}>Reason</th>
-                <th style={styles.tableHead}>Submitted On</th>
+                <th style={styles.tableHead}>Submitted</th>
                 <th style={styles.tableHead}>Status</th>
                 <th style={styles.tableHead}>Action</th>
               </tr>
             </thead>
 
             <tbody>
-              {paginatedRequests.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={7} style={styles.emptyRow}>
-                    No leave requests found.
+                  <td colSpan={11} style={styles.emptyRow}>
+                    Loading leave requests...
+                  </td>
+                </tr>
+              ) : paginatedRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={11} style={styles.emptyRow}>
+                    No leave request records found.
                   </td>
                 </tr>
               ) : (
                 paginatedRequests.map((request) => {
-                const isHighlighted = activeHighlightId && String(request.id) === String(activeHighlightId);
-                return (
-                  <tr
-                    key={request.id}
-                    ref={isHighlighted ? highlightRowRef : null}
-                    style={{
-                      ...styles.tableRow,
-                      ...(isHighlighted ? {
-                        background: '#fffbeb',
-                        outline: '2px solid #f59e0b',
-                        outlineOffset: '-2px',
-                        transition: 'background 0.5s, outline 0.5s',
-                      } : { transition: 'background 0.5s' }),
-                    }}
-                  >
-                    <td style={styles.tableCellStrong}>{request.dentistName}</td>
-                    <td style={styles.tableCell}>{request.currentBranch}</td>
-                    <td style={styles.tableCell}>{request.scheduleDates}</td>
-                    <td style={styles.tableCell}>{request.reason}</td>
-                    <td style={styles.tableCell}>{request.submittedOn}</td>
-                    <td style={styles.tableCell}>
-                      <span style={statusStyle(request.status)}>{request.status}</span>
-                    </td>
-                    <td style={styles.tableCell}>
-                      <button
-                        type="button"
-                        style={styles.viewBtn}
-                        onClick={() => handleView(request)}
+                  const isHighlighted =
+                    String(request.id) === String(highlightRequestId || '');
+
+                  return (
+                    <tr
+                      key={request.id}
+                      style={{
+                        ...styles.tableRow,
+                        ...(isHighlighted
+                          ? { background: '#eff6ff', outline: '2px solid #2563eb' }
+                          : {}),
+                      }}
+                    >
+                      <td style={styles.tableCell}>
+                        {request.dentist_name || 'N/A'}
+                      </td>
+                      <td style={styles.tableCell}>
+                        {formatRequestType(request.request_type)}
+                      </td>
+                      <td style={styles.tableCell}>{formatDate(request.date_from)}</td>
+                      <td style={styles.tableCell}>{formatDate(request.date_to)}</td>
+                      <td style={styles.tableCell}>
+                        {request.working_days ?? 'N/A'}
+                      </td>
+                      <td style={styles.tableCell}>
+                        {request.current_branch_address || 'N/A'}
+                      </td>
+                      <td style={styles.tableCell}>
+                        {request.requested_branch_name || 'N/A'}
+                      </td>
+                      <td
+                        style={{
+                          ...styles.tableCell,
+                          maxWidth: 220,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                        title={request.reason || ''}
                       >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
+                        {request.reason || 'N/A'}
+                      </td>
+                      <td style={styles.tableCell}>
+                        {formatDateTime(request.submitted_at)}
+                      </td>
+                      <td style={styles.tableCell}>
+                        <span style={getStatusStyle(request.status)}>
+                          {formatStatus(request.status)}
+                        </span>
+                      </td>
+                      <td style={styles.tableCell}>
+                        {renderActionButtons(request)}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -234,90 +370,33 @@ export default function AdminScheduleRequests({
         <div style={styles.pagination}>
           <button
             type="button"
-            onClick={prevPage}
-            disabled={currentPage === 1}
             style={{
               ...styles.pageBtn,
-              ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
+              ...(page <= 1 ? styles.pageBtnDisabled : {}),
             }}
+            disabled={page <= 1}
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
           >
             <i className="fi fi-rr-angle-left"></i>
           </button>
 
           <span style={styles.pageInfo}>
-            {requests.length === 0 ? 'Page 0 of 0' : `Page ${currentPage} of ${totalPages}`}
+            Page {page} of {totalPages}
           </span>
 
           <button
             type="button"
-            onClick={nextPage}
-            disabled={currentPage >= totalPages}
             style={{
               ...styles.pageBtn,
-              ...(currentPage >= totalPages ? styles.pageBtnDisabled : {}),
+              ...(page >= totalPages ? styles.pageBtnDisabled : {}),
             }}
+            disabled={page >= totalPages}
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
           >
             <i className="fi fi-rr-angle-right"></i>
           </button>
         </div>
       </section>
-
-      {selectedRequest && (
-        <div style={styles.modalOverlay} onClick={handleModalOverlayClick}>
-          <div style={styles.detailsModal}>
-            <div style={styles.modalHeader}>
-              <div>
-                <h3 style={styles.modalTitle}>Leave Request Details</h3>
-                <p style={styles.modalSubtitle}>Full information for the selected request.</p>
-              </div>
-
-              <button type="button" style={styles.closeBtn} onClick={closeModal}>
-                <i className="fi fi-rr-cross-small"></i>
-              </button>
-            </div>
-
-            <div style={styles.detailsGrid}>
-              <InfoItem styles={styles} label="Dentist Name" value={selectedRequest.dentistName} />
-              <InfoItem styles={styles} label="Branch" value={selectedRequest.currentBranch} />
-              <InfoItem styles={styles} label="Leave Dates" value={selectedRequest.scheduleDates} />
-              <InfoItem styles={styles} label="Submitted On" value={selectedRequest.submittedOn} />
-              <InfoItem
-                styles={styles}
-                label="Status"
-                value={
-                  <span style={statusStyle(selectedRequest.status)}>
-                    {selectedRequest.status}
-                  </span>
-                }
-              />
-            </div>
-
-            <div style={styles.reasonBox}>
-              <span style={styles.infoLabel}>Reason</span>
-              <p style={styles.reasonText}>{selectedRequest.fullReason}</p>
-            </div>
-
-            <div style={styles.modalActions}>
-              <button type="button" style={styles.rejectBtn} onClick={handleReject}>
-                Reject
-              </button>
-
-              <button type="button" style={styles.approveBtn} onClick={handleApprove}>
-                Approve
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
-  );
-}
-
-function InfoItem({ styles, label, value }) {
-  return (
-    <div style={styles.infoItem}>
-      <span style={styles.infoLabel}>{label}</span>
-      <span style={styles.infoValue}>{value || 'N/A'}</span>
-    </div>
   );
 }

@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../config/db');
 const { APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime } = require('../utils/scheduling');
+const { getServiceKitAvailability } = require('../utils/serviceKitAvailability');
 
 function hash32FNV1a(input) {
   const str = String(input ?? '');
@@ -140,7 +141,27 @@ async function listClinicServices() {
      WHERE status = 'Active'
      ORDER BY name ASC`
   );
-  return rows;
+  const filtered = [];
+  for (const row of rows) {
+    const [branchRows] = await db.query(
+      `SELECT DISTINCT dsch.branch_id
+       FROM dentist_services dsv
+       JOIN users u ON u.id = dsv.dentist_id AND u.role = 'dentist' AND u.status = 'Active'
+       JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id
+       WHERE dsv.service_id = ?`,
+      [row.id]
+    );
+    let available = false;
+    for (const branch of branchRows) {
+      const kit = await getServiceKitAvailability(db, { serviceId: row.id, branchId: branch.branch_id });
+      if (kit.available) {
+        available = true;
+        break;
+      }
+    }
+    if (available) filtered.push(row);
+  }
+  return filtered;
 }
 
 function normalizeEmail(value) {
@@ -248,7 +269,7 @@ async function findServiceByReason(reasonForBooking) {
   if (!reason) return null;
 
   const [rows] = await db.query(
-    `SELECT id, name, category, duration_min, price
+    `SELECT id, name, category, duration_min, time_buffer_min, price
      FROM services
      WHERE status = 'Active'
        AND (
@@ -401,6 +422,8 @@ async function listAvailableSlots({ date, branch, serviceName }) {
     err.statusCode = 400;
     throw err;
   }
+  const kitAvailability = await getServiceKitAvailability(db, { serviceId: service.id, branchId });
+  if (!kitAvailability.available) return [];
 
   const weekday = weekdayForClinicDate(date);
   const weekdayAlt = alternateWeekday(weekday);
@@ -513,12 +536,13 @@ async function listAvailableSlots({ date, branch, serviceName }) {
   const placeholders = dentistIds.map(() => '?').join(',');
 
   const [apptRows] = await db.query(
-    `SELECT dentist_id, start_time, duration_min
-     FROM appointments
-     WHERE dentist_id IN (${placeholders})
-       AND status IN ('scheduled','arrived')
-       AND start_time >= ? AND start_time < ?`,
-    [...dentistIds, toMySQLDateTime(bounds.start), toMySQLDateTime(bounds.end)]
+    `SELECT a.dentist_id, a.start_time, a.duration_min, COALESCE(s.time_buffer_min, ?) AS time_buffer_min
+     FROM appointments a
+     LEFT JOIN services s ON s.id = a.service_id
+     WHERE a.dentist_id IN (${placeholders})
+       AND a.status IN ('scheduled','arrived')
+       AND a.start_time >= ? AND a.start_time < ?`,
+    [APPOINTMENT_BUFFER_MINUTES, ...dentistIds, toMySQLDateTime(bounds.start), toMySQLDateTime(bounds.end)]
   );
 
   // Availability rule for website UI:
@@ -530,11 +554,14 @@ async function listAvailableSlots({ date, branch, serviceName }) {
     const startMs = new Date(a.start_time).getTime();
     const endMs =
       startMs +
-      (Number(a.duration_min || 30) + APPOINTMENT_BUFFER_MINUTES) * 60 * 1000;
+      (Number(a.duration_min || 30) + Number(a.time_buffer_min || APPOINTMENT_BUFFER_MINUTES)) * 60 * 1000;
     busyByDentist[a.dentist_id]?.push({ startMs, endMs });
   }
 
-  const requiredMinutes = Number(service.duration_min || 30) + APPOINTMENT_BUFFER_MINUTES;
+  const serviceBufferMin = Number.isFinite(Number(service.time_buffer_min))
+    ? Number(service.time_buffer_min)
+    : APPOINTMENT_BUFFER_MINUTES;
+  const requiredMinutes = Number(service.duration_min || 30) + serviceBufferMin;
 
   const result = [];
   for (const slot of slotTimes) {
@@ -601,6 +628,8 @@ async function listAvailableDays({ month, branch, serviceName }) {
     err.statusCode = 400;
     throw err;
   }
+  const kitAvailability = await getServiceKitAvailability(db, { serviceId: service.id, branchId });
+  if (!kitAvailability.available) return [];
 
   const days = [];
   for (let day = 1; day <= lastDay; day += 1) {
@@ -715,6 +744,12 @@ async function autoBookAppointment(appointmentData) {
     err.statusCode = 400;
     throw err;
   }
+  const kitAvailability = await getServiceKitAvailability(db, { serviceId: service.id, branchId });
+  if (!kitAvailability.available) {
+    const err = new Error('No available dentist for the selected service and time.');
+    err.statusCode = 409;
+    throw err;
+  }
 
   const patientId = await getOrCreateWebsitePatient({
     fullName,
@@ -756,7 +791,10 @@ async function autoBookAppointment(appointmentData) {
   }
 
   const startUtc = clinicLocalToUtcDate({ ...dateParts, ...timeParts });
-  const blockedEndUtc = new Date(startUtc.getTime() + (Number(service.duration_min || 30) + APPOINTMENT_BUFFER_MINUTES) * 60 * 1000);
+  const serviceBufferMin = Number.isFinite(Number(service.time_buffer_min))
+    ? Number(service.time_buffer_min)
+    : APPOINTMENT_BUFFER_MINUTES;
+  const blockedEndUtc = new Date(startUtc.getTime() + (Number(service.duration_min || 30) + serviceBufferMin) * 60 * 1000);
 
   const weekday = new Date(Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day)).getUTCDay();
   const weekdayAlt = alternateWeekday(weekday);
@@ -836,12 +874,13 @@ async function autoBookAppointment(appointmentData) {
 
   // Branch-wide rule: block overlapping windows across the branch.
   const [branchSlotConflicts] = await db.query(
-    `SELECT id
-     FROM appointments
-     WHERE branch_id = ?
-       AND status IN ('scheduled','arrived')
-       AND start_time < ?
-       AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
+    `SELECT a.id
+     FROM appointments a
+     LEFT JOIN services s ON s.id = a.service_id
+     WHERE a.branch_id = ?
+       AND a.status IN ('scheduled','arrived')
+       AND a.start_time < ?
+       AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(s.time_buffer_min, ?), a.start_time) > ?
      LIMIT 1`,
     [
       branchId,
@@ -860,12 +899,13 @@ async function autoBookAppointment(appointmentData) {
   for (const row of dentistCandidates) {
     const dentistId = row.id;
     const [conflicts] = await db.query(
-      `SELECT id
-       FROM appointments
-       WHERE dentist_id = ?
-         AND status IN ('scheduled','arrived')
-         AND start_time < ?
-         AND TIMESTAMPADD(MINUTE, duration_min + ?, start_time) > ?
+      `SELECT a.id
+       FROM appointments a
+       LEFT JOIN services s ON s.id = a.service_id
+       WHERE a.dentist_id = ?
+         AND a.status IN ('scheduled','arrived')
+         AND a.start_time < ?
+         AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(s.time_buffer_min, ?), a.start_time) > ?
        LIMIT 1`,
       [dentistId, toMySQLDateTime(blockedEndUtc), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(startUtc)]
     );
@@ -1183,13 +1223,15 @@ async function getBookedSlots(date, branch) {
   const [apptRows] = await db.query(
     `SELECT
        TIME_FORMAT(TIME(a.start_time), '%H:%i:%s') AS booked_time,
-       a.duration_min
+       a.duration_min,
+       COALESCE(s.time_buffer_min, ?) AS time_buffer_min
      FROM appointments a
+     LEFT JOIN services s ON s.id = a.service_id
      JOIN branches b ON a.branch_id = b.id
      WHERE DATE(a.start_time) = ?
        AND b.address = TRIM(REPLACE(?, ' Branch', ''))
        AND a.status IN ('scheduled', 'arrived')`,
-    [date, branch]
+    [APPOINTMENT_BUFFER_MINUTES, date, branch]
   );
 
   // Operating hours for this branch
@@ -1200,9 +1242,7 @@ async function getBookedSlots(date, branch) {
 
   const slotSet = new Set();
   const stepMinutes = 30;
-  const bufferMinutes = APPOINTMENT_BUFFER_MINUTES;
-
-  function addSlotSpan(timeText, durationMinutes) {
+  function addSlotSpan(timeText, durationMinutes, bufferMinutes = APPOINTMENT_BUFFER_MINUTES) {
     const match = String(timeText || '').match(/^(\d{2}):(\d{2})/);
     if (!match) return;
 
@@ -1217,7 +1257,7 @@ async function getBookedSlots(date, branch) {
   }
 
   onlineRows.forEach((row) => addSlotSpan(row.booked_time, row.duration_minutes));
-  apptRows.forEach((row) => addSlotSpan(row.booked_time, row.duration_min));
+  apptRows.forEach((row) => addSlotSpan(row.booked_time, row.duration_min, row.time_buffer_min));
 
   const bookedSlots = Array.from(slotSet).sort();
 

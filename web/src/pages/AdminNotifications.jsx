@@ -420,6 +420,16 @@ export default function AdminNotifications() {
                   type="button"
                   onClick={markAllAsRead}
                   style={styles.markAllBtn}
+                  onMouseEnter={(event) => {
+                    event.currentTarget.style.background = '#d4af37';
+                    event.currentTarget.style.color = '#ffffff';
+                    event.currentTarget.style.borderColor = '#d4af37';
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.background = '#fff8e1';
+                    event.currentTarget.style.color = '#b8860b';
+                    event.currentTarget.style.borderColor = '#f3d46b';
+                  }}
                 >
                   Mark all as read
                 </button>
@@ -510,32 +520,27 @@ export default function AdminNotifications() {
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
           <div style={styles.modalContent}>
-            <div style={styles.modalIcon}>
-              <i
-                className="fi fi-rr-sign-out-alt"
-                style={styles.modalIconText}
-              ></i>
-            </div>
-
             <h2 style={styles.modalTitle}>Confirm Logout</h2>
+
+            <div style={styles.modalDivider}></div>
 
             <p style={styles.modalText}>Are you sure you want to log out?</p>
 
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-
-              <button
-                type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={closeLogoutModal}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>
