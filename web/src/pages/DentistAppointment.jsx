@@ -1132,7 +1132,7 @@ export default function DentistAppointment() {
                   type="button"
                   style={{
                     ...styles.modalPrimaryBtn,
-                    ...((kitSubmitting || !hasDeductibleKitItems || kitHasStockError) ? styles.pageBtnDisabled : {}),
+                    ...((!kitAlreadySubmitted || kitEditMode) && (kitSubmitting || !hasDeductibleKitItems || kitHasStockError) ? styles.pageBtnDisabled : {}),
                   }}
                   onClick={() => {
                     if (kitAlreadySubmitted && !kitEditMode) {
@@ -1141,7 +1141,7 @@ export default function DentistAppointment() {
                     }
                     handleKitConfirm();
                   }}
-                  disabled={kitSubmitting || !hasDeductibleKitItems || kitHasStockError}
+                  disabled={(!kitAlreadySubmitted || kitEditMode) && (kitSubmitting || !hasDeductibleKitItems || kitHasStockError)}
                 >
                   {kitAlreadySubmitted && !kitEditMode
                     ? 'Edit'
