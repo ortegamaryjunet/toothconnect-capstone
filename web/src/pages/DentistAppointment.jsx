@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import { listAppointments, saveAppointmentNote } from '../api/appointments';
-import { getServiceKit, getConsumption, submitConsumption } from '../api/inventory';
+import { getServiceKit, getConsumption, submitConsumption, updateConsumption } from '../api/inventory';
 import createDentistAppointmentStyles from '../styles/DentistAppointment';
 import { useAuth } from '../auth/AuthContext';
 import api from '../api/axios';
@@ -45,7 +45,7 @@ export default function DentistAppointment() {
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
   const [kitSubmittedBy, setKitSubmittedBy] = useState(null);
-  const [kitSubmittedByAppointmentId, setKitSubmittedByAppointmentId] = useState({});
+  const [kitEditMode, setKitEditMode] = useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -181,44 +181,6 @@ export default function DentistAppointment() {
     return filteredAppointments.slice(start, end);
   }, [filteredAppointments, currentPage]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadKitSubmissionStates() {
-      const completed = appointments.filter(
-        (appointment) => String(appointment?.rawStatus || '').toLowerCase() === 'completed'
-      );
-      if (completed.length === 0) return;
-
-      const results = await Promise.all(
-        completed.map(async (appointment) => {
-          try {
-            const data = await getConsumption(appointment.id);
-            return { id: appointment.id, submitted: Boolean(data?.submitted) };
-          } catch {
-            return { id: appointment.id, submitted: null };
-          }
-        })
-      );
-
-      if (cancelled) return;
-
-      setKitSubmittedByAppointmentId((current) => {
-        const next = { ...current };
-        results.forEach((item) => {
-          next[item.id] = item.submitted;
-        });
-        return next;
-      });
-    }
-
-    loadKitSubmissionStates();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [appointments]);
-
   const hasDeductibleKitItems = useMemo(
     () => kitItems.some((item) => Number(item.quantity_used) > 0 && item.inventory_id),
     [kitItems]
@@ -303,6 +265,7 @@ export default function DentistAppointment() {
     setKitError('');
     setKitAlreadySubmitted(false);
     setKitSubmittedBy(null);
+    setKitEditMode(false);
     setShowKitModal(true);
     setKitLoading(true);
 
@@ -371,6 +334,7 @@ export default function DentistAppointment() {
     setKitSubmitting(false);
     setKitAlreadySubmitted(false);
     setKitSubmittedBy(null);
+    setKitEditMode(false);
   }
 
   function handleKitModalOverlayClick(event) {
@@ -387,7 +351,7 @@ export default function DentistAppointment() {
   }
 
   async function handleKitConfirm() {
-    if (!selectedKitAppointment || kitSubmitting || kitAlreadySubmitted) return;
+    if (!selectedKitAppointment || kitSubmitting) return;
 
     const itemsToSubmit = kitItems
       .filter((item) => item.quantity_used > 0 && item.inventory_id)
@@ -406,8 +370,13 @@ export default function DentistAppointment() {
     setKitError('');
 
     try {
-      await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
+      if (kitAlreadySubmitted && kitEditMode) {
+        await updateConsumption(selectedKitAppointment.id, itemsToSubmit);
+      } else {
+        await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
+      }
       setKitAlreadySubmitted(true);
+      setKitEditMode(false);
       setKitSubmittedBy({
         name: user?.name || 'Dentist',
         role: user?.role || 'dentist',
@@ -831,16 +800,10 @@ export default function DentistAppointment() {
                                 {isCompleted ? (
                                   <button
                                     type="button"
-                                    style={{
-                                      ...styles.reviewKitButton,
-                                      ...(kitSubmittedByAppointmentId[appointment.id] ? styles.noteButtonDisabled : {}),
-                                    }}
-                                    disabled={Boolean(kitSubmittedByAppointmentId[appointment.id])}
-                                    onClick={() => !kitSubmittedByAppointmentId[appointment.id] && openKitModal(appointment)}
+                                    style={styles.reviewKitButton}
+                                    onClick={() => openKitModal(appointment)}
                                   >
-                                    {kitSubmittedByAppointmentId[appointment.id]
-                                      ? 'Submitted'
-                                      : 'Service Kit'}
+                                    Service Kit
                                   </button>
                                 ) : (
                                   <span style={styles.noActionText}>
@@ -1023,7 +986,7 @@ export default function DentistAppointment() {
                       <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>Item</th>
                       <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>Category</th>
                       <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>
-                        {kitAlreadySubmitted ? 'Used' : 'Qty'}
+                        {kitAlreadySubmitted && !kitEditMode ? 'Used' : 'Qty'}
                       </th>
                     </tr>
                   </thead>
@@ -1034,9 +997,9 @@ export default function DentistAppointment() {
                         <td style={{ ...styles.tableCell, padding: '10px 12px' }}>
                           {item.item_name}
 
-                          {!kitAlreadySubmitted && !item.available && (
+                          {!item.inventory_id && (!kitAlreadySubmitted || kitEditMode) && (
                             <span style={{ color: '#ef4444', fontSize: '11px', display: 'block' }}>
-                              Not in branch inventory
+                              Not linked to branch inventory
                             </span>
                           )}
                         </td>
@@ -1046,7 +1009,7 @@ export default function DentistAppointment() {
                         </td>
 
                         <td style={{ ...styles.tableCell, padding: '10px 12px' }}>
-                          {kitAlreadySubmitted ? (
+                          {kitAlreadySubmitted && !kitEditMode ? (
                             item.quantity_used
                           ) : (
                             <input
@@ -1054,12 +1017,15 @@ export default function DentistAppointment() {
                               min="0"
                               value={item.quantity_used}
                               onChange={(e) => handleKitQtyChange(index, e.target.value)}
+                              disabled={!item.inventory_id}
                               style={{
                                 width: '60px',
                                 padding: '4px 8px',
                                 border: '1px solid #d1d5db',
                                 borderRadius: '6px',
                                 fontSize: '13px',
+                                background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
+                                cursor: !item.inventory_id ? 'not-allowed' : 'text',
                               }}
                             />
                           )}
@@ -1084,19 +1050,27 @@ export default function DentistAppointment() {
                 <button
                   type="button"
                   style={{ ...styles.noteActionButton, ...styles.noteSaveBtn }}
-                  onClick={handleKitConfirm}
-                  disabled={kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems}
+                  onClick={() => {
+                    if (kitAlreadySubmitted && !kitEditMode) {
+                      setKitEditMode(true);
+                      return;
+                    }
+                    handleKitConfirm();
+                  }}
+                  disabled={kitSubmitting || !hasDeductibleKitItems}
                 >
-                  {kitAlreadySubmitted
-                    ? `Already Submitted by ${formatConsumptionSubmitter(kitSubmittedBy)}`
+                  {kitAlreadySubmitted && !kitEditMode
+                    ? 'Edit'
+                    : (kitAlreadySubmitted && kitEditMode
+                      ? (kitSubmitting ? 'Saving...' : 'Save Changes')
                     : (!hasDeductibleKitItems
                       ? 'No Deductible Items'
-                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct'))}
+                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct')))}
                 </button>
               </div>
             )}
 
-            {kitAlreadySubmitted && (
+            {kitAlreadySubmitted && !kitEditMode && (
               <div style={{ textAlign: 'right', marginTop: '16px' }}>
                 <button
                   type="button"
