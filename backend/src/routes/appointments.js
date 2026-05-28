@@ -12,6 +12,7 @@ const { clinicDateKeyFromUtcDate } = require('../utils/clinic');
 const { getApprovedLeaveForDentistOnDate } = require('../utils/leaves');
 const { sendPushToUser } = require('../services/push');
 const { suggestSlots } = require('../services/scheduler');
+const { getServiceKitAvailability } = require('../utils/serviceKitAvailability');
 
 const router = express.Router();
 
@@ -482,10 +483,22 @@ router.get('/_meta/services-and-branches', async (req, res) => {
       branchIdsByService[row.service_id].push(row.branch_id);
     }
 
-    const annotatedServices = services.map(s => ({
-      ...s,
-      available_branch_ids: branchIdsByService[s.id] || [],
-    }));
+    const annotatedServices = [];
+    for (const s of services) {
+      const dentistBranches = branchIdsByService[s.id] || [];
+      const kitAvailableBranchIds = [];
+      for (const bid of dentistBranches) {
+        const kitAvailability = await getServiceKitAvailability(pool, { serviceId: s.id, branchId: bid });
+        if (kitAvailability.available) {
+          kitAvailableBranchIds.push(bid);
+        }
+      }
+      annotatedServices.push({
+        ...s,
+        available_branch_ids: kitAvailableBranchIds,
+        kit_stock_available: kitAvailableBranchIds.length > 0,
+      });
+    }
 
     // Attach service_ids to each dentist so the web form can filter by service
     const dentistIds = dentists.map(d => d.id);
@@ -763,6 +776,13 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     );
     if (services.length === 0) throw httpError(400, 'Invalid service');
     const service = services[0];
+    const kitAvailability = await getServiceKitAvailability(conn, {
+      serviceId: Number(service_id),
+      branchId: effectiveBranchId,
+    });
+    if (!kitAvailability.available) {
+      throw httpError(409, 'This service is currently unavailable due to insufficient service kit stock.');
+    }
 
     const serviceBufferMin = normalizeBufferMinutes(service.time_buffer_min);
     const blockedEnd = addMinutes(start, service.duration_min + serviceBufferMin);

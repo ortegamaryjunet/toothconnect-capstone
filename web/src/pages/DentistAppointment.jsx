@@ -362,6 +362,7 @@ export default function DentistAppointment() {
 
   async function handleKitConfirm() {
     if (!selectedKitAppointment || kitSubmitting) return;
+    const isEditingSubmitted = kitAlreadySubmitted && kitEditMode;
 
     const itemsToSubmit = kitItems
       .filter((item) => item.quantity_used > 0 && item.inventory_id)
@@ -380,7 +381,7 @@ export default function DentistAppointment() {
     setKitError('');
 
     try {
-      if (kitAlreadySubmitted && kitEditMode) {
+      if (isEditingSubmitted) {
         await updateConsumption(selectedKitAppointment.id, itemsToSubmit);
       } else {
         await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
@@ -391,7 +392,7 @@ export default function DentistAppointment() {
         name: user?.name || 'Dentist',
         role: user?.role || 'dentist',
       });
-      if (kitAlreadySubmitted && kitEditMode) {
+      if (isEditingSubmitted) {
         setKitEditedBy({
           name: user?.name || 'Dentist',
           role: user?.role || 'dentist',

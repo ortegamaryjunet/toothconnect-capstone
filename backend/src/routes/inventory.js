@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { authenticate, requireRole, requireBranchAccess } = require('../middleware/auth');
+const { getServiceKitAvailability, getServiceKitRows } = require('../utils/serviceKitAvailability');
 
 const router = express.Router();
 
@@ -976,12 +977,8 @@ router.get('/service-kits/:serviceId', async (req, res) => {
   }
 
   try {
-    const [kitRows] = await pool.query(
-      `SELECT id, service_id, notes FROM service_kits WHERE service_id = ?`,
-      [serviceId]
-    );
-
-    if (kitRows.length === 0) {
+    const [kitRows] = await pool.query(`SELECT id, service_id, notes FROM service_kits WHERE service_id = ?`, [serviceId]);
+    if (!kitRows.length) {
       return res.json({
         service_id: serviceId,
         kit_exists: false,
@@ -992,92 +989,82 @@ router.get('/service-kits/:serviceId', async (req, res) => {
 
     const kit = kitRows[0];
 
-    const [items] = await pool.query(
-      `SELECT id, category, item_name, default_quantity
-       FROM service_kit_items
-       WHERE service_kit_id = ?`,
-      [kit.id]
-    );
-
-    const resolved = [];
-    for (const item of items) {
-      let inventoryRow = null;
-      if (item.category === 'supply') {
-        const [r] = await pool.query(
-          `SELECT id, supply_name AS name, quantity, low_stock_threshold, unit
-           FROM supplies
-           WHERE branch_id = ?
-             AND (
-               LOWER(TRIM(supply_name)) = LOWER(TRIM(?))
-               OR LOWER(TRIM(supply_name)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
-               OR LOWER(TRIM(?)) LIKE CONCAT('%', LOWER(TRIM(supply_name)), '%')
-             )
-           ORDER BY
-             CASE WHEN LOWER(TRIM(supply_name)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
-             LENGTH(supply_name) ASC
-           LIMIT 1`,
-          [branchId, item.item_name, item.item_name, item.item_name, item.item_name]
-        );
-        inventoryRow = r[0] || null;
-      } else if (item.category === 'medicine') {
-        const [r] = await pool.query(
-          `SELECT id, medicine_name AS name, quantity, low_stock_threshold, unit
-           FROM medicines
-           WHERE branch_id = ?
-             AND (
-               LOWER(TRIM(medicine_name)) = LOWER(TRIM(?))
-               OR LOWER(TRIM(medicine_name)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
-               OR LOWER(TRIM(?)) LIKE CONCAT('%', LOWER(TRIM(medicine_name)), '%')
-             )
-           ORDER BY
-             CASE WHEN LOWER(TRIM(medicine_name)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
-             LENGTH(medicine_name) ASC
-           LIMIT 1`,
-          [branchId, item.item_name, item.item_name, item.item_name, item.item_name]
-        );
-        inventoryRow = r[0] || null;
-      } else if (item.category === 'equipment') {
-        const [r] = await pool.query(
-          `SELECT id, equipment_name AS name, quantity, low_stock_threshold,
-                  COALESCE(maintenance_status, 'Available') AS unit
-           FROM equipment
-           WHERE branch_id = ?
-             AND (
-               LOWER(TRIM(equipment_name)) = LOWER(TRIM(?))
-               OR LOWER(TRIM(equipment_name)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
-               OR LOWER(TRIM(?)) LIKE CONCAT('%', LOWER(TRIM(equipment_name)), '%')
-             )
-           ORDER BY
-             CASE WHEN LOWER(TRIM(equipment_name)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
-             LENGTH(equipment_name) ASC
-           LIMIT 1`,
-          [branchId, item.item_name, item.item_name, item.item_name, item.item_name]
-        );
-        inventoryRow = r[0] || null;
-      }
-
-      resolved.push({
-        category: item.category,
-        item_name: item.item_name,
-        default_quantity: item.default_quantity,
-        inventory_id: inventoryRow ? inventoryRow.id : null,
-        current_stock: inventoryRow ? inventoryRow.quantity : null,
-        unit: inventoryRow ? inventoryRow.unit : null,
-        available: inventoryRow !== null,
-        sufficient: inventoryRow !== null && inventoryRow.quantity >= item.default_quantity,
-      });
-    }
+    const availability = await getServiceKitAvailability(pool, { serviceId, branchId });
 
     res.json({
       service_id: serviceId,
       kit_id: kit.id,
       kit_exists: true,
       notes: kit.notes,
-      items: resolved,
+      items: availability.items.map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: item.required_quantity,
+        inventory_id: item.inventory_id,
+        current_stock: item.current_stock,
+        available: item.inventory_id !== null,
+        sufficient: item.sufficient,
+      })),
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) => {
+  const serviceId = parseInt(req.params.serviceId, 10);
+  const { notes = null, items = [] } = req.body || {};
+
+  if (!serviceId) return res.status(400).json({ message: 'Invalid service id' });
+  if (!Array.isArray(items)) return res.status(400).json({ message: 'items must be an array' });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [serviceRows] = await conn.query('SELECT id FROM services WHERE id = ? LIMIT 1', [serviceId]);
+    if (!serviceRows.length) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    const [kitRows] = await conn.query('SELECT id FROM service_kits WHERE service_id = ? LIMIT 1', [serviceId]);
+    let kitId = kitRows[0]?.id || null;
+
+    if (!kitId) {
+      const [insertKit] = await conn.query('INSERT INTO service_kits (service_id, notes) VALUES (?, ?)', [serviceId, notes]);
+      kitId = insertKit.insertId;
+    } else {
+      await conn.query('UPDATE service_kits SET notes = ? WHERE id = ?', [notes, kitId]);
+      await conn.query('DELETE FROM service_kit_items WHERE service_kit_id = ?', [kitId]);
+    }
+
+    const cleanItems = items
+      .map((item) => ({
+        category: String(item?.category || '').trim(),
+        item_name: String(item?.item_name || '').trim(),
+        default_quantity: Number.parseInt(item?.default_quantity, 10),
+      }))
+      .filter((item) => ['supply', 'medicine', 'equipment'].includes(item.category) && item.item_name && item.default_quantity > 0);
+
+    if (cleanItems.length > 0) {
+      await conn.query(
+        `INSERT INTO service_kit_items (service_kit_id, category, item_name, default_quantity)
+         VALUES ${cleanItems.map(() => '(?, ?, ?, ?)').join(', ')}`,
+        cleanItems.flatMap((item) => [kitId, item.category, item.item_name, item.default_quantity])
+      );
+    }
+
+    await conn.commit();
+    const savedItems = await getServiceKitRows(pool, serviceId);
+    res.json({ service_id: serviceId, kit_id: kitId, notes, items: savedItems });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 });
 
@@ -1127,10 +1114,13 @@ router.get('/appointments/:appointmentId/consumption', async (req, res) => {
        FROM audit_logs al
        LEFT JOIN users u ON u.id = al.user_id
        WHERE al.action = 'appointment_consumption_updated'
-         AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.appointment_id')) AS UNSIGNED) = ?
+         AND (
+           al.details LIKE ?
+           OR al.details LIKE ?
+         )
        ORDER BY al.created_at DESC, al.id DESC
        LIMIT 1`,
-      [appointmentId]
+      [`%"appointment_id":${appointmentId}%`, `%"appointment_id": ${appointmentId}%`]
     );
     const editedBy = editedRows.length > 0
       ? {

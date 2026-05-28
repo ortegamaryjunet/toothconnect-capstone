@@ -103,6 +103,16 @@ export default function RecepAppointmentForm() {
     return services.find((service) => String(service.id) === String(formData.serviceId));
   }, [services, formData.serviceId]);
 
+  const availableServices = useMemo(() => {
+    if (!formData.branchId) return services;
+    const branchId = Number(formData.branchId);
+    return services.filter((service) =>
+      Array.isArray(service.available_branch_ids)
+        ? service.available_branch_ids.includes(branchId)
+        : true
+    );
+  }, [services, formData.branchId]);
+
   const filteredDentists = useMemo(() => {
     return dentists.filter((d) => {
       if (formData.serviceId) {
@@ -246,6 +256,14 @@ export default function RecepAppointmentForm() {
       setFormData((current) => ({ ...current, dentistId: '' }));
     }
   }, [formData.branchId, dentistBranchIds]);
+
+  useEffect(() => {
+    if (!formData.serviceId) return;
+    const exists = availableServices.some((service) => String(service.id) === String(formData.serviceId));
+    if (!exists) {
+      setFormData((current) => ({ ...current, serviceId: '', dentistId: '' }));
+    }
+  }, [availableServices, formData.serviceId]);
 
   // Fetch selected dentist's appointments across all branches for the chosen date
   useEffect(() => {
@@ -704,7 +722,7 @@ export default function RecepAppointmentForm() {
                     Select purpose
                   </option>
 
-                  {services.map((service) => (
+                  {availableServices.map((service) => (
                     <option key={service.id} value={service.id}>
                       {service.name}
                     </option>

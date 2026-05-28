@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../config/db');
 const { APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime } = require('../utils/scheduling');
+const { getServiceKitAvailability } = require('../utils/serviceKitAvailability');
 
 function hash32FNV1a(input) {
   const str = String(input ?? '');
@@ -140,7 +141,27 @@ async function listClinicServices() {
      WHERE status = 'Active'
      ORDER BY name ASC`
   );
-  return rows;
+  const filtered = [];
+  for (const row of rows) {
+    const [branchRows] = await db.query(
+      `SELECT DISTINCT dsch.branch_id
+       FROM dentist_services dsv
+       JOIN users u ON u.id = dsv.dentist_id AND u.role = 'dentist' AND u.status = 'Active'
+       JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id
+       WHERE dsv.service_id = ?`,
+      [row.id]
+    );
+    let available = false;
+    for (const branch of branchRows) {
+      const kit = await getServiceKitAvailability(db, { serviceId: row.id, branchId: branch.branch_id });
+      if (kit.available) {
+        available = true;
+        break;
+      }
+    }
+    if (available) filtered.push(row);
+  }
+  return filtered;
 }
 
 function normalizeEmail(value) {
@@ -401,6 +422,8 @@ async function listAvailableSlots({ date, branch, serviceName }) {
     err.statusCode = 400;
     throw err;
   }
+  const kitAvailability = await getServiceKitAvailability(db, { serviceId: service.id, branchId });
+  if (!kitAvailability.available) return [];
 
   const weekday = weekdayForClinicDate(date);
   const weekdayAlt = alternateWeekday(weekday);
@@ -516,9 +539,9 @@ async function listAvailableSlots({ date, branch, serviceName }) {
     `SELECT a.dentist_id, a.start_time, a.duration_min, COALESCE(s.time_buffer_min, ?) AS time_buffer_min
      FROM appointments a
      LEFT JOIN services s ON s.id = a.service_id
-     WHERE dentist_id IN (${placeholders})
-       AND status IN ('scheduled','arrived')
-       AND start_time >= ? AND start_time < ?`,
+     WHERE a.dentist_id IN (${placeholders})
+       AND a.status IN ('scheduled','arrived')
+       AND a.start_time >= ? AND a.start_time < ?`,
     [APPOINTMENT_BUFFER_MINUTES, ...dentistIds, toMySQLDateTime(bounds.start), toMySQLDateTime(bounds.end)]
   );
 
@@ -605,6 +628,8 @@ async function listAvailableDays({ month, branch, serviceName }) {
     err.statusCode = 400;
     throw err;
   }
+  const kitAvailability = await getServiceKitAvailability(db, { serviceId: service.id, branchId });
+  if (!kitAvailability.available) return [];
 
   const days = [];
   for (let day = 1; day <= lastDay; day += 1) {
@@ -717,6 +742,12 @@ async function autoBookAppointment(appointmentData) {
   if (!service) {
     const err = new Error('Invalid service. Please pick a valid reason for booking.');
     err.statusCode = 400;
+    throw err;
+  }
+  const kitAvailability = await getServiceKitAvailability(db, { serviceId: service.id, branchId });
+  if (!kitAvailability.available) {
+    const err = new Error('No available dentist for the selected service and time.');
+    err.statusCode = 409;
     throw err;
   }
 

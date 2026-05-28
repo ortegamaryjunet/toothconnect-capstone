@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import api from '../api/axios';
+import { getManageServiceKit, saveManageServiceKit } from '../api/inventory';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminSettingsStyles from '../styles/AdminSettings';
 
@@ -187,6 +188,9 @@ export default function AdminSettings() {
 
   const [branchForm, setBranchForm] = useState(initialBranchForm);
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
+  const [serviceKitOverlay, setServiceKitOverlay] = useState(null);
+  const [serviceKitBranchId, setServiceKitBranchId] = useState('');
+  const [serviceKitItems, setServiceKitItems] = useState([]);
   const [userForm, setUserForm] = useState(initialUserForm);
 
   const [filters, setFilters] = useState({
@@ -254,7 +258,7 @@ export default function AdminSettings() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay || websiteValidationModal) {
+    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay || websiteValidationModal || serviceKitOverlay) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -263,7 +267,7 @@ export default function AdminSettings() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay, websiteValidationModal]);
+  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay, websiteValidationModal, serviceKitOverlay]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -274,6 +278,7 @@ export default function AdminSettings() {
         setWebsiteServiceOverlay(null);
         setWebsiteAnnouncementOverlay(null);
         setWebsiteValidationModal(null);
+        setServiceKitOverlay(null);
       }
     }
 
@@ -852,6 +857,72 @@ export default function AdminSettings() {
       closeOverlay();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service');
+    }
+  }
+
+  async function openServiceKitManager(service) {
+    if (!service?.id) return;
+    const branchId = Number(branches?.[0]?.id || 0);
+    if (!branchId) return alert('No branch available.');
+    setServiceKitOverlay(service);
+    setServiceKitBranchId(String(branchId));
+    try {
+      const data = await getManageServiceKit(service.id, branchId);
+      setServiceKitItems((data.items || []).map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: String(item.default_quantity || ''),
+        current_stock: item.current_stock,
+      })));
+    } catch (err) {
+      setServiceKitItems([]);
+      alert(err.response?.data?.message || 'Failed to load service kit.');
+    }
+  }
+
+  async function reloadServiceKitBranch(branchId) {
+    if (!serviceKitOverlay || !branchId) return;
+    setServiceKitBranchId(String(branchId));
+    try {
+      const data = await getManageServiceKit(serviceKitOverlay.id, branchId);
+      setServiceKitItems((data.items || []).map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: String(item.default_quantity || ''),
+        current_stock: item.current_stock,
+      })));
+    } catch {
+      setServiceKitItems([]);
+    }
+  }
+
+  function updateServiceKitItem(index, field, value) {
+    setServiceKitItems((prev) => prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)));
+  }
+
+  function addServiceKitItem() {
+    setServiceKitItems((prev) => [...prev, { category: 'supply', item_name: '', default_quantity: '1', current_stock: null }]);
+  }
+
+  function removeServiceKitItem(index) {
+    setServiceKitItems((prev) => prev.filter((_, idx) => idx !== index));
+  }
+
+  async function saveServiceKit() {
+    if (!serviceKitOverlay) return;
+    const payload = {
+      notes: null,
+      items: serviceKitItems.map((item) => ({
+        category: item.category,
+        item_name: item.item_name,
+        default_quantity: Number(item.default_quantity || 0),
+      })),
+    };
+    try {
+      await saveManageServiceKit(serviceKitOverlay.id, payload);
+      setServiceKitOverlay(null);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to save service kit.');
     }
   }
 
@@ -1773,6 +1844,9 @@ export default function AdminSettings() {
           addIcon={sectionConfig.services.addIcon}
           onAdd={() => openServiceForm()}
         >
+          <button type="button" style={styles.secondaryBtn} onClick={() => openServiceKitManager(filteredServices[0])} disabled={!filteredServices.length}>
+            Manage Service Kit
+          </button>
           <select
             value={filters.serviceCategory}
             onChange={(event) => updateFilter('serviceCategory', event.target.value)}
@@ -1896,6 +1970,13 @@ export default function AdminSettings() {
               onClick={() => openServiceForm(service)}
             >
               <i className="fi fi-rr-file-edit"></i>
+            </button>
+            <button
+              type="button"
+              style={{ ...styles.editBtn, marginLeft: 6 }}
+              onClick={() => openServiceKitManager(service)}
+            >
+              <i className="fi fi-rr-box"></i>
             </button>
           </td>
         </tr>
@@ -2344,6 +2425,45 @@ export default function AdminSettings() {
 
             <FormActions styles={styles} label="Save Service" />
           </form>
+        </FormOverlay>
+      )}
+
+      {serviceKitOverlay && (
+        <FormOverlay
+          styles={styles}
+          title={`Manage Service Kit: ${serviceKitOverlay.name}`}
+          onClose={() => setServiceKitOverlay(null)}
+          onOverlayClick={handleOverlayClick}
+        >
+          <div style={styles.field}>
+            <label style={styles.fieldLabel}>Branch</label>
+            <select value={serviceKitBranchId} onChange={(e) => reloadServiceKitBranch(Number(e.target.value))} style={styles.formInput}>
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.id}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            {serviceKitItems.map((item, index) => (
+              <div key={`${item.category}-${index}`} style={{ ...styles.formGrid, marginBottom: 8 }}>
+                <select value={item.category} onChange={(e) => updateServiceKitItem(index, 'category', e.target.value)} style={styles.formInput}>
+                  <option value="supply">Supply</option>
+                  <option value="medicine">Medicine</option>
+                  <option value="equipment">Equipment</option>
+                </select>
+                <input value={item.item_name} onChange={(e) => updateServiceKitItem(index, 'item_name', e.target.value)} placeholder="Inventory item" style={styles.formInput} />
+                <input value={item.default_quantity} onChange={(e) => updateServiceKitItem(index, 'default_quantity', e.target.value.replace(/[^0-9]/g, ''))} placeholder="Required qty" style={styles.formInput} />
+                <input value={item.current_stock ?? ''} readOnly placeholder="Current stock" style={{ ...styles.formInput, ...styles.readOnlyInput }} />
+                <button type="button" style={styles.secondaryBtn} onClick={() => removeServiceKitItem(index)}>Remove</button>
+              </div>
+            ))}
+          </div>
+          <div style={styles.formActions}>
+            <button type="button" style={styles.secondaryBtn} onClick={addServiceKitItem}>Add Item</button>
+            <button type="button" style={styles.saveBtn} onClick={saveServiceKit}>Save Service Kit</button>
+          </div>
         </FormOverlay>
       )}
 
