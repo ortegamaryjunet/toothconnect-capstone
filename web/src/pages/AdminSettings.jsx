@@ -198,6 +198,8 @@ export default function AdminSettings() {
   const [serviceKitServiceId, setServiceKitServiceId] = useState('');
   const [serviceKitBranchId, setServiceKitBranchId] = useState('');
   const [serviceKitItems, setServiceKitItems] = useState([]);
+  const [serviceKitItemErrors, setServiceKitItemErrors] = useState([]);
+  const [serviceKitServicesForBranch, setServiceKitServicesForBranch] = useState([]);
   const [serviceKitInventory, setServiceKitInventory] = useState({
     supplies: [],
     medicines: [],
@@ -880,8 +882,10 @@ export default function AdminSettings() {
     if (!branchId) return alert('No branch available.');
 
     setServiceKitOverlay(true);
-    setServiceKitServiceId(resolvedServiceId);
     setServiceKitBranchId(String(branchId));
+    setServiceKitServiceId(resolvedServiceId);
+    setServiceKitItemErrors([]);
+    setServiceKitServicesForBranch([]);
 
     try {
       const [supplies, medicines, equipment, data] = await Promise.all([
@@ -897,12 +901,34 @@ export default function AdminSettings() {
         equipment: Array.isArray(equipment) ? equipment : [],
       });
 
+      // Load services for this branch (best-effort); fallback to all services.
+      try {
+        const meta = await api.get('/appointments/_meta/services-and-branches');
+        const metaServices = Array.isArray(meta.data?.services) ? meta.data.services : [];
+        const filtered = metaServices.filter((s) =>
+          Array.isArray(s.available_branch_ids)
+            ? s.available_branch_ids.includes(Number(branchId))
+            : true
+        );
+        const serviceOptions = filtered.length ? filtered : services;
+        setServiceKitServicesForBranch(serviceOptions);
+        if (!serviceOptions.some((s) => String(s.id) === String(resolvedServiceId))) {
+          const nextId = String(serviceOptions[0]?.id || '');
+          if (nextId) setServiceKitServiceId(nextId);
+        }
+      } catch {
+        setServiceKitServicesForBranch(services);
+      }
+
       setServiceKitItems((data.items || []).map((item) => ({
         category: item.category,
         item_name: item.item_name,
         default_quantity: String(item.default_quantity || ''),
         current_stock: item.current_stock,
       })));
+      setServiceKitItemErrors(
+        (data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' }))
+      );
     } catch (err) {
       setServiceKitItems([]);
       alert(err.response?.data?.message || 'Failed to load service kit.');
@@ -910,7 +936,7 @@ export default function AdminSettings() {
   }
 
   async function reloadServiceKitBranch(branchId) {
-    if (!serviceKitOverlay || !branchId || !serviceKitServiceId) return;
+    if (!serviceKitOverlay || !branchId) return;
     setServiceKitBranchId(String(branchId));
     try {
       const [supplies, medicines, equipment] = await Promise.all([
@@ -924,13 +950,42 @@ export default function AdminSettings() {
         equipment: Array.isArray(equipment) ? equipment : [],
       });
 
-      const data = await getManageServiceKit(Number(serviceKitServiceId), branchId);
+      // Load services "available" for this branch (based on appointment meta).
+      // Fallback: if meta fails or yields empty, show all services.
+      let serviceOptions = services;
+      try {
+        const meta = await api.get('/appointments/_meta/services-and-branches');
+        const metaServices = Array.isArray(meta.data?.services) ? meta.data.services : [];
+        const filtered = metaServices.filter((s) =>
+          Array.isArray(s.available_branch_ids)
+            ? s.available_branch_ids.includes(Number(branchId))
+            : true
+        );
+        serviceOptions = filtered.length ? filtered : services;
+      } catch {
+        serviceOptions = services;
+      }
+      setServiceKitServicesForBranch(serviceOptions);
+
+      // If the currently selected service is not in this branch's list, reset to first.
+      const branchServiceIds = new Set(serviceOptions.map((s) => String(s.id)));
+      const nextServiceId = branchServiceIds.has(String(serviceKitServiceId))
+        ? String(serviceKitServiceId)
+        : String(serviceOptions[0]?.id || '');
+      if (nextServiceId && nextServiceId !== String(serviceKitServiceId)) {
+        setServiceKitServiceId(nextServiceId);
+      }
+
+      const data = nextServiceId
+        ? await getManageServiceKit(Number(nextServiceId), branchId)
+        : { items: [] };
       setServiceKitItems((data.items || []).map((item) => ({
         category: item.category,
         item_name: item.item_name,
         default_quantity: String(item.default_quantity || ''),
         current_stock: item.current_stock,
       })));
+      setServiceKitItemErrors((data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' })));
     } catch {
       setServiceKitItems([]);
     }
@@ -954,6 +1009,7 @@ export default function AdminSettings() {
         default_quantity: String(item.default_quantity || ''),
         current_stock: item.current_stock,
       })));
+      setServiceKitItemErrors((data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' })));
     } catch {
       setServiceKitItems([]);
     }
@@ -963,18 +1019,49 @@ export default function AdminSettings() {
     setServiceKitItems((prev) =>
       prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
     );
+    setServiceKitItemErrors((prev) => {
+      const next = Array.isArray(prev) ? [...prev] : [];
+      while (next.length < serviceKitItems.length) {
+        next.push({ category: '', item_name: '', default_quantity: '' });
+      }
+      const row = next[index] || { category: '', item_name: '', default_quantity: '' };
+      const updated = { ...row };
+      if (field === 'category') updated.category = value ? '' : 'Category is required';
+      if (field === 'item_name') updated.item_name = value ? '' : 'Item is required';
+      if (field === 'default_quantity') {
+        const n = Number(value || 0);
+        updated.default_quantity = n >= 1 ? '' : 'Default quantity must be at least 1';
+      }
+      next[index] = updated;
+      return next;
+    });
   }
 
   function addServiceKitItem() {
     setServiceKitItems((prev) => [...prev, { category: 'supply', item_name: '', default_quantity: '1', current_stock: null }]);
+    setServiceKitItemErrors((prev) => [...(Array.isArray(prev) ? prev : []), { category: '', item_name: 'Item is required', default_quantity: '' }]);
   }
 
   function removeServiceKitItem(index) {
     setServiceKitItems((prev) => prev.filter((_, idx) => idx !== index));
+    setServiceKitItemErrors((prev) => (Array.isArray(prev) ? prev.filter((_, idx) => idx !== index) : []));
   }
 
   async function saveServiceKit() {
     if (!serviceKitOverlay || !serviceKitServiceId) return;
+
+    const branchId = Number(serviceKitBranchId || 0);
+    if (!branchId) return alert('Please select a branch.');
+
+    const hasInvalid = serviceKitItems.some((row) => {
+      const qty = Number(row.default_quantity || 0);
+      return !row.category || !row.item_name || qty < 1;
+    });
+    if (hasInvalid) {
+      alert('Please complete all required fields. Default quantity must be at least 1.');
+      return;
+    }
+
     const payload = {
       notes: null,
       items: serviceKitItems.map((item) => ({
@@ -1009,6 +1096,16 @@ export default function AdminSettings() {
       stock: Number(s.quantity || 0),
     }));
   }
+
+  const serviceKitBranchSelected = !!Number(serviceKitBranchId || 0);
+  const serviceKitServiceSelected = !!Number(serviceKitServiceId || 0);
+  const serviceKitRowInputsDisabled = !(serviceKitBranchSelected && serviceKitServiceSelected);
+  const serviceKitGridStyles = {
+    display: 'grid',
+    gridTemplateColumns: '160px minmax(0, 1fr) 160px 160px 120px',
+    gap: 10,
+    alignItems: 'center',
+  };
 
   async function saveUser(event) {
     event.preventDefault();
@@ -2526,13 +2623,19 @@ export default function AdminSettings() {
                 value={serviceKitServiceId}
                 onChange={(e) => reloadServiceKitService(e.target.value)}
                 style={styles.formInput}
+                disabled={!serviceKitBranchSelected}
               >
-                {services.map((svc) => (
+                {(serviceKitServicesForBranch.length ? serviceKitServicesForBranch : services).map((svc) => (
                   <option key={svc.id} value={svc.id}>
                     {svc.name}
                   </option>
                 ))}
               </select>
+              {!serviceKitBranchSelected && (
+                <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 6 }}>
+                  Select a branch first to load services.
+                </div>
+              )}
             </div>
 
             <div style={styles.field}>
@@ -2544,14 +2647,14 @@ export default function AdminSettings() {
               >
                 {branches.map((branch) => (
                   <option key={branch.id} value={branch.id}>
-                    {branch.name}
+                    {branch.address || branch.name}
                   </option>
                 ))}
               </select>
             </div>
           </div>
           <div style={{ marginTop: 12 }}>
-            <div style={{ ...styles.formGrid, marginBottom: 6 }}>
+            <div style={{ ...serviceKitGridStyles, marginBottom: 6 }}>
               <div style={styles.fieldLabel}>Category</div>
               <div style={styles.fieldLabel}>Item</div>
               <div style={styles.fieldLabel}>Default Quantity</div>
@@ -2559,7 +2662,7 @@ export default function AdminSettings() {
               <div style={styles.fieldLabel}>Action</div>
             </div>
             {serviceKitItems.map((item, index) => (
-              <div key={`${item.category}-${index}`} style={{ ...styles.formGrid, marginBottom: 8 }}>
+              <div key={`${item.category}-${index}`} style={{ ...serviceKitGridStyles, marginBottom: 8 }}>
                 <select
                   value={item.category}
                   onChange={(e) => {
@@ -2569,6 +2672,7 @@ export default function AdminSettings() {
                     updateServiceKitItem(index, 'current_stock', null);
                   }}
                   style={styles.formInput}
+                  disabled={serviceKitRowInputsDisabled}
                 >
                   <option value="supply">Supply</option>
                   <option value="medicine">Medicine</option>
@@ -2584,6 +2688,7 @@ export default function AdminSettings() {
                     updateServiceKitItem(index, 'current_stock', match ? match.stock : null);
                   }}
                   style={styles.formInput}
+                  disabled={serviceKitRowInputsDisabled}
                 >
                   <option value="" disabled>
                     Select Item
@@ -2604,7 +2709,11 @@ export default function AdminSettings() {
                     )
                   }
                   placeholder="Default Quantity"
-                  style={styles.formInput}
+                  style={{
+                    ...styles.formInput,
+                    ...(Number(item.default_quantity || 0) < 1 ? { borderColor: '#ef4444' } : {}),
+                  }}
+                  disabled={serviceKitRowInputsDisabled}
                 />
                 <input
                   value={item.current_stock ?? ''}
@@ -2615,10 +2724,15 @@ export default function AdminSettings() {
                 <button type="button" style={styles.secondaryBtn} onClick={() => removeServiceKitItem(index)}>Remove</button>
               </div>
             ))}
+            {!serviceKitRowInputsDisabled && serviceKitItemErrors.some((row) => row?.default_quantity) && (
+              <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 8 }}>
+                Default quantity must be at least 1.
+              </div>
+            )}
           </div>
           <div style={styles.formActions}>
-            <button type="button" style={styles.secondaryBtn} onClick={addServiceKitItem}>Add Item</button>
-            <button type="button" style={styles.saveBtn} onClick={saveServiceKit}>Save Service Kit</button>
+            <button type="button" style={styles.secondaryBtn} onClick={addServiceKitItem} disabled={serviceKitRowInputsDisabled}>Add Item</button>
+            <button type="button" style={styles.saveBtn} onClick={saveServiceKit} disabled={serviceKitRowInputsDisabled}>Save Service Kit</button>
           </div>
         </FormOverlay>
       )}
