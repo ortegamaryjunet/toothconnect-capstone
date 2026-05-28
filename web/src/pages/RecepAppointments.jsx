@@ -110,6 +110,7 @@ export default function RecepAppointments() {
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [calendarDetailsOpenById, setCalendarDetailsOpenById] = useState({});
+  const [kitSubmittedByAppointmentId, setKitSubmittedByAppointmentId] = useState({});
 
   const isMobile = screenWidth <= 850;
   const isVerySmall = screenWidth <= 560;
@@ -372,6 +373,44 @@ export default function RecepAppointments() {
       .filter((item) => item.fullDate === selectedDateKey)
       .sort((a, b) => parseTime(a.time) - parseTime(b.time));
   }, [calendarAppointments, selectedDateKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadKitSubmissionStates() {
+      const completed = selectedDateSchedules.filter(
+        (appointment) => String(appointment.status).toLowerCase() === 'completed'
+      );
+      if (completed.length === 0) return;
+
+      const results = await Promise.all(
+        completed.map(async (appointment) => {
+          try {
+            const data = await getConsumption(appointment.id);
+            return { id: appointment.id, submitted: Boolean(data?.submitted) };
+          } catch {
+            return { id: appointment.id, submitted: null };
+          }
+        })
+      );
+
+      if (cancelled) return;
+
+      setKitSubmittedByAppointmentId((current) => {
+        const next = { ...current };
+        results.forEach((item) => {
+          next[item.id] = item.submitted;
+        });
+        return next;
+      });
+    }
+
+    loadKitSubmissionStates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDateSchedules]);
   const rescheduleEstimatedDuration = useMemo(() => {
     if (!rescheduleModal.appointment?.serviceId) {
       return 30;
@@ -1160,6 +1199,9 @@ export default function RecepAppointments() {
                         selectedDateSchedules.map((appointment) => {
                           const calendarStatus = getAppointmentCalendarStatus(appointment);
                           const showDetails = Boolean(calendarDetailsOpenById[appointment.id]);
+                          const isServiceKitPending =
+                            calendarStatus === 'Done' &&
+                            kitSubmittedByAppointmentId[appointment.id] === false;
 
                           return (
                           <div
@@ -1171,14 +1213,28 @@ export default function RecepAppointments() {
                                 {appointment.fullDate} | {appointment.time}
                               </div>
 
-                              <span
-                                style={{
-                                  ...styles.scheduleStatusBadge,
-                                  ...getAppointmentStatusStyle(styles, appointment),
-                                }}
-                              >
-                                {calendarStatus}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span
+                                  style={{
+                                    ...styles.scheduleStatusBadge,
+                                    ...getAppointmentStatusStyle(styles, appointment),
+                                  }}
+                                >
+                                  {calendarStatus}
+                                </span>
+                                {isServiceKitPending && (
+                                  <span
+                                    style={{
+                                      ...styles.scheduleStatusBadge,
+                                      background: '#fff7ed',
+                                      color: '#c2410c',
+                                      border: '1px solid #fdba74',
+                                    }}
+                                  >
+                                    Pending service_kit
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {calendarStatus === 'Done' && (
@@ -2055,7 +2111,7 @@ export default function RecepAppointments() {
               </div>
             )}
 
-            {!kitLoading && !kitError && !kitAlreadySubmitted && kitItems.length > 0 && (
+            {!kitLoading && !kitError && kitItems.length > 0 && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, gap: 10 }}>
                 <button
                   type="button"
@@ -2067,11 +2123,16 @@ export default function RecepAppointments() {
                 </button>
                 <button
                   type="button"
-                  style={{ ...styles.modalPrimaryBtn, ...(kitSubmitting ? styles.pageBtnDisabled : {}) }}
+                  style={{
+                    ...styles.modalPrimaryBtn,
+                    ...((kitSubmitting || kitAlreadySubmitted) ? styles.pageBtnDisabled : {}),
+                  }}
                   onClick={handleConfirmKitDeduction}
-                  disabled={kitSubmitting}
+                  disabled={kitSubmitting || kitAlreadySubmitted}
                 >
-                  {kitSubmitting ? 'Deducting...' : 'Confirm & Deduct'}
+                  {kitAlreadySubmitted
+                    ? 'Already Submitted by Dentist'
+                    : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct')}
                 </button>
               </div>
             )}
