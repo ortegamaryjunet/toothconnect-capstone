@@ -405,8 +405,8 @@ export default function RecepAppointments() {
           try {
             const [consumptionData, kitData] = await Promise.all([
               getConsumption(appointment.id),
-              appointment.serviceId && appointment.branchId
-                ? getServiceKit(appointment.serviceId, appointment.branchId).catch(() => ({
+              appointment.serviceId && recepBranchId
+                ? getServiceKit(appointment.serviceId, recepBranchId).catch(() => ({
                     kit_exists: false,
                     items: [],
                   }))
@@ -567,8 +567,8 @@ export default function RecepAppointments() {
     try {
       const [consumptionData, kitData] = await Promise.all([
         getConsumption(appointment.id).catch(() => ({ submitted: false, items: [] })),
-        appointment.serviceId && appointment.branchId
-          ? getServiceKit(appointment.serviceId, appointment.branchId).catch(() => ({
+        appointment.serviceId && recepBranchId
+          ? getServiceKit(appointment.serviceId, recepBranchId).catch(() => ({
               kit_exists: false,
               items: [],
             }))
@@ -590,13 +590,21 @@ export default function RecepAppointments() {
         setKitSubmittedBy(consumptionData?.submitted_by || null);
         setKitEditedBy(consumptionData?.edited_by || null);
         setKitEditedAt(consumptionData?.edited_at || '');
+        const kitStockMap = {};
+        (kitData?.items || []).forEach((ki) => {
+          if (ki.inventory_id != null) kitStockMap[ki.inventory_id] = ki.current_stock;
+        });
         setKitItems(
-          (consumptionData.items || []).map((item) => ({
-            category: item.category,
-            item_name: item.item_name,
-            inventory_id: item.item_id || item.inventory_id || null,
-            quantity_used: item.quantity_used,
-          }))
+          (consumptionData.items || []).map((item) => {
+            const invId = item.item_id || item.inventory_id || null;
+            return {
+              category: item.category,
+              item_name: item.item_name,
+              inventory_id: invId,
+              quantity_used: item.quantity_used,
+              current_stock: invId != null ? kitStockMap[invId] : undefined,
+            };
+          })
         );
       } else {
         setKitNotes(kitData.notes || '');
