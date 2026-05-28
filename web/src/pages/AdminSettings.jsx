@@ -2913,62 +2913,76 @@ export default function AdminSettings() {
                 <p style={{ color: '#b91c1c', fontSize: 13, marginBottom: 10 }}>{serviceKitHistoryError}</p>
               )}
 
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: 14 }}>
-                  <thead>
-                    <tr>
-                      <th style={styles.tableHead}>Service</th>
-                      <th style={styles.tableHead}>Branch</th>
-                      <th style={styles.tableHead}>Kit Items</th>
-                      <th style={styles.tableHead}>Status</th>
-                      <th style={styles.tableHead}>Updated By</th>
-                      <th style={styles.tableHead}>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {serviceKitHistoryLoading ? (
-                      <tr><td colSpan={6} style={styles.emptyRow}>Loading service kit history...</td></tr>
-                    ) : serviceKitHistoryRows.length === 0 ? (
-                      <tr><td colSpan={6} style={styles.emptyRow}>No service kit history records found.</td></tr>
-                    ) : (
-                      serviceKitHistoryRows.map((row) => (
-                        <tr key={row.id} style={styles.tableRow}>
-                          <td style={{ ...styles.tableCell, fontWeight: 700, whiteSpace: 'nowrap' }}>{row.service_name}</td>
-                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{row.branch_address || '—'}</td>
-                          <td style={{ ...styles.tableCell, maxWidth: 340 }}>
-                            {row.items.length === 0
-                              ? <span style={{ color: '#94a3b8' }}>No items</span>
-                              : row.items.map((item, i) => (
-                                  <span key={i}>
-                                    <span style={{ fontWeight: 600 }}>{item.item_name}</span>
-                                    {' '}
-                                    <span style={{ color: '#64748b', fontSize: 12 }}>({item.category})</span>
-                                    {' ×'}{item.default_quantity}
-                                    {i < row.items.length - 1 ? ', ' : ''}
-                                  </span>
-                                ))
-                            }
-                          </td>
-                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
-                            <span style={{
-                              ...styles.statusBadge,
-                              background: row.status === 'Added' ? '#dcfce7' : '#dbeafe',
-                              color: row.status === 'Added' ? '#15803d' : '#1d4ed8',
-                            }}>
-                              {row.status}
-                            </span>
-                          </td>
-                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{row.changed_by || '—'}</td>
-                          <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
-                            {row.changed_at
-                              ? new Date(row.changed_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
-                              : '—'}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {serviceKitHistoryLoading ? (
+                  <p style={{ textAlign: 'center', color: '#64748b', fontSize: 14, padding: '24px 0', fontFamily: 'Arial, sans-serif' }}>
+                    Loading service kit history...
+                  </p>
+                ) : serviceKitHistoryRows.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14, padding: '24px 0', fontFamily: 'Arial, sans-serif' }}>
+                    No service kit history records found.
+                  </p>
+                ) : (
+                  serviceKitHistoryRows.map((row) => (
+                    <div key={row.id} style={{
+                      background: '#fff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 14,
+                      padding: '18px 20px',
+                      boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
+                      fontFamily: 'Arial, sans-serif',
+                    }}>
+                      {/* Card header: service name + status badge */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{row.service_name}</span>
+                        <span style={{
+                          ...styles.statusBadge,
+                          background: row.status === 'Added' ? '#dcfce7' : '#dbeafe',
+                          color: row.status === 'Added' ? '#15803d' : '#1d4ed8',
+                          flexShrink: 0,
+                          marginLeft: 12,
+                        }}>
+                          {row.status}
+                        </span>
+                      </div>
+
+                      {/* Metadata row */}
+                      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 13, color: '#64748b', marginBottom: 12 }}>
+                        <span><span style={{ fontWeight: 600, color: '#475569' }}>Branch:</span> {row.branch_address || '—'}</span>
+                        <span><span style={{ fontWeight: 600, color: '#475569' }}>Updated By:</span> {row.changed_by || '—'}</span>
+                        <span><span style={{ fontWeight: 600, color: '#475569' }}>Date:</span> {row.changed_at
+                          ? new Date(row.changed_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
+                          : '—'}
+                        </span>
+                      </div>
+
+                      {/* Divider */}
+                      <div style={{ borderTop: '1px solid #f1f5f9', marginBottom: 12 }} />
+
+                      {/* Kit items as pills */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {row.items.length === 0
+                          ? <span style={{ color: '#94a3b8', fontSize: 13 }}>No items</span>
+                          : row.items.map((item, i) => (
+                              <span key={i} style={{
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 8,
+                                padding: '4px 12px',
+                                fontSize: 13,
+                                color: '#1e293b',
+                              }}>
+                                <span style={{ fontWeight: 600 }}>{item.item_name}</span>
+                                {' '}
+                                <span style={{ color: '#94a3b8' }}>({item.category})</span>
+                                <span style={{ color: '#475569' }}>{' ×'}{item.default_quantity}</span>
+                              </span>
+                            ))
+                        }
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
