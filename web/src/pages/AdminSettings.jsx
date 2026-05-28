@@ -2,7 +2,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import api from '../api/axios';
-import { getManageServiceKit, saveManageServiceKit } from '../api/inventory';
+import {
+  getManageServiceKit,
+  saveManageServiceKit,
+  listSupplies,
+  listMedicines,
+  listEquipment,
+} from '../api/inventory';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminSettingsStyles from '../styles/AdminSettings';
 
@@ -191,6 +197,11 @@ export default function AdminSettings() {
   const [serviceKitOverlay, setServiceKitOverlay] = useState(null);
   const [serviceKitBranchId, setServiceKitBranchId] = useState('');
   const [serviceKitItems, setServiceKitItems] = useState([]);
+  const [serviceKitInventory, setServiceKitInventory] = useState({
+    supplies: [],
+    medicines: [],
+    equipment: [],
+  });
   const [userForm, setUserForm] = useState(initialUserForm);
 
   const [filters, setFilters] = useState({
@@ -867,6 +878,17 @@ export default function AdminSettings() {
     setServiceKitOverlay(service);
     setServiceKitBranchId(String(branchId));
     try {
+      const [supplies, medicines, equipment] = await Promise.all([
+        listSupplies(branchId),
+        listMedicines(branchId),
+        listEquipment(branchId),
+      ]);
+      setServiceKitInventory({
+        supplies: Array.isArray(supplies) ? supplies : [],
+        medicines: Array.isArray(medicines) ? medicines : [],
+        equipment: Array.isArray(equipment) ? equipment : [],
+      });
+
       const data = await getManageServiceKit(service.id, branchId);
       setServiceKitItems((data.items || []).map((item) => ({
         category: item.category,
@@ -884,6 +906,17 @@ export default function AdminSettings() {
     if (!serviceKitOverlay || !branchId) return;
     setServiceKitBranchId(String(branchId));
     try {
+      const [supplies, medicines, equipment] = await Promise.all([
+        listSupplies(branchId),
+        listMedicines(branchId),
+        listEquipment(branchId),
+      ]);
+      setServiceKitInventory({
+        supplies: Array.isArray(supplies) ? supplies : [],
+        medicines: Array.isArray(medicines) ? medicines : [],
+        equipment: Array.isArray(equipment) ? equipment : [],
+      });
+
       const data = await getManageServiceKit(serviceKitOverlay.id, branchId);
       setServiceKitItems((data.items || []).map((item) => ({
         category: item.category,
@@ -897,7 +930,9 @@ export default function AdminSettings() {
   }
 
   function updateServiceKitItem(index, field, value) {
-    setServiceKitItems((prev) => prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)));
+    setServiceKitItems((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
+    );
   }
 
   function addServiceKitItem() {
@@ -924,6 +959,25 @@ export default function AdminSettings() {
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service kit.');
     }
+  }
+
+  function getInventoryOptionsForCategory(category) {
+    if (category === 'medicine') {
+      return serviceKitInventory.medicines.map((m) => ({
+        name: m.medicine_name,
+        stock: Number(m.quantity || 0),
+      }));
+    }
+    if (category === 'equipment') {
+      return serviceKitInventory.equipment.map((e) => ({
+        name: e.equipment_name,
+        stock: Number(e.quantity || 0),
+      }));
+    }
+    return serviceKitInventory.supplies.map((s) => ({
+      name: s.supply_name,
+      stock: Number(s.quantity || 0),
+    }));
   }
 
   async function saveUser(event) {
@@ -2448,14 +2502,58 @@ export default function AdminSettings() {
           <div style={{ marginTop: 12 }}>
             {serviceKitItems.map((item, index) => (
               <div key={`${item.category}-${index}`} style={{ ...styles.formGrid, marginBottom: 8 }}>
-                <select value={item.category} onChange={(e) => updateServiceKitItem(index, 'category', e.target.value)} style={styles.formInput}>
+                <select
+                  value={item.category}
+                  onChange={(e) => {
+                    const nextCategory = e.target.value;
+                    updateServiceKitItem(index, 'category', nextCategory);
+                    updateServiceKitItem(index, 'item_name', '');
+                    updateServiceKitItem(index, 'current_stock', null);
+                  }}
+                  style={styles.formInput}
+                >
                   <option value="supply">Supply</option>
                   <option value="medicine">Medicine</option>
                   <option value="equipment">Equipment</option>
                 </select>
-                <input value={item.item_name} onChange={(e) => updateServiceKitItem(index, 'item_name', e.target.value)} placeholder="Inventory item" style={styles.formInput} />
-                <input value={item.default_quantity} onChange={(e) => updateServiceKitItem(index, 'default_quantity', e.target.value.replace(/[^0-9]/g, ''))} placeholder="Required qty" style={styles.formInput} />
-                <input value={item.current_stock ?? ''} readOnly placeholder="Current stock" style={{ ...styles.formInput, ...styles.readOnlyInput }} />
+                <select
+                  value={item.item_name}
+                  onChange={(e) => {
+                    const nextName = e.target.value;
+                    const options = getInventoryOptionsForCategory(item.category);
+                    const match = options.find((o) => o.name === nextName) || null;
+                    updateServiceKitItem(index, 'item_name', nextName);
+                    updateServiceKitItem(index, 'current_stock', match ? match.stock : null);
+                  }}
+                  style={styles.formInput}
+                >
+                  <option value="" disabled>
+                    Select Item
+                  </option>
+                  {getInventoryOptionsForCategory(item.category).map((opt) => (
+                    <option key={opt.name} value={opt.name}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={item.default_quantity}
+                  onChange={(e) =>
+                    updateServiceKitItem(
+                      index,
+                      'default_quantity',
+                      e.target.value.replace(/[^0-9]/g, '')
+                    )
+                  }
+                  placeholder="Default Quantity"
+                  style={styles.formInput}
+                />
+                <input
+                  value={item.current_stock ?? ''}
+                  readOnly
+                  placeholder="Current Stock"
+                  style={{ ...styles.formInput, ...styles.readOnlyInput }}
+                />
                 <button type="button" style={styles.secondaryBtn} onClick={() => removeServiceKitItem(index)}>Remove</button>
               </div>
             ))}
