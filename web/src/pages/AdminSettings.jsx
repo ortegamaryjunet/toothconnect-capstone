@@ -206,6 +206,7 @@ export default function AdminSettings() {
     medicines: [],
     equipment: [],
   });
+  const [removeKitItemIndex, setRemoveKitItemIndex] = useState(null);
   const [showServiceKitHistory, setShowServiceKitHistory] = useState(false);
   const [serviceKitHistoryRows, setServiceKitHistoryRows] = useState([]);
   const [serviceKitHistoryLoading, setServiceKitHistoryLoading] = useState(false);
@@ -1140,7 +1141,7 @@ export default function AdminSettings() {
   const serviceKitRowInputsDisabled = !(serviceKitBranchSelected && serviceKitServiceSelected);
   const serviceKitGridStyles = {
     display: 'grid',
-    gridTemplateColumns: '160px minmax(0, 1fr) 160px 160px 120px',
+    gridTemplateColumns: '140px minmax(0, 1fr) 90px 100px 100px',
     gap: 10,
     alignItems: 'center',
   };
@@ -2762,7 +2763,7 @@ export default function AdminSettings() {
                   placeholder="Current Stock"
                   style={{ ...styles.formInput, ...styles.readOnlyInput }}
                 />
-                <button type="button" style={styles.secondaryBtn} onClick={() => removeServiceKitItem(index)}>Remove</button>
+                <button type="button" style={styles.secondaryBtn} onClick={() => setRemoveKitItemIndex(index)}>Remove</button>
               </div>
             ))}
             {!serviceKitRowInputsDisabled && serviceKitItemErrors.some((row) => row?.default_quantity) && (
@@ -2776,6 +2777,43 @@ export default function AdminSettings() {
             <button type="button" style={styles.saveBtn} onClick={saveServiceKit} disabled={serviceKitRowInputsDisabled}>Save Service Kit</button>
           </div>
         </FormOverlay>
+      )}
+
+      {removeKitItemIndex !== null && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 3000,
+          background: 'rgba(15,23,42,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: '32px 36px',
+            maxWidth: 380, width: '92%', boxShadow: '0 16px 40px rgba(15,23,42,0.18)',
+            textAlign: 'center',
+          }}>
+            <p style={{ fontSize: 16, fontWeight: 600, color: '#1e293b', marginBottom: 8 }}>
+              Remove Item
+            </p>
+            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28 }}>
+              Do you want to remove this item?
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                type="button"
+                style={{ ...styles.secondaryBtn, minWidth: 100 }}
+                onClick={() => setRemoveKitItemIndex(null)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.saveBtn, minWidth: 120 }}
+                onClick={() => { removeServiceKitItem(removeKitItemIndex); setRemoveKitItemIndex(null); }}
+              >
+                Yes, Remove
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showServiceKitHistory && (
