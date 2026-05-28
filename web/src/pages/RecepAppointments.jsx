@@ -110,6 +110,7 @@ export default function RecepAppointments() {
   const [kitLoading, setKitLoading] = useState(false);
   const [kitError, setKitError] = useState('');
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
+  const [kitSubmittedBy, setKitSubmittedBy] = useState(null);
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [calendarDetailsOpenById, setCalendarDetailsOpenById] = useState({});
   const [kitSubmittedByAppointmentId, setKitSubmittedByAppointmentId] = useState({});
@@ -548,6 +549,7 @@ export default function RecepAppointments() {
     setKitNotes('');
     setKitError('');
     setKitAlreadySubmitted(false);
+    setKitSubmittedBy(null);
     setShowKitModal(true);
     setKitLoading(true);
 
@@ -564,6 +566,7 @@ export default function RecepAppointments() {
 
       if (isConsultation) {
         setKitAlreadySubmitted(Boolean(consumptionData?.submitted));
+        setKitSubmittedBy(consumptionData?.submitted_by || null);
         setKitNotes('No inventory items was used for consultation service.');
         setKitItems([]);
         return;
@@ -571,6 +574,7 @@ export default function RecepAppointments() {
 
       if (consumptionData.submitted) {
         setKitAlreadySubmitted(true);
+        setKitSubmittedBy(consumptionData?.submitted_by || null);
         setKitItems(
           (consumptionData.items || []).map((item) => ({
             category: item.category,
@@ -608,6 +612,7 @@ export default function RecepAppointments() {
     setKitNotes('');
     setKitError('');
     setKitAlreadySubmitted(false);
+    setKitSubmittedBy(null);
     setKitSubmitting(false);
   }
 
@@ -639,6 +644,10 @@ export default function RecepAppointments() {
     try {
       await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
       setKitAlreadySubmitted(true);
+      setKitSubmittedBy({
+        name: user?.name || 'Receptionist',
+        role: user?.role || 'receptionist',
+      });
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to deduct inventory.');
     } finally {
@@ -2119,7 +2128,7 @@ export default function RecepAppointments() {
                 <h2 style={styles.modalHeaderTitle}>Service Kit</h2>
                 <p style={styles.modalHeaderSub}>
                   {kitAlreadySubmitted
-                    ? 'Dentist already filled up and submitted the service kit for this appointment.'
+                    ? `Service kit already submitted by ${formatConsumptionSubmitter(kitSubmittedBy)}.`
                     : 'Service kit template for this appointment.'}
                 </p>
               </div>
@@ -2137,6 +2146,11 @@ export default function RecepAppointments() {
               {!kitAlreadySubmitted && (
                 <div style={styles.scheduleDetail}>
                   <strong>Kit Note:</strong> {kitNotes || 'No kit note added.'}
+                </div>
+              )}
+              {kitAlreadySubmitted && (
+                <div style={styles.scheduleDetail}>
+                  <strong>Submitted By:</strong> {formatConsumptionSubmitter(kitSubmittedBy)}
                 </div>
               )}
             </div>
@@ -2216,7 +2230,7 @@ export default function RecepAppointments() {
                   fontSize: 13,
                 }}
               >
-                Display only: Dentist already submitted this service kit.
+                Display only: Submitted by {formatConsumptionSubmitter(kitSubmittedBy)}.
               </div>
             )}
 
@@ -2240,7 +2254,7 @@ export default function RecepAppointments() {
                   disabled={kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems}
                 >
                   {kitAlreadySubmitted
-                    ? 'Already Submitted by Dentist'
+                    ? `Already Submitted by ${formatConsumptionSubmitter(kitSubmittedBy)}`
                     : (!hasDeductibleKitItems
                       ? 'No Deductible Items'
                       : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct'))}
@@ -2915,6 +2929,14 @@ function parseTimeToMinutes(timeString) {
   }
 
   return hour * 60 + (Number(minuteValue) || 0);
+}
+
+function formatConsumptionSubmitter(submitter) {
+  if (!submitter) return 'Staff';
+  const role = String(submitter.role || '').toLowerCase();
+  const roleLabel =
+    role === 'dentist' ? 'Dentist' : role === 'receptionist' ? 'Receptionist' : 'Staff';
+  return submitter.name ? `${submitter.name} (${roleLabel})` : roleLabel;
 }
 
 function formatPaymentAmount(amount) {

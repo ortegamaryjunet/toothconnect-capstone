@@ -1108,12 +1108,22 @@ router.get('/appointments/:appointmentId/consumption', async (req, res) => {
     }
 
     const [items] = await pool.query(
-      `SELECT category, item_id, item_name, quantity_used
-       FROM appointment_consumption WHERE appointment_id = ?`,
+      `SELECT ac.category, ac.item_id, ac.item_name, ac.quantity_used, ac.recorded_by,
+              u.role AS recorded_by_role, u.name AS recorded_by_name
+       FROM appointment_consumption ac
+       LEFT JOIN users u ON u.id = ac.recorded_by
+       WHERE ac.appointment_id = ?`,
       [appointmentId]
     );
+    const submittedBy = items.length > 0
+      ? {
+          user_id: items[0].recorded_by || null,
+          name: items[0].recorded_by_name || null,
+          role: items[0].recorded_by_role || null,
+        }
+      : null;
 
-    res.json({ appointment_id: appointmentId, submitted: items.length > 0, items });
+    res.json({ appointment_id: appointmentId, submitted: items.length > 0, submitted_by: submittedBy, items });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -1286,6 +1296,19 @@ router.post('/appointments/:appointmentId/consumption', requireRole('dentist', '
         items: decrementResults,
       })]
     );
+
+    if (role === 'receptionist' && appt.dentist_id) {
+      const receptionistName = req.user?.name || 'Receptionist';
+      await conn.query(
+        `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
+         VALUES (?, 'service_kit_submitted', 'Service Kit Submitted', ?, 'appointment', ?)`,
+        [
+          appt.dentist_id,
+          `${receptionistName} submitted the service kit for your completed appointment #${appointmentId}.`,
+          appointmentId,
+        ]
+      );
+    }
 
     await conn.commit();
 
