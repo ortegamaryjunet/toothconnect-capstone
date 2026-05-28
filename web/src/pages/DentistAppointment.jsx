@@ -188,6 +188,16 @@ export default function DentistAppointment() {
     [kitItems]
   );
 
+  const kitHasStockError = useMemo(
+    () => kitItems.some((item) =>
+      item.inventory_id &&
+      item.current_stock !== null &&
+      item.current_stock !== undefined &&
+      Number(item.quantity_used) > Number(item.current_stock)
+    ),
+    [kitItems]
+  );
+
   function openLogoutModal() {
     setShowLogoutModal(true);
   }
@@ -300,12 +310,16 @@ export default function DentistAppointment() {
         setKitEditedBy(consumptionData?.edited_by || null);
         setKitEditedAt(consumptionData?.edited_at || '');
 
+        const kitStockMap = {};
+        (kitData?.items || []).forEach((ki) => {
+          if (ki.inventory_id != null) kitStockMap[ki.inventory_id] = ki.current_stock;
+        });
         const submittedItems = consumptionData.items.map((item) => ({
           category: item.category,
           item_name: item.item_name,
           inventory_id: item.item_id,
           quantity_used: item.quantity_used,
-          current_stock: null,
+          current_stock: item.item_id != null ? (kitStockMap[item.item_id] ?? null) : null,
           available: true,
           sufficient: true,
           submitted: true,
@@ -374,6 +388,17 @@ export default function DentistAppointment() {
 
     if (itemsToSubmit.length === 0) {
       setKitError('No valid inventory items to deduct.');
+      return;
+    }
+
+    const hasOverStock = kitItems.some((item) =>
+      item.inventory_id &&
+      item.current_stock !== null &&
+      item.current_stock !== undefined &&
+      Number(item.quantity_used) > Number(item.current_stock)
+    );
+    if (hasOverStock) {
+      setKitError('One or more quantities exceed current stock. Please correct before deducting.');
       return;
     }
 
@@ -1019,6 +1044,7 @@ export default function DentistAppointment() {
                     <tr>
                       <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>Item</th>
                       <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>Category</th>
+                      <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>Current Stock</th>
                       <th style={{ ...styles.tableHead, textAlign: 'left', padding: '10px 12px' }}>
                         {kitAlreadySubmitted && !kitEditMode ? 'Used' : 'Qty'}
                       </th>
@@ -1042,27 +1068,47 @@ export default function DentistAppointment() {
                           {item.category}
                         </td>
 
+                        <td style={{ ...styles.tableCell, padding: '10px 12px', color: '#374151' }}>
+                          {item.current_stock !== null && item.current_stock !== undefined
+                            ? item.current_stock
+                            : <span style={{ color: '#94a3b8' }}>—</span>}
+                        </td>
+
                         <td style={{ ...styles.tableCell, padding: '10px 12px' }}>
                           {kitAlreadySubmitted && !kitEditMode ? (
                             item.quantity_used
-                          ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.quantity_used}
-                              onChange={(e) => handleKitQtyChange(index, e.target.value)}
-                              disabled={!item.inventory_id}
-                              style={{
-                                width: '60px',
-                                padding: '4px 8px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
-                                cursor: !item.inventory_id ? 'not-allowed' : 'text',
-                              }}
-                            />
-                          )}
+                          ) : (() => {
+                            const exceedsStock =
+                              item.inventory_id &&
+                              item.current_stock !== null &&
+                              item.current_stock !== undefined &&
+                              Number(item.quantity_used) > Number(item.current_stock);
+                            return (
+                              <>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.quantity_used}
+                                  onChange={(e) => handleKitQtyChange(index, e.target.value)}
+                                  disabled={!item.inventory_id}
+                                  style={{
+                                    width: '60px',
+                                    padding: '4px 8px',
+                                    border: `1px solid ${exceedsStock ? '#ef4444' : '#d1d5db'}`,
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
+                                    cursor: !item.inventory_id ? 'not-allowed' : 'text',
+                                  }}
+                                />
+                                {exceedsStock && (
+                                  <span style={{ display: 'block', color: '#b91c1c', fontSize: 11, marginTop: 2 }}>
+                                    Exceeds stock
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
@@ -1086,7 +1132,7 @@ export default function DentistAppointment() {
                   type="button"
                   style={{
                     ...styles.modalPrimaryBtn,
-                    ...((kitSubmitting || !hasDeductibleKitItems) ? styles.pageBtnDisabled : {}),
+                    ...((kitSubmitting || !hasDeductibleKitItems || kitHasStockError) ? styles.pageBtnDisabled : {}),
                   }}
                   onClick={() => {
                     if (kitAlreadySubmitted && !kitEditMode) {
@@ -1095,7 +1141,7 @@ export default function DentistAppointment() {
                     }
                     handleKitConfirm();
                   }}
-                  disabled={kitSubmitting || !hasDeductibleKitItems}
+                  disabled={kitSubmitting || !hasDeductibleKitItems || kitHasStockError}
                 >
                   {kitAlreadySubmitted && !kitEditMode
                     ? 'Edit'
