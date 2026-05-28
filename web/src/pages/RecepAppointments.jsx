@@ -1250,6 +1250,9 @@ export default function RecepAppointments() {
                         selectedDateSchedules.map((appointment) => {
                           const calendarStatus = getAppointmentCalendarStatus(appointment);
                           const showDetails = Boolean(calendarDetailsOpenById[appointment.id]);
+                          const isServiceKitSubmitted =
+                            calendarStatus === 'Done' &&
+                            kitSubmittedByAppointmentId[appointment.id] === true;
                           const isServiceKitPending =
                             calendarStatus === 'Done' &&
                             kitTemplateHasItemsByAppointmentId[appointment.id] === true &&
@@ -1284,6 +1287,18 @@ export default function RecepAppointments() {
                                     }}
                                   >
                                     Pending service_kit
+                                  </span>
+                                )}
+                                {isServiceKitSubmitted && (
+                                  <span
+                                    style={{
+                                      ...styles.scheduleStatusBadge,
+                                      background: '#dcfce7',
+                                      color: '#166534',
+                                      border: '1px solid #86efac',
+                                    }}
+                                  >
+                                    Service_kit submitted
                                   </span>
                                 )}
                               </div>
@@ -2141,7 +2156,14 @@ export default function RecepAppointments() {
                   <tbody>
                     {kitItems.map((item, index) => (
                       <tr key={`${item.item_name}-${index}`}>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.item_name}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                          {item.item_name}
+                          {!item.inventory_id && !kitAlreadySubmitted && (
+                            <span style={{ color: '#b91c1c', fontSize: 11, display: 'block' }}>
+                              Not linked to branch inventory
+                            </span>
+                          )}
+                        </td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.category || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
                           {kitAlreadySubmitted ? (
@@ -2152,12 +2174,15 @@ export default function RecepAppointments() {
                               min="0"
                               value={item.quantity_used || 0}
                               onChange={(event) => handleKitQtyChange(index, event.target.value)}
+                              disabled={!item.inventory_id}
                               style={{
                                 width: '60px',
                                 padding: '4px 8px',
                                 border: '1px solid #d1d5db',
                                 borderRadius: '6px',
                                 fontSize: '13px',
+                                background: !item.inventory_id ? '#f1f5f9' : '#ffffff',
+                                cursor: !item.inventory_id ? 'not-allowed' : 'text',
                               }}
                             />
                           )}
