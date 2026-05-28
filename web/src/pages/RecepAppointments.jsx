@@ -11,7 +11,7 @@ import {
   setAppointmentStatus,
 } from '../api/appointments';
 import { createStaffPayment } from '../api/payments';
-import { getConsumption, getServiceKit, submitConsumption } from '../api/inventory';
+import { getConsumption, getServiceKit, submitConsumption, updateConsumption } from '../api/inventory';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createRecepAppointmentsStyles from '../styles/RecepAppointments';
@@ -111,6 +111,7 @@ export default function RecepAppointments() {
   const [kitError, setKitError] = useState('');
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
   const [kitSubmittedBy, setKitSubmittedBy] = useState(null);
+  const [kitEditMode, setKitEditMode] = useState(false);
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [calendarDetailsOpenById, setCalendarDetailsOpenById] = useState({});
   const [kitSubmittedByAppointmentId, setKitSubmittedByAppointmentId] = useState({});
@@ -550,6 +551,7 @@ export default function RecepAppointments() {
     setKitError('');
     setKitAlreadySubmitted(false);
     setKitSubmittedBy(null);
+    setKitEditMode(false);
     setShowKitModal(true);
     setKitLoading(true);
 
@@ -613,6 +615,7 @@ export default function RecepAppointments() {
     setKitError('');
     setKitAlreadySubmitted(false);
     setKitSubmittedBy(null);
+    setKitEditMode(false);
     setKitSubmitting(false);
   }
 
@@ -624,7 +627,7 @@ export default function RecepAppointments() {
   }
 
   async function handleConfirmKitDeduction() {
-    if (!selectedKitAppointment || kitSubmitting || kitAlreadySubmitted) return;
+    if (!selectedKitAppointment || kitSubmitting) return;
 
     const itemsToSubmit = kitItems
       .filter((item) => Number(item.quantity_used) > 0 && item.inventory_id)
@@ -642,8 +645,13 @@ export default function RecepAppointments() {
     setKitSubmitting(true);
     setKitError('');
     try {
-      await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
+      if (kitAlreadySubmitted && kitEditMode) {
+        await updateConsumption(selectedKitAppointment.id, itemsToSubmit);
+      } else {
+        await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
+      }
       setKitAlreadySubmitted(true);
+      setKitEditMode(false);
       setKitSubmittedBy({
         name: user?.name || 'Receptionist',
         role: user?.role || 'receptionist',
@@ -2173,7 +2181,7 @@ export default function RecepAppointments() {
                       <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Item</th>
                       <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>Category</th>
                       <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
-                        {kitAlreadySubmitted ? 'Used' : 'Qty'}
+                        {kitAlreadySubmitted && !kitEditMode ? 'Used' : 'Qty'}
                       </th>
                     </tr>
                   </thead>
@@ -2182,7 +2190,7 @@ export default function RecepAppointments() {
                       <tr key={`${item.item_name}-${index}`}>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
                           {item.item_name}
-                          {!item.inventory_id && !kitAlreadySubmitted && (
+                          {!item.inventory_id && (!kitAlreadySubmitted || kitEditMode) && (
                             <span style={{ color: '#b91c1c', fontSize: 11, display: 'block' }}>
                               Not linked to branch inventory
                             </span>
@@ -2190,7 +2198,7 @@ export default function RecepAppointments() {
                         </td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{item.category || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
-                          {kitAlreadySubmitted ? (
+                          {kitAlreadySubmitted && !kitEditMode ? (
                             item.quantity_used || 0
                           ) : (
                             <input
@@ -2218,22 +2226,6 @@ export default function RecepAppointments() {
               </div>
             )}
 
-            {kitAlreadySubmitted && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  background: '#ecfeff',
-                  border: '1px solid #a5f3fc',
-                  color: '#0f766e',
-                  fontSize: 13,
-                }}
-              >
-                Display only: Submitted by {formatConsumptionSubmitter(kitSubmittedBy)}.
-              </div>
-            )}
-
             {!kitLoading && !kitError && kitItems.length > 0 && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, gap: 10 }}>
                 <button
@@ -2248,16 +2240,24 @@ export default function RecepAppointments() {
                   type="button"
                   style={{
                     ...styles.modalPrimaryBtn,
-                    ...((kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems) ? styles.pageBtnDisabled : {}),
+                    ...((kitSubmitting || !hasDeductibleKitItems) ? styles.pageBtnDisabled : {}),
                   }}
-                  onClick={handleConfirmKitDeduction}
-                  disabled={kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems}
+                  onClick={() => {
+                    if (kitAlreadySubmitted && !kitEditMode) {
+                      setKitEditMode(true);
+                      return;
+                    }
+                    handleConfirmKitDeduction();
+                  }}
+                  disabled={kitSubmitting || !hasDeductibleKitItems}
                 >
-                  {kitAlreadySubmitted
-                    ? `Already Submitted by ${formatConsumptionSubmitter(kitSubmittedBy)}`
+                  {kitAlreadySubmitted && !kitEditMode
+                    ? 'Edit'
+                    : (kitAlreadySubmitted && kitEditMode
+                      ? (kitSubmitting ? 'Saving...' : 'Save Changes')
                     : (!hasDeductibleKitItems
                       ? 'No Deductible Items'
-                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct'))}
+                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct')))}
                 </button>
               </div>
             )}

@@ -1327,4 +1327,193 @@ router.post('/appointments/:appointmentId/consumption', requireRole('dentist', '
   }
 });
 
+router.put('/appointments/:appointmentId/consumption', requireRole('dentist', 'receptionist', 'admin'), async (req, res) => {
+  const appointmentId = parseInt(req.params.appointmentId, 10);
+  const { items } = req.body;
+  const userId = req.user.user_id;
+  const role = req.user.role;
+
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ message: 'items must be an array' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [apptRows] = await conn.query(
+      `SELECT id, dentist_id, branch_id, service_id, start_time, status
+       FROM appointments WHERE id = ? FOR UPDATE`,
+      [appointmentId]
+    );
+    if (apptRows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+    const appt = apptRows[0];
+
+    if (role === 'dentist' && appt.dentist_id !== userId) {
+      await conn.rollback();
+      return res.status(403).json({ message: 'You are not the dentist for this appointment' });
+    }
+    if (!validateBranchAccess(req, appt.branch_id)) {
+      await conn.rollback();
+      return res.status(403).json({ message: 'No access to this branch' });
+    }
+
+    const [existingRows] = await conn.query(
+      `SELECT category, item_id, quantity_used
+       FROM appointment_consumption
+       WHERE appointment_id = ?`,
+      [appointmentId]
+    );
+    if (existingRows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'No existing service kit submission to edit' });
+    }
+
+    const tableByCategory = { supply: 'supplies', medicine: 'medicines', equipment: 'equipment' };
+    for (const row of existingRows) {
+      const table = tableByCategory[row.category];
+      if (!table) continue;
+
+      await conn.query(
+        `UPDATE ${table} SET quantity = quantity + ? WHERE id = ? AND branch_id = ?`,
+        [Number(row.quantity_used || 0), row.item_id, appt.branch_id]
+      );
+    }
+
+    await conn.query(`DELETE FROM appointment_consumption WHERE appointment_id = ?`, [appointmentId]);
+    await conn.query(`DELETE FROM inventory_usage_history WHERE appointment_id = ?`, [appointmentId]);
+
+    const serviceId = appt.service_id || null;
+    let serviceName = null;
+    try {
+      const [serviceRows] = await conn.query(`SELECT name FROM services WHERE id = ?`, [serviceId]);
+      serviceName = serviceRows.length ? serviceRows[0].name : null;
+    } catch {
+      serviceName = null;
+    }
+
+    const decrementResults = [];
+    for (const item of items) {
+      const { category, inventory_id, quantity_used } = item;
+      if (!category || !inventory_id || !quantity_used || quantity_used <= 0) {
+        await conn.rollback();
+        return res.status(400).json({
+          message: 'Each item needs category, inventory_id, and positive quantity_used',
+        });
+      }
+
+      const validCategories = { supply: 'supplies', medicine: 'medicines', equipment: 'equipment' };
+      const nameColumns = { supply: 'supply_name', medicine: 'medicine_name', equipment: 'equipment_name' };
+      if (!validCategories[category]) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Invalid category: ${category}` });
+      }
+      const table = validCategories[category];
+      const nameCol = nameColumns[category];
+
+      const [invRows] = await conn.query(
+        `SELECT id, branch_id, ${nameCol} AS name, category AS item_category, quantity
+         FROM ${table} WHERE id = ? FOR UPDATE`,
+        [inventory_id]
+      );
+      if (invRows.length === 0) {
+        await conn.rollback();
+        return res.status(404).json({ message: `${category} id ${inventory_id} not found` });
+      }
+      const invItem = invRows[0];
+      const previousInventoryRow = await fetchInventoryAlertRow(conn, category, inventory_id);
+
+      if (invItem.branch_id !== appt.branch_id) {
+        await conn.rollback();
+        return res.status(400).json({ message: `${invItem.name} is not at this appointment's branch` });
+      }
+      if (invItem.quantity < quantity_used) {
+        await conn.rollback();
+        return res.status(400).json({
+          message: `Insufficient stock for ${invItem.name}: have ${invItem.quantity}, need ${quantity_used}`,
+        });
+      }
+
+      await conn.query(`UPDATE ${table} SET quantity = quantity - ? WHERE id = ?`, [quantity_used, inventory_id]);
+      const updatedInventoryRow = await fetchInventoryAlertRow(conn, category, inventory_id);
+      await createInventoryStatusNotifications(conn, previousInventoryRow, updatedInventoryRow);
+
+      await conn.query(
+        `INSERT INTO appointment_consumption (appointment_id, category, item_id, item_name, quantity_used, recorded_by)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [appointmentId, category, inventory_id, invItem.name, quantity_used, userId]
+      );
+
+      const inventoryType =
+        category === 'medicine' ? 'medicine' : category === 'equipment' ? 'equipment' : 'supply';
+      await conn.query(
+        `INSERT INTO inventory_usage_history
+         (appointment_id, branch_id, inventory_type, item_id, item_name, item_category, quantity_deducted,
+          service_id, service_name, appointment_start_time, deducted_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          appointmentId,
+          appt.branch_id,
+          inventoryType,
+          inventory_id,
+          invItem.name,
+          invItem.item_category || null,
+          quantity_used,
+          serviceId,
+          serviceName,
+          appt.start_time || null,
+          userId,
+        ]
+      );
+
+      decrementResults.push({
+        category,
+        item_id: inventory_id,
+        item_name: invItem.name,
+        quantity_used,
+        new_quantity: invItem.quantity - quantity_used,
+      });
+    }
+
+    await conn.query(
+      `INSERT INTO audit_logs (user_id, action, branch_id, details)
+       VALUES (?, 'appointment_consumption_updated', ?, ?)`,
+      [userId, appt.branch_id, JSON.stringify({
+        appointment_id: appointmentId,
+        items_count: items.length,
+        items: decrementResults,
+      })]
+    );
+
+    if (role === 'receptionist' && appt.dentist_id) {
+      const receptionistName = req.user?.name || 'Receptionist';
+      await conn.query(
+        `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
+         VALUES (?, 'service_kit_updated', 'Service Kit Updated', ?, 'appointment', ?)`,
+        [
+          appt.dentist_id,
+          `${receptionistName} edited the service kit for your completed appointment #${appointmentId}.`,
+          appointmentId,
+        ]
+      );
+    }
+
+    await conn.commit();
+    res.json({
+      message: 'Consumption updated',
+      appointment_id: appointmentId,
+      items: decrementResults,
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
+  }
+});
+
 module.exports = router;

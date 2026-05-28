@@ -88,6 +88,11 @@ export async function submitConsumption(appointmentId, items) {
   return res.data;
 }
 
+export async function updateConsumption(appointmentId, items) {
+  const res = await api.put(`/inventory/appointments/${appointmentId}/consumption`, { items });
+  return res.data;
+}
+
 export async function listInventoryUsageHistory(params = {}) {
   const res = await api.get('/inventory/usage-history', { params });
   return res.data.records || [];
