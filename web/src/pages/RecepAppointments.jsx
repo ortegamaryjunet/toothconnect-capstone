@@ -11,7 +11,7 @@ import {
   setAppointmentStatus,
 } from '../api/appointments';
 import { createStaffPayment } from '../api/payments';
-import { getConsumption, getServiceKit } from '../api/inventory';
+import { getConsumption, getServiceKit, submitConsumption } from '../api/inventory';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createRecepAppointmentsStyles from '../styles/RecepAppointments';
@@ -108,6 +108,7 @@ export default function RecepAppointments() {
   const [kitLoading, setKitLoading] = useState(false);
   const [kitError, setKitError] = useState('');
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
+  const [kitSubmitting, setKitSubmitting] = useState(false);
 
   const isMobile = screenWidth <= 850;
   const isVerySmall = screenWidth <= 560;
@@ -521,6 +522,35 @@ export default function RecepAppointments() {
     setKitNotes('');
     setKitError('');
     setKitAlreadySubmitted(false);
+    setKitSubmitting(false);
+  }
+
+  async function handleConfirmKitDeduction() {
+    if (!selectedKitAppointment || kitSubmitting || kitAlreadySubmitted) return;
+
+    const itemsToSubmit = kitItems
+      .filter((item) => Number(item.quantity_used) > 0 && item.inventory_id)
+      .map((item) => ({
+        category: item.category,
+        inventory_id: item.inventory_id,
+        quantity_used: Number(item.quantity_used),
+      }));
+
+    if (itemsToSubmit.length === 0) {
+      setKitError('No valid inventory items to deduct.');
+      return;
+    }
+
+    setKitSubmitting(true);
+    setKitError('');
+    try {
+      await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
+      setKitAlreadySubmitted(true);
+    } catch (err) {
+      setKitError(err.response?.data?.message || 'Failed to deduct inventory.');
+    } finally {
+      setKitSubmitting(false);
+    }
   }
 
   function handleReschedulePreviousMonth() {
@@ -1971,6 +2001,27 @@ export default function RecepAppointments() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {!kitLoading && !kitError && !kitAlreadySubmitted && kitItems.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, gap: 10 }}>
+                <button
+                  type="button"
+                  style={styles.modalSecondaryBtn}
+                  onClick={closeKitModal}
+                  disabled={kitSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  style={{ ...styles.modalPrimaryBtn, ...(kitSubmitting ? styles.pageBtnDisabled : {}) }}
+                  onClick={handleConfirmKitDeduction}
+                  disabled={kitSubmitting}
+                >
+                  {kitSubmitting ? 'Deducting...' : 'Confirm & Deduct'}
+                </button>
               </div>
             )}
           </div>

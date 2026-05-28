@@ -929,9 +929,12 @@ router.get('/usage-history', requireRole('admin', 'receptionist'), async (req, r
               h.service_name,
               h.appointment_start_time,
               h.deducted_at,
+              u.role AS deducted_by_role,
+              u.name AS deducted_by_name,
               b.name AS branch_name,
               b.address AS branch_address
        FROM inventory_usage_history h
+       LEFT JOIN users u ON u.id = h.deducted_by
        JOIN branches b ON b.id = h.branch_id
        WHERE ${whereParts.join(' AND ')}
        ORDER BY h.deducted_at DESC
@@ -951,6 +954,8 @@ router.get('/usage-history', requireRole('admin', 'receptionist'), async (req, r
         branch_name: r.branch_name,
         branch_address: r.branch_address,
         deducted_at: r.deducted_at,
+        deducted_by_role: r.deducted_by_role || null,
+        deducted_by_name: r.deducted_by_name || null,
       })),
     });
   } catch (err) {
@@ -1089,10 +1094,11 @@ router.get('/appointments/:appointmentId/consumption', async (req, res) => {
 // CONSUMPTION SUBMISSION — decrement inventory atomically
 // ─────────────────────────────────────────────────────────────
 
-router.post('/appointments/:appointmentId/consumption', requireRole('dentist'), async (req, res) => {
+router.post('/appointments/:appointmentId/consumption', requireRole('dentist', 'receptionist', 'admin'), async (req, res) => {
   const appointmentId = parseInt(req.params.appointmentId, 10);
   const { items, mark_complete } = req.body;
   const userId = req.user.user_id;
+  const role = req.user.role;
 
   if (!Array.isArray(items)) {
     return res.status(400).json({ message: 'items must be an array' });
@@ -1113,7 +1119,7 @@ router.post('/appointments/:appointmentId/consumption', requireRole('dentist'), 
     }
     const appt = apptRows[0];
 
-    if (appt.dentist_id !== userId) {
+    if (role === 'dentist' && appt.dentist_id !== userId) {
       await conn.rollback();
       return res.status(403).json({ message: 'You are not the dentist for this appointment' });
     }
