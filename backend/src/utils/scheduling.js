@@ -1,6 +1,6 @@
 const { toMySQLDateTime } = require('./dates');
 
-const APPOINTMENT_BUFFER_MINUTES = 10;
+const APPOINTMENT_BUFFER_MINUTES = 30;
 const LUNCH_START_HOUR = 12;
 const LUNCH_END_HOUR = 13;
 

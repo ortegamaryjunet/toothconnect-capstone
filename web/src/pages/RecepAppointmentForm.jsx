@@ -33,7 +33,7 @@ const clinicStartMinutes = 10 * 60;
 const clinicEndMinutes = 19 * 60;
 const lunchStartMinutes = 12 * 60;
 const lunchEndMinutes = 13 * 60 + 30; // next slot is 1:30 PM
-const appointmentBufferMinutes = 15;
+const appointmentBufferMinutes = 30;
 
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 11 }, (_, index) => currentYear + index);
@@ -907,7 +907,7 @@ export default function RecepAppointmentForm() {
                         </p>
                         <p style={styles.infoSubText}>
                           Estimated duration is based on the selected purpose of visit. A
-                          15-minute cleaning/preparation buffer is blocked after each
+                          30-minute cleaning/preparation buffer is blocked after each
                           appointment.
                         </p>
                       </div>

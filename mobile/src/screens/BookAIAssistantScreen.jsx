@@ -122,6 +122,16 @@ export default function BookAIAssistantScreen({ navigation }) {
   const [metaError, setMetaError] = useState('');
 
   const [concern, setConcern] = useState('');
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantExpanded, setAssistantExpanded] = useState(false);
+  const [assistantMessages, setAssistantMessages] = useState([
+    {
+      id: 'assistant-welcome',
+      role: 'assistant',
+      text: 'Hello! Describe your dental concern or service request, and I will help prepare it for booking.',
+      time: 'Online',
+    },
+  ]);
   const [selectedQuick, setSelectedQuick] = useState(null);
   const [inputError, setInputError] = useState('');
   const [nonDentalModal, setNonDentalModal] = useState(false);
@@ -162,12 +172,25 @@ export default function BookAIAssistantScreen({ navigation }) {
     setSelectedQuick(service);
     setConcern('');
     setInputError('');
+    setAssistantMessages(prev => [
+      ...prev,
+      {
+        id: `quick-${service.id}-${Date.now()}`,
+        role: 'assistant',
+        text: `${service.name} is selected. You can add details in the assistant panel or send it for analysis.`,
+        time: getChatTime(),
+      },
+    ]);
   }
 
   function handleConcernChange(text) {
     setConcern(text);
     if (text.trim()) setSelectedQuick(null);
     setInputError('');
+  }
+
+  function getChatTime() {
+    return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
   function proceedToAnalysis(parsedPreference = null) {
@@ -242,6 +265,61 @@ export default function BookAIAssistantScreen({ navigation }) {
     }
 
     proceedToAnalysis(parsed);
+  }
+
+  function appendAssistantMessage(text) {
+    setAssistantMessages(prev => [
+      ...prev,
+      {
+        id: `assistant-${Date.now()}-${prev.length}`,
+        role: 'assistant',
+        text,
+        time: getChatTime(),
+      },
+    ]);
+  }
+
+  async function handleAssistantSend() {
+    const messageText = selectedQuick ? selectedQuick.name : concern.trim();
+
+    if (messageText) {
+      setAssistantMessages(prev => [
+        ...prev,
+        {
+          id: `user-${Date.now()}-${prev.length}`,
+          role: 'user',
+          text: messageText,
+          time: getChatTime(),
+        },
+      ]);
+    }
+
+    if (!selectedBranch) {
+      setInputError('Please select a branch.');
+      appendAssistantMessage('Please select a branch before I analyze your request.');
+      return;
+    }
+
+    if (!messageText) {
+      setInputError('Please describe your concern or pick a service.');
+      appendAssistantMessage('Please type your dental concern or choose one of the quick picks first.');
+      return;
+    }
+
+    if (!selectedQuick && !isDentalRelated(messageText)) {
+      setNonDentalModal(true);
+      appendAssistantMessage('I can only help with dental-related appointment concerns. Please enter a dental concern.');
+      return;
+    }
+
+    if (!selectedQuick && messageText.length < 10) {
+      setInputError('Please describe your dental concern in more detail.');
+      appendAssistantMessage('Please add a little more detail so I can analyze the dental concern correctly.');
+      return;
+    }
+
+    appendAssistantMessage('Thanks. I am checking your request and availability now.');
+    await handleContinue();
   }
 
   function handleUseConflictSuggestion() {
@@ -384,36 +462,178 @@ export default function BookAIAssistantScreen({ navigation }) {
           )}
         </ScrollView>
 
-        {/* Sticky input area */}
+        {/* Sticky chat-style concern input area */}
         <View style={styles.inputArea}>
-          <Text style={styles.inputLabel}>
-            {selectedQuick
-              ? `Selected: ${selectedQuick.name}`
-              : 'Describe your dental concern or service request.'}
-          </Text>
-
           {inputError ? <Text style={styles.inputError}>{inputError}</Text> : null}
+
+          {assistantOpen ? (
+            <View style={[styles.assistantPanel, assistantExpanded && styles.assistantPanelExpanded]}>
+              <View style={styles.assistantHeader}>
+                <View style={styles.assistantBotIcon}>
+                  <Text style={styles.assistantBotIconText}>TC</Text>
+                </View>
+                <View style={styles.assistantTitleBlock}>
+                  <Text style={styles.assistantTitle}>AI Assistant</Text>
+                  <View style={styles.assistantStatusRow}>
+                    <View style={styles.onlineDot} />
+                    <Text style={styles.assistantStatus}>Online</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.assistantIconButton}
+                  onPress={() => setAssistantOpen(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close assistant panel"
+                >
+                  <Text style={styles.assistantIconButtonText}>x</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.assistantIconButton}
+                  onPress={() => setAssistantExpanded(prev => !prev)}
+                  accessibilityRole="button"
+                  accessibilityLabel={assistantExpanded ? 'Collapse assistant panel' : 'Expand assistant panel'}
+                >
+                  <Text style={styles.assistantIconButtonText}>{assistantExpanded ? '-' : '+'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                style={styles.assistantMessages}
+                contentContainerStyle={styles.assistantMessagesContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {assistantMessages.map(message => (
+                  <View
+                    key={message.id}
+                    style={[
+                      styles.assistantMessageRow,
+                      message.role === 'user' && styles.assistantMessageRowUser,
+                    ]}
+                  >
+                    {message.role === 'assistant' ? (
+                      <View style={styles.assistantMiniAvatar}>
+                        <Text style={styles.assistantMiniAvatarText}>TC</Text>
+                      </View>
+                    ) : null}
+                    <View
+                      style={[
+                        styles.assistantBubble,
+                        message.role === 'user' ? styles.assistantBubbleUser : styles.assistantBubbleBot,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.assistantBubbleText,
+                          message.role === 'user' && styles.assistantBubbleTextUser,
+                        ]}
+                      >
+                        {message.text}
+                      </Text>
+                      <Text style={styles.assistantBubbleTime}>{message.time}</Text>
+                    </View>
+                    {message.role === 'user' ? (
+                      <View style={styles.assistantUserAvatar}>
+                        <Text style={styles.assistantUserAvatarText}>U</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                ))}
+                {conflictChecking ? (
+                  <View style={styles.typingRow}>
+                    <View style={styles.assistantMiniAvatar}>
+                      <Text style={styles.assistantMiniAvatarText}>TC</Text>
+                    </View>
+                    <View style={styles.typingBubble}>
+                      <ActivityIndicator color="#0f9d8c" size="small" />
+                      <Text style={styles.typingText}>Checking availability...</Text>
+                    </View>
+                  </View>
+                ) : null}
+              </ScrollView>
+
+              <View style={styles.assistantComposer}>
+                <TextInput
+                  style={styles.assistantTextInput}
+                  value={concern}
+                  onChangeText={handleConcernChange}
+                  placeholder={
+                    selectedQuick
+                      ? 'Add details or send selected service...'
+                      : 'Type your message...'
+                  }
+                  placeholderTextColor="#8b96a7"
+                  multiline
+                  maxLength={500}
+                  returnKeyType="send"
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={[styles.assistantSendButton, (loading || conflictChecking) && styles.assistantSendButtonDisabled]}
+                  onPress={handleAssistantSend}
+                  disabled={loading || conflictChecking}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send message"
+                >
+                  {conflictChecking ? (
+                    <ActivityIndicator color="#0f172a" size="small" />
+                  ) : (
+                    <Text style={styles.assistantSendButtonText}>▷</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <>
+          <View style={styles.chatInputHeader}>
+            <View style={styles.inputAvatar}>
+              <Text style={styles.inputAvatarText}>TC</Text>
+            </View>
+            <Text style={styles.inputLabel} numberOfLines={2}>
+              {selectedQuick
+                ? `Selected: ${selectedQuick.name}`
+                : 'Describe your dental concern or service request'}
+            </Text>
+            <Text style={styles.charCounter}>{concern.length}/500</Text>
+          </View>
 
           <View style={styles.inputRow}>
             <TextInput
               style={styles.textInput}
               value={concern}
               onChangeText={handleConcernChange}
+              onFocus={() => setAssistantOpen(true)}
               placeholder={
                 selectedQuick
-                  ? 'Tap a different service or type your concern here...'
-                  : 'e.g. I have a toothache on my upper left molar'
+                  ? 'Add details or tap send...'
+                  : 'Type your message...'
               }
               placeholderTextColor="#b8b8b8"
               multiline
               maxLength={500}
+              returnKeyType="send"
             />
+            <TouchableOpacity
+              style={[styles.sendButton, (loading || conflictChecking) && styles.sendButtonDisabled]}
+              onPress={() => setAssistantOpen(true)}
+              disabled={loading || conflictChecking}
+              accessibilityRole="button"
+              accessibilityLabel="Analyze and continue"
+            >
+              {conflictChecking ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <Text style={styles.sendButtonText}>↑</Text>
+              )}
+            </TouchableOpacity>
           </View>
-          <Text style={styles.charCounter}>{concern.length}/500</Text>
+          <Text style={styles.inputHint}>
+            {conflictChecking ? 'Checking availability...' : 'Tap send to analyze and continue.'}
+          </Text>
 
           <TouchableOpacity
             style={[styles.continueButton, (loading || conflictChecking) && styles.continueButtonDisabled]}
-            onPress={handleContinue}
+            onPress={() => setAssistantOpen(true)}
             disabled={loading || conflictChecking}
           >
             {conflictChecking ? (
@@ -425,6 +645,8 @@ export default function BookAIAssistantScreen({ navigation }) {
               <Text style={styles.continueButtonText}>Analyze & Continue →</Text>
             )}
           </TouchableOpacity>
+            </>
+          )}
         </View>
       </KeyboardAvoidingView>
 

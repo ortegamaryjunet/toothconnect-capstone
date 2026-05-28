@@ -257,33 +257,28 @@ async function seed() {
     `
     INSERT INTO dentist_services (dentist_id, service_id)
     VALUES
-      -- Dr. Twinky Belino - Cosmetic Dentistry
+      -- Dr. Twinky Belino - Cosmetic Dentistry, Prosthodontics, Periodontics, Aligners, Implants
+      (1, 2),
       (1, 4),
       (1, 5),
       (1, 6),
+      (1, 7),
+      (1, 8),
+      (1, 9),
+      (1, 10),
       (1, 11),
 
-      -- Dr. Maureen Datu - Root Canal / Endodontics
-      (2, 3),
+      -- Dr. Maureen Datu - Orthodontics
+      (2, 1),
       (2, 11),
 
-      -- Dr. Tourmand Morteza - General Dentistry / Periodontics
-      (3, 7),
+      -- Dr. Tourmand Morteza - Root Canal / Endodontics
+      (3, 3),
       (3, 11),
 
-      -- Dr. Adrian Santos - Orthodontics
-      (4, 1),
-      (4, 2),
+      -- Consultation remains available to existing seeded dentists.
       (4, 11),
-
-      -- Dr. Camille Reyes - Prosthodontics
-      (5, 8),
-      (5, 9),
       (5, 11),
-
-      -- Dr. Nathan Cruz - Dental Implants / Prosthodontics
-      (6, 8),
-      (6, 10),
       (6, 11)
     `
   );
@@ -722,12 +717,12 @@ async function seed() {
   console.log('Password for all seeded users: password123');
   console.log('');
   console.log('Dentist accounts:');
-  console.log('  twinky.belino@test.com     -> Dr. Twinky Belino, Cosmetic Dentistry');
-  console.log('  maureen.datu@test.com      -> Dr. Maureen Datu, Root Canal Treatment');
-  console.log('  tourmand.morteza@test.com  -> Dr. Tourmand Morteza, General Dentistry');
-  console.log('  adrian.santos@test.com     -> Dr. Adrian Santos, Orthodontics');
-  console.log('  camille.reyes@test.com     -> Dr. Camille Reyes, Prosthodontics');
-  console.log('  nathan.cruz@test.com       -> Dr. Nathan Cruz, Dental Implants');
+  console.log('  twinky.belino@test.com     -> Dr. Twinky Belino, Cosmetic/Prosthodontic/Implant services');
+  console.log('  maureen.datu@test.com      -> Dr. Maureen Datu, Orthodontics');
+  console.log('  tourmand.morteza@test.com  -> Dr. Tourmand Morteza, Root Canal Treatment');
+  console.log('  adrian.santos@test.com     -> Dr. Adrian Santos, Consultation');
+  console.log('  camille.reyes@test.com     -> Dr. Camille Reyes, Consultation');
+  console.log('  nathan.cruz@test.com       -> Dr. Nathan Cruz, Consultation');
   console.log('');
   console.log('Receptionist accounts:');
   console.log('  recep.makati@test.com      -> Makati branch');
