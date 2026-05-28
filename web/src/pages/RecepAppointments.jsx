@@ -111,6 +111,7 @@ export default function RecepAppointments() {
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [calendarDetailsOpenById, setCalendarDetailsOpenById] = useState({});
   const [kitSubmittedByAppointmentId, setKitSubmittedByAppointmentId] = useState({});
+  const [kitTemplateHasItemsByAppointmentId, setKitTemplateHasItemsByAppointmentId] = useState({});
 
   const isMobile = screenWidth <= 850;
   const isVerySmall = screenWidth <= 560;
@@ -386,10 +387,28 @@ export default function RecepAppointments() {
       const results = await Promise.all(
         completed.map(async (appointment) => {
           try {
-            const data = await getConsumption(appointment.id);
-            return { id: appointment.id, submitted: Boolean(data?.submitted) };
+            const [consumptionData, kitData] = await Promise.all([
+              getConsumption(appointment.id),
+              appointment.serviceId && appointment.branchId
+                ? getServiceKit(appointment.serviceId, appointment.branchId).catch(() => ({
+                    kit_exists: false,
+                    items: [],
+                  }))
+                : Promise.resolve({ kit_exists: false, items: [] }),
+            ]);
+
+            const hasTemplateItems =
+              Boolean(kitData?.kit_exists) &&
+              Array.isArray(kitData?.items) &&
+              kitData.items.length > 0;
+
+            return {
+              id: appointment.id,
+              submitted: Boolean(consumptionData?.submitted),
+              hasTemplateItems,
+            };
           } catch {
-            return { id: appointment.id, submitted: null };
+            return { id: appointment.id, submitted: null, hasTemplateItems: false };
           }
         })
       );
@@ -400,6 +419,13 @@ export default function RecepAppointments() {
         const next = { ...current };
         results.forEach((item) => {
           next[item.id] = item.submitted;
+        });
+        return next;
+      });
+      setKitTemplateHasItemsByAppointmentId((current) => {
+        const next = { ...current };
+        results.forEach((item) => {
+          next[item.id] = item.hasTemplateItems;
         });
         return next;
       });
@@ -599,6 +625,11 @@ export default function RecepAppointments() {
       setKitSubmitting(false);
     }
   }
+
+  const hasDeductibleKitItems = useMemo(
+    () => kitItems.some((item) => Number(item.quantity_used) > 0 && item.inventory_id),
+    [kitItems]
+  );
 
   function handleReschedulePreviousMonth() {
     setRescheduleModal((current) => {
@@ -1201,6 +1232,7 @@ export default function RecepAppointments() {
                           const showDetails = Boolean(calendarDetailsOpenById[appointment.id]);
                           const isServiceKitPending =
                             calendarStatus === 'Done' &&
+                            kitTemplateHasItemsByAppointmentId[appointment.id] === true &&
                             kitSubmittedByAppointmentId[appointment.id] === false;
 
                           return (
@@ -2125,14 +2157,16 @@ export default function RecepAppointments() {
                   type="button"
                   style={{
                     ...styles.modalPrimaryBtn,
-                    ...((kitSubmitting || kitAlreadySubmitted) ? styles.pageBtnDisabled : {}),
+                    ...((kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems) ? styles.pageBtnDisabled : {}),
                   }}
                   onClick={handleConfirmKitDeduction}
-                  disabled={kitSubmitting || kitAlreadySubmitted}
+                  disabled={kitSubmitting || kitAlreadySubmitted || !hasDeductibleKitItems}
                 >
                   {kitAlreadySubmitted
                     ? 'Already Submitted by Dentist'
-                    : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct')}
+                    : (!hasDeductibleKitItems
+                      ? 'No Deductible Items'
+                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct'))}
                 </button>
               </div>
             )}
