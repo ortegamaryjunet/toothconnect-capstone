@@ -397,7 +397,7 @@ export default function AdminReports() {
   const isStockAvailabilityReport = appliedReportType === 'stockAvailability';
   const isConsumptionReport = appliedReportType === 'consumption';
   const reportUsesBranchFilter =
-    reportType === 'clinicDentist' || reportType === 'satisfaction';
+    appliedReportType === 'clinicDentist' || appliedReportType === 'satisfaction';
   const showReportSummary =
     !isClinicDentistReport &&
     !isSatisfactionReport &&
@@ -767,6 +767,22 @@ export default function AdminReports() {
     setAppliedFromDate(fromDate);
     setAppliedToDate(toDate);
     setAppliedBranchFilter(branchFilter);
+    setCurrentPage(1);
+  }
+
+  function handleReportTypeChange(value) {
+    const nextType = String(value || 'clinicDentist');
+    const supportsBranch =
+      nextType === 'clinicDentist' || nextType === 'satisfaction';
+
+    setReportType(nextType);
+    setAppliedReportType(nextType);
+
+    if (!supportsBranch) {
+      setBranchFilter('');
+      setAppliedBranchFilter('');
+    }
+
     setCurrentPage(1);
   }
 
@@ -1178,7 +1194,7 @@ export default function AdminReports() {
 
               <select
                 value={reportType}
-                onChange={(event) => setReportType(event.target.value)}
+                onChange={(event) => handleReportTypeChange(event.target.value)}
                 style={styles.filterSelect}
               >
                 {reportOptions.map((option) => (
