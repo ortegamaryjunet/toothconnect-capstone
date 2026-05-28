@@ -575,6 +575,7 @@ export default function RecepAppointments() {
           (consumptionData.items || []).map((item) => ({
             category: item.category,
             item_name: item.item_name,
+            inventory_id: item.item_id || item.inventory_id || null,
             quantity_used: item.quantity_used,
           }))
         );
@@ -584,8 +585,12 @@ export default function RecepAppointments() {
           (kitData.items || []).map((item) => ({
             category: item.category,
             item_name: item.item_name,
+            inventory_id: item.inventory_id || null,
             quantity_used: item.default_quantity,
             current_stock: item.current_stock,
+            unit: item.unit,
+            available: item.available,
+            sufficient: item.sufficient,
           }))
         );
       }
@@ -2522,10 +2527,19 @@ function normalizeAppointments(items) {
       String(item.status || '').toLowerCase() === 'scheduled' &&
       (Boolean(scheduleMeta.rescheduledSchedule) || hasRescheduleText);
 
+    const normalizedBranchId =
+      Number(
+        item.branch_id ||
+        item.branchId ||
+        item.branch?.id ||
+        item.branch?.branch_id ||
+        0
+      ) || null;
+
     return {
       id: item.id || item.appointmentId || index + 1,
       patientId: item.patient_id || item.patientId || item.patient?.id || '',
-      branchId: item.branch_id || item.branchId || item.branch?.id || '',
+      branchId: normalizedBranchId,
       name:
         item.name ||
         item.patient_name ||
