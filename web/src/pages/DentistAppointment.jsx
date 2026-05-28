@@ -44,6 +44,7 @@ export default function DentistAppointment() {
   const [kitError, setKitError] = useState('');
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [kitAlreadySubmitted, setKitAlreadySubmitted] = useState(false);
+  const [kitSubmittedByAppointmentId, setKitSubmittedByAppointmentId] = useState({});
 
   const [manualKitOpen, setManualKitOpen] = useState(false);
   const [manualKitCategory, setManualKitCategory] = useState('');
@@ -185,6 +186,44 @@ export default function DentistAppointment() {
 
     return filteredAppointments.slice(start, end);
   }, [filteredAppointments, currentPage]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadKitSubmissionStates() {
+      const completed = appointments.filter(
+        (appointment) => String(appointment?.rawStatus || '').toLowerCase() === 'completed'
+      );
+      if (completed.length === 0) return;
+
+      const results = await Promise.all(
+        completed.map(async (appointment) => {
+          try {
+            const data = await getConsumption(appointment.id);
+            return { id: appointment.id, submitted: Boolean(data?.submitted) };
+          } catch {
+            return { id: appointment.id, submitted: null };
+          }
+        })
+      );
+
+      if (cancelled) return;
+
+      setKitSubmittedByAppointmentId((current) => {
+        const next = { ...current };
+        results.forEach((item) => {
+          next[item.id] = item.submitted;
+        });
+        return next;
+      });
+    }
+
+    loadKitSubmissionStates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appointments]);
 
   const manualKitCategories = useMemo(() => {
     const sourceItems = manualInventoryItems.length > 0 ? manualInventoryItems : kitItems;
@@ -906,10 +945,16 @@ export default function DentistAppointment() {
                                 {isCompleted ? (
                                   <button
                                     type="button"
-                                    style={styles.reviewKitButton}
-                                    onClick={() => openKitModal(appointment)}
+                                    style={{
+                                      ...styles.reviewKitButton,
+                                      ...(kitSubmittedByAppointmentId[appointment.id] ? styles.noteButtonDisabled : {}),
+                                    }}
+                                    disabled={Boolean(kitSubmittedByAppointmentId[appointment.id])}
+                                    onClick={() => !kitSubmittedByAppointmentId[appointment.id] && openKitModal(appointment)}
                                   >
-                                    Service Kit
+                                    {kitSubmittedByAppointmentId[appointment.id]
+                                      ? 'Submitted'
+                                      : 'Service Kit'}
                                   </button>
                                 ) : (
                                   <span style={styles.noActionText}>
