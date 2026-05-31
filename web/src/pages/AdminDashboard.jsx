@@ -31,6 +31,8 @@ ChartJS.register(
   Legend
 );
 
+const HIDDEN_EXPENSE_LABELS = new Set(['Rental', 'Wages', 'Others']);
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -338,13 +340,20 @@ export default function AdminDashboard() {
   }, [dashboardData.incomeExpenses, incomeYear]);
 
   const expenseChartData = useMemo(() => {
+    const expenseLabels = dashboardData.expenseBreakdown.labels || [];
+    const expenseValues = dashboardData.expenseBreakdown.data || [];
+    const visibleItems = expenseLabels
+      .map((label, index) => ({
+        label,
+        value: Number(expenseValues[index] || 0),
+      }))
+      .filter((item) => !HIDDEN_EXPENSE_LABELS.has(item.label));
+
     return {
-      labels: dashboardData.expenseBreakdown.labels,
+      labels: visibleItems.map((item) => item.label),
       datasets: [
         {
-          data: dashboardData.expenseBreakdown.data.map((value) =>
-            Number(value || 0)
-          ),
+          data: visibleItems.map((item) => item.value),
           backgroundColor: [
             '#2563eb',
             '#f59e0b',
