@@ -1697,7 +1697,7 @@ export default function InventoryPage() {
           </label>
 
           <label style={styles.formGroup}>
-            <span style={styles.formLabel}>Low Stock Threshold</span>
+            <span style={styles.formLabel}>Critical Stock Level</span>
             <input
               type="number"
               inputMode="numeric"
@@ -2196,7 +2196,7 @@ export default function InventoryPage() {
                     <th style={styles.tableHead}>Maximum Stock</th>
                     <th style={styles.tableHead}>Current Stock %</th>
                     <th style={styles.tableHead}>Unit</th>
-                    <th style={styles.tableHead}>Threshold</th>
+                    <th style={styles.tableHead}>Critical Stock Level</th>
                     <th style={styles.tableHead}>Status</th>
                     <th style={styles.tableHead}>Last Updated</th>
                   </tr>
@@ -2558,7 +2558,7 @@ export default function InventoryPage() {
             </label>
 
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Low Stock Threshold</span>
+              <span style={styles.formLabel}>Critical Stock Level</span>
               <input
                 type="number"
                 inputMode="numeric"
@@ -2620,7 +2620,7 @@ export default function InventoryPage() {
                 ['Supplier', expenseForm.supplier || 'Not entered'],
                 ['Quantity', String(expenseForm.orderQuantity || 0)],
                 ['Price per Item', formatPeso(expenseForm.pricePerItem || 0)],
-                ['Low Stock Threshold', expenseForm.threshold === '' ? 'Not set' : String(expenseForm.threshold)],
+                ['Critical Stock Level', expenseForm.threshold === '' ? 'Not set' : String(expenseForm.threshold)],
                 ['Maximum Stock', expenseForm.maxStock === '' ? 'Not set' : String(expenseForm.maxStock)],
               ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}>

@@ -157,8 +157,10 @@ async function createInventoryStatusNotifications(executor, previousRow, nextRow
   const title =
     nextStatus === 'out_of_stock' ? 'Out of Stock Alert' : 'Low Stock Alert';
   const body =
-    `${nextRow.categoryLabel} "${nextRow.item_name}" at ${nextRow.branch_name} ` +
-    `is now ${statusLabel.toLowerCase()} (${Number(nextRow.quantity || 0)} remaining).`;
+    nextStatus === 'low_stock'
+      ? `Low Stock: ${nextRow.item_name} has reached the critical level. Immediate restocking is advised.`
+      : `${nextRow.categoryLabel} "${nextRow.item_name}" at ${nextRow.branch_name} ` +
+        `is now ${statusLabel.toLowerCase()} (${Number(nextRow.quantity || 0)} remaining).`;
 
   if (admins.length > 0) {
     await executor.query(

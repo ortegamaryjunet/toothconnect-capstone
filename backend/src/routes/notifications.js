@@ -103,7 +103,7 @@ router.post('/test-low-stock', async (req, res) => {
   try {
     await pool.query(
       `INSERT INTO notifications (user_id, type, title, body, related_type, is_read, created_at)
-       VALUES (?, 'low_stock', 'Low Stock Alert', 'Some inventory items are running low on stock. Please review and restock as needed.', 'inventory', FALSE, NOW())`,
+       VALUES (?, 'low_stock', 'Low Stock Alert', 'Low Stock: Item has reached the critical level. Immediate restocking is advised.', 'inventory', FALSE, NOW())`,
       [userId]
     );
     res.json({ message: 'Low stock notification sent' });
