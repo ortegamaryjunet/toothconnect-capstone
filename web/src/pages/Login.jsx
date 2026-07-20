@@ -128,13 +128,13 @@ export default function Login() {
     }));
   }
 
-  function handleEmailKeyDown(event) {
+  function handleRequiredKeyDown(name, event) {
     const value = event.currentTarget.value || '';
     const selectionStart = event.currentTarget.selectionStart ?? value.length;
     const selectionEnd = event.currentTarget.selectionEnd ?? selectionStart;
 
     if (event.key === ' ' && !value.trim()) {
-      showRequiredError('email');
+      showRequiredError(name);
       return;
     }
 
@@ -145,7 +145,7 @@ export default function Login() {
           : value.slice(0, selectionStart) + value.slice(selectionStart === selectionEnd ? selectionEnd + 1 : selectionEnd);
 
       if (!nextValue.trim()) {
-        showRequiredError('email');
+        showRequiredError(name);
       }
     }
   }
@@ -199,7 +199,7 @@ export default function Login() {
           type="email"
           value={email}
           onChange={(e) => handleFieldChange('email', e.target.value)}
-          onKeyDown={handleEmailKeyDown}
+          onKeyDown={(e) => handleRequiredKeyDown('email', e)}
           onBlur={() => handleFieldBlur('email')}
           style={{
             ...styles.input,
@@ -226,6 +226,7 @@ export default function Login() {
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => handleFieldChange('password', e.target.value)}
+            onKeyDown={(e) => handleRequiredKeyDown('password', e)}
             onBlur={() => handleFieldBlur('password')}
             style={passwordInputStyle}
             autoComplete="current-password"
