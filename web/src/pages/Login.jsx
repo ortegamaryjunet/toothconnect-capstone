@@ -120,6 +120,36 @@ export default function Login() {
     }));
   }
 
+  function showRequiredError(name) {
+    setTouched((current) => ({ ...current, [name]: true }));
+    setFieldErrors((current) => ({
+      ...current,
+      [name]: 'This field is required',
+    }));
+  }
+
+  function handleEmailKeyDown(event) {
+    const value = event.currentTarget.value || '';
+    const selectionStart = event.currentTarget.selectionStart ?? value.length;
+    const selectionEnd = event.currentTarget.selectionEnd ?? selectionStart;
+
+    if (event.key === ' ' && !value.trim()) {
+      showRequiredError('email');
+      return;
+    }
+
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      const nextValue =
+        event.key === 'Backspace'
+          ? value.slice(0, selectionStart === selectionEnd ? Math.max(0, selectionStart - 1) : selectionStart) + value.slice(selectionEnd)
+          : value.slice(0, selectionStart) + value.slice(selectionStart === selectionEnd ? selectionEnd + 1 : selectionEnd);
+
+      if (!nextValue.trim()) {
+        showRequiredError('email');
+      }
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -169,6 +199,7 @@ export default function Login() {
           type="email"
           value={email}
           onChange={(e) => handleFieldChange('email', e.target.value)}
+          onKeyDown={handleEmailKeyDown}
           onBlur={() => handleFieldBlur('email')}
           style={{
             ...styles.input,
