@@ -10,7 +10,7 @@
 </head>
 <body>
 
-<a href="../index.html" class="back-home-btn">
+<a href="index.html" class="back-home-btn">
     <i class="fa-solid fa-arrow-left"></i>
     Back to Home
 </a>
@@ -18,33 +18,36 @@
 <section class="service-hero" id="serviceHero">
     <div class="hero-box">
         <div class="breadcrumb">
-            <a href="../index.html">Home</a>
+            <a href="index.html">Home</a>
             <i class="fa-solid fa-chevron-right"></i>
             <span id="serviceCrumb">Service</span>
         </div>
 
         <span class="hero-label">Dental Service Guide</span>
 
-        <h1 id="serviceTitle">Service</h1>
+        <h1 id="serviceTitle"></h1>
 
-        <p id="serviceIntro">
-            Learn more about this dental service and how it helps improve
-            your oral health and smile confidence.
-        </p>
+        <p id="serviceIntro"></p>
     </div>
 </section>
 
 <section class="service-details">
     <aside class="summary-card">
-        <h2>Summary</h2>
+        <button class="summary-toggle" id="summaryToggle">
+            <span>Summary</span>
+            <i class="fa-solid fa-chevron-down"></i>
+        </button>
 
-        <a href="#overviewSection"><i class="fa-solid fa-circle-info"></i> Overview</a>
-        <a href="#benefitsSection"><i class="fa-solid fa-star"></i> Benefits</a>
-        <a href="#processSection"><i class="fa-solid fa-list-check"></i> Treatment Process</a>
-        <a href="#careSection"><i class="fa-solid fa-heart-pulse"></i> Aftercare Tips</a>
-        <a href="#durationSection"><i class="fa-regular fa-clock"></i> Duration</a>
-        <a href="#idealSection"><i class="fa-solid fa-user-check"></i> Best For</a>
-        <a href="#reminderSection"><i class="fa-solid fa-triangle-exclamation"></i> Reminder</a>
+        <div class="summary-links" id="summaryLinks">
+            <a href="#overviewSection"><i class="fa-solid fa-circle-info"></i> Overview</a>
+            <a href="#comparisonSection"><i class="fa-solid fa-sliders"></i> Before and After</a>
+            <a href="#benefitsSection"><i class="fa-solid fa-star"></i> Benefits</a>
+            <a href="#processSection"><i class="fa-solid fa-list-check"></i> Treatment Process</a>
+            <a href="#careSection"><i class="fa-solid fa-heart-pulse"></i> Aftercare Tips</a>
+            <a href="#durationSection"><i class="fa-regular fa-clock"></i> Duration</a>
+            <a href="#idealSection"><i class="fa-solid fa-user-check"></i> Best For</a>
+            <a href="#reminderSection"><i class="fa-solid fa-triangle-exclamation"></i> Reminder</a>
+        </div>
     </aside>
 
     <main class="content">
@@ -52,6 +55,31 @@
             <span class="section-label">Overview</span>
             <h2 id="mainHeading">Service Overview</h2>
             <p id="overview"></p>
+        </section>
+
+        <section id="comparisonSection" class="detail-section comparison-section">
+            <span class="section-label">Before and After</span>
+            <h3>Patient Smile Transformation</h3>
+            <p class="comparison-text">Move the slider to compare the smile before and after the dental treatment.</p>
+
+            <div class="tooth-comparison" id="toothComparison">
+                <img src="./images/braces-before.jpg" alt="" class="comparison-img before-img" id="comparisonBeforeImg">
+
+                <div class="comparison-after" id="comparisonAfter">
+                    <img src="./images/braces-after.jpg" alt="" class="comparison-img after-img" id="comparisonAfterImg">
+                </div>
+
+                <input type="range" min="0" max="100" value="50" class="comparison-range" id="comparisonRange" aria-label="Tooth comparison slider">
+
+                <div class="comparison-line" id="comparisonLine">
+                    <span>
+                        <i class="fa-solid fa-arrows-left-right"></i>
+                    </span>
+                </div>
+
+                <div class="comparison-tag before-tag">Before</div>
+                <div class="comparison-tag after-tag">After</div>
+            </div>
         </section>
 
         <section id="benefitsSection" class="detail-section">
@@ -75,19 +103,19 @@
         <section id="durationSection" class="detail-section info-section">
             <span class="section-label">Duration</span>
             <h3>Estimated Duration</h3>
-            <p id="durationText">Treatment duration may vary depending on the patient’s dental condition.</p>
+            <p id="durationText"></p>
         </section>
 
         <section id="idealSection" class="detail-section info-section">
             <span class="section-label">Best For</span>
             <h3>Who Is This Service For?</h3>
-            <p id="idealText">This service is recommended based on the dentist’s assessment.</p>
+            <p id="idealText"></p>
         </section>
 
         <section id="reminderSection" class="detail-section reminder-section">
             <span class="section-label">Reminder</span>
             <h3>Important Reminder</h3>
-            <p id="remindersText">Please consult the dentist for proper diagnosis and treatment recommendations.</p>
+            <p id="remindersText"></p>
         </section>
     </main>
 </section>

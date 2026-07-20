@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     const revealItems = document.querySelectorAll(
-        ".section-title, .team-title, .about-card, .owner-row, .owner-name, .team-card, .branch-info, .branch-box, .services-heading, .service-item, .map-card"
+        ".section-title, .team-title, .about-card, .value-card, .owner-row, .team-card, .branch-info, .branch-box, .map-card"
     );
 
     revealItems.forEach(function (item) {
@@ -23,11 +23,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     revealOnScroll();
 
-    const serviceItems = document.querySelectorAll(".service-item");
+    const teamCards = document.querySelectorAll(".team-card");
 
-    serviceItems.forEach(function (card) {
+    teamCards.forEach(function (card) {
         card.addEventListener("mouseenter", function () {
-            serviceItems.forEach(function (item) {
+            teamCards.forEach(function (item) {
                 if (item !== card) {
                     item.classList.add("soft-blur");
                 }
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         card.addEventListener("mouseleave", function () {
-            serviceItems.forEach(function (item) {
+            teamCards.forEach(function (item) {
                 item.classList.remove("soft-blur");
             });
         });
