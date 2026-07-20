@@ -73,6 +73,19 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
       boxSizing: 'border-box',
     },
 
+    inputError: {
+      border: '1px solid #dc2626',
+      background: '#fff7f7',
+    },
+
+    fieldError: {
+      margin: '0 0 14px',
+      color: '#b42318',
+      fontSize: '12px',
+      fontWeight: 700,
+      lineHeight: 1.35,
+    },
+
     error: {
       marginBottom: '16px',
       padding: '12px 14px',
