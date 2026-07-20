@@ -61,7 +61,7 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
       width: '100%',
       height: '54px',
       padding: '0 16px',
-      marginBottom: '18px',
+      marginBottom: '6px',
       border: '1px solid #ead8a7',
       borderRadius: '16px',
       outline: 'none',
@@ -80,6 +80,7 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
 
     fieldError: {
       margin: '0 0 14px',
+      minHeight: '17px',
       color: '#b42318',
       fontSize: '12px',
       fontWeight: 700,

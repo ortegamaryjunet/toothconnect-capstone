@@ -46,7 +46,6 @@ export default function Login() {
     ...styles.input,
     ...(visiblePasswordError ? styles.inputError : {}),
     paddingRight: 74,
-    marginBottom: visiblePasswordError ? 6 : 18,
   };
   const toggleBtnStyle = {
     position: 'absolute',
@@ -89,13 +88,23 @@ export default function Login() {
   }
 
   function handleFieldChange(name, value) {
+    const previousValue = name === 'email' ? email : password;
+
     if (name === 'email') {
       setEmail(value);
     } else {
       setPassword(value);
     }
 
-    if (touched[name] || submittedOnce) {
+    const shouldShowRequiredError =
+      !String(value || '').trim() &&
+      (String(value || '').length > 0 || String(previousValue || '').length > 0);
+
+    if (shouldShowRequiredError) {
+      setTouched((current) => ({ ...current, [name]: true }));
+    }
+
+    if (touched[name] || submittedOnce || shouldShowRequiredError) {
       setFieldErrors((current) => ({
         ...current,
         [name]: validateField(name, value),
@@ -164,17 +173,20 @@ export default function Login() {
           style={{
             ...styles.input,
             ...(visibleEmailError ? styles.inputError : {}),
-            marginBottom: visibleEmailError ? 6 : 18,
           }}
           autoComplete="email"
           aria-invalid={Boolean(visibleEmailError)}
           aria-describedby={visibleEmailError ? 'login-email-error' : undefined}
         />
-        {visibleEmailError && (
-          <p id="login-email-error" style={styles.fieldError}>
+        <p
+          id="login-email-error"
+          style={{
+            ...styles.fieldError,
+            visibility: visibleEmailError ? 'visible' : 'hidden',
+          }}
+        >
             {visibleEmailError}
-          </p>
-        )}
+        </p>
 
         <label style={styles.label}>Password</label>
         <div style={{ position: 'relative', width: '100%' }}>
@@ -198,11 +210,15 @@ export default function Login() {
             {showPassword ? 'Hide' : 'Show'}
           </button>
         </div>
-        {visiblePasswordError && (
-          <p id="login-password-error" style={styles.fieldError}>
+        <p
+          id="login-password-error"
+          style={{
+            ...styles.fieldError,
+            visibility: visiblePasswordError ? 'visible' : 'hidden',
+          }}
+        >
             {visiblePasswordError}
-          </p>
-        )}
+        </p>
 
         <p style={{ margin: '0 0 18px', textAlign: 'right' }}>
           <span style={styles.link} onClick={() => navigate('/forgotpassword')}>
