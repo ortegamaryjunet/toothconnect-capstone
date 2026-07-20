@@ -43,6 +43,7 @@ async function safeDeleteAndReset(tables) {
 
 async function seed() {
   const hash = (pw) => bcrypt.hashSync(pw, 10);
+  const seededUserPassword = 'password12345678';
 
   const tables = [
     'website_announcements',
@@ -104,16 +105,16 @@ async function seed() {
   // =========================
   const users = [
     // Admin
-    ['admin', 1, 'Maryj Ortega', 'maryj.ortega15@gmail.com', hash('password123')],
+    ['admin', 1, 'Maryj Ortega', 'maryj.ortega15@gmail.com', hash(seededUserPassword)],
 
     // Dentists
-    ['dentist', 1, 'Dr. Twinky Belino', 'twinky.belino@test.com', hash('password123')],
-    ['dentist', 1, 'Dr. Maureen Datu', 'maureen.datu@test.com', hash('password123')],
-    ['dentist', 1, 'Dr. Tourmand Morteza', 'tourmand.morteza@test.com', hash('password123')],
+    ['dentist', 1, 'Dr. Twinky Belino', 'twinky.belino@test.com', hash(seededUserPassword)],
+    ['dentist', 1, 'Dr. Maureen Datu', 'maureen.datu@test.com', hash(seededUserPassword)],
+    ['dentist', 1, 'Dr. Tourmand Morteza', 'tourmand.morteza@test.com', hash(seededUserPassword)],
 
     // Receptionists
-    ['receptionist', 1, 'Makati Receptionist', 'recep.makati@test.com', hash('password123')],
-    ['receptionist', 2, 'Las Piñas Receptionist', 'recep.laspinas@test.com', hash('password123')],
+    ['receptionist', 1, 'Makati Receptionist', 'recep.makati@test.com', hash(seededUserPassword)],
+    ['receptionist', 2, 'Las Piñas Receptionist', 'recep.laspinas@test.com', hash(seededUserPassword)],
   ];
 
   for (const user of users) {
@@ -728,7 +729,7 @@ async function seed() {
 
   console.log('');
   console.log('Seed complete.');
-  console.log('Password for all seeded users: password123');
+  console.log(`Password for all seeded users: ${seededUserPassword}`);
   console.log('');
   console.log('Admin account:');
   console.log('  maryj.ortega15@gmail.com   -> Maryj Ortega, full admin access');

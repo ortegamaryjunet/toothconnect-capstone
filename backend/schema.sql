@@ -1,42 +1,42 @@
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS
-  appointment_consumption,
-  schedule_requests,
-  service_kit_items,
-  service_kits,
-  clinic_expenses,
-  payments,
-  patient_feedback,
-  treatments,
-  treatment_plans,
-  appointments,
-  dentist_schedules,
-  dentist_services,
-  services,
-  messages,
-  notifications,
-  supplies,
-  medicines,
-  equipment,
-  audit_logs,
-  refresh_tokens,
-  access_grants,
-  user_branches,
-  otp_codes,
-  pending_registrations,
-  patient_profile,
-  staff_previous_work,
-  staff_profile,
-  user_presence,
-  online_appointments_tbl,
-  inquiry_replies,
-  online_inquiries_tbl,
-  website_content,
-  website_faqs,
-  website_services,
-  website_announcements,
-  users,
-  branches;
+DROP TABLE IF EXISTS appointment_consumption;
+DROP TABLE IF EXISTS inventory_usage_history;
+DROP TABLE IF EXISTS schedule_requests;
+DROP TABLE IF EXISTS service_kit_items;
+DROP TABLE IF EXISTS service_kits;
+DROP TABLE IF EXISTS clinic_expenses;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS patient_feedback;
+DROP TABLE IF EXISTS treatments;
+DROP TABLE IF EXISTS treatment_plans;
+DROP TABLE IF EXISTS appointments;
+DROP TABLE IF EXISTS dentist_schedules;
+DROP TABLE IF EXISTS dentist_services;
+DROP TABLE IF EXISTS services;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS supplies;
+DROP TABLE IF EXISTS medicines;
+DROP TABLE IF EXISTS equipment;
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS access_grants;
+DROP TABLE IF EXISTS user_branches;
+DROP TABLE IF EXISTS otp_codes;
+DROP TABLE IF EXISTS pending_registrations;
+DROP TABLE IF EXISTS patient_profile;
+DROP TABLE IF EXISTS staff_previous_work;
+DROP TABLE IF EXISTS staff_profile;
+DROP TABLE IF EXISTS user_presence;
+DROP TABLE IF EXISTS online_appointments_tbl;
+DROP TABLE IF EXISTS inquiry_replies;
+DROP TABLE IF EXISTS online_inquiries_tbl;
+DROP TABLE IF EXISTS website_content;
+DROP TABLE IF EXISTS website_faqs;
+DROP TABLE IF EXISTS website_services;
+DROP TABLE IF EXISTS website_announcements;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS branches;
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE branches (
