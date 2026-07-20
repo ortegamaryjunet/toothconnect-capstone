@@ -394,7 +394,12 @@ CREATE TABLE supplies (
 
   quantity INT NOT NULL DEFAULT 0,
   maximum_stock INT NOT NULL DEFAULT 0,
-  stock_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  stock_percentage DECIMAL(5,2) GENERATED ALWAYS AS (
+    CASE
+      WHEN maximum_stock > 0 THEN LEAST(100.00, GREATEST(0.00, ROUND((quantity / maximum_stock) * 100, 2)))
+      ELSE 0
+    END
+  ) STORED,
 
   price_per_item DECIMAL(10,2) NOT NULL DEFAULT 0,
   low_stock_threshold INT NOT NULL DEFAULT 10,
@@ -423,7 +428,12 @@ CREATE TABLE medicines (
 
   quantity INT NOT NULL DEFAULT 0,
   maximum_stock INT NOT NULL DEFAULT 0,
-  stock_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  stock_percentage DECIMAL(5,2) GENERATED ALWAYS AS (
+    CASE
+      WHEN maximum_stock > 0 THEN LEAST(100.00, GREATEST(0.00, ROUND((quantity / maximum_stock) * 100, 2)))
+      ELSE 0
+    END
+  ) STORED,
 
   price_per_item DECIMAL(10,2) NOT NULL DEFAULT 0,
   low_stock_threshold INT NOT NULL DEFAULT 10,
@@ -459,7 +469,12 @@ CREATE TABLE equipment (
 
   quantity INT NOT NULL DEFAULT 1,
   maximum_stock INT NOT NULL DEFAULT 0,
-  stock_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  stock_percentage DECIMAL(5,2) GENERATED ALWAYS AS (
+    CASE
+      WHEN maximum_stock > 0 THEN LEAST(100.00, GREATEST(0.00, ROUND((quantity / maximum_stock) * 100, 2)))
+      ELSE 0
+    END
+  ) STORED,
 
   price_per_item DECIMAL(10,2) NOT NULL DEFAULT 0,
   low_stock_threshold INT NOT NULL DEFAULT 1,
