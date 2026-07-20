@@ -325,7 +325,6 @@ export default function InventoryPage() {
 
   const [highlightedRawId, setHighlightedRawId] = useState(null);
   const highlightedRowRef = useRef(null);
-  const expenseConfirmTimerRef = useRef(null);
 
   const role = String(user?.role || 'ADMIN').toUpperCase();
 
@@ -663,7 +662,7 @@ export default function InventoryPage() {
         if (!cancelled) {
           setNotificationCount(count);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
           setNotificationCount(0);
         }
@@ -750,8 +749,7 @@ export default function InventoryPage() {
   }
 
   useEffect(() => {
-    const timer = window.setTimeout(loadInventory, 0);
-    return () => window.clearTimeout(timer);
+    loadInventory();
   }, [scopedBranchId]);
 
   // Detect highlightItemId from URL and switch to the right tab/page
@@ -760,32 +758,28 @@ export default function InventoryPage() {
     if (!rawId) return;
     if (!medicines.length && !equipment.length && !supplies.length) return;
 
-    const timer = window.setTimeout(() => {
-      const medIdx = medicines.findIndex((m) => m.rawId === rawId);
-      if (medIdx >= 0) {
-        setActiveTab('medicine');
-        setCurrentPages((prev) => ({ ...prev, medicine: Math.floor(medIdx / rowsPerPage) + 1 }));
-        setHighlightedRawId(rawId);
-        return;
-      }
+    const medIdx = medicines.findIndex((m) => m.rawId === rawId);
+    if (medIdx >= 0) {
+      setActiveTab('medicine');
+      setCurrentPages((prev) => ({ ...prev, medicine: Math.floor(medIdx / rowsPerPage) + 1 }));
+      setHighlightedRawId(rawId);
+      return;
+    }
 
-      const eqIdx = equipment.findIndex((e) => e.rawId === rawId);
-      if (eqIdx >= 0) {
-        setActiveTab('equipment');
-        setCurrentPages((prev) => ({ ...prev, equipment: Math.floor(eqIdx / rowsPerPage) + 1 }));
-        setHighlightedRawId(rawId);
-        return;
-      }
+    const eqIdx = equipment.findIndex((e) => e.rawId === rawId);
+    if (eqIdx >= 0) {
+      setActiveTab('equipment');
+      setCurrentPages((prev) => ({ ...prev, equipment: Math.floor(eqIdx / rowsPerPage) + 1 }));
+      setHighlightedRawId(rawId);
+      return;
+    }
 
-      const supIdx = supplies.findIndex((s) => s.rawId === rawId);
-      if (supIdx >= 0) {
-        setActiveTab('supplies');
-        setCurrentPages((prev) => ({ ...prev, supplies: Math.floor(supIdx / rowsPerPage) + 1 }));
-        setHighlightedRawId(rawId);
-      }
-    }, 0);
-
-    return () => window.clearTimeout(timer);
+    const supIdx = supplies.findIndex((s) => s.rawId === rawId);
+    if (supIdx >= 0) {
+      setActiveTab('supplies');
+      setCurrentPages((prev) => ({ ...prev, supplies: Math.floor(supIdx / rowsPerPage) + 1 }));
+      setHighlightedRawId(rawId);
+    }
   }, [searchParams, medicines, equipment, supplies]);
 
   // Scroll to highlighted row and clear after 3 seconds
@@ -799,18 +793,18 @@ export default function InventoryPage() {
   }, [highlightedRawId]);
 
   useEffect(() => {
+    setCurrentPages((prev) => ({
+      ...prev,
+      [activeTab]: 1,
+      search: 1,
+    }));
+  }, [searchValue]); // tab changes reset page via handleTabChange; highlight sets page directly
+
+  useEffect(() => {
     if (showExpenseModal) {
       refreshExpenseFormOptions();
     }
-  }, [showExpenseModal]);
-
-  useEffect(() => {
-    return () => {
-      if (expenseConfirmTimerRef.current) {
-        window.clearTimeout(expenseConfirmTimerRef.current);
-      }
-    };
-  }, []);
+  }, [showExpenseModal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -935,7 +929,7 @@ export default function InventoryPage() {
             dosage: editForm.dosage,
             unit: editForm.unit,
             ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-            ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
+            ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
           }
         : type === 'supplies'
         ? {
@@ -943,13 +937,13 @@ export default function InventoryPage() {
             category: editForm.category,
             unit: editForm.unit,
             ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-            ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
+            ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
           }
         : {
             category: editForm.category,
             maintenance_status: editForm.maintenanceStatus,
             ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-            ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
+            ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
           };
 
     setEditSaving(true);
@@ -1028,11 +1022,6 @@ export default function InventoryPage() {
   function closeExpenseModal() {
     setShowExpenseModal(false);
     setExpenseSaveError('');
-    setSaveExpenseClicked(false);
-    if (expenseConfirmTimerRef.current) {
-      window.clearTimeout(expenseConfirmTimerRef.current);
-      expenseConfirmTimerRef.current = null;
-    }
   }
 
   function closeExpenseConfirmModal() {
@@ -1100,57 +1089,17 @@ export default function InventoryPage() {
   }
 
   function handleSaveExpense() {
-    if (saveExpenseClicked || expenseSaving || showExpenseConfirmModal) return;
-
     setExpenseSaveError('');
 
     const orderQuantity = Number(expenseForm.orderQuantity || 0);
-    const pricePerItem = Number(expenseForm.pricePerItem);
-    const thresholdValue = Number(expenseForm.threshold || 0);
     const maxStockValue = Number(expenseForm.maxStock || 0);
-    const itemName = String(expenseForm.itemName || '').trim();
-
-    if (!expenseForm.date) {
-      setExpenseSaveError('Please select an expense date.');
-      return;
-    }
-
-    if (!expenseForm.branchId) {
-      setExpenseSaveError('Please select a branch.');
-      return;
-    }
-
-    if (!itemName) {
-      setExpenseSaveError('Please enter an item name.');
-      return;
-    }
-
-    if (!Number.isFinite(orderQuantity) || orderQuantity <= 0) {
-      setExpenseSaveError('Order quantity must be greater than 0.');
-      return;
-    }
-
-    if (expenseForm.pricePerItem === '' || !Number.isFinite(pricePerItem) || pricePerItem < 0) {
-      setExpenseSaveError('Price per item must be 0 or greater.');
-      return;
-    }
-
-    if (expenseForm.threshold !== '' && (!Number.isFinite(thresholdValue) || thresholdValue < 0)) {
-      setExpenseSaveError('Critical stock level must be 0 or greater.');
-      return;
-    }
-
-    if (expenseForm.maxStock !== '' && (!Number.isFinite(maxStockValue) || maxStockValue < 0)) {
-      setExpenseSaveError('Maximum stock must be 0 or greater.');
-      return;
-    }
 
     if (maxStockValue > 0) {
       const selectedExistingItem = selectedExpenseInventoryRows.find(
         (row) =>
           String(getExpenseItemName(row, expenseForm.category) || '')
             .trim()
-            .toLowerCase() === itemName.toLowerCase()
+            .toLowerCase() === String(expenseForm.itemName || '').trim().toLowerCase()
       );
       const existingQuantity = Number(selectedExistingItem?.quantity || 0);
 
@@ -1161,13 +1110,9 @@ export default function InventoryPage() {
         return;
       }
     }
-
     setSaveExpenseClicked(true);
-    expenseConfirmTimerRef.current = window.setTimeout(() => {
-      setShowExpenseConfirmModal(true);
-      setSaveExpenseClicked(false);
-      expenseConfirmTimerRef.current = null;
-    }, 160);
+    setTimeout(() => setSaveExpenseClicked(false), 160);
+    setTimeout(() => { setShowExpenseConfirmModal(true); }, 90);
   }
 
   async function handleConfirmExpenseSave() {
@@ -1199,7 +1144,7 @@ export default function InventoryPage() {
         const inventoryId = expenseRes.inventory_id;
         const thresholdPayload = {
           ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-          ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
+          ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
         };
 
         if (expenseForm.category === 'medicine') {
@@ -1976,14 +1921,7 @@ export default function InventoryPage() {
                   type="text"
                   placeholder="Search across all inventory categories"
                   value={searchValue}
-                  onChange={(event) => {
-                    setSearchValue(event.target.value);
-                    setCurrentPages((prev) => ({
-                      ...prev,
-                      [activeTab]: 1,
-                      search: 1,
-                    }));
-                  }}
+                  onChange={(event) => setSearchValue(event.target.value)}
                   style={styles.searchInput}
                 />
               </div>
@@ -2633,20 +2571,6 @@ export default function InventoryPage() {
               />
             </label>
 
-            <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Maximum Stock</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min="0"
-                step="1"
-                value={expenseForm.maxStock}
-                placeholder={!expenseForm.itemName ? 'Select item first' : ''}
-                onChange={(e) => handleExpenseChange('maxStock', e.target.value)}
-                style={styles.formInput}
-              />
-            </label>
-
             <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '12px 14px', fontFamily: 'Arial, sans-serif' }}>
               <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Total Expense</p>
               <h4 style={{ margin: '4px 0 0', fontSize: 15, color: '#0f172a', fontWeight: 700 }}>
@@ -2661,17 +2585,15 @@ export default function InventoryPage() {
             <div style={styles.editModalActions}>
               <button
                 type="button"
-                disabled={saveExpenseClicked || expenseSaving || showExpenseConfirmModal}
                 style={{
                   ...styles.saveBtn,
                   transform: saveExpenseClicked ? 'scale(0.97)' : 'scale(1)',
-                  opacity: saveExpenseClicked || expenseSaving || showExpenseConfirmModal ? 0.72 : 1,
+                  opacity: saveExpenseClicked ? 0.82 : 1,
                   transition: 'transform 120ms ease, opacity 120ms ease',
-                  cursor: saveExpenseClicked || expenseSaving || showExpenseConfirmModal ? 'not-allowed' : styles.saveBtn.cursor,
                 }}
                 onClick={handleSaveExpense}
               >
-                {saveExpenseClicked ? 'Checking...' : 'Save Expense'}
+                Save Expense
               </button>
               <button type="button" style={styles.cancelEditBtn} onClick={closeExpenseModal}>
                 Cancel
