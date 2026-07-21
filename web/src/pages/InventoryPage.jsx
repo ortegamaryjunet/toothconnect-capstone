@@ -61,6 +61,18 @@ function formatStockPercentage(quantity, maxStock) {
   return `${getStockPercentageValue(quantity, maxStock)}%`;
 }
 
+function formatBackendStockPercentage(row) {
+  const maxStock = getMaximumStock(row);
+  if (maxStock <= 0) return 'N/A';
+
+  const percentage = Number(row?.stock_percentage);
+  if (!Number.isFinite(percentage)) {
+    return formatStockPercentage(row?.quantity, maxStock);
+  }
+
+  return `${Math.min(100, Math.max(0, percentage))}%`;
+}
+
 function formatPeso(value) {
   return `\u20B1${Number(value || 0).toLocaleString('en-PH', {
     minimumFractionDigits: 0,
@@ -101,7 +113,7 @@ function mapMedicineRow(row, index) {
     quantity: Number(row.quantity || 0),
     threshold: Number(row.low_stock_threshold || row.threshold || 0),
     maxStock: getMaximumStock(row),
-    stockPercentage: formatStockPercentage(row.quantity, getMaximumStock(row)),
+    stockPercentage: formatBackendStockPercentage(row),
     pricePerItem: Number(row.price_per_item || 0),
     lastUpdated: formatDateOnly(row.updated_at || row.created_at),
     status: row.status,
@@ -125,7 +137,7 @@ function mapEquipmentRow(row, index) {
     quantity: Number(row.quantity || 0),
     threshold: Number(row.low_stock_threshold || row.threshold || 0),
     maxStock: getMaximumStock(row),
-    stockPercentage: formatStockPercentage(row.quantity, getMaximumStock(row)),
+    stockPercentage: formatBackendStockPercentage(row),
     pricePerItem: Number(row.price_per_item || 0),
     lastUpdated: formatDateOnly(row.updated_at || row.created_at),
     maintenanceStatus: fallback(row.maintenance_status),
@@ -146,7 +158,7 @@ function mapSupplyRow(row, index) {
     quantity: Number(row.quantity || 0),
     threshold: Number(row.low_stock_threshold || row.threshold || 0),
     maxStock: getMaximumStock(row),
-    stockPercentage: formatStockPercentage(row.quantity, getMaximumStock(row)),
+    stockPercentage: formatBackendStockPercentage(row),
     pricePerItem: Number(row.price_per_item || 0),
     lastUpdated: formatDateOnly(row.updated_at || row.created_at),
     status: row.status,
@@ -523,7 +535,7 @@ export default function InventoryPage() {
           unit: fallback(item.unit),
           threshold: Number(item.threshold || 0),
           maxStock: Number(item.maxStock || 0),
-          stockPercentage: formatStockPercentage(item.quantity, item.maxStock),
+          stockPercentage: item.stockPercentage,
           status: getSummaryStatus(item),
           lastUpdated: item.lastUpdated || 'N/A',
         }))
@@ -929,7 +941,7 @@ export default function InventoryPage() {
             dosage: editForm.dosage,
             unit: editForm.unit,
             ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-            ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
+            ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
           }
         : type === 'supplies'
         ? {
@@ -937,13 +949,13 @@ export default function InventoryPage() {
             category: editForm.category,
             unit: editForm.unit,
             ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-            ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
+            ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
           }
         : {
             category: editForm.category,
             maintenance_status: editForm.maintenanceStatus,
             ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-            ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
+            ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
           };
 
     setEditSaving(true);
@@ -1144,7 +1156,7 @@ export default function InventoryPage() {
         const inventoryId = expenseRes.inventory_id;
         const thresholdPayload = {
           ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-          ...(typeof maxStockValue === 'number' ? { max_stock_threshold: maxStockValue } : {}),
+          ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
         };
 
         if (expenseForm.category === 'medicine') {
@@ -1243,7 +1255,7 @@ export default function InventoryPage() {
         <td style={styles.tableCell}>{item.unit}</td>
         <td style={styles.tableCell}>{item.quantity}</td>
         <td style={styles.tableCell}>{item.maxStock > 0 ? item.maxStock : 'N/A'}</td>
-        <td style={styles.tableCell}>{formatStockPercentage(item.quantity, item.maxStock)}</td>
+        <td style={styles.tableCell}>{item.stockPercentage}</td>
         <td style={styles.tableCell}>{formatPeso(item.pricePerItem)}</td>
         <td style={styles.tableCell}>
           <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
@@ -1286,7 +1298,7 @@ export default function InventoryPage() {
         <td style={styles.tableCell}>{item.location}</td>
         <td style={styles.tableCell}>{item.quantity}</td>
         <td style={styles.tableCell}>{item.maxStock > 0 ? item.maxStock : 'N/A'}</td>
-        <td style={styles.tableCell}>{formatStockPercentage(item.quantity, item.maxStock)}</td>
+        <td style={styles.tableCell}>{item.stockPercentage}</td>
         <td style={styles.tableCell}>{formatPeso(item.pricePerItem)}</td>
         <td style={styles.tableCell}>
           <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
@@ -1325,7 +1337,7 @@ export default function InventoryPage() {
         <td style={styles.tableCell}>{item.unit}</td>
         <td style={styles.tableCell}>{item.quantity}</td>
         <td style={styles.tableCell}>{item.maxStock > 0 ? item.maxStock : 'N/A'}</td>
-        <td style={styles.tableCell}>{formatStockPercentage(item.quantity, item.maxStock)}</td>
+        <td style={styles.tableCell}>{item.stockPercentage}</td>
         <td style={styles.tableCell}>{formatPeso(item.pricePerItem)}</td>
         <td style={styles.tableCell}>
           <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
@@ -1465,7 +1477,7 @@ export default function InventoryPage() {
                     <td style={styles.tableCell}>{item.category}</td>
                     <td style={styles.tableCell}>{item.quantity}</td>
                     <td style={styles.tableCell}>{item.maxStock > 0 ? item.maxStock : 'N/A'}</td>
-                    <td style={styles.tableCell}>{formatStockPercentage(item.quantity, item.maxStock)}</td>
+                    <td style={styles.tableCell}>{item.stockPercentage}</td>
                     <td style={styles.tableCell}>
                       <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
                     </td>

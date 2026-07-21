@@ -287,7 +287,8 @@ router.get('/supplies', async (req, res) => {
     const branch = inventoryBranchFilter(req, req.query.branch_id);
     const [rows] = await pool.query(
       `SELECT i.id, i.branch_id, b.name AS branch_name, b.address AS branch_address, i.supply_name, i.brand,
-              i.supplier, i.category, i.unit, i.quantity, i.price_per_item, i.low_stock_threshold,
+              i.supplier, i.category, i.unit, i.quantity, i.maximum_stock, i.stock_percentage,
+              i.price_per_item, i.low_stock_threshold,
               i.created_at, i.updated_at
        FROM supplies i
        JOIN branches b ON b.id = i.branch_id
@@ -327,7 +328,10 @@ router.post('/supplies', requireRole('receptionist', 'admin'), async (req, res) 
 
 router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { supply_name, brand, supplier, category, unit, quantity, price_per_item, low_stock_threshold } = req.body;
+  const {
+    supply_name, brand, supplier, category, unit, quantity, price_per_item,
+    low_stock_threshold, maximum_stock,
+  } = req.body;
 
   try {
     const existing = await fetchInventoryAlertRow(pool, 'supply', id);
@@ -345,7 +349,8 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
         unit = COALESCE(?, unit),
         quantity = COALESCE(?, quantity),
        price_per_item = COALESCE(?, price_per_item),
-       low_stock_threshold = COALESCE(?, low_stock_threshold)
+       low_stock_threshold = COALESCE(?, low_stock_threshold),
+       maximum_stock = COALESCE(?, maximum_stock)
        WHERE id = ?`,
       [
         optionalDbValue(supply_name),
@@ -356,6 +361,7 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
         optionalDbValue(quantity),
         optionalDbValue(price_per_item),
         optionalDbValue(low_stock_threshold),
+        optionalDbValue(maximum_stock),
         id,
       ]
     );
@@ -421,7 +427,8 @@ router.get('/medicines', async (req, res) => {
     const branch = inventoryBranchFilter(req, req.query.branch_id);
     const [rows] = await pool.query(
       `SELECT i.id, i.branch_id, b.name AS branch_name, b.address AS branch_address, i.medicine_name, i.generic_name,
-              i.category, i.form, i.dosage, i.brand, i.supplier, i.unit, i.quantity, i.price_per_item,
+              i.category, i.form, i.dosage, i.brand, i.supplier, i.unit, i.quantity, i.maximum_stock, i.stock_percentage,
+              i.price_per_item,
               i.low_stock_threshold, i.created_at, i.updated_at
        FROM medicines i
        JOIN branches b ON b.id = i.branch_id
@@ -461,7 +468,10 @@ router.post('/medicines', requireRole('receptionist', 'admin'), async (req, res)
 
 router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item, low_stock_threshold } = req.body;
+  const {
+    medicine_name, generic_name, category, form, dosage, brand, supplier, unit,
+    quantity, price_per_item, low_stock_threshold, maximum_stock,
+  } = req.body;
 
   try {
     const existing = await fetchInventoryAlertRow(pool, 'medicine', id);
@@ -482,7 +492,8 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
         unit = COALESCE(?, unit),
         quantity = COALESCE(?, quantity),
        price_per_item = COALESCE(?, price_per_item),
-       low_stock_threshold = COALESCE(?, low_stock_threshold)
+       low_stock_threshold = COALESCE(?, low_stock_threshold),
+       maximum_stock = COALESCE(?, maximum_stock)
        WHERE id = ?`,
       [
         optionalDbValue(medicine_name),
@@ -496,6 +507,7 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
         optionalDbValue(quantity),
         optionalDbValue(price_per_item),
         optionalDbValue(low_stock_threshold),
+        optionalDbValue(maximum_stock),
         id,
       ]
     );
@@ -564,7 +576,8 @@ router.get('/equipment', async (req, res) => {
               e.serial_number, e.location, e.purchase_date, e.warranty_date,
               e.last_maintenance, e.next_maintenance, e.maintenance_status,
               e.assigned_to, u.name AS assigned_to_name,
-              e.quantity, e.price_per_item, e.low_stock_threshold, e.created_at, e.updated_at
+              e.quantity, e.maximum_stock, e.stock_percentage,
+              e.price_per_item, e.low_stock_threshold, e.created_at, e.updated_at
        FROM equipment e
        JOIN branches b ON b.id = e.branch_id
        LEFT JOIN users u ON u.id = e.assigned_to
@@ -625,7 +638,7 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
     equipment_name, brand, supplier, category, model_number, serial_number,
     location, purchase_date, warranty_date, last_maintenance, next_maintenance,
     maintenance_status, assigned_to, quantity, price_per_item,
-    low_stock_threshold,
+    low_stock_threshold, maximum_stock,
   } = req.body;
 
   try {
@@ -652,7 +665,8 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
         assigned_to = COALESCE(?, assigned_to),
         quantity = COALESCE(?, quantity),
         price_per_item = COALESCE(?, price_per_item),
-        low_stock_threshold = COALESCE(?, low_stock_threshold)
+        low_stock_threshold = COALESCE(?, low_stock_threshold),
+        maximum_stock = COALESCE(?, maximum_stock)
        WHERE id = ?`,
       [
         optionalDbValue(equipment_name),
@@ -671,6 +685,7 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
         optionalDbValue(quantity),
         optionalDbValue(price_per_item),
         optionalDbValue(low_stock_threshold),
+        optionalDbValue(maximum_stock),
         id,
       ]
     );
@@ -707,6 +722,8 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
     supplier,
     orderQuantity,
     pricePerItem,
+    maxStock,
+    maximum_stock,
     date,
   } = req.body;
 
@@ -714,6 +731,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
   const itemNameValue = String(itemName || '').trim();
   const quantity = normalizeQuantity(orderQuantity, 0);
   const price = normalizePrice(pricePerItem);
+  const maximumStockValue = Math.max(0, Number(maximum_stock ?? maxStock ?? 0) || 0);
   const expenseDate = date || new Date().toISOString().slice(0, 10);
 
   const categoryConfig = {
@@ -723,8 +741,8 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       nameColumn: 'medicine_name',
       insertSql:
         `INSERT INTO medicines
-         (branch_id, medicine_name, supplier, unit, quantity, price_per_item, low_stock_threshold)
-         VALUES (?, ?, ?, 'pcs', ?, ?, 10)`,
+         (branch_id, medicine_name, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
+         VALUES (?, ?, ?, 'pcs', ?, ?, ?, 10)`,
     },
     equipment: {
       table: 'equipment',
@@ -732,8 +750,8 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       nameColumn: 'equipment_name',
       insertSql:
         `INSERT INTO equipment
-         (branch_id, equipment_name, supplier, quantity, price_per_item, low_stock_threshold)
-         VALUES (?, ?, ?, ?, ?, 1)`,
+         (branch_id, equipment_name, supplier, quantity, maximum_stock, price_per_item, low_stock_threshold)
+         VALUES (?, ?, ?, ?, ?, ?, 1)`,
     },
     supplies: {
       table: 'supplies',
@@ -741,8 +759,8 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       nameColumn: 'supply_name',
       insertSql:
         `INSERT INTO supplies
-         (branch_id, supply_name, supplier, unit, quantity, price_per_item, low_stock_threshold)
-         VALUES (?, ?, ?, 'pcs', ?, ?, 10)`,
+         (branch_id, supply_name, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
+         VALUES (?, ?, ?, 'pcs', ?, ?, ?, 10)`,
     },
   };
 
@@ -783,10 +801,11 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
         `UPDATE ${config.table}
          SET quantity = quantity + ?,
              supplier = COALESCE(NULLIF(?, ''), supplier),
+             maximum_stock = COALESCE(NULLIF(?, 0), maximum_stock),
              price_per_item = ?,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
-        [quantity, supplier || '', price, inventoryId]
+        [quantity, supplier || '', maximumStockValue, price, inventoryId]
       );
       const updatedRow = await fetchInventoryAlertRow(connection, category, inventoryId);
       await createInventoryStatusNotifications(connection, previousRow, updatedRow);
@@ -796,6 +815,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
         itemNameValue,
         supplier || null,
         quantity,
+        maximumStockValue,
         price,
       ]);
       inventoryId = insertResult.insertId;

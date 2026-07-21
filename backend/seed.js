@@ -43,6 +43,7 @@ async function safeDeleteAndReset(tables) {
 
 async function seed() {
   const hash = (pw) => bcrypt.hashSync(pw, 10);
+  const seededUserPassword = 'password12345678';
 
   const tables = [
     'website_announcements',
@@ -104,16 +105,16 @@ async function seed() {
   // =========================
   const users = [
     // Admin
-    ['admin', 1, 'Maryj Ortega', 'maryj.ortega15@gmail.com', hash('password123')],
+    ['admin', 1, 'Maryj Ortega', 'maryj.ortega15@gmail.com', hash(seededUserPassword)],
 
     // Dentists
-    ['dentist', 1, 'Dr. Twinky Belino', 'twinky.belino@test.com', hash('password123')],
-    ['dentist', 1, 'Dr. Maureen Datu', 'maureen.datu@test.com', hash('password123')],
-    ['dentist', 1, 'Dr. Tourmand Morteza', 'tourmand.morteza@test.com', hash('password123')],
+    ['dentist', 1, 'Dr. Twinky Belino', 'twinky.belino@test.com', hash(seededUserPassword)],
+    ['dentist', 1, 'Dr. Maureen Datu', 'maureen.datu@test.com', hash(seededUserPassword)],
+    ['dentist', 1, 'Dr. Tourmand Morteza', 'tourmand.morteza@test.com', hash(seededUserPassword)],
 
     // Receptionists
-    ['receptionist', 1, 'Makati Receptionist', 'recep.makati@test.com', hash('password123')],
-    ['receptionist', 2, 'Las Piñas Receptionist', 'recep.laspinas@test.com', hash('password123')],
+    ['receptionist', 1, 'Makati Receptionist', 'recep.makati@test.com', hash(seededUserPassword)],
+    ['receptionist', 2, 'Las Piñas Receptionist', 'recep.laspinas@test.com', hash(seededUserPassword)],
   ];
 
   for (const user of users) {
@@ -385,27 +386,27 @@ async function seed() {
   await pool.query(
     `
     INSERT INTO supplies
-      (branch_id, supply_name, brand, supplier, category, unit, quantity, price_per_item, low_stock_threshold)
+      (branch_id, supply_name, brand, supplier, category, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
     VALUES
-      (1, 'Orthodontic Brackets', 'DentalPro', 'Smile Dental Supply', 'Orthodontics', 'box', 20, 2500.00, 5),
-      (1, 'Orthodontic Archwires', 'DentalPro', 'Smile Dental Supply', 'Orthodontics', 'pack', 20, 1200.00, 5),
-      (1, 'Elastic Ligature Ties', 'OrthoFlex', 'Smile Dental Supply', 'Orthodontics', 'pack', 20, 350.00, 5),
-      (1, 'Clear Aligner Case', 'AlignCare', 'Smile Dental Supply', 'Orthodontics', 'piece', 20, 120.00, 5),
+      (1, 'Orthodontic Brackets', 'DentalPro', 'Smile Dental Supply', 'Orthodontics', 'box', 20, 20, 2500.00, 5),
+      (1, 'Orthodontic Archwires', 'DentalPro', 'Smile Dental Supply', 'Orthodontics', 'pack', 20, 20, 1200.00, 5),
+      (1, 'Elastic Ligature Ties', 'OrthoFlex', 'Smile Dental Supply', 'Orthodontics', 'pack', 20, 20, 350.00, 5),
+      (1, 'Clear Aligner Case', 'AlignCare', 'Smile Dental Supply', 'Orthodontics', 'piece', 20, 20, 120.00, 5),
 
-      (1, 'Composite Veneer Kit', 'VitaDent', 'Makati Dental Depot', 'Cosmetic Dentistry', 'kit', 20, 4500.00, 5),
-      (1, 'Whitening Gel Syringe', 'BrightSmile', 'Makati Dental Depot', 'Cosmetic Dentistry', 'piece', 20, 650.00, 5),
-      (1, 'Shade Guide Card', 'VitaDent', 'Makati Dental Depot', 'Cosmetic Dentistry', 'piece', 20, 900.00, 5),
-      (1, 'Dental Bibs', 'MediSafe', 'Makati Dental Depot', 'General Dentistry', 'pack', 20, 250.00, 5),
-      (1, 'Disposable Cups', 'MediSafe', 'Makati Dental Depot', 'General Dentistry', 'pack', 20, 180.00, 5),
+      (1, 'Composite Veneer Kit', 'VitaDent', 'Makati Dental Depot', 'Cosmetic Dentistry', 'kit', 20, 20, 4500.00, 5),
+      (1, 'Whitening Gel Syringe', 'BrightSmile', 'Makati Dental Depot', 'Cosmetic Dentistry', 'piece', 20, 20, 650.00, 5),
+      (1, 'Shade Guide Card', 'VitaDent', 'Makati Dental Depot', 'Cosmetic Dentistry', 'piece', 20, 20, 900.00, 5),
+      (1, 'Dental Bibs', 'MediSafe', 'Makati Dental Depot', 'General Dentistry', 'pack', 20, 20, 250.00, 5),
+      (1, 'Disposable Cups', 'MediSafe', 'Makati Dental Depot', 'General Dentistry', 'pack', 20, 20, 180.00, 5),
 
-      (2, 'Scaling Tips', 'UltraClean', 'Las Piñas Dental Supply', 'Periodontics', 'piece', 20, 800.00, 5),
-      (2, 'Prophy Brush', 'CleanDent', 'Las Piñas Dental Supply', 'General Dentistry', 'pack', 20, 300.00, 5),
-      (2, 'Dental Bibs', 'MediSafe', 'Las Piñas Dental Supply', 'General Dentistry', 'pack', 20, 250.00, 5),
-      (2, 'Disposable Cups', 'MediSafe', 'Las Piñas Dental Supply', 'General Dentistry', 'pack', 20, 180.00, 5),
+      (2, 'Scaling Tips', 'UltraClean', 'Las Piñas Dental Supply', 'Periodontics', 'piece', 20, 20, 800.00, 5),
+      (2, 'Prophy Brush', 'CleanDent', 'Las Piñas Dental Supply', 'General Dentistry', 'pack', 20, 20, 300.00, 5),
+      (2, 'Dental Bibs', 'MediSafe', 'Las Piñas Dental Supply', 'General Dentistry', 'pack', 20, 20, 250.00, 5),
+      (2, 'Disposable Cups', 'MediSafe', 'Las Piñas Dental Supply', 'General Dentistry', 'pack', 20, 20, 180.00, 5),
 
-      (2, 'Crown Impression Trays', 'CrownFit', 'Las Piñas Dental Supply', 'Prosthodontics', 'set', 20, 1000.00, 5),
-      (2, 'Denture Impression Material', 'DenturePro', 'Las Piñas Dental Supply', 'Prosthodontics', 'pack', 20, 1500.00, 5),
-      (2, 'Implant Surgical Drapes', 'ImplantCare', 'Las Piñas Dental Supply', 'Implants', 'pack', 20, 900.00, 5)
+      (2, 'Crown Impression Trays', 'CrownFit', 'Las Piñas Dental Supply', 'Prosthodontics', 'set', 20, 20, 1000.00, 5),
+      (2, 'Denture Impression Material', 'DenturePro', 'Las Piñas Dental Supply', 'Prosthodontics', 'pack', 20, 20, 1500.00, 5),
+      (2, 'Implant Surgical Drapes', 'ImplantCare', 'Las Piñas Dental Supply', 'Implants', 'pack', 20, 20, 900.00, 5)
     `
   );
 
@@ -413,25 +414,25 @@ async function seed() {
   await pool.query(
     `
     INSERT INTO supplies
-      (branch_id, supply_name, brand, supplier, category, unit, quantity, price_per_item, low_stock_threshold)
+      (branch_id, supply_name, brand, supplier, category, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
     VALUES
       -- Orthodontics supplies for Branch 2
-      (2, 'Orthodontic Brackets',      'DentalPro',  'Las Piñas Dental Supply', 'Orthodontics',      'box',   20, 2500.00, 5),
-      (2, 'Orthodontic Archwires',     'DentalPro',  'Las Piñas Dental Supply', 'Orthodontics',      'pack',  20, 1200.00, 5),
-      (2, 'Elastic Ligature Ties',     'OrthoFlex',  'Las Piñas Dental Supply', 'Orthodontics',      'pack',  20,  350.00, 5),
-      (2, 'Clear Aligner Case',        'AlignCare',  'Las Piñas Dental Supply', 'Orthodontics',      'piece', 20,  120.00, 5),
+      (2, 'Orthodontic Brackets',      'DentalPro',  'Las Piñas Dental Supply', 'Orthodontics',      'box',   20, 20, 2500.00, 5),
+      (2, 'Orthodontic Archwires',     'DentalPro',  'Las Piñas Dental Supply', 'Orthodontics',      'pack',  20, 20, 1200.00, 5),
+      (2, 'Elastic Ligature Ties',     'OrthoFlex',  'Las Piñas Dental Supply', 'Orthodontics',      'pack',  20, 20,  350.00, 5),
+      (2, 'Clear Aligner Case',        'AlignCare',  'Las Piñas Dental Supply', 'Orthodontics',      'piece', 20, 20,  120.00, 5),
 
       -- Cosmetic Dentistry supplies for Branch 2
-      (2, 'Composite Veneer Kit',      'VitaDent',   'Las Piñas Dental Supply', 'Cosmetic Dentistry','kit',   20, 4500.00, 5),
-      (2, 'Whitening Gel Syringe',     'BrightSmile','Las Piñas Dental Supply', 'Cosmetic Dentistry','piece', 20,  650.00, 5),
-      (2, 'Shade Guide Card',          'VitaDent',   'Las Piñas Dental Supply', 'Cosmetic Dentistry','piece', 20,  900.00, 2),
+      (2, 'Composite Veneer Kit',      'VitaDent',   'Las Piñas Dental Supply', 'Cosmetic Dentistry','kit',   20, 20, 4500.00, 5),
+      (2, 'Whitening Gel Syringe',     'BrightSmile','Las Piñas Dental Supply', 'Cosmetic Dentistry','piece', 20, 20,  650.00, 5),
+      (2, 'Shade Guide Card',          'VitaDent',   'Las Piñas Dental Supply', 'Cosmetic Dentistry','piece', 20, 20,  900.00, 2),
 
       -- Periodontics / Prosthodontics / Implants supplies for Branch 1
-      (1, 'Scaling Tips',              'UltraClean', 'Makati Dental Depot',     'Periodontics',      'piece', 20,  800.00, 5),
-      (1, 'Prophy Brush',              'CleanDent',  'Makati Dental Depot',     'General Dentistry', 'pack',  20,  300.00, 5),
-      (1, 'Crown Impression Trays',    'CrownFit',   'Makati Dental Depot',     'Prosthodontics',    'set',   20, 1000.00, 5),
-      (1, 'Denture Impression Material','DenturePro','Makati Dental Depot',     'Prosthodontics',    'pack',  20, 1500.00, 5),
-      (1, 'Implant Surgical Drapes',   'ImplantCare','Makati Dental Depot',     'Implants',          'pack',  20,  900.00, 5)
+      (1, 'Scaling Tips',              'UltraClean', 'Makati Dental Depot',     'Periodontics',      'piece', 20, 20,  800.00, 5),
+      (1, 'Prophy Brush',              'CleanDent',  'Makati Dental Depot',     'General Dentistry', 'pack',  20, 20,  300.00, 5),
+      (1, 'Crown Impression Trays',    'CrownFit',   'Makati Dental Depot',     'Prosthodontics',    'set',   20, 20, 1000.00, 5),
+      (1, 'Denture Impression Material','DenturePro','Makati Dental Depot',     'Prosthodontics',    'pack',  20, 20, 1500.00, 5),
+      (1, 'Implant Surgical Drapes',   'ImplantCare','Makati Dental Depot',     'Implants',          'pack',  20, 20,  900.00, 5)
     `
   );
 
@@ -442,21 +443,21 @@ async function seed() {
   await pool.query(
     `
     INSERT INTO medicines
-      (branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item, low_stock_threshold)
+      (branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
     VALUES
-      (1, 'Lidocaine Anesthetic', 'Lidocaine HCl', 'Local Anesthetic', 'Injection', '2%', 'LidoDent', 'Makati Dental Depot', 'cartridge', 20, 120.00, 5),
-      (1, 'Articaine Anesthetic', 'Articaine HCl', 'Local Anesthetic', 'Injection', '4%', 'ArtiDent', 'Makati Dental Depot', 'cartridge', 20, 140.00, 5),
-      (1, 'Calcium Hydroxide Paste', 'Calcium Hydroxide', 'Endodontics', 'Paste', 'Standard', 'EndoCal', 'Makati Dental Depot', 'syringe', 20, 450.00, 5),
-      (1, 'Sodium Hypochlorite Solution', 'Sodium Hypochlorite', 'Endodontics', 'Solution', '2.5%', 'EndoClean', 'Makati Dental Depot', 'bottle', 20, 380.00, 5),
-      (1, 'Ibuprofen', 'Ibuprofen', 'Pain Reliever', 'Tablet', '400mg', 'PainAway', 'Makati Dental Depot', 'box', 20, 250.00, 5),
-      (1, 'Topical Anesthetic Gel', 'Benzocaine', 'Topical Anesthetic', 'Gel', '20%', 'GumEase', 'Makati Dental Depot', 'tube', 20, 300.00, 5),
+      (1, 'Lidocaine Anesthetic', 'Lidocaine HCl', 'Local Anesthetic', 'Injection', '2%', 'LidoDent', 'Makati Dental Depot', 'cartridge', 20, 20, 120.00, 5),
+      (1, 'Articaine Anesthetic', 'Articaine HCl', 'Local Anesthetic', 'Injection', '4%', 'ArtiDent', 'Makati Dental Depot', 'cartridge', 20, 20, 140.00, 5),
+      (1, 'Calcium Hydroxide Paste', 'Calcium Hydroxide', 'Endodontics', 'Paste', 'Standard', 'EndoCal', 'Makati Dental Depot', 'syringe', 20, 20, 450.00, 5),
+      (1, 'Sodium Hypochlorite Solution', 'Sodium Hypochlorite', 'Endodontics', 'Solution', '2.5%', 'EndoClean', 'Makati Dental Depot', 'bottle', 20, 20, 380.00, 5),
+      (1, 'Ibuprofen', 'Ibuprofen', 'Pain Reliever', 'Tablet', '400mg', 'PainAway', 'Makati Dental Depot', 'box', 20, 20, 250.00, 5),
+      (1, 'Topical Anesthetic Gel', 'Benzocaine', 'Topical Anesthetic', 'Gel', '20%', 'GumEase', 'Makati Dental Depot', 'tube', 20, 20, 300.00, 5),
 
-      (2, 'Lidocaine Anesthetic', 'Lidocaine HCl', 'Local Anesthetic', 'Injection', '2%', 'LidoDent', 'Las Piñas Dental Supply', 'cartridge', 20, 120.00, 5),
-      (2, 'Chlorhexidine Mouthwash', 'Chlorhexidine Gluconate', 'Antiseptic', 'Mouthwash', '0.12%', 'OraClean', 'Las Piñas Dental Supply', 'bottle', 20, 280.00, 5),
-      (2, 'Amoxicillin', 'Amoxicillin', 'Antibiotic', 'Capsule', '500mg', 'AmoxiCare', 'Las Piñas Dental Supply', 'box', 20, 350.00, 5),
-      (2, 'Mefenamic Acid', 'Mefenamic Acid', 'Pain Reliever', 'Capsule', '500mg', 'PainRelief', 'Las Piñas Dental Supply', 'box', 20, 230.00, 5),
-      (2, 'Topical Anesthetic Gel', 'Benzocaine', 'Topical Anesthetic', 'Gel', '20%', 'GumEase', 'Las Piñas Dental Supply', 'tube', 20, 300.00, 5),
-      (2, 'Ibuprofen', 'Ibuprofen', 'Pain Reliever', 'Tablet', '400mg', 'PainAway', 'Las Piñas Dental Supply', 'box', 20, 250.00, 5)
+      (2, 'Lidocaine Anesthetic', 'Lidocaine HCl', 'Local Anesthetic', 'Injection', '2%', 'LidoDent', 'Las Piñas Dental Supply', 'cartridge', 20, 20, 120.00, 5),
+      (2, 'Chlorhexidine Mouthwash', 'Chlorhexidine Gluconate', 'Antiseptic', 'Mouthwash', '0.12%', 'OraClean', 'Las Piñas Dental Supply', 'bottle', 20, 20, 280.00, 5),
+      (2, 'Amoxicillin', 'Amoxicillin', 'Antibiotic', 'Capsule', '500mg', 'AmoxiCare', 'Las Piñas Dental Supply', 'box', 20, 20, 350.00, 5),
+      (2, 'Mefenamic Acid', 'Mefenamic Acid', 'Pain Reliever', 'Capsule', '500mg', 'PainRelief', 'Las Piñas Dental Supply', 'box', 20, 20, 230.00, 5),
+      (2, 'Topical Anesthetic Gel', 'Benzocaine', 'Topical Anesthetic', 'Gel', '20%', 'GumEase', 'Las Piñas Dental Supply', 'tube', 20, 20, 300.00, 5),
+      (2, 'Ibuprofen', 'Ibuprofen', 'Pain Reliever', 'Tablet', '400mg', 'PainAway', 'Las Piñas Dental Supply', 'box', 20, 20, 250.00, 5)
     `
   );
 
@@ -464,15 +465,15 @@ async function seed() {
   await pool.query(
     `
     INSERT INTO medicines
-      (branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item, low_stock_threshold)
+      (branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
     VALUES
       -- Endodontics medicines for Branch 2 (Root Canal kit)
-      (2, 'Calcium Hydroxide Paste',      'Calcium Hydroxide',      'Endodontics', 'Paste',    'Standard', 'EndoCal',   'Las Piñas Dental Supply', 'syringe', 10, 450.00, 3),
-      (2, 'Sodium Hypochlorite Solution',  'Sodium Hypochlorite',    'Endodontics', 'Solution', '2.5%',     'EndoClean', 'Las Piñas Dental Supply', 'bottle',  10, 380.00, 3),
+      (2, 'Calcium Hydroxide Paste',      'Calcium Hydroxide',      'Endodontics', 'Paste',    'Standard', 'EndoCal',   'Las Piñas Dental Supply', 'syringe', 10, 10, 450.00, 3),
+      (2, 'Sodium Hypochlorite Solution',  'Sodium Hypochlorite',    'Endodontics', 'Solution', '2.5%',     'EndoClean', 'Las Piñas Dental Supply', 'bottle',  10, 10, 380.00, 3),
 
       -- Antiseptic and antibiotic for Branch 1 (Deep Scaling and Implants kits)
-      (1, 'Chlorhexidine Mouthwash',       'Chlorhexidine Gluconate','Antiseptic',  'Mouthwash','0.12%',    'OraClean',  'Makati Dental Depot',     'bottle',  10, 280.00, 3),
-      (1, 'Amoxicillin',                   'Amoxicillin',            'Antibiotic',  'Capsule',  '500mg',    'AmoxiCare', 'Makati Dental Depot',     'box',     10, 350.00, 3)
+      (1, 'Chlorhexidine Mouthwash',       'Chlorhexidine Gluconate','Antiseptic',  'Mouthwash','0.12%',    'OraClean',  'Makati Dental Depot',     'bottle',  10, 10, 280.00, 3),
+      (1, 'Amoxicillin',                   'Amoxicillin',            'Antibiotic',  'Capsule',  '500mg',    'AmoxiCare', 'Makati Dental Depot',     'box',     10, 10, 350.00, 3)
     `
   );
 
@@ -484,20 +485,20 @@ async function seed() {
   await pool.query(
     `
     INSERT INTO equipment
-      (branch_id, equipment_name, brand, supplier, category, model_number, serial_number, location, purchase_date, warranty_date, maintenance_status, assigned_to, quantity, price_per_item, low_stock_threshold)
+      (branch_id, equipment_name, brand, supplier, category, model_number, serial_number, location, purchase_date, warranty_date, maintenance_status, assigned_to, quantity, maximum_stock, price_per_item, low_stock_threshold)
     VALUES
-      (1, 'Dental Chair Unit', 'DentaLux', 'Makati Dental Depot', 'General Dentistry', 'DL-100', 'MK-CHAIR-001', 'Makati Operatory 1', '2023-01-15', '2028-01-15', 'Available', NULL, 10, 180000.00, 1),
-      (1, 'Intraoral Camera', 'OralView', 'Makati Dental Depot', 'Diagnostics', 'OV-200', 'MK-CAM-001', 'Makati Consultation Room', '2023-03-10', '2026-03-10', 'Available', NULL, 10, 35000.00, 1),
-      (1, 'Root Canal Motor', 'EndoMax', 'Makati Dental Depot', 'Endodontics', 'EM-500', 'MK-ENDO-001', 'Makati Operatory 2', '2023-06-20', '2027-06-20', 'Available', 4, 10, 65000.00, 1),
-      (1, 'LED Teeth Whitening Lamp', 'BrightLite', 'Makati Dental Depot', 'Cosmetic Dentistry', 'BL-900', 'MK-WHITE-001', 'Makati Cosmetic Room', '2023-07-05', '2027-07-05', 'Available', 2, 10, 75000.00, 1),
-      (1, 'Orthodontic Pliers Set', 'OrthoFlex', 'Smile Dental Supply', 'Orthodontics', 'OF-PLIER-SET', 'MK-ORTHO-001', 'Makati Ortho Cabinet', '2023-08-01', '2026-08-01', 'Available', 3, 10, 12000.00, 1),
+      (1, 'Dental Chair Unit', 'DentaLux', 'Makati Dental Depot', 'General Dentistry', 'DL-100', 'MK-CHAIR-001', 'Makati Operatory 1', '2023-01-15', '2028-01-15', 'Available', NULL, 10, 10, 180000.00, 1),
+      (1, 'Intraoral Camera', 'OralView', 'Makati Dental Depot', 'Diagnostics', 'OV-200', 'MK-CAM-001', 'Makati Consultation Room', '2023-03-10', '2026-03-10', 'Available', NULL, 10, 10, 35000.00, 1),
+      (1, 'Root Canal Motor', 'EndoMax', 'Makati Dental Depot', 'Endodontics', 'EM-500', 'MK-ENDO-001', 'Makati Operatory 2', '2023-06-20', '2027-06-20', 'Available', 4, 10, 10, 65000.00, 1),
+      (1, 'LED Teeth Whitening Lamp', 'BrightLite', 'Makati Dental Depot', 'Cosmetic Dentistry', 'BL-900', 'MK-WHITE-001', 'Makati Cosmetic Room', '2023-07-05', '2027-07-05', 'Available', 2, 10, 10, 75000.00, 1),
+      (1, 'Orthodontic Pliers Set', 'OrthoFlex', 'Smile Dental Supply', 'Orthodontics', 'OF-PLIER-SET', 'MK-ORTHO-001', 'Makati Ortho Cabinet', '2023-08-01', '2026-08-01', 'Available', 3, 10, 10, 12000.00, 1),
 
-      (2, 'Dental Chair Unit', 'DentaLux', 'Las Piñas Dental Supply', 'General Dentistry', 'DL-100', 'LP-CHAIR-001', 'Las Piñas Operatory 1', '2022-11-18', '2027-11-18', 'Available', NULL, 10, 180000.00, 1),
-      (2, 'Intraoral Camera', 'OralView', 'Las Piñas Dental Supply', 'Diagnostics', 'OV-200', 'LP-CAM-001', 'Las Piñas Consultation Room', '2023-03-10', '2026-03-10', 'Available', NULL, 10, 35000.00, 1),
-      (2, 'Ultrasonic Scaler', 'UltraClean', 'Las Piñas Dental Supply', 'Periodontics', 'UC-300', 'LP-SCALER-001', 'Las Piñas Cleaning Room', '2023-02-12', '2026-02-12', 'Available', 2, 10, 28000.00, 1),
-      (2, 'Implant Surgical Kit', 'ImplantPro', 'Las Piñas Dental Supply', 'Implants', 'IP-KIT-700', 'LP-IMPLANT-001', 'Las Piñas Surgery Room', '2023-09-14', '2028-09-14', 'Available', 2, 10, 95000.00, 1),
-      (2, 'Dental Lab Handpiece', 'CrownFit', 'Las Piñas Dental Supply', 'Prosthodontics', 'CF-HP-10', 'LP-PROSTHO-001', 'Las Piñas Prostho Room', '2023-04-22', '2026-04-22', 'Available', 2, 10, 25000.00, 1),
-      (2, 'Autoclave Sterilizer', 'MediSafe', 'Las Piñas Dental Supply', 'Sterilization', 'MS-AUTO-50', 'LP-AUTO-001', 'Las Piñas Sterilization Area', '2023-05-30', '2028-05-30', 'Available', NULL, 10, 85000.00, 1)
+      (2, 'Dental Chair Unit', 'DentaLux', 'Las Piñas Dental Supply', 'General Dentistry', 'DL-100', 'LP-CHAIR-001', 'Las Piñas Operatory 1', '2022-11-18', '2027-11-18', 'Available', NULL, 10, 10, 180000.00, 1),
+      (2, 'Intraoral Camera', 'OralView', 'Las Piñas Dental Supply', 'Diagnostics', 'OV-200', 'LP-CAM-001', 'Las Piñas Consultation Room', '2023-03-10', '2026-03-10', 'Available', NULL, 10, 10, 35000.00, 1),
+      (2, 'Ultrasonic Scaler', 'UltraClean', 'Las Piñas Dental Supply', 'Periodontics', 'UC-300', 'LP-SCALER-001', 'Las Piñas Cleaning Room', '2023-02-12', '2026-02-12', 'Available', 2, 10, 10, 28000.00, 1),
+      (2, 'Implant Surgical Kit', 'ImplantPro', 'Las Piñas Dental Supply', 'Implants', 'IP-KIT-700', 'LP-IMPLANT-001', 'Las Piñas Surgery Room', '2023-09-14', '2028-09-14', 'Available', 2, 10, 10, 95000.00, 1),
+      (2, 'Dental Lab Handpiece', 'CrownFit', 'Las Piñas Dental Supply', 'Prosthodontics', 'CF-HP-10', 'LP-PROSTHO-001', 'Las Piñas Prostho Room', '2023-04-22', '2026-04-22', 'Available', 2, 10, 10, 25000.00, 1),
+      (2, 'Autoclave Sterilizer', 'MediSafe', 'Las Piñas Dental Supply', 'Sterilization', 'MS-AUTO-50', 'LP-AUTO-001', 'Las Piñas Sterilization Area', '2023-05-30', '2028-05-30', 'Available', NULL, 10, 10, 85000.00, 1)
     `
   );
 
@@ -505,17 +506,17 @@ async function seed() {
   await pool.query(
     `
     INSERT INTO equipment
-      (branch_id, equipment_name, brand, supplier, category, model_number, serial_number, location, purchase_date, warranty_date, maintenance_status, assigned_to, quantity, price_per_item, low_stock_threshold)
+      (branch_id, equipment_name, brand, supplier, category, model_number, serial_number, location, purchase_date, warranty_date, maintenance_status, assigned_to, quantity, maximum_stock, price_per_item, low_stock_threshold)
     VALUES
       -- Orthodontics, Endodontics, Cosmetic equipment for Branch 2
-      (2, 'Orthodontic Pliers Set',    'OrthoFlex',  'Las Piñas Dental Supply', 'Orthodontics',      'OF-PLIER-SET', 'LP-ORTHO-001',   'Las Piñas Ortho Cabinet',    '2023-08-01', '2026-08-01', 'Available', NULL, 10,  12000.00, 1),
-      (2, 'Root Canal Motor',          'EndoMax',    'Las Piñas Dental Supply', 'Endodontics',       'EM-500',       'LP-ENDO-001',    'Las Piñas Operatory 2',       '2023-06-20', '2027-06-20', 'Available', NULL, 10,  65000.00, 1),
-      (2, 'LED Teeth Whitening Lamp',  'BrightLite', 'Las Piñas Dental Supply', 'Cosmetic Dentistry','BL-900',       'LP-WHITE-001',   'Las Piñas Cosmetic Room',     '2023-07-05', '2027-07-05', 'Available', NULL, 10,  75000.00, 1),
+      (2, 'Orthodontic Pliers Set',    'OrthoFlex',  'Las Piñas Dental Supply', 'Orthodontics',      'OF-PLIER-SET', 'LP-ORTHO-001',   'Las Piñas Ortho Cabinet',    '2023-08-01', '2026-08-01', 'Available', NULL, 10, 10,  12000.00, 1),
+      (2, 'Root Canal Motor',          'EndoMax',    'Las Piñas Dental Supply', 'Endodontics',       'EM-500',       'LP-ENDO-001',    'Las Piñas Operatory 2',       '2023-06-20', '2027-06-20', 'Available', NULL, 10, 10,  65000.00, 1),
+      (2, 'LED Teeth Whitening Lamp',  'BrightLite', 'Las Piñas Dental Supply', 'Cosmetic Dentistry','BL-900',       'LP-WHITE-001',   'Las Piñas Cosmetic Room',     '2023-07-05', '2027-07-05', 'Available', NULL, 10, 10,  75000.00, 1),
 
       -- Periodontics, Implants, Prosthodontics equipment for Branch 1
-      (1, 'Ultrasonic Scaler',         'UltraClean', 'Makati Dental Depot',     'Periodontics',      'UC-300',       'MK-SCALER-001',  'Makati Cleaning Room',        '2023-02-12', '2026-02-12', 'Available', NULL, 10,  28000.00, 1),
-      (1, 'Implant Surgical Kit',      'ImplantPro', 'Makati Dental Depot',     'Implants',          'IP-KIT-700',   'MK-IMPLANT-001', 'Makati Surgery Room',         '2023-09-14', '2028-09-14', 'Available', NULL, 10,  95000.00, 1),
-      (1, 'Dental Lab Handpiece',      'CrownFit',   'Makati Dental Depot',     'Prosthodontics',    'CF-HP-10',     'MK-PROSTHO-001', 'Makati Prostho Room',         '2023-04-22', '2026-04-22', 'Available', NULL, 10,  25000.00, 1)
+      (1, 'Ultrasonic Scaler',         'UltraClean', 'Makati Dental Depot',     'Periodontics',      'UC-300',       'MK-SCALER-001',  'Makati Cleaning Room',        '2023-02-12', '2026-02-12', 'Available', NULL, 10, 10,  28000.00, 1),
+      (1, 'Implant Surgical Kit',      'ImplantPro', 'Makati Dental Depot',     'Implants',          'IP-KIT-700',   'MK-IMPLANT-001', 'Makati Surgery Room',         '2023-09-14', '2028-09-14', 'Available', NULL, 10, 10,  95000.00, 1),
+      (1, 'Dental Lab Handpiece',      'CrownFit',   'Makati Dental Depot',     'Prosthodontics',    'CF-HP-10',     'MK-PROSTHO-001', 'Makati Prostho Room',         '2023-04-22', '2026-04-22', 'Available', NULL, 10, 10,  25000.00, 1)
     `
   );
 
@@ -728,7 +729,7 @@ async function seed() {
 
   console.log('');
   console.log('Seed complete.');
-  console.log('Password for all seeded users: password123');
+  console.log(`Password for all seeded users: ${seededUserPassword}`);
   console.log('');
   console.log('Admin account:');
   console.log('  maryj.ortega15@gmail.com   -> Maryj Ortega, full admin access');
