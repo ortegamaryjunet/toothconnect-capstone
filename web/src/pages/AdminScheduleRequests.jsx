@@ -195,7 +195,7 @@ export default function AdminScheduleRequests({
     }
 
     return (
-      <div style={styles.requestActionGroup}>
+      <div style={styles.leaveRequestActionGroup}>
         <button
           type="button"
           style={{
@@ -206,7 +206,8 @@ export default function AdminScheduleRequests({
           disabled={actionLoadingId === request.id}
           onClick={() => updateRequestStatus(request, 'approved')}
         >
-          {actionLoadingId === request.id ? 'Saving...' : 'Approve'}
+          <i className="fi fi-rr-check"></i>
+          <span>{actionLoadingId === request.id ? 'Saving...' : 'Approve'}</span>
         </button>
 
         <button
@@ -219,7 +220,8 @@ export default function AdminScheduleRequests({
           disabled={actionLoadingId === request.id}
           onClick={() => updateRequestStatus(request, 'rejected')}
         >
-          {actionLoadingId === request.id ? 'Saving...' : 'Reject'}
+          <i className="fi fi-rr-cross"></i>
+          <span>{actionLoadingId === request.id ? 'Saving...' : 'Reject'}</span>
         </button>
       </div>
     );
@@ -326,8 +328,12 @@ export default function AdminScheduleRequests({
                       <td style={styles.tableCell}>
                         {formatRequestType(request.request_type)}
                       </td>
-                      <td style={styles.tableCell}>{formatDate(request.date_from)}</td>
-                      <td style={styles.tableCell}>{formatDate(request.date_to)}</td>
+                      <td style={styles.tableCell}>
+                        {formatDate(request.date_from)}
+                      </td>
+                      <td style={styles.tableCell}>
+                        {formatDate(request.date_to)}
+                      </td>
                       <td style={styles.tableCell}>
                         {request.working_days ?? 'N/A'}
                       </td>

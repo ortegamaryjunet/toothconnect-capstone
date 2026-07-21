@@ -504,15 +504,44 @@ export default function AdminSettings() {
   }
 
   async function saveAnnouncement(data) {
+    const payload = {
+      title: String(data.title || '').trim(),
+      message: String(data.message || '').trim(),
+      start_date: data.start_date || '',
+      end_date: data.end_date || '',
+      status: data.status || 'active',
+    };
+
+    if (!payload.title || !payload.message || !payload.start_date || !payload.end_date) {
+      showWebsiteValidationModal(
+        'Required Fields Missing',
+        'Please complete the announcement title, message, start date, and end date.'
+      );
+      return;
+    }
+
+    if (new Date(payload.end_date) < new Date(payload.start_date)) {
+      showWebsiteValidationModal(
+        'Invalid Date Range',
+        'End date must be the same day or later than the start date.'
+      );
+      return;
+    }
+
     try {
       if (data.id) {
-        const res = await api.put(`/website/announcements/${data.id}`, data);
+        const res = await api.put(`/website/announcements/${data.id}`, payload);
         setWebsiteAnnouncements(res.data.announcements || []);
       } else {
-        const res = await api.post('/website/announcements', data);
+        const res = await api.post('/website/announcements', payload);
         setWebsiteAnnouncements(res.data.announcements || []);
       }
       setWebsiteAnnouncementOverlay(null);
+      showWebsiteValidationModal(
+        'Announcement Saved',
+        'Website announcement has been saved successfully.',
+        'success'
+      );
     } catch (err) {
       showWebsiteValidationModal('Save Failed', err.response?.data?.message || 'Failed to save announcement.');
     }
@@ -1155,7 +1184,7 @@ export default function AdminSettings() {
   const kitSaveDisabled = serviceKitRowInputsDisabled || (Array.isArray(serviceKitItemErrors) && serviceKitItemErrors.some((e) => e?.default_quantity || e?.item_name || e?.category));
   const serviceKitGridStyles = {
     display: 'grid',
-    gridTemplateColumns: '140px minmax(0, 1fr) 90px 100px 100px',
+    gridTemplateColumns: isMobile ? '1fr' : '140px minmax(0, 1fr) 90px 100px 100px',
     gap: 10,
     alignItems: 'center',
   };
@@ -1275,7 +1304,7 @@ export default function AdminSettings() {
       return { ...styles.statusBadge, ...styles.statusClosed };
     }
 
-    if (['cancelled', 'canceled'].includes(statusKey)) {
+    if (['cancelled', 'cancelled'].includes(statusKey)) {
       return { ...styles.statusBadge, ...styles.statusCancelled };
     }
 
@@ -1360,9 +1389,7 @@ export default function AdminSettings() {
                   const optionLabel = typeof option === 'string' ? option : option.label;
 
                   return (
-                    <option key={optionValue} value={optionValue}>
-                      {optionLabel}
-                    </option>
+                    <option key={optionValue} value={optionValue}>{optionLabel}</option>
                   );
                 })}
               </select>
@@ -1704,61 +1731,99 @@ export default function AdminSettings() {
       if (websiteContentSection === 'announcements') {
         return (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <div style={styles.websiteAnnouncementHeader}>
+              <div>
+                <h3 style={styles.websiteAnnouncementTitle}>Website Announcements</h3>
+                <p style={styles.websiteAnnouncementSubtitle}>
+                  Add announcements that will appear only within the selected date range.
+                </p>
+              </div>
+
               <button
                 type="button"
                 style={styles.primaryBtn}
-                onClick={() => setWebsiteAnnouncementOverlay({ title: '', message: '', start_date: '', end_date: '', status: 'active' })}
+                onClick={() =>
+                  setWebsiteAnnouncementOverlay({
+                    title: '',
+                    message: '',
+                    start_date: '',
+                    end_date: '',
+                    status: 'active',
+                  })
+                }
               >
                 <i className="fi fi-rr-plus"></i> <span>Add Announcement</span>
               </button>
             </div>
-            <div style={styles.tableWrapper}>
-              <table style={{ ...styles.branchTable, minWidth: 680 }}>
-                <thead>
-                  <tr>
-                    <th style={styles.tableHead}>Title</th>
-                    <th style={styles.tableHead}>Message</th>
-                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 100 }}>Start</th>
-                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 100 }}>End</th>
-                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Status</th>
-                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {websiteAnnouncements.length === 0 ? (
-                    <tr><td colSpan={6} style={styles.emptyRow}>No announcements found.</td></tr>
-                  ) : websiteAnnouncements.map((ann) => (
-                    <tr key={ann.id} style={styles.tableRow}>
-                      <td style={{ ...styles.tableCell, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {ann.title?.length > 50 ? ann.title.slice(0, 50) + '…' : ann.title}
-                      </td>
-                      <td style={{ ...styles.tableCell, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {ann.message?.length > 80 ? ann.message.slice(0, 80) + '…' : ann.message}
-                      </td>
-                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{ann.start_date ? String(ann.start_date).slice(0, 10) : '—'}</td>
-                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>{ann.end_date ? String(ann.end_date).slice(0, 10) : '—'}</td>
-                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
-                        <span style={getStatusStyle(ann.status === 'active' ? 'Active' : 'Inactive')}>
-                          {ann.status === 'active' ? 'Active' : 'Hidden'}
-                        </span>
-                      </td>
-                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
-                        <button type="button" style={styles.editBtn} onClick={() => setWebsiteAnnouncementOverlay({ ...ann })}>
-                          <i className="fi fi-rr-file-edit"></i>
-                        </button>
-                        <button type="button" style={{ ...styles.editBtn, color: '#dc2626', marginLeft: 6 }} onClick={() => deleteAnnouncement(ann.id)}>
-                          <i className="fi fi-rr-trash"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+            <div style={styles.websiteAnnouncementGrid}>
+              {websiteAnnouncements.length === 0 ? (
+                <div style={styles.websiteAnnouncementEmpty}>
+                  <i className="fi fi-rr-megaphone" style={styles.websiteAnnouncementEmptyIcon}></i>
+                  <span>No announcements found.</span>
+                </div>
+              ) : (
+                websiteAnnouncements.map((ann) => (
+                  <div key={ann.id} style={styles.websiteAnnouncementCard}>
+                    <div style={styles.websiteAnnouncementCardHeader}>
+                      <div style={styles.websiteAnnouncementIconBox}>
+                        <i className="fi fi-rr-megaphone"></i>
+                      </div>
+
+                      <span style={getStatusStyle(ann.status === 'active' ? 'Active' : 'Inactive')}>
+                        {ann.status === 'active' ? 'Active' : 'Hidden'}
+                      </span>
+                    </div>
+
+                    <h4 style={styles.websiteAnnouncementCardTitle}>
+                      {ann.title || 'Untitled Announcement'}
+                    </h4>
+
+                    <p style={styles.websiteAnnouncementCardMessage}>
+                      {ann.message || 'No announcement message provided.'}
+                    </p>
+
+                    <div style={styles.websiteAnnouncementDateRow}>
+                      <div style={styles.websiteAnnouncementDateBox}>
+                        <span style={styles.websiteAnnouncementDateLabel}>Start Date</span>
+                        <strong style={styles.websiteAnnouncementDateValue}>
+                          {ann.start_date ? String(ann.start_date).slice(0, 10) : '—'}
+                        </strong>
+                      </div>
+
+                      <div style={styles.websiteAnnouncementDateBox}>
+                        <span style={styles.websiteAnnouncementDateLabel}>End Date</span>
+                        <strong style={styles.websiteAnnouncementDateValue}>
+                          {ann.end_date ? String(ann.end_date).slice(0, 10) : '—'}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div style={styles.websiteAnnouncementActions}>
+                      <button
+                        type="button"
+                        style={styles.websiteAnnouncementEditBtn}
+                        onClick={() => setWebsiteAnnouncementOverlay({ ...ann })}
+                      >
+                        <i className="fi fi-rr-file-edit"></i> Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        style={styles.websiteAnnouncementDeleteBtn}
+                        onClick={() => deleteAnnouncement(ann.id)}
+                      >
+                        <i className="fi fi-rr-trash"></i> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         );
       }
+
       return null;
     }
 
@@ -1770,6 +1835,7 @@ export default function AdminSettings() {
       { key: 'appearance', label: 'Logo, Fonts & Alignment' },
       { key: 'faqs', label: 'FAQs' },
       { key: 'services', label: 'Services' },
+      { key: 'announcements', label: 'Announcements' },
     ];
 
     return (
@@ -1863,7 +1929,34 @@ export default function AdminSettings() {
             ]}
           />
         )}
-</>
+
+
+        {websiteAnnouncementOverlay && (
+          <WebsiteItemOverlay
+            styles={styles}
+            title={websiteAnnouncementOverlay.id ? 'Edit Announcement' : 'New Announcement'}
+            onClose={() => setWebsiteAnnouncementOverlay(null)}
+            onSave={(data) => saveAnnouncement(data)}
+            onValidationError={(message) => showWebsiteValidationModal('Required Fields Missing', message)}
+            data={websiteAnnouncementOverlay}
+            fields={[
+              { key: 'title', label: 'Announcement Title', required: true },
+              { key: 'message', label: 'Announcement Message', type: 'textarea', required: true },
+              { key: 'start_date', label: 'Start Date', type: 'date', required: true },
+              { key: 'end_date', label: 'End Date', type: 'date', required: true },
+              {
+                key: 'status',
+                label: 'Status',
+                type: 'select',
+                options: [
+                  { value: 'active', label: 'Active' },
+                  { value: 'hidden', label: 'Hidden' },
+                ],
+              },
+            ]}
+          />
+        )}
+      </>
     );
   }
 

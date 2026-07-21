@@ -413,7 +413,11 @@ export default function createDentistScheduleStyles({
 
     requestItem: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : isTablet || isSmallScreen ? '82px minmax(0, 1fr)' : '84px minmax(0, 1fr) 176px',
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : isTablet || isSmallScreen
+          ? '82px minmax(0, 1fr)'
+          : '84px minmax(0, 1fr) 176px',
       gap: 14,
       alignItems: 'center',
       padding: 14,
@@ -451,6 +455,11 @@ export default function createDentistScheduleStyles({
       color: '#475569',
     },
 
+    rejectedBadge: {
+      backgroundColor: '#fee2e2',
+      color: '#b91c1c',
+    },
+
     requestInfo: {
       minWidth: 0,
     },
@@ -474,7 +483,8 @@ export default function createDentistScheduleStyles({
     requestDate: {
       textAlign: isMobile || isTablet || isSmallScreen ? 'left' : 'right',
       display: 'block',
-      gridColumn: isMobile ? 'auto' : isTablet || isSmallScreen ? '1 / -1' : 'auto',
+      gridColumn:
+        isMobile ? 'auto' : isTablet || isSmallScreen ? '1 / -1' : 'auto',
     },
 
     requestDateText: {
@@ -486,7 +496,8 @@ export default function createDentistScheduleStyles({
 
     requestButtonGroup: {
       display: 'flex',
-      justifyContent: isMobile || isTablet || isSmallScreen ? 'flex-start' : 'flex-end',
+      justifyContent:
+        isMobile || isTablet || isSmallScreen ? 'flex-start' : 'flex-end',
       gap: 8,
       flexWrap: 'wrap',
     },
@@ -513,6 +524,15 @@ export default function createDentistScheduleStyles({
       padding: '8px 10px',
       cursor: 'pointer',
       whiteSpace: 'nowrap',
+      transition: '0.2s ease',
+    },
+
+    requestCancelButtonDisabled: {
+      border: '1px solid #e5e7eb',
+      backgroundColor: '#f1f5f9',
+      color: '#94a3b8',
+      cursor: 'not-allowed',
+      opacity: 0.75,
     },
 
     requestCount: {
@@ -676,6 +696,7 @@ export default function createDentistScheduleStyles({
     },
 
     submitLeaveButton: {
+      flex: 1,
       height: 42,
       border: 'none',
       borderRadius: 10,
@@ -869,6 +890,12 @@ export default function createDentistScheduleStyles({
       width: isMobile ? '100%' : 'auto',
     },
 
+    detailsCancelButtonDisabled: {
+      backgroundColor: '#cbd5e1',
+      color: '#64748b',
+      cursor: 'not-allowed',
+    },
+
     validationModalOverlay: {
       position: 'fixed',
       inset: 0,
@@ -921,8 +948,7 @@ export default function createDentistScheduleStyles({
     },
 
     validationModalButton: {
-      flex: 1,
-      width: isMobile ? '100%' : 'auto',
+      minWidth: 120,
       height: 38,
       border: 'none',
       borderRadius: 8,
@@ -932,11 +958,11 @@ export default function createDentistScheduleStyles({
       fontSize: 14,
       fontWeight: 700,
       cursor: 'pointer',
+      padding: '0 24px',
     },
 
     validationModalCancelButton: {
-      flex: 1,
-      width: isMobile ? '100%' : 'auto',
+      minWidth: 120,
       height: 38,
       border: 'none',
       borderRadius: 8,
@@ -946,6 +972,7 @@ export default function createDentistScheduleStyles({
       fontSize: 14,
       fontWeight: 700,
       cursor: 'pointer',
+      padding: '0 24px',
     },
   };
 }

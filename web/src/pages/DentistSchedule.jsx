@@ -97,6 +97,8 @@ export default function DentistSchedule() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
+  const [showLeaveCancelConfirmModal, setShowLeaveCancelConfirmModal] =
+    useState(false);
 
   const [validationTitle, setValidationTitle] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
@@ -151,6 +153,12 @@ export default function DentistSchedule() {
   const leaveDays = useMemo(() => {
     return getLeaveDays(leaveForm.dateFrom, leaveForm.dateTo);
   }, [leaveForm.dateFrom, leaveForm.dateTo]);
+
+  const hasLeaveFormChanges = useMemo(() => {
+    return Boolean(
+      leaveForm.dateFrom || leaveForm.dateTo || leaveForm.reason.trim()
+    );
+  }, [leaveForm.dateFrom, leaveForm.dateTo, leaveForm.reason]);
 
   const pendingLeaveRequest = useMemo(() => {
     return requestHistory.find((request) => {
@@ -224,7 +232,8 @@ export default function DentistSchedule() {
       showLeaveModal ||
       selectedRequest ||
       showValidationModal ||
-      showCancelConfirmModal;
+      showCancelConfirmModal ||
+      showLeaveCancelConfirmModal;
 
     document.body.style.overflow = hasOpenModal ? 'hidden' : '';
 
@@ -237,16 +246,21 @@ export default function DentistSchedule() {
     selectedRequest,
     showValidationModal,
     showCancelConfirmModal,
+    showLeaveCancelConfirmModal,
   ]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
-        closeLeaveModal();
         closeValidationModal();
         closeCancelConfirmModal();
+        closeLeaveCancelConfirmModal();
         setSelectedRequest(null);
+
+        if (showLeaveModal) {
+          requestCloseLeaveModal();
+        }
       }
     }
 
@@ -255,7 +269,7 @@ export default function DentistSchedule() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, []);
+  }, [showLeaveModal, hasLeaveFormChanges, submitLoading]);
 
   function loadRequests() {
     setRequestLoading(true);
@@ -291,9 +305,38 @@ export default function DentistSchedule() {
     window.location.href = '/login';
   }
 
+  function resetLeaveForm() {
+    setLeaveForm({
+      dateFrom: '',
+      dateTo: '',
+      reason: '',
+    });
+  }
+
   function closeLeaveModal() {
     setShowLeaveModal(false);
     setSubmitError('');
+  }
+
+  function requestCloseLeaveModal() {
+    if (submitLoading) return;
+
+    if (hasLeaveFormChanges) {
+      setShowLeaveCancelConfirmModal(true);
+      return;
+    }
+
+    closeLeaveModal();
+  }
+
+  function confirmCloseLeaveModal() {
+    setShowLeaveCancelConfirmModal(false);
+    closeLeaveModal();
+    resetLeaveForm();
+  }
+
+  function closeLeaveCancelConfirmModal() {
+    setShowLeaveCancelConfirmModal(false);
   }
 
   function closeCancelConfirmModal() {
@@ -309,7 +352,7 @@ export default function DentistSchedule() {
 
   function handleLeaveOverlayClick(event) {
     if (event.target === event.currentTarget) {
-      closeLeaveModal();
+      requestCloseLeaveModal();
     }
   }
 
@@ -328,6 +371,12 @@ export default function DentistSchedule() {
   function handleCancelConfirmOverlayClick(event) {
     if (event.target === event.currentTarget) {
       closeCancelConfirmModal();
+    }
+  }
+
+  function handleLeaveCancelConfirmOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeLeaveCancelConfirmModal();
     }
   }
 
@@ -422,7 +471,7 @@ export default function DentistSchedule() {
       })
       .then(() => {
         setShowLeaveModal(false);
-        setLeaveForm({ dateFrom: '', dateTo: '', reason: '' });
+        resetLeaveForm();
         loadRequests();
         openValidationModal(
           'Leave Request Submitted',
@@ -693,7 +742,9 @@ export default function DentistSchedule() {
 
                     const isPending = status === 'pending';
                     const isApproved = status === 'approved';
+                    const isRejected = status === 'rejected';
                     const isCancelled = status === 'cancelled';
+                    const cancelDisabled = isApproved || isRejected || isCancelled;
                     const submittedDate = formatSubmittedDate(
                       request.submitted_at
                     );
@@ -707,12 +758,17 @@ export default function DentistSchedule() {
                               ? styles.pendingBadge
                               : isApproved
                                 ? styles.approvedBadge
-                                : isCancelled
-                                  ? styles.cancelledBadge
-                                  : {
+                                : isRejected
+                                  ? styles.rejectedBadge || {
                                       backgroundColor: '#fee2e2',
                                       color: '#b91c1c',
-                                    }),
+                                    }
+                                  : isCancelled
+                                    ? styles.cancelledBadge
+                                    : {
+                                        backgroundColor: '#fee2e2',
+                                        color: '#b91c1c',
+                                      }),
                           }}
                         >
                           {statusLabel}
@@ -737,11 +793,27 @@ export default function DentistSchedule() {
                               View Details
                             </button>
 
-                            {isLeave && isPending && (
+                            {isLeave && (
                               <button
                                 type="button"
-                                style={styles.requestCancelButton}
-                                onClick={() => openCancelRequestModal(request)}
+                                style={{
+                                  ...styles.requestCancelButton,
+                                  ...(cancelDisabled
+                                    ? styles.requestCancelButtonDisabled || {
+                                        border: '1px solid #e5e7eb',
+                                        backgroundColor: '#f1f5f9',
+                                        color: '#94a3b8',
+                                        cursor: 'not-allowed',
+                                        opacity: 0.75,
+                                      }
+                                    : {}),
+                                }}
+                                onClick={() => {
+                                  if (!cancelDisabled && isPending) {
+                                    openCancelRequestModal(request);
+                                  }
+                                }}
+                                disabled={cancelDisabled || !isPending}
                               >
                                 Cancel
                               </button>
@@ -775,8 +847,9 @@ export default function DentistSchedule() {
 
               <button
                 type="button"
-                onClick={closeLeaveModal}
+                onClick={requestCloseLeaveModal}
                 style={styles.detailsCloseButton}
+                disabled={submitLoading}
               >
                 &times;
               </button>
@@ -838,11 +911,11 @@ export default function DentistSchedule() {
               <p style={styles.submitErrorText}>{submitError}</p>
             ) : null}
 
-            <div style={{ ...styles.modalActions, justifyContent: 'flex-end' }}>
+            <div style={styles.modalActions}>
               <button
                 type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
-                onClick={closeLeaveModal}
+                onClick={requestCloseLeaveModal}
                 disabled={submitLoading}
               >
                 Cancel
@@ -974,26 +1047,40 @@ export default function DentistSchedule() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            <div style={{ ...styles.modalActions, justifyContent: 'flex-end' }}>
-              {selectedRequest.request_type === 'leave' &&
-                String(selectedRequest.status || '').toLowerCase() ===
-                  'pending' && (
-                  <button
-                    type="button"
-                    style={styles.detailsCancelButton}
-                    onClick={() => openCancelRequestModal(selectedRequest)}
-                  >
-                    Cancel Leave
-                  </button>
-                )}
+      {showLeaveCancelConfirmModal && (
+        <div
+          style={styles.validationModalOverlay}
+          onClick={handleLeaveCancelConfirmOverlayClick}
+        >
+          <div style={styles.validationModalContent}>
+            <h2 style={styles.validationModalTitle}>Cancel Leave Request Form</h2>
+
+            <div style={styles.validationModalDivider}></div>
+
+            <p style={styles.validationModalText}>
+              You have entered leave request details. Are you sure you want to
+              cancel this form?
+            </p>
+
+            <div style={styles.validationModalActions}>
+              <button
+                type="button"
+                style={styles.validationModalCancelButton}
+                onClick={closeLeaveCancelConfirmModal}
+              >
+                No
+              </button>
 
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.cancelBtn }}
-                onClick={() => setSelectedRequest(null)}
+                style={styles.validationModalButton}
+                onClick={confirmCloseLeaveModal}
               >
-                Close
+                Yes, Cancel
               </button>
             </div>
           </div>
@@ -1001,7 +1088,10 @@ export default function DentistSchedule() {
       )}
 
       {showCancelConfirmModal && (
-        <div style={styles.validationModalOverlay} onClick={handleCancelConfirmOverlayClick}>
+        <div
+          style={styles.validationModalOverlay}
+          onClick={handleCancelConfirmOverlayClick}
+        >
           <div style={styles.validationModalContent}>
             <h2 style={styles.validationModalTitle}>Cancel Leave Request</h2>
 
@@ -1027,7 +1117,7 @@ export default function DentistSchedule() {
                 onClick={handleCancelRequest}
                 disabled={cancelLoading}
               >
-                {cancelLoading ? 'Cancelling...' : 'Yes, Cancel'}
+                {cancelLoading ? 'Cancelling...' : 'Yes'}
               </button>
             </div>
           </div>
@@ -1035,7 +1125,10 @@ export default function DentistSchedule() {
       )}
 
       {showValidationModal && (
-        <div style={styles.validationModalOverlay} onClick={handleValidationOverlayClick}>
+        <div
+          style={styles.validationModalOverlay}
+          onClick={handleValidationOverlayClick}
+        >
           <div style={styles.validationModalContent}>
             <h2 style={styles.validationModalTitle}>{validationTitle}</h2>
 
@@ -1061,9 +1154,7 @@ export default function DentistSchedule() {
 
             <div style={styles.modalDivider}></div>
 
-            <p style={styles.modalText}>
-              Are you sure you want to log out?
-            </p>
+            <p style={styles.modalText}>Are you sure you want to log out?</p>
 
             <div style={styles.modalActions}>
               <button

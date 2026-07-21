@@ -286,7 +286,7 @@
       background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       borderColor: 'transparent',
-      boxShadow: '0 10px 24px rgba(37, 99, 235, 0.22)',
+      boxShadow: '0 10px 24px rgba(139, 101, 8, 0.24)',
     },
 
     settingsTabIcon: {
@@ -321,7 +321,7 @@
     },
 
     searchIcon: {
-      color: '#2563eb',
+      color: '#8b6508',
       fontSize: 15,
     },
 
@@ -365,7 +365,7 @@
       outline: 'none',
       borderRadius: 14,
       padding: '0 18px',
-      background: '#2563eb',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       fontSize: 14,
       fontWeight: 700,
@@ -377,6 +377,49 @@
       fontFamily: 'Arial, sans-serif',
       width: isSmallScreen ? '100%' : 'auto',
       boxSizing: 'border-box',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+    },
+
+    leaveRequestActionGroup: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      flexWrap: 'wrap',
+    },
+
+    approveBtn: {
+      minWidth: 98,
+      height: 34,
+      border: 'none',
+      borderRadius: 999,
+      background: '#ecfdf5',
+      color: '#047857',
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    rejectBtn: {
+      minWidth: 98,
+      height: 34,
+      border: 'none',
+      borderRadius: 999,
+      background: '#fff1f2',
+      color: '#be123c',
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      fontFamily: 'Arial, sans-serif',
     },
 
     websiteFieldRow: {
@@ -386,7 +429,7 @@
     websiteFieldLabel: {
       display: 'block',
       fontSize: 13,
-      color: '#1e3a8a',
+      color: '#8b6508',
       fontWeight: 700,
       marginBottom: 6,
       fontFamily: 'Arial, sans-serif',
@@ -505,6 +548,188 @@
       minWidth: 0,
     },
 
+    announcementHeader: {
+      display: 'flex',
+      alignItems: isMobile ? 'stretch' : 'center',
+      justifyContent: 'space-between',
+      gap: 14,
+      flexDirection: isMobile ? 'column' : 'row',
+      marginBottom: 18,
+    },
+
+    announcementTitleBlock: {
+      minWidth: 0,
+    },
+
+    announcementTitle: {
+      margin: 0,
+      color: '#0f172a',
+      fontSize: isMobile ? 18 : 21,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    announcementSubtitle: {
+      margin: '6px 0 0',
+      color: '#64748b',
+      fontSize: 13,
+      lineHeight: 1.5,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    announcementGrid: {
+      display: 'grid',
+      gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+      gap: 16,
+      marginTop: 14,
+    },
+
+    announcementCard: {
+      position: 'relative',
+      border: '1px solid #eadfbd',
+      borderRadius: 18,
+      padding: isMobile ? 16 : 18,
+      background: 'linear-gradient(180deg, #ffffff 0%, #fffaf0 100%)',
+      boxShadow: '0 10px 24px rgba(139, 101, 8, 0.08)',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+    },
+
+    announcementCard: {
+      position: 'relative',
+      border: '1px solid #f1e4bf',
+      borderRadius: 22,
+      padding: 22,
+      background: '#ffffff',
+      boxShadow: '0 12px 30px rgba(139,101,8,0.08)',
+      overflow: 'hidden',
+    },
+
+    announcementCardTop: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: 16,
+      marginBottom: 14,
+    },
+
+    announcementCardTitle: {
+      margin: 0,
+      color: '#0f172a',
+      fontSize: 18,
+      fontWeight: 800,
+      lineHeight: 1.4,
+    },
+
+    announcementCardText: {
+      margin: '0 0 18px',
+      color: '#475569',
+      fontSize: 14,
+      lineHeight: 1.8,
+      whiteSpace: 'pre-wrap',
+    },
+
+    announcementMetaGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+      gap: 12,
+      marginTop: 16,
+    },
+
+    announcementMetaItem: {
+      padding: '12px 14px',
+      borderRadius: 14,
+      background: '#fffaf0',
+      border: '1px solid #f3e5ab',
+    },
+
+    announcementActions: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+    },
+
+    announcementIconBtn: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      border: 'none',
+      background: '#fff7e6',
+      color: '#8b6508',
+      cursor: 'pointer',
+    },
+
+    announcementDeleteBtn: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      border: 'none',
+      background: '#fee2e2',
+      color: '#dc2626',
+      cursor: 'pointer',
+    },
+
+    announcementDateGrid: {
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+      gap: 14,
+      gridColumn: isMobile ? 'auto' : '1 / -1',
+    },
+
+    announcementBadge: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '7px 12px',
+      borderRadius: 999,
+      fontSize: 12,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+      whiteSpace: 'nowrap',
+    },
+
+    announcementActiveBadge: {
+      background: '#dcfce7',
+      color: '#15803d',
+    },
+
+    announcementScheduledBadge: {
+      background: '#dbeafe',
+      color: '#2563eb',
+    },
+
+    announcementExpiredBadge: {
+      background: '#fee2e2',
+      color: '#dc2626',
+    },
+
+    announcementDraftBadge: {
+      background: '#f1f5f9',
+      color: '#64748b',
+    },
+
+    announcementEmptyBox: {
+      width: '100%',
+      marginTop: 14,
+      padding: isMobile ? 20 : 26,
+      borderRadius: 18,
+      border: '1px dashed #d4af37',
+      background: '#fffaf0',
+      color: '#64748b',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      boxSizing: 'border-box',
+    },
+
+    announcementEmptyIcon: {
+      fontSize: 18,
+      color: '#b8860b',
+    },
+
     tableCard: {
       background: '#ffffff',
       border: '1px solid #e5e7eb',
@@ -593,7 +818,7 @@
       marginBottom: 7,
       fontSize: 12,
       fontWeight: 700,
-      color: '#2563eb',
+      color: '#8b6508',
       fontFamily: 'Arial, sans-serif',
     },
 
@@ -662,6 +887,11 @@
       color: '#15803d',
     },
 
+    statusPending: {
+      background: '#fef3c7',
+      color: '#b45309',
+    },
+
     statusInactive: {
       background: '#f1f5f9',
       color: '#64748b',
@@ -689,9 +919,9 @@
       border: 'none',
       outline: 'none',
       background: '#ffffff',
-      color: '#2563eb',
+      color: '#8b6508',
       cursor: 'pointer',
-      boxShadow: 'inset 0 0 0 1px #bfdbfe',
+      boxShadow: 'inset 0 0 0 1px #eadfbd',
     },
 
     emptyRow: {
@@ -717,8 +947,8 @@
       borderRadius: 12,
       border: 'none',
       outline: 'none',
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#fffaf0',
+      color: '#8b6508',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -763,7 +993,7 @@
 
     overlayHeader: {
       padding: isMobile ? '20px 22px' : '24px 28px',
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       display: 'flex',
       alignItems: 'center',
@@ -820,7 +1050,7 @@
     fieldLabel: {
       fontSize: 13,
       fontWeight: 700,
-      color: '#1e3a8a',
+      color: '#8b6508',
       fontFamily: 'Arial, sans-serif',
     },
 
@@ -894,13 +1124,13 @@
       border: 'none',
       outline: 'none',
       borderRadius: 15,
-      background: 'linear-gradient(135deg, #16a34a, #22c55e)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       cursor: 'pointer',
       fontSize: 14,
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
-      boxShadow: '0 10px 20px rgba(22, 163, 74, 0.18)',
+      boxShadow: '0 10px 20px rgba(139, 101, 8, 0.18)',
       width: isMobile ? '100%' : 'auto',
     },
 

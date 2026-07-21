@@ -1,7 +1,7 @@
 const createLoginStyles = ({ isMobile = false } = {}) => {
   return {
     page: {
-      minHeight: '100vh',
+      minHeight: '100dvh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -104,8 +104,8 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
     },
 
     note: {
-      marginTop: '16px',
-      paddingTop: '16px',
+      marginTop: '20px',
+      paddingTop: '20px',
       borderTop: '1px solid rgba(234, 216, 167, 0.75)',
       textAlign: 'center',
       color: '#8b806d',
