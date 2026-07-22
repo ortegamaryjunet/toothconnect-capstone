@@ -284,7 +284,7 @@
     },
 
     searchIcon: {
-      color: '#2563eb',
+      color: '#b8860b',
       fontSize: 15,
     },
 
@@ -476,19 +476,21 @@
       justifyContent: isMobile ? 'center' : 'flex-end',
       gap: 12,
       marginTop: 18,
+      flexWrap: 'wrap',
     },
 
     pageBtn: {
-      width: 35,
-      height: 35,
+      width: isMobile ? 33 : 35,
+      height: isMobile ? 33 : 35,
       border: '1px solid #dbeafe',
       borderRadius: 11,
       background: '#eff6ff',
-      color: '#2563eb',
+      color: '#b8860b',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
+      flexShrink: 0,
     },
 
     pageBtnDisabled: {
@@ -512,18 +514,18 @@
       background: 'rgba(15, 23, 42, 0.45)',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: isMobile ? 18 : 20,
+      padding: 16,
       boxSizing: 'border-box',
     },
 
     modalContent: {
-      width: isMobile ? '100%' : 380,
-      maxWidth: 380,
+      width: isMobile ? '100%' : 390,
+      maxWidth: 390,
       background: '#ffffff',
-      borderRadius: 22,
-      padding: 30,
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.2)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
     },
 
@@ -562,19 +564,19 @@
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
       flexDirection: isMobile ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
-      border: 'none',
+      minWidth: 120,
+      height: 44,
       borderRadius: 12,
-      padding: 12,
+      border: 'none',
       cursor: 'pointer',
-      fontFamily: 'Arial, sans-serif',
-      fontWeight: 700,
-      fontSize: 15,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
     },
 
     logoutBtn: {
@@ -585,7 +587,7 @@
 
     cancelBtn: {
       background: '#f1f5f9',
-      color: 'black',
+      color: '#334155',
       fontWeight: 'bold',
     },
 

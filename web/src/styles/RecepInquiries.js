@@ -415,7 +415,7 @@ const createRecepInquiriesStyles = ({
     },
 
     searchIcon: {
-      color: '#2563eb',
+      color: '#d4af37',
       fontSize: 16,
     },
 
@@ -597,8 +597,8 @@ const createRecepInquiriesStyles = ({
     },
 
     modalIcon: {
-      width: 72,
-      height: 72,
+      width: 70,
+      height: 70,
       margin: '0 auto 16px',
       borderRadius: '50%',
       background: '#fee2e2',
@@ -609,16 +609,16 @@ const createRecepInquiriesStyles = ({
     },
 
     modalIconText: {
-      fontSize: 32,
+      fontSize: 30,
       lineHeight: 1,
     },
 
     modalTitle: {
-      fontSize: isVerySmall ? 19 : 21,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
       color: '#0f172a',
-      marginBottom: 8,
+      marginBottom: 10,
       marginTop: 0,
-      fontFamily: 'Arial, sans-serif',
     },
 
     modalText: {
@@ -631,28 +631,31 @@ const createRecepInquiriesStyles = ({
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
+      flexDirection: isVerySmall ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
-      border: 'none',
+      minWidth: 120,
+      height: 44,
       borderRadius: 12,
-      padding: 12,
+      border: 'none',
       cursor: 'pointer',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
-      fontWeight: 600,
-      fontFamily: 'Arial, sans-serif',
     },
 
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
+      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
       color: '#334155',
+      fontWeight: 'bold',
     },
 
     replyBtn: {

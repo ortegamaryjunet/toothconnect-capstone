@@ -893,14 +893,14 @@ export default function DentistProfile() {
                       type="button"
                       onClick={openWorkModal}
                       style={{
-                        fontSize: 13,
-                        padding: '6px 14px',
-                        borderRadius: 10,
-                        border: 'none',
-                        background: '#b8860b',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        fontFamily: 'Arial, sans-serif',
+                        fontSize: "13px",
+                        padding: "10px 18px",
+                        borderRadius: "10px",
+                        border: "none",
+                        backgroundColor: "#2563eb",
+                        color: "#fff",
+                        cursor: "pointer",
+                        fontFamily: "Arial, sans-serif",
                         fontWeight: 600,
                       }}
                     >
@@ -1402,29 +1402,31 @@ export default function DentistProfile() {
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleLogoutOverlayClick}>
           <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i
+                className="fi fi-rr-sign-out-alt"
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
             <h2 style={styles.modalTitle}>Confirm Logout</h2>
-
-            <div style={styles.modalDivider}></div>
-
-            <p style={styles.modalText}>
-              Are you sure you want to log out?
-            </p>
+            <p style={styles.modalText}>Are you sure you want to log out?</p>
 
             <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={{ ...styles.modalButton, ...styles.cancelBtn }}
-                onClick={closeLogoutModal}
-              >
-                Cancel
-              </button>
-
               <button
                 type="button"
                 style={{ ...styles.modalButton, ...styles.logoutBtn }}
                 onClick={handleLogout}
               >
                 Logout
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeLogoutModal}
+              >
+                Cancel
               </button>
             </div>
           </div>

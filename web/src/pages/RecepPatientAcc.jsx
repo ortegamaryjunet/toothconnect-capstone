@@ -650,7 +650,7 @@ export default function RecepPatientAcc() {
                 onClick={exportAccountsToCSV}
               >
                 <i className="fi fi-rr-file-csv"></i>
-                CSV
+                Export CSV
               </button>
             </div>
 

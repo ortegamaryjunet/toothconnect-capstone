@@ -562,9 +562,9 @@
 
     modalTitle: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 21,
+      fontSize: 22,
       color: '#0f172a',
-      marginBottom: 8,
+      marginBottom: 10,
       marginTop: 0,
     },
 
@@ -573,19 +573,21 @@
       color: '#64748b',
       marginBottom: 24,
       marginTop: 0,
+      lineHeight: 1.5,
     },
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
       flexDirection: isVerySmall ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
-      border: 'none',
+      minWidth: 120,
+      height: 44,
       borderRadius: 12,
-      padding: 12,
+      border: 'none',
       cursor: 'pointer',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,

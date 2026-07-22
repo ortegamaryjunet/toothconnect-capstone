@@ -613,13 +613,13 @@
     },
 
     modalContent: {
-      width: isMobile ? '100%' : 380,
-      maxWidth: 380,
+      width: isMobile ? '100%' : 390,
+      maxWidth: 390,
       background: '#ffffff',
-      borderRadius: 22,
-      padding: 30,
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.2)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
     },
 
@@ -634,17 +634,17 @@
       alignItems: 'center',
       justifyContent: 'center',
     },
+    
     modalIconText: {
       fontSize: 30,
       lineHeight: 1,
-
     },
 
     modalTitle: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 21,
+      fontSize: 22,
       color: '#0f172a',
-      marginBottom: 8,
+      marginBottom: 10,
       marginTop: 0,
     },
 
@@ -653,34 +653,36 @@
       color: '#64748b',
       marginBottom: 24,
       marginTop: 0,
+      lineHeight: 1.5,
     },
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
       flexDirection: isMobile ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
-      border: 'none',
+      minWidth: 120,
+      height: 44,
       borderRadius: 12,
-      padding: 12,
+      border: 'none',
       cursor: 'pointer',
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 15,
+      fontSize: 14,
     },
 
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
-      color: 'black',
-      fontWeight: 'bold'
+      color: '#334155',
+      fontWeight: 'bold',
     },
 
     notificationBadge: {

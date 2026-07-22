@@ -251,38 +251,41 @@
     },
 
     viewTabs: {
-      background: '#ffffff',
-      border: '1px solid #edf0f5',
-      borderRadius: 22,
-      padding: 14,
       display: 'flex',
-      flexDirection: isMobile ? 'column' : 'row',
+      alignItems: 'center',
       gap: 10,
+      padding: 6,
+      background: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: 18,
       marginBottom: 18,
-      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+      width: isSmallScreen ? '100%' : 'fit-content',
+      overflowX: 'auto',
       boxSizing: 'border-box',
+      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
     },
 
     viewTabButton: {
       height: 42,
       padding: '0 18px',
-      border: '1px solid #dbeafe',
-      borderRadius: 14,
-      background: '#eff6ff',
-      color: '#2563eb',
+      border: 'none',
+      borderRadius: 12,
+      background: 'transparent',
+      color: '#64748b',
       cursor: 'pointer',
-      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
       fontSize: 14,
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
+      whiteSpace: 'nowrap',
     },
 
     viewTabButtonActive: {
-      background: '#2563eb',
+      background: '#d4af37',
       color: '#ffffff',
-      borderColor: '#2563eb',
+      boxShadow: '0 8px 18px rgba(212, 175, 55, 0.28)',
     },
 
     queueWrapper: {
@@ -355,7 +358,7 @@
       padding: '0 10px',
       borderRadius: 999,
       background: '#eff6ff',
-      color: '#2563eb',
+      color: '#b8860b',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -390,7 +393,7 @@
     },
 
     searchIcon: {
-      color: '#2563eb',
+      color: '#b8860b',
     },
 
     searchInput: {
@@ -539,7 +542,7 @@
     },
 
     infoRowIcon: {
-      color: '#2563eb',
+      color: '#b8860b',
       fontSize: 15,
     },
 
@@ -568,7 +571,7 @@
       borderRadius: 12,
       border: '1px solid #bfdbfe',
       background: '#eff6ff',
-      color: '#2563eb',
+      color: '#b8860b',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       cursor: 'pointer',
     },
@@ -682,22 +685,24 @@
     pagination: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'flex-end',
+      justifyContent: isMobile ? 'center' : 'flex-end',
       gap: 12,
       marginTop: 18,
+      flexWrap: 'wrap',
     },
 
     pageBtn: {
       width: 35,
       height: 35,
-      border: '1px solid #dbeafe',
+      border: '1px solid #f3d46b',
       borderRadius: 11,
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#fff8e1',
+      color: '#b8860b',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
+      flexShrink: 0,
     },
 
     pageBtnDisabled: {
@@ -710,6 +715,7 @@
       textAlign: 'center',
       fontSize: 14,
       color: '#475569',
+      fontFamily: 'Arial, sans-serif',
     },
 
     calendarActions: {
@@ -735,7 +741,7 @@
       border: '1px solid #dbeafe',
       borderRadius: 12,
       background: '#eff6ff',
-      color: '#2563eb',
+      color: '#b8860b',
       cursor: 'pointer',
     },
 
@@ -798,8 +804,8 @@
     },
 
     calendarDayActive: {
-      background: '#2563eb',
-      borderColor: '#2563eb',
+      background: '#b8860b',
+      borderColor: '#b8860b',
       color: '#ffffff',
     },
 
@@ -913,7 +919,7 @@
       padding: '0 14px',
       border: 'none',
       borderRadius: 11,
-      background: '#2563eb',
+      background: '#b8860b',
       color: '#ffffff',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       cursor: 'pointer',
@@ -947,7 +953,7 @@
 
     calendarEmptyIcon: {
       fontSize: 38,
-      color: '#2563eb',
+      color: '#b8860b',
       marginBottom: 12,
     },
 
@@ -981,7 +987,7 @@
 
     scheduleTime: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      color: '#2563eb',
+      color: '#b8860b',
       fontSize: 14,
       marginBottom: 0,
     },
@@ -1232,7 +1238,7 @@
     },
 
     logoutBtn: {
-      background: '#ef4444',
+      background: '#dc2626',
       color: '#ffffff',
       fontWeight: 'bold',
     },
@@ -1242,45 +1248,46 @@
       color: '#334155',
       fontWeight: 'bold',
     },
+    
     profileDropdownWrapper: {
-  position: 'relative',
-  display: 'inline-flex',
-  flexDirection: 'column',
-  alignItems: 'stretch',
-},
+      position: 'relative',
+      display: 'inline-flex',
+      flexDirection: 'column',
+      alignItems: 'stretch',
+    },
 
-profileDropdown: {
-  position: 'absolute',
-  top: 'calc(100% + 8px)',
-  right: 0,
-  width: '100%',
-  minWidth: 170,
-  background: '#ffffff',
-  border: '1px solid #e5e7eb',
-  borderRadius: 14,
-  padding: 8,
-  boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)',
-  zIndex: 300,
-  boxSizing: 'border-box',
-},
+    profileDropdown: {
+      position: 'absolute',
+      top: 'calc(100% + 8px)',
+      right: 0,
+      width: '100%',
+      minWidth: 170,
+      background: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: 14,
+      padding: 8,
+      boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)',
+      zIndex: 300,
+      boxSizing: 'border-box',
+    },
 
-viewProfileButton: {
-  width: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 'none',
-  background: '#eff6ff',
-  color: '#2563eb',
-  borderRadius: 10,
-  padding: '10px 12px',
-  fontSize: 14,
-  fontWeight: 700,
-  fontFamily: 'Arial, sans-serif',
-  textDecoration: 'none',
-  cursor: 'pointer',
-  boxSizing: 'border-box',
-},
+    viewProfileButton: {
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: 'none',
+      background: '#eff6ff',
+      color: '#2563eb',
+      borderRadius: 10,
+      padding: '10px 12px',
+      fontSize: 14,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      textDecoration: 'none',
+      cursor: 'pointer',
+      boxSizing: 'border-box',
+    },
   };
 };
 

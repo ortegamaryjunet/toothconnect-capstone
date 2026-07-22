@@ -631,20 +631,20 @@
     },
 
     modal: {
+      display: 'flex',
       position: 'fixed',
       inset: 0,
       zIndex: 9999,
       background: 'rgba(15, 23, 42, 0.45)',
-      display: 'flex',
-      alignItems: 'center',
       justifyContent: 'center',
-      padding: isMobile ? 18 : 20,
+      alignItems: 'center',
+      padding: 16,
       boxSizing: 'border-box',
     },
 
     modalContent: {
-      width: isMobile ? '100%' : 460,
-      maxWidth: 460,
+      width: isMobile ? '100%' : 390,
+      maxWidth: 390,
       background: '#ffffff',
       borderRadius: 12,
       padding: isMobile ? 24 : 30,
@@ -654,61 +654,65 @@
     },
 
     modalIcon: {
-      display: 'none',
+      width: 70,
+      height: 70,
+      margin: '0 auto 16px',
+      borderRadius: '50%',
+      background: '#fee2e2',
+      color: '#dc2626',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     modalIconText: {
-      display: 'none',
+      fontSize: 30,
+      lineHeight: 1,
     },
 
     modalTitle: {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: isMobile ? 22 : 24,
-      fontWeight: 800,
-      color: '#111827',
-      margin: '0 0 16px',
-    },
-
-    modalDivider: {
-      height: 1,
-      background: '#d1d5db',
-      marginBottom: 22,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
+      color: '#0f172a',
+      marginBottom: 10,
+      marginTop: 0,
     },
 
     modalText: {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: isMobile ? 15 : 17,
+      fontSize: 15,
+      color: '#64748b',
+      marginBottom: 24,
+      marginTop: 0,
       lineHeight: 1.5,
-      color: '#666666',
-      margin: '0 0 28px',
     },
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
       flexDirection: isMobile ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
-      width: isMobile ? '100%' : 'auto',
-      height: 38,
+      minWidth: 120,
+      height: 44,
+      borderRadius: 12,
       border: 'none',
-      borderRadius: 8,
-      fontFamily: 'Arial, sans-serif',
-      fontSize: 14,
-      fontWeight: 700,
       cursor: 'pointer',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
     },
 
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
+      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
       color: '#334155',
+      fontWeight: 'bold',
     },
 
     dateFilter: {

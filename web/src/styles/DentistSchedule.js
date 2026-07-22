@@ -310,6 +310,7 @@ export default function createDentistScheduleStyles({
       fontSize: 13,
       color: '#64748b',
       fontWeight: 600,
+      padding: "4px 0",
     },
 
     infoValue: {
@@ -560,7 +561,7 @@ export default function createDentistScheduleStyles({
       backgroundColor: '#ffffff',
       borderRadius: 18,
       border: '1px solid #e2e8f0',
-      padding: isMobile ? '14px' : '10px 14px',
+      padding: isMobile ? '14px' : '16px 14px',
       boxShadow: '0 6px 18px rgba(15,23,42,0.04)',
       display: 'flex',
       flexDirection: isMobile ? 'column' : 'row',
@@ -601,34 +602,35 @@ export default function createDentistScheduleStyles({
 
     primaryButton: {
       height: 36,
-      border: 'none',
+      border: "none",
       borderRadius: 8,
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
-      color: '#ffffff',
+      backgroundColor: "#d4af37",
+      color: "#ffffff",
+      fontFamily: 'Arial, sans-serif',
       fontSize: 11,
       fontWeight: 800,
-      padding: '0 22px',
-      cursor: 'pointer',
-      alignSelf: isMobile ? 'stretch' : 'center',
-      minWidth: isMobile ? '100%' : 148,
-      whiteSpace: 'nowrap',
+      padding: "10px 22px",
+      cursor: "pointer",
+      alignSelf: isMobile ? "stretch" : "center",
+      minWidth: isMobile ? "100%" : 148,
+      whiteSpace: "nowrap",
     },
 
     modal: {
+      display: 'flex',
       position: 'fixed',
       inset: 0,
-      backgroundColor: 'rgba(15, 23, 42, 0.45)',
-      display: 'flex',
-      alignItems: 'center',
+      zIndex: 9999,
+      background: 'rgba(15, 23, 42, 0.45)',
       justifyContent: 'center',
-      zIndex: 1000,
-      padding: isMobile ? 16 : 20,
+      alignItems: 'center',
+      padding: 16,
       boxSizing: 'border-box',
     },
 
     modalContent: {
-      width: isMobile ? '100%' : 460,
-      maxWidth: 460,
+      width: isMobile ? '100%' : 390,
+      maxWidth: 390,
       background: '#ffffff',
       borderRadius: 12,
       padding: isMobile ? 24 : 30,
@@ -638,61 +640,65 @@ export default function createDentistScheduleStyles({
     },
 
     modalIcon: {
-      display: 'none',
+      width: 70,
+      height: 70,
+      margin: '0 auto 16px',
+      borderRadius: '50%',
+      background: '#fee2e2',
+      color: '#dc2626',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     modalIconText: {
-      display: 'none',
+      fontSize: 30,
+      lineHeight: 1,
     },
 
     modalTitle: {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: isMobile ? 22 : 24,
-      fontWeight: 800,
-      color: '#111827',
-      margin: '0 0 16px',
-    },
-
-    modalDivider: {
-      height: 1,
-      background: '#d1d5db',
-      marginBottom: 22,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
+      color: '#0f172a',
+      marginBottom: 10,
+      marginTop: 0,
     },
 
     modalText: {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: isMobile ? 15 : 17,
+      fontSize: 15,
+      color: '#64748b',
+      marginBottom: 24,
+      marginTop: 0,
       lineHeight: 1.5,
-      color: '#666666',
-      margin: '0 0 28px',
     },
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
       flexDirection: isMobile ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
-      width: isMobile ? '100%' : 'auto',
-      height: 38,
+      minWidth: 120,
+      height: 44,
+      borderRadius: 12,
       border: 'none',
-      borderRadius: 8,
-      fontFamily: 'Arial, sans-serif',
-      fontSize: 14,
-      fontWeight: 700,
       cursor: 'pointer',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
     },
 
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
+      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
       color: '#334155',
+      fontWeight: 'bold',
     },
 
     submitLeaveButton: {

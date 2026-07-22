@@ -2445,7 +2445,7 @@ export default function AdminSettings() {
         <main style={styles.mainContent}>
           <section style={styles.heroSection}>
             <div style={styles.heroContent}>
-              <span style={styles.heroBadge}>Admin Settings</span>
+              <span style={styles.heroBadge}>Settings</span>
 
               <h2 style={styles.heroTitle}>
                 Control clinic branches, services, pricing, and website
@@ -3298,7 +3298,6 @@ export default function AdminSettings() {
             </div>
 
             <h2 style={styles.modalTitle}>Confirm Logout</h2>
-
             <p style={styles.modalText}>Are you sure you want to log out?</p>
 
             <div style={styles.modalActions}>

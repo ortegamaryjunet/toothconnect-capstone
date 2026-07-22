@@ -313,7 +313,7 @@
     },
 
     searchIcon: {
-      color: '#2563eb',
+      color: '#b8860b',
     },
 
     searchInput: {
@@ -488,7 +488,7 @@
 
     editBtn: {
       background: '#eff6ff',
-      color: '#2563eb',
+      color: '#b8860b',
       border: '1px solid #bfdbfe',
     },
 
@@ -505,19 +505,21 @@
       justifyContent: isMobile ? 'center' : 'flex-end',
       gap: 12,
       marginTop: 18,
+      flexWrap: 'wrap',
     },
 
     pageBtn: {
       width: 35,
       height: 35,
-      border: '1px solid #dbeafe',
+      border: '1px solid #f3d46b',
       borderRadius: 11,
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#fff8e1',
+      color: '#b8860b',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
+      flexShrink: 0,
     },
 
     pageBtnDisabled: {
@@ -686,7 +688,7 @@
       border: 'none',
       cursor: 'pointer',
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      background: '#2563eb',
+      background: '#b8860b',
       color: '#ffffff',
       fontSize: 14,
     },
@@ -700,6 +702,7 @@
       fontFamily: '"Inter Bold", Arial, sans-serif',
       background: '#f1f5f9',
       color: '#334155',
+      fontWeight: 'bold',
       fontSize: 14,
     },
 
@@ -712,6 +715,7 @@
       fontFamily: '"Inter Bold", Arial, sans-serif',
       background: '#ef4444',
       color: '#ffffff',
+      fontWeight: 'bold',
       fontSize: 14,
     },
 
@@ -734,18 +738,18 @@
 
     modalTitle: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: isVerySmall ? 20 : 22,
+      fontSize: 22,
+      color: '#0f172a',
       marginBottom: 10,
       marginTop: 0,
-      color: '#0f172a',
     },
 
     modalText: {
-      color: '#64748b',
-      lineHeight: 1.5,
-      marginTop: 0,
-      marginBottom: 0,
       fontSize: 15,
+      color: '#64748b',
+      marginBottom: 24,
+      marginTop: 0,
+      lineHeight: 1.5,
     },
 
     exportModalOverlay: {

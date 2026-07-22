@@ -251,15 +251,15 @@
     },
 
     settingsTabs: {
-      width: '100%',
+      display: 'flex',
       background: '#ffffff',
       border: '1px solid #e5e7eb',
       borderRadius: isMobile ? 20 : 24,
-      padding: isMobile ? 12 : 14,
+      padding: isMobile ? 10 : 14,
       marginBottom: 20,
       display: 'flex',
       alignItems: 'center',
-      gap: 12,
+      gap: 10,
       overflowX: 'auto',
       boxSizing: 'border-box',
     },
@@ -270,8 +270,8 @@
       borderRadius: 16,
       border: 'none',
       outline: 'none',
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: 'transparent',
+      color: '#64748b',
       cursor: 'pointer',
       display: 'inline-flex',
       alignItems: 'center',
@@ -279,14 +279,14 @@
       whiteSpace: 'nowrap',
       transition: '0.2s ease',
       fontSize: isMobile ? 13 : 14,
+      fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
     },
 
     settingsTabActive: {
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      background: '#d4af37',
       color: '#ffffff',
-      borderColor: 'transparent',
-      boxShadow: '0 10px 24px rgba(139, 101, 8, 0.24)',
+      boxShadow: '0 8px 18px rgba(212, 175, 55, 0.28)',
     },
 
     settingsTabIcon: {
@@ -365,7 +365,7 @@
       outline: 'none',
       borderRadius: 14,
       padding: '0 18px',
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      backgroundColor: "#2563eb",
       color: '#ffffff',
       fontSize: 14,
       fontWeight: 700,
@@ -429,7 +429,7 @@
     websiteFieldLabel: {
       display: 'block',
       fontSize: 13,
-      color: '#8b6508',
+      color: "#000000",
       fontWeight: 700,
       marginBottom: 6,
       fontFamily: 'Arial, sans-serif',
@@ -446,8 +446,8 @@
 
     websiteDesignTitle: {
       margin: '0 0 14px',
-      color: '#8b6508',
-      fontSize: 15,
+      color: "#000000",
+      fontSize: 16,
       fontWeight: 800,
       fontFamily: 'Arial, sans-serif',
     },
@@ -939,20 +939,21 @@
       justifyContent: isMobile ? 'center' : 'flex-end',
       gap: 12,
       marginTop: 18,
+      flexWrap: 'wrap',
     },
 
     pageBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 12,
-      border: 'none',
-      outline: 'none',
-      background: '#fffaf0',
-      color: '#8b6508',
+      width: 35,
+      height: 35,
+      border: '1px solid #f3d46b',
+      borderRadius: 11,
+      background: '#fff8e1',
+      color: '#b8860b',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
+      flexShrink: 0,
     },
 
     pageBtnDisabled: {
@@ -1124,7 +1125,7 @@
       border: 'none',
       outline: 'none',
       borderRadius: 15,
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      backgroundColor: "#2563eb",
       color: '#ffffff',
       cursor: 'pointer',
       fontSize: 14,
@@ -1142,18 +1143,18 @@
       background: 'rgba(15, 23, 42, 0.45)',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: isMobile ? 18 : 20,
+      padding: 16,
       boxSizing: 'border-box',
     },
 
     modalContent: {
-      width: isMobile ? '100%' : 380,
-      maxWidth: 380,
+      width: isMobile ? '100%' : 390,
+      maxWidth: 390,
       background: '#ffffff',
-      borderRadius: 22,
-      padding: 30,
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.2)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
     },
 
@@ -1175,10 +1176,10 @@
     },
 
     modalTitle: {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: 21,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
       color: '#0f172a',
-      marginBottom: 8,
+      marginBottom: 10,
       marginTop: 0,
     },
 
@@ -1187,25 +1188,24 @@
       color: '#64748b',
       marginBottom: 24,
       marginTop: 0,
-      fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.5,
     },
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
       flexDirection: isMobile ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
-      border: 'none',
-      outline: 'none',
+      minWidth: 120,
+      height: 44,
       borderRadius: 12,
-      padding: 12,
+      border: 'none',
       cursor: 'pointer',
-      fontFamily: 'Arial, sans-serif',
-      fontWeight: 'bold',
-      fontSize: 15,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
     },
 
     logoutBtn: {
@@ -1216,7 +1216,7 @@
 
     cancelBtn: {
       background: '#f1f5f9',
-      color: 'black',
+      color: '#334155',
       fontWeight: 'bold',
     },
 

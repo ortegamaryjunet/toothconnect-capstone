@@ -53,7 +53,7 @@ const createRecepMessageStyles = ({
       justifyContent: isVerySmall ? 'center' : 'flex-start',
       gap: 8,
       textDecoration: 'none',
-      color: '#2563eb',
+      color: '#b8860b',
       fontSize: 14,
       fontWeight: 800,
       padding: '10px 15px',

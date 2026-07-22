@@ -289,7 +289,7 @@
 
     summaryIconBlue: {
       background: '#eff6ff',
-      color: '#2563eb',
+      color: '#b8860b',
     },
 
     summaryIconGreen: {
@@ -345,7 +345,7 @@
     },
 
     searchIcon: {
-      color: '#2563eb',
+      color: '#b8860b',
     },
 
     searchInput: {
@@ -550,14 +550,15 @@
     pageBtn: {
       width: 35,
       height: 35,
-      border: '1px solid #dbeafe',
+      border: '1px solid #f3d46b',
       borderRadius: 11,
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#fff8e1',
+      color: '#b8860b',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
+      flexShrink: 0,
     },
 
     pageBtnDisabled: {
@@ -570,6 +571,7 @@
       textAlign: 'center',
       fontSize: 14,
       color: '#475569',
+      fontFamily: 'Arial, sans-serif',
     },
 
     overlay: {
@@ -768,27 +770,28 @@
     modalTitle: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 22,
+      color: '#0f172a',
       marginBottom: 10,
       marginTop: 0,
-      color: '#0f172a',
     },
 
     modalText: {
+      fontSize: 15,
       color: '#64748b',
-      lineHeight: 1.5,
+      marginBottom: 24,
       marginTop: 0,
-      marginBottom: 0,
+      lineHeight: 1.5,
     },
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
-      marginTop: 24,
-      flexDirection: isSingleColumn ? 'column' : 'row',
+      flexDirection: isVerySmall ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
+      minWidth: 120,
       height: 44,
       borderRadius: 12,
       border: 'none',
@@ -798,7 +801,7 @@
     },
 
     logoutBtn: {
-      background: '#ef4444',
+      background: '#dc2626',
       color: '#ffffff',
       fontWeight: 'bold',
     },

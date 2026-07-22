@@ -294,9 +294,9 @@
     },
 
     summaryTabActive: {
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      background: '#d4af37',
       color: '#ffffff',
-      boxShadow: '0 8px 18px rgba(37, 99, 235, 0.22)',
+      boxShadow: '0 8px 18px rgba(212, 175, 55, 0.28)',
     },
 
     filterCard: {
@@ -329,7 +329,7 @@
     },
 
     searchIcon: {
-      color: '#2563eb',
+      color: '#b8860b',
       fontSize: 16,
     },
 
@@ -363,15 +363,25 @@
     },
 
     markAllBtn: {
-      border: 'none',
-      background: 'transparent',
-      color: '#2563eb',
+      border: '1px solid #f3d46b',
+      background: '#fff8e1',
+      color: '#b8860b',
+      height: 42,
+      padding: '0 18px',
+      borderRadius: 12,
       fontSize: 13,
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
       cursor: 'pointer',
-      padding: '4px 0',
-      textDecoration: 'underline',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      transition: '0.2s ease',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
+      textDecoration: 'none',
+      width: isMobile ? '100%' : 'auto',
     },
 
     cardTitle: {
@@ -400,7 +410,7 @@
     },
 
     notificationItemUnread: {
-      borderLeft: '4px solid #2563eb',
+      borderLeft: '4px solid #b8860b',
     },
 
     notificationStatus: {
@@ -412,7 +422,7 @@
     },
 
     notificationStatusUnread: {
-      background: '#2563eb',
+      background: '#b8860b',
     },
 
     notificationStatusRead: {
@@ -468,14 +478,14 @@
     },
 
     unreadBtn: {
-      color: '#2563eb',
+      color: '#b8860b',
     },
 
     markReadBtn: {
       border: 'none',
       borderRadius: 12,
       background: '#eff6ff',
-      color: '#2563eb',
+      color: '#b8860b',
       padding: '10px 13px',
       cursor: 'pointer',
       fontWeight: 700,
@@ -512,7 +522,7 @@
       background: 'rgba(15, 23, 42, 0.45)',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: 20,
+      padding: 16,
       boxSizing: 'border-box',
     },
 
@@ -528,8 +538,8 @@
     },
 
     modalIcon: {
-      width: 72,
-      height: 72,
+      width: 70,
+      height: 70,
       margin: '0 auto 16px',
       borderRadius: '50%',
       background: '#fee2e2',
@@ -540,16 +550,16 @@
     },
 
     modalIconText: {
-      fontSize: 32,
+      fontSize: 30,
       lineHeight: 1,
     },
 
     modalTitle: {
-      fontSize: 21,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
       color: '#0f172a',
-      marginBottom: 8,
+      marginBottom: 10,
       marginTop: 0,
-      fontFamily: 'Arial, sans-serif',
     },
 
     modalText: {
@@ -562,29 +572,31 @@
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
       flexDirection: isVerySmall ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
-      border: 'none',
+      minWidth: 120,
+      height: 44,
       borderRadius: 12,
-      padding: 12,
+      border: 'none',
       cursor: 'pointer',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
-      fontWeight: 600,
-      fontFamily: 'Arial, sans-serif',
     },
 
     logoutBtn: {
       background: '#dc2626',
       color: '#ffffff',
+      fontWeight: 'bold',
     },
 
     cancelBtn: {
       background: '#f1f5f9',
       color: '#334155',
+      fontWeight: 'bold',
     },
 
     notificationBadge: {
@@ -604,44 +616,44 @@
     },
 
     profileDropdownWrapper: {
-  position: 'relative',
-  display: 'inline-flex',
-  flexDirection: 'column',
-  alignItems: 'stretch',
-},
+      position: 'relative',
+      display: 'inline-flex',
+      flexDirection: 'column',
+      alignItems: 'stretch',
+    },
 
-profileDropdown: {
-  position: 'absolute',
-  top: 'calc(100% + 8px)',
-  right: 0,
-  width: '100%',
-  minWidth: 170,
-  background: '#ffffff',
-  border: '1px solid #e5e7eb',
-  borderRadius: 14,
-  padding: 8,
-  boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)',
-  zIndex: 300,
-  boxSizing: 'border-box',
-},
+    profileDropdown: {
+      position: 'absolute',
+      top: 'calc(100% + 8px)',
+      right: 0,
+      width: '100%',
+      minWidth: 170,
+      background: '#ffffff',
+      border: '1px solid #e5e7eb',
+      borderRadius: 14,
+      padding: 8,
+      boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)',
+      zIndex: 300,
+      boxSizing: 'border-box',
+    },
 
-viewProfileButton: {
-  width: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 'none',
-  background: '#eff6ff',
-  color: '#2563eb',
-  borderRadius: 10,
-  padding: '10px 12px',
-  fontSize: 14,
-  fontWeight: 700,
-  fontFamily: 'Arial, sans-serif',
-  textDecoration: 'none',
-  cursor: 'pointer',
-  boxSizing: 'border-box',
-},
+    viewProfileButton: {
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: 'none',
+      background: '#eff6ff',
+      color: '#2563eb',
+      borderRadius: 10,
+      padding: '10px 12px',
+      fontSize: 14,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      textDecoration: 'none',
+      cursor: 'pointer',
+      boxSizing: 'border-box',
+    },
   };
 };
 

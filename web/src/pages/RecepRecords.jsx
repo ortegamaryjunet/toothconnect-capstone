@@ -1036,7 +1036,7 @@ export default function RecepRecords() {
                 onClick={exportPatientsToCSV}
               >
                 <i className="fi fi-rr-file-csv"></i>
-                CSV
+                Export CSV
               </button>
             </div>
 
