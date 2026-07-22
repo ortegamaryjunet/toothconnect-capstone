@@ -187,6 +187,9 @@ export default function AdminSettings() {
   const [websiteFaqOverlay, setWebsiteFaqOverlay] = useState(null);
   const [websiteServiceOverlay, setWebsiteServiceOverlay] = useState(null);
   const [websiteAnnouncementOverlay, setWebsiteAnnouncementOverlay] = useState(null);
+  const [deleteAnnouncementModal, setDeleteAnnouncementModal] = useState(false);
+  const [deleteAnnouncementId, setDeleteAnnouncementId] = useState(null);
+  
   const [users, setUsers] = useState([]);
   const [adminAccountForm, setAdminAccountForm] = useState(initialAdminAccountForm);
   const [isEditingAdminAccount, setIsEditingAdminAccount] = useState(false);
@@ -548,12 +551,14 @@ export default function AdminSettings() {
   }
 
   async function deleteAnnouncement(id) {
-    if (!window.confirm('Delete this announcement?')) return;
     try {
       const res = await api.delete(`/website/announcements/${id}`);
       setWebsiteAnnouncements(res.data.announcements || []);
     } catch (err) {
-      showWebsiteValidationModal('Delete Failed', err.response?.data?.message || 'Failed to delete announcement.');
+      showWebsiteValidationModal(
+        'Delete Failed',
+        err.response?.data?.message || 'Failed to delete announcement.'
+      );
     }
   }
 
@@ -576,6 +581,15 @@ export default function AdminSettings() {
       setAdminAccountError('Failed to load admin account.');
     }
   }
+
+  const confirmDeleteAnnouncement = async () => {
+    try {
+      await deleteAnnouncement(deleteAnnouncementId);
+    } finally {
+      setDeleteAnnouncementModal(false);
+      setDeleteAnnouncementId(null);
+    }
+  };
 
   const filteredBranches = useMemo(() => {
     const search = filters.branchSearch.toLowerCase().trim();
@@ -1449,14 +1463,20 @@ export default function AdminSettings() {
             {fieldRow('Eyebrow Text', 'hero_eyebrow')}
             {fieldRow('Heading', 'hero_heading')}
             {fieldRow('Description', 'hero_description', 'textarea')}
+
             {fieldRow('Stat 1 Value (e.g. 10+)', 'hero_stat1_value')}
             {fieldRow('Stat 1 Label', 'hero_stat1_label')}
             {fieldRow('Stat 2 Value (e.g. 98%)', 'hero_stat2_value')}
             {fieldRow('Stat 2 Label', 'hero_stat2_label')}
             {fieldRow('Stat 3 Value (e.g. 20+)', 'hero_stat3_value')}
             {fieldRow('Stat 3 Label', 'hero_stat3_label')}
+
             {fieldRow('Featured Dentist Name', 'hero_dentist_name')}
             {fieldRow('Featured Dentist Title', 'hero_dentist_title')}
+
+            {fieldRow('Booking Card Title', 'hero_booking_title')}
+            {fieldRow('Booking Card Subtitle', 'hero_booking_subtitle')}
+            
             {sectionDesignFields('hero', 'Hero')}
             {websiteContentEditing && (
               <button
@@ -1811,7 +1831,10 @@ export default function AdminSettings() {
                       <button
                         type="button"
                         style={styles.websiteAnnouncementDeleteBtn}
-                        onClick={() => deleteAnnouncement(ann.id)}
+                        onClick={() => {
+                          setDeleteAnnouncementId(ann.id);
+                          setDeleteAnnouncementModal(true);
+                        }}
                       >
                         <i className="fi fi-rr-trash"></i> Delete
                       </button>
@@ -3320,6 +3343,50 @@ export default function AdminSettings() {
           </div>
         </div>
       )}
+
+      {deleteAnnouncementModal && (
+        <div style={styles.modal}
+          onClick={() => {
+            setDeleteAnnouncementModal(false);
+            setDeleteAnnouncementId(null);
+          }}>
+          <div
+            style={styles.modalContent}
+            onClick={(e) => e.stopPropagation()} >
+            <div style={styles.modalIcon}>
+              <i
+                className="fi fi-rr-trash"
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Delete Announcement</h2>
+
+            <p style={styles.modalText}>Are you sure you want to permanently delete this announcement?</p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmDeleteAnnouncement}
+              >
+                Delete
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => {
+                  setDeleteAnnouncementModal(false);
+                  setDeleteAnnouncementId(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3478,9 +3545,10 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
                 </div>
               ))}
             </div>
+            
             <div style={styles.overlayActions}>
-              <button type="button" onClick={onClose} style={styles.secondaryBtn}>Cancel</button>
               <button type="submit" style={styles.saveBtn}>Save</button>
+              <button type="button" onClick={onClose} style={styles.secondaryBtn}>Cancel</button>
             </div>
           </form>
         </div>

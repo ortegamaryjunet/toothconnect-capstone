@@ -43,6 +43,8 @@ function loadWebsiteContent() {
             setText("hero-stat3-label",  c.hero_stat3_label);
             setText("hero-dentist-name", c.hero_dentist_name);
             setText("hero-dentist-title",c.hero_dentist_title);
+            setText("hero-booking-title", c.hero_booking_title);
+            setText("hero-booking-subtitle",c.hero_booking_subtitle);
             setText("about-p1",          c.about_paragraph1);
             setText("about-p2",          c.about_paragraph2);
             setText("about-p3",          c.about_paragraph3);
@@ -265,18 +267,122 @@ function rewireServiceCarousel() {
 
 function loadWebsiteAnnouncements() {
     fetch(API_BASE_URL + "/api/website/announcements")
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (data) {
             var list = data.announcements || [];
             if (!list.length) return;
-            var banner = document.getElementById("announcement-banner");
-            if (!banner) return;
-            banner.innerHTML = list.map(function(a) {
-                return '<strong>' + escapeHtml(a.title) + '</strong> &mdash; ' + escapeHtml(a.message);
-            }).join(' &nbsp;|&nbsp; ');
-            banner.style.display = "block";
+
+            // Remove old modal if it already exists
+            var existing = document.getElementById("announcementModal");
+            if (existing) existing.remove();
+
+            var html =
+                '<div id="announcementModal" class="announcement-modal">' +
+                    '<div class="announcement-modal-content">' +
+
+                        '<button type="button" class="announcement-close">' +
+                            '<i class="fa-solid fa-xmark"></i>' +
+                        '</button>' +
+
+                        '<h2>Announcements</h2>' +
+
+                        '<div id="announcementBody"></div>' +
+
+                        (list.length > 1
+                            ? '<div class="announcement-pagination">' +
+                                '<button type="button" id="announcementPrev" class="announcement-nav-btn">' +
+                                    '<i class="fa-solid fa-chevron-left"></i>' +
+                                '</button>' +
+
+                                '<span id="announcementPage"></span>' +
+
+                                '<button type="button" id="announcementNext" class="announcement-nav-btn">' +
+                                    '<i class="fa-solid fa-chevron-right"></i>' +
+                                '</button>' +
+                            '</div>'
+                            : ''
+                        )
+
+                    '</div>' +
+                '</div>';
+
+            document.body.insertAdjacentHTML("beforeend", html);
+
+            var modal = document.getElementById("announcementModal");
+            var close = modal.querySelector(".announcement-close");
+            var body = document.getElementById("announcementBody");
+
+            var prevBtn = document.getElementById("announcementPrev");
+            var nextBtn = document.getElementById("announcementNext");
+            var pageText = document.getElementById("announcementPage");
+
+            var currentPage = 0;
+
+            function renderAnnouncement() {
+                var ann = list[currentPage];
+
+                body.innerHTML =
+                    '<div class="announcement-item">' +
+                        '<h3>' + escapeHtml(ann.title) + '</h3>' +
+                        '<p>' + escapeHtml(ann.message) + '</p>' +
+                    '</div>';
+
+                if (pageText) {
+                    pageText.textContent =
+                        (currentPage + 1) + " of " + list.length;
+                }
+
+                if (prevBtn) {
+                    prevBtn.disabled = currentPage === 0;
+                }
+
+                if (nextBtn) {
+                    nextBtn.disabled = currentPage === list.length - 1;
+                }
+            }
+
+            renderAnnouncement();
+
+            if (prevBtn) {
+                prevBtn.addEventListener("click", function () {
+                    if (currentPage > 0) {
+                        currentPage--;
+                        renderAnnouncement();
+                    }
+                });
+            }
+
+            if (nextBtn) {
+                nextBtn.addEventListener("click", function () {
+                    if (currentPage < list.length - 1) {
+                        currentPage++;
+                        renderAnnouncement();
+                    }
+                });
+            }
+
+            modal.style.display = "flex";
+
+            close.addEventListener("click", function () {
+                modal.remove();
+            });
+
+            modal.addEventListener("click", function (e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+
+            document.addEventListener("keydown", function esc(e) {
+                if (e.key === "Escape") {
+                    modal.remove();
+                    document.removeEventListener("keydown", esc);
+                }
+            });
         })
-        .catch(function() {});
+        .catch(function () {});
 }
 
 function escapeHtml(str) {

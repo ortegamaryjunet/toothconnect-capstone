@@ -1084,6 +1084,7 @@
     overlayActions: {
       marginTop: 26,
       display: 'flex',
+      gap: 10,
       justifyContent: 'flex-end',
     },
 
@@ -1287,6 +1288,169 @@
       fontSize: 11,
       fontWeight: 700,
       display: isMobile ? 'none' : 'inline-flex',
+    },
+
+    websiteAnnouncementHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 20,
+      marginBottom: 24,
+      flexWrap: 'wrap',
+    },
+
+    websiteAnnouncementTitle: {
+      margin: 0,
+      fontSize: 22,
+      fontWeight: 700,
+      color: '#1e293b',
+    },
+
+    websiteAnnouncementSubtitle: {
+      marginTop: 6,
+      fontSize: 14,
+      color: '#64748b',
+      lineHeight: 1.6,
+    },
+
+    websiteAnnouncementGrid: {
+      display: 'grid',
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : 'repeat(auto-fill, minmax(340px, 1fr))',
+      gap: 20,
+    },
+
+    websiteAnnouncementCard: {
+      background: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: 16,
+      padding: 20,
+      boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 18,
+    },
+
+    websiteAnnouncementCardHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+
+    websiteAnnouncementIconBox: {
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      background: '#fff8eb',
+      color: '#8b6508',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 22,
+    },
+
+    websiteAnnouncementCardTitle: {
+      margin: 0,
+      fontSize: 18,
+      fontWeight: 700,
+      color: '#1e293b',
+    },
+
+    websiteAnnouncementCardMessage: {
+      margin: 0,
+      color: '#64748b',
+      fontSize: 14,
+      lineHeight: 1.7,
+    },
+
+    websiteAnnouncementDateRow: {
+      display: 'flex',
+      gap: 12,
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    websiteAnnouncementDateBox: {
+      flex: 1,
+      background: '#f8fafc',
+      border: '1px solid #e2e8f0',
+      borderRadius: 10,
+      padding: 12,
+    },
+
+    websiteAnnouncementDateLabel: {
+      display: 'block',
+      fontSize: 12,
+      color: '#94a3b8',
+      marginBottom: 6,
+    },
+
+    websiteAnnouncementDateValue: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: '#1e293b',
+    },
+
+    websiteAnnouncementActions: {
+      display: 'flex',
+      gap: 10,
+      flexDirection: isMobile ? 'column' : 'row',
+      marginTop: 20,
+    },
+
+    websiteAnnouncementEditBtn: {
+      flex: 1,
+      border: 'none',
+      borderRadius: 10,
+      background: '#8b6508',
+      color: '#ffffff',
+      padding: '11px 16px',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      transition: '0.2s',
+    },
+
+    websiteAnnouncementDeleteBtn: {
+      flex: 1,
+      border: '1px solid #fecaca',
+      borderRadius: 10,
+      background: '#ffffff',
+      color: '#dc2626',
+      padding: '11px 16px',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      transition: '0.2s',
+    },
+
+    websiteAnnouncementEmpty: {
+      gridColumn: '1 / -1',
+      minHeight: 260,
+      border: '2px dashed #cbd5e1',
+      borderRadius: 16,
+      background: '#ffffff',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      color: '#64748b',
+      textAlign: 'center',
+      padding: 24,
+    },
+
+    websiteAnnouncementEmptyIcon: {
+      fontSize: 42,
+      color: '#cbd5e1',
     },
   };
 };
