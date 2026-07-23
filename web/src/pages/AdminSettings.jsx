@@ -427,6 +427,7 @@ export default function AdminSettings() {
   }
 
   async function saveWebsiteContent(sectionFields, requiredKeys = []) {
+    console.log(sectionFields);
     if (!validateWebsiteFields(sectionFields, requiredKeys)) {
       return;
     }
@@ -1447,7 +1448,7 @@ export default function AdminSettings() {
 
     const sectionDesignFields = (prefix, title) => (
       <div style={styles.websiteDesignBox}>
-        <h4 style={styles.websiteDesignTitle}>{title} Text Design</h4>
+        <h4 style={styles.websiteDesignTitle}>{title} Content Text Design</h4>
 
         {fieldRow('Font Style', `${prefix}_font_family`, 'select', WEBSITE_FONT_OPTIONS)}
         {fieldRow('Title Font Size', `${prefix}_title_font_size`, 'select', WEBSITE_FONT_SIZE_OPTIONS)}
@@ -1542,6 +1543,7 @@ export default function AdminSettings() {
           <div>
             {fieldRow('Brand Name', 'footer_brand_name')}
             {fieldRow('Team / Subtitle', 'footer_team_name')}
+
             {sectionDesignFields('footer', 'Footer')}
             {websiteContentEditing && (
               <button
@@ -1553,86 +1555,6 @@ export default function AdminSettings() {
                 {websiteContentSaving ? 'Saving…' : 'Save Footer Content'}
               </button>
             )}
-          </div>
-        );
-      }
-      if (websiteContentSection === 'appearance') {
-        const logoValue = websiteContentForm.website_logo_path || '';
-
-        return (
-          <div style={styles.websiteAppearanceGrid}>
-            <div style={styles.websiteLogoCard}>
-              <div style={styles.websiteLogoPreviewBox}>
-                {logoValue ? (
-                  <img
-                    src={logoValue}
-                    alt="Website Logo Preview"
-                    style={styles.websiteLogoPreview}
-                  />
-                ) : (
-                  <div style={styles.websiteLogoPlaceholder}>
-                    <i className="fi fi-rr-picture" style={styles.websiteLogoPlaceholderIcon}></i>
-                    <span>No logo selected</span>
-                  </div>
-                )}
-              </div>
-
-              {websiteContentEditing && (
-                <div style={styles.websiteUploadBox}>
-                  <label style={styles.websiteFieldLabel}>Upload Logo</label>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleWebsiteLogoFile}
-                    style={styles.fileInput}
-                  />
-
-                  <p style={styles.websiteUploadHint}>
-                    This stores a preview path in the website content fields. Use the logo path below if you already uploaded the file in your project folder.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div style={styles.websiteAppearanceFields}>
-              {fieldRow('Logo Image Path or URL', 'website_logo_path')}
-              {fieldRow('Logo Alt Text', 'website_logo_alt')}
-              {fieldRow('Website Font Style', 'website_font_family', 'select', WEBSITE_FONT_OPTIONS)}
-              {fieldRow('Base Font Size', 'website_base_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
-              {fieldRow('Heading Font Size', 'website_heading_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
-              {fieldRow('Paragraph Font Size', 'website_paragraph_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
-              {fieldRow('Text Alignment', 'website_text_alignment', 'select', WEBSITE_ALIGNMENT_OPTIONS)}
-              {fieldRow('Hero Text Alignment', 'website_hero_alignment', 'select', WEBSITE_ALIGNMENT_OPTIONS)}
-              {fieldRow('Button Alignment', 'website_button_alignment', 'select', WEBSITE_ALIGNMENT_OPTIONS)}
-              {fieldRow('Hero Font Style', 'hero_font_family', 'select', WEBSITE_FONT_OPTIONS)}
-              {fieldRow('Hero Title Size', 'hero_title_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
-              {fieldRow('About Font Style', 'about_font_family', 'select', WEBSITE_FONT_OPTIONS)}
-              {fieldRow('About Title Size', 'about_title_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
-              {fieldRow('Contact Font Style', 'contact_font_family', 'select', WEBSITE_FONT_OPTIONS)}
-              {fieldRow('Contact Title Size', 'contact_title_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
-              {fieldRow('Footer Font Style', 'footer_font_family', 'select', WEBSITE_FONT_OPTIONS)}
-              {fieldRow('Footer Title Size', 'footer_title_font_size', 'select', WEBSITE_FONT_SIZE_OPTIONS)}
-
-              {websiteContentEditing && (
-                <button
-                  type="button"
-                  style={styles.saveBtn}
-                  disabled={websiteContentSaving}
-                  onClick={() =>
-                    saveWebsiteContent(
-                      Object.fromEntries(
-                        Object.entries(websiteContentForm).filter(
-                          ([key]) => key.startsWith('website_') || key.startsWith('hero_') || key.startsWith('about_') || key.startsWith('contact_') || key.startsWith('footer_')
-                        )
-                      )
-                    )
-                  }
-                >
-                  {websiteContentSaving ? 'Saving…' : 'Save Website Design'}
-                </button>
-              )}
-            </div>
           </div>
         );
       }
@@ -1852,12 +1774,11 @@ export default function AdminSettings() {
 
     const contentSections = [
       { key: 'hero', label: 'Hero' },
+      { key: 'services', label: 'Services' },
       { key: 'about', label: 'About' },
+      { key: 'faqs', label: 'FAQs' },
       { key: 'contact', label: 'Contact & Hours' },
       { key: 'footer', label: 'Footer' },
-      { key: 'appearance', label: 'Logo, Fonts & Alignment' },
-      { key: 'faqs', label: 'FAQs' },
-      { key: 'services', label: 'Services' },
       { key: 'announcements', label: 'Announcements' },
     ];
 
@@ -1891,7 +1812,7 @@ export default function AdminSettings() {
                 </p>
               )}
 
-              {['hero', 'about', 'contact', 'footer', 'appearance'].includes(websiteContentSection) && (
+              {['hero', 'about', 'contact', 'footer'].includes(websiteContentSection) && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
                   {!websiteContentEditing ? (
                     <button
