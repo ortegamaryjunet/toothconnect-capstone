@@ -10,8 +10,6 @@
 </head>
 <body>
 
-<div id="announcement-banner" style="display:none;background:#1e40af;color:#fff;text-align:center;padding:10px 20px;font-size:14px;z-index:999;position:relative;"></div>
-
 <header class="header" id="header">
 	<a href="#home" class="logo-box">
 	    <div class="brand-mark">
@@ -79,7 +77,7 @@
 
     <div class="hero-right">
         <div class="image-panel">
-            <img src="./images/dentist.png" alt="Dentist">
+            <img src="./images/dentist.png" alt="Dentist" id="hero-dentist-image">
         </div>
 
         <div class="float-card top-card">
@@ -395,8 +393,12 @@
 
                 <div class="faq-answer">
                     <p>
-                        You may contact us at 0977-066-5269 or 0916-525-8468,
-                        or email us at smileempressdentalhub@gmail.com.
+                        You may contact us at
+                        <span id="contact-phone1"></span>
+                        or
+                        <span id="contact-phone2"></span>,
+                        or email us at
+                        <span id="contact-email"></span>.
                     </p>
                 </div>
             </div>
@@ -436,14 +438,14 @@
 
                     <h4>
                         <i class="fa-solid fa-phone"></i>
-                        <span id="call-phone1">0977-066-5269</span>
+                        <span id="call-phone1"></span>
                         or
-                        <span id="call-phone2">0916-525-8468</span>
+                        <span id="call-phone2"></span>
                     </h4>
 
                     <div class="call-email">
                         <i class="fa-solid fa-envelope"></i>
-                        <span id="call-email">smileempressdentalhub@gmail.com</span>
+                        <span id="call-email"></span>
                     </div>
                 </div>
             </div>
@@ -604,7 +606,7 @@
 
             <a id="footer-facebook" href="https://www.facebook.com/Thesmileempressdentalhub" target="_blank">
                 <i class="fa-brands fa-facebook"></i>
-                <span id="footer-brand-social">Smile Empress Dental Hub</span>
+                <span>Smile Empress Dental Hub</span>
             </a>
         </div>
 
@@ -620,8 +622,8 @@
     </div>
 
     <div class="footer-bottom">
-        <p>CODE IV: GECO</p>
-        <p>Smile Empress Dental Hub</p>
+        <p id="footer-team-name">CODE IV: GECO</p>
+        <p id="footer-brand-name">Smile Empress Dental Hub</p>
     </div>
 </footer>
 

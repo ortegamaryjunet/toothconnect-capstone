@@ -32,6 +32,25 @@ function loadWebsiteContent() {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var c = data.content || {};
+
+            var websiteLogo = document.getElementById("website-logo");
+
+            if (websiteLogo) {
+                if (c.website_logo_path) {
+                    websiteLogo.src = c.website_logo_path;
+                }
+
+                if (c.website_logo_width) {
+                    websiteLogo.style.width = c.website_logo_width + "px";
+                }
+
+                if (c.website_logo_height) {
+                    websiteLogo.style.height = c.website_logo_height + "px";
+                }
+
+                websiteLogo.style.objectFit = c.website_logo_fit || "contain";
+            }
+
             setText("hero-eyebrow",      c.hero_eyebrow);
             setText("hero-heading",      c.hero_heading);
             setText("hero-description",  c.hero_description);
@@ -41,6 +60,7 @@ function loadWebsiteContent() {
             setText("hero-stat2-label",  c.hero_stat2_label);
             setText("hero-stat3-value",  c.hero_stat3_value);
             setText("hero-stat3-label",  c.hero_stat3_label);
+            setImage("hero-dentist-image", c.hero_dentist_image);
             setText("hero-dentist-name", c.hero_dentist_name);
             setText("hero-dentist-title",c.hero_dentist_title);
             setText("hero-booking-title", c.hero_booking_title);
@@ -58,9 +78,10 @@ function loadWebsiteContent() {
             setText("call-email",        c.contact_email);
             setText("footer-phone1",     c.contact_phone1 ? "(+63) " + c.contact_phone1 : null);
             setText("footer-phone2",     c.contact_phone2 ? "(+63) " + c.contact_phone2 : null);
-            setText("footer-brand-social", c.footer_brand_name);
             setHref("contact-facebook",  c.contact_facebook_url);
-            setHref("footer-facebook",   c.contact_facebook_url);
+            setText("footer-brand-name", c.footer_brand_name);
+            setText("footer-team-name", c.footer_team_name);
+
 
             if (c.contact_phone1 && c.contact_phone2 && c.contact_email) {
                 setText("contact-description",
