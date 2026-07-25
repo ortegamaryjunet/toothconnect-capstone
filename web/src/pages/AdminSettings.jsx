@@ -240,6 +240,8 @@ export default function AdminSettings() {
   const [serviceKitBranchId, setServiceKitBranchId] = useState('');
   const [serviceKitItems, setServiceKitItems] = useState([]);
   const [serviceKitItemErrors, setServiceKitItemErrors] = useState([]);
+  const [showServiceKitCancelConfirmModal, setShowServiceKitCancelConfirmModal] =
+    useState(false);
   const [showServiceKitSaveConfirmModal, setShowServiceKitSaveConfirmModal] =
     useState(false);
   const [serviceKitServicesForBranch, setServiceKitServicesForBranch] = useState([]);
@@ -351,6 +353,7 @@ export default function AdminSettings() {
       websiteContentSaveConfirmModal ||
       showServiceCancelConfirmModal ||
       showServiceSaveConfirmModal ||
+      showServiceKitCancelConfirmModal ||
       showServiceKitSaveConfirmModal ||
       showUserCancelConfirmModal ||
       showUserSaveConfirmModal ||
@@ -376,6 +379,7 @@ export default function AdminSettings() {
     websiteContentSaveConfirmModal,
     showServiceCancelConfirmModal,
     showServiceSaveConfirmModal,
+    showServiceKitCancelConfirmModal,
     showServiceKitSaveConfirmModal,
     showUserCancelConfirmModal,
     showUserSaveConfirmModal,
@@ -393,6 +397,7 @@ export default function AdminSettings() {
         setWebsiteAnnouncementOverlay(null);
       setWebsiteValidationModal(null);
       setShowWebsiteContentCancelConfirmModal(false);
+      setShowServiceKitCancelConfirmModal(false);
       setShowServiceKitSaveConfirmModal(false);
       setShowUserCancelConfirmModal(false);
       setShowUserSaveConfirmModal(false);
@@ -3406,8 +3411,12 @@ export default function AdminSettings() {
         <FormOverlay
           styles={styles}
           title="Manage Service Kit"
-          onClose={() => setServiceKitOverlay(false)}
-          onOverlayClick={handleOverlayClick}
+          onClose={() => setShowServiceKitCancelConfirmModal(true)}
+          onOverlayClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowServiceKitCancelConfirmModal(true);
+            }
+          }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={styles.field}>
@@ -3608,7 +3617,7 @@ export default function AdminSettings() {
             }
           }}
         >
-          <div style={{ ...styles.modalContent, maxWidth: 720 }}>
+          <div style={{ ...styles.modalContent, width: isMobile ? '96%' : '92%', maxWidth: 980 }}>
             <div style={styles.modalIcon}>
               <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
             </div>
@@ -3650,7 +3659,7 @@ export default function AdminSettings() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : '110px minmax(0, 1fr) 120px 110px 90px',
+                    gridTemplateColumns: isMobile ? '1fr' : '140px minmax(220px, 1fr) 150px 130px 110px',
                     gap: 0,
                     background: '#f8fafc',
                     color: '#475569',
@@ -3669,7 +3678,7 @@ export default function AdminSettings() {
                     key={`${item.category}-${item.item_name}-${index}`}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: isMobile ? '1fr' : '110px minmax(0, 1fr) 120px 110px 90px',
+                      gridTemplateColumns: isMobile ? '1fr' : '140px minmax(220px, 1fr) 150px 130px 110px',
                       color: '#0f172a',
                       fontSize: 13,
                     }}
@@ -3699,6 +3708,50 @@ export default function AdminSettings() {
                 onClick={saveServiceKit}
               >
                 Save Service Kit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showServiceKitCancelConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowServiceKitCancelConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Service Kit?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved service kit changes will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowServiceKitCancelConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={() => {
+                  setShowServiceKitCancelConfirmModal(false);
+                  setShowServiceKitSaveConfirmModal(false);
+                  setServiceKitOverlay(false);
+                }}
+              >
+                Yes, Cancel
               </button>
             </div>
           </div>
