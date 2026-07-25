@@ -98,13 +98,13 @@ function getLiveEmployeeFieldError(name, value) {
   if (name === 'contactNumber') {
     return isValidContactNumber(fieldValue)
       ? ''
-      : 'Invalid contact format. Use 09XXXXXXXXX or +639XXXXXXXXX.';
+      : 'Use 09XXXXXXXXX or +639XXXXXXXXX.';
   }
 
   if (name === 'email') {
     return isValidEmailAddress(fieldValue)
       ? ''
-      : 'Invalid email format. Enter a valid email address.';
+      : 'Enter a valid email address.';
   }
 
   return '';
@@ -1095,11 +1095,11 @@ export default function AdminEmployees() {
         ...(formatErrors.has('contactNumber')
           ? {
               contactNumber:
-                'Invalid contact format. Use 09XXXXXXXXX or +639XXXXXXXXX.',
+                'Use 09XXXXXXXXX or +639XXXXXXXXX.',
             }
           : {}),
         ...(formatErrors.has('email')
-          ? { email: 'Invalid email format. Enter a valid email address.' }
+          ? { email: 'Enter a valid email address.' }
           : {}),
       }));
       setEditErrorMessage('Please fix the highlighted fields before saving.');
