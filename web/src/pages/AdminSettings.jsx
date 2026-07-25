@@ -2907,7 +2907,12 @@ export default function AdminSettings() {
               </button>
               <button
                 type="button"
-                style={{ ...styles.saveBtn, minWidth: 120 }}
+                style={{
+                  ...styles.saveBtn,
+                  minWidth: 120,
+                  backgroundColor: '#dc2626',
+                  boxShadow: '0 10px 20px rgba(220, 38, 38, 0.22)',
+                }}
                 onClick={() => { removeServiceKitItem(removeKitItemIndex); setRemoveKitItemIndex(null); }}
               >
                 Yes, Remove
