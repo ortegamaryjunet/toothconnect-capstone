@@ -246,6 +246,7 @@ export default function InventoryPage() {
   const [showUsageHistoryModal, setShowUsageHistoryModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showExpenseConfirmModal, setShowExpenseConfirmModal] = useState(false);
+  const [showExpenseCancelConfirmModal, setShowExpenseCancelConfirmModal] = useState(false);
   const [expenseForm, setExpenseForm] = useState({
     date: '',
     branchId: '',
@@ -707,7 +708,15 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showEditModal || showStockSummaryModal || showUsageHistoryModal || showExpenseModal || showExpenseConfirmModal) {
+    if (
+      showLogoutModal ||
+      showEditModal ||
+      showStockSummaryModal ||
+      showUsageHistoryModal ||
+      showExpenseModal ||
+      showExpenseConfirmModal ||
+      showExpenseCancelConfirmModal
+    ) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -716,7 +725,15 @@ export default function InventoryPage() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showEditModal, showStockSummaryModal, showUsageHistoryModal, showExpenseModal, showExpenseConfirmModal]);
+  }, [
+    showLogoutModal,
+    showEditModal,
+    showStockSummaryModal,
+    showUsageHistoryModal,
+    showExpenseModal,
+    showExpenseConfirmModal,
+    showExpenseCancelConfirmModal,
+  ]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -727,6 +744,7 @@ export default function InventoryPage() {
         closeUsageHistoryModal();
         closeExpenseModal();
         closeExpenseConfirmModal();
+        closeExpenseCancelConfirmModal();
       }
     }
 
@@ -1033,13 +1051,20 @@ export default function InventoryPage() {
 
   function closeExpenseModal() {
     setShowExpenseModal(false);
+    setShowExpenseCancelConfirmModal(false);
     setExpenseSaveError('');
   }
 
   function handleCancelExpenseModal() {
-    if (window.confirm('Are you sure you want to cancel this expense input?')) {
-      closeExpenseModal();
-    }
+    setShowExpenseCancelConfirmModal(true);
+  }
+
+  function closeExpenseCancelConfirmModal() {
+    setShowExpenseCancelConfirmModal(false);
+  }
+
+  function confirmCancelExpenseModal() {
+    closeExpenseModal();
   }
 
   function closeExpenseConfirmModal() {
@@ -2073,7 +2098,7 @@ export default function InventoryPage() {
                 onClick={closeStockSummaryModal}
                 style={styles.closeBtn}
               >
-                ×
+                X
               </button>
             </div>
 
@@ -2669,6 +2694,39 @@ export default function InventoryPage() {
                 onClick={closeExpenseConfirmModal}
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isReceptionist && showExpenseCancelConfirmModal && (
+        <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeExpenseCancelConfirmModal(); }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Expense Input?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved expense details will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeExpenseCancelConfirmModal}
+              >
+                Keep Editing
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCancelExpenseModal}
+              >
+                Cancel Expense Input
               </button>
             </div>
           </div>

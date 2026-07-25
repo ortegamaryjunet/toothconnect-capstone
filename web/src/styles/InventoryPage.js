@@ -971,7 +971,7 @@
 
     stockCategoryTab: {
       height: 32,
-      border: '1px solid #f3d46b',
+      border: 'none',
       borderRadius: 12,
       background: '#fff8e1',
       color: '#b8860b',
@@ -984,7 +984,7 @@
 
     stockCategoryTabActive: {
       background: '#d4af37',
-      borderColor: '#d4af37',
+      borderColor: 'transparent',
       color: '#ffffff',
     },
 
