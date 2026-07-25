@@ -672,6 +672,12 @@
       fontSize: 14,
     },
 
+    confirmBtn: {
+      background: '#d4af37',
+      color: '#ffffff',
+      fontWeight: 800,
+    },
+
     employeeModal: {
       display: 'flex',
       position: 'fixed',
