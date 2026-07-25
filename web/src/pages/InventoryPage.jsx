@@ -1509,7 +1509,7 @@ export default function InventoryPage() {
               ...(currentPages.search === 1 ? styles.pageBtnDisabled : {}),
             }}
           >
-            <i className="fi fi-rr-angle-left"></i>
+            Prev
           </button>
           <span style={styles.pageInfo}>
             {crossCategoryResults.length === 0
@@ -1525,7 +1525,7 @@ export default function InventoryPage() {
               ...(currentPages.search >= searchTotalPages ? styles.pageBtnDisabled : {}),
             }}
           >
-            <i className="fi fi-rr-angle-right"></i>
+            Next
           </button>
         </div>
       </>
@@ -2022,7 +2022,7 @@ export default function InventoryPage() {
                       ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
                     }}
                   >
-                    <i className="fi fi-rr-angle-left"></i>
+                    Prev
                   </button>
 
                   <span style={styles.pageInfo}>
@@ -2040,7 +2040,7 @@ export default function InventoryPage() {
                       ...(currentPage >= totalPages ? styles.pageBtnDisabled : {}),
                     }}
                   >
-                    <i className="fi fi-rr-angle-right"></i>
+                    Next
                   </button>
                 </div>
               </>

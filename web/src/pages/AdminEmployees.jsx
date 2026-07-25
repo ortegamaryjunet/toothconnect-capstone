@@ -1554,7 +1554,7 @@ export default function AdminEmployees() {
                   ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
                 }}
               >
-                <i className="fi fi-rr-angle-left"></i>
+                Prev
               </button>
 
               <span style={styles.pageInfo}>
@@ -1572,7 +1572,7 @@ export default function AdminEmployees() {
                   ...(currentPage >= totalPages ? styles.pageBtnDisabled : {}),
                 }}
               >
-                <i className="fi fi-rr-angle-right"></i>
+                Next
               </button>
             </div>
           </section>
