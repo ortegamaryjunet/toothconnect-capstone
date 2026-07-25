@@ -1217,6 +1217,34 @@ export default function AdminSettings() {
     return '';
   }
 
+  function getAdminAccountEmailError() {
+    const email = String(adminAccountForm.email || '').trim();
+
+    if (!email) {
+      return 'Email address is required.';
+    }
+
+    if (!USER_EMAIL_REGEX.test(email)) {
+      return 'Please enter a valid email address format.';
+    }
+
+    return '';
+  }
+
+  function getAdminAccountPhoneError() {
+    const phone = String(adminAccountForm.phone || '').trim();
+
+    if (!phone) {
+      return '';
+    }
+
+    if (!BRANCH_PHONE_REGEX.test(phone)) {
+      return 'Invalid contact number format. Use 09XXXXXXXXX format.';
+    }
+
+    return '';
+  }
+
   function getAdminAccountSaveDetails() {
     return [
       {
@@ -1273,6 +1301,13 @@ export default function AdminSettings() {
     setAdminAccountError('');
 
     const passwordError = validateAdminPassword();
+    const emailError = getAdminAccountEmailError();
+    const phoneError = getAdminAccountPhoneError();
+
+    if (emailError || phoneError) {
+      setAdminAccountError(emailError || phoneError);
+      return;
+    }
 
     if (passwordError) {
       setAdminAccountError(passwordError);
@@ -2407,7 +2442,11 @@ export default function AdminSettings() {
 
   function renderAdminAccountPanel() {
     const displayDate = String(adminAccountForm.created_at || '').slice(0, 10) || 'N/A';
+    const adminEmailError = getAdminAccountEmailError();
+    const adminPhoneError = getAdminAccountPhoneError();
     const adminPasswordError = validateAdminPassword();
+    const shouldShowAdminEmailError = !!adminEmailError;
+    const shouldShowAdminPhoneError = !!adminPhoneError;
     const shouldShowAdminPasswordError =
       !!adminPasswordError &&
       (!!adminAccountForm.password || !!adminAccountForm.confirmPassword);
@@ -2485,9 +2524,19 @@ export default function AdminSettings() {
                   onChange={(event) =>
                     handleAdminAccountChange('email', event.target.value)
                   }
-                  style={styles.formInput}
+                  style={{
+                    ...styles.formInput,
+                    ...(shouldShowAdminEmailError
+                      ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+                      : {}),
+                  }}
                   required
                 />
+                {shouldShowAdminEmailError && (
+                  <span style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>
+                    {adminEmailError}
+                  </span>
+                )}
               </Field>
 
               <Field label="Contact Number" styles={styles}>
@@ -2497,9 +2546,20 @@ export default function AdminSettings() {
                   onChange={(event) =>
                     handleAdminAccountChange('phone', event.target.value)
                   }
-                  style={styles.formInput}
+                  style={{
+                    ...styles.formInput,
+                    ...(shouldShowAdminPhoneError
+                      ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+                      : {}),
+                  }}
                   placeholder="Enter contact number"
+                  maxLength={11}
                 />
+                {shouldShowAdminPhoneError && (
+                  <span style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>
+                    {adminPhoneError}
+                  </span>
+                )}
               </Field>
 
               <Field label="Status" styles={styles}>
