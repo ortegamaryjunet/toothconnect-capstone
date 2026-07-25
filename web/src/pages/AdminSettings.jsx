@@ -117,6 +117,15 @@ const initialServiceForm = {
   status: '',
 };
 
+const serviceRequiredFields = [
+  'name',
+  'category',
+  'price',
+  'duration',
+  'time_buffer_min',
+  'status',
+];
+
 const initialUserForm = {
   id: '',
   fullName: '',
@@ -217,6 +226,11 @@ export default function AdminSettings() {
   const [branchForm, setBranchForm] = useState(initialBranchForm);
   const [branchTouchedFields, setBranchTouchedFields] = useState({});
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
+  const [serviceTouchedFields, setServiceTouchedFields] = useState({});
+  const [showServiceCancelConfirmModal, setShowServiceCancelConfirmModal] =
+    useState(false);
+  const [showServiceSaveConfirmModal, setShowServiceSaveConfirmModal] =
+    useState(false);
   const [serviceKitOverlay, setServiceKitOverlay] = useState(false);
   const [serviceKitServiceId, setServiceKitServiceId] = useState('');
   const [serviceKitBranchId, setServiceKitBranchId] = useState('');
@@ -276,6 +290,10 @@ export default function AdminSettings() {
     (field) => String(branchForm[field] ?? '').trim() !== ''
   ) && BRANCH_PHONE_REGEX.test(String(branchForm.phone || '').trim());
 
+  const isServiceFormComplete = serviceRequiredFields.every(
+    (field) => String(serviceForm[field] ?? '').trim() !== ''
+  );
+
   useEffect(() => {
     function handleResize() {
       setScreenWidth(window.innerWidth);
@@ -314,6 +332,8 @@ export default function AdminSettings() {
       websiteAnnouncementOverlay ||
       websiteValidationModal ||
       showWebsiteContentCancelConfirmModal ||
+      showServiceCancelConfirmModal ||
+      showServiceSaveConfirmModal ||
       serviceKitOverlay ||
       showServiceKitHistory
     ) {
@@ -333,6 +353,8 @@ export default function AdminSettings() {
     websiteAnnouncementOverlay,
     websiteValidationModal,
     showWebsiteContentCancelConfirmModal,
+    showServiceCancelConfirmModal,
+    showServiceSaveConfirmModal,
     serviceKitOverlay,
     showServiceKitHistory,
   ]);
@@ -776,6 +798,9 @@ export default function AdminSettings() {
     setShowBranchCancelConfirmModal(false);
     setShowBranchSaveConfirmModal(false);
     setBranchTouchedFields({});
+    setShowServiceCancelConfirmModal(false);
+    setShowServiceSaveConfirmModal(false);
+    setServiceTouchedFields({});
   }
 
   function handleCancelWebsiteContentEdit() {
@@ -815,6 +840,10 @@ export default function AdminSettings() {
   }
 
   function openServiceForm(service = null) {
+    setShowServiceCancelConfirmModal(false);
+    setShowServiceSaveConfirmModal(false);
+    setServiceTouchedFields({});
+
     if (service) {
       setServiceForm(service);
     } else {
@@ -919,6 +948,8 @@ export default function AdminSettings() {
   }
 
   function handleServiceChange(name, value) {
+    setServiceTouchedFields((prev) => ({ ...prev, [name]: true }));
+
     let newValue = value;
 
     if (name === 'name') {
@@ -936,6 +967,34 @@ export default function AdminSettings() {
       ...prev,
       [name]: newValue,
     }));
+  }
+
+  function handleServiceFieldBlur(name) {
+    setServiceTouchedFields((prev) => ({ ...prev, [name]: true }));
+  }
+
+  function isServiceFieldInvalid(name) {
+    return (
+      serviceTouchedFields[name] &&
+      String(serviceForm[name] ?? '').trim() === ''
+    );
+  }
+
+  function getServiceFieldStyle(name) {
+    return {
+      ...styles.formInput,
+      ...(isServiceFieldInvalid(name)
+        ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+        : {}),
+    };
+  }
+
+  function renderServiceRequiredLabel(label) {
+    return (
+      <>
+        {label} <span style={{ color: '#dc2626' }}>*</span>
+      </>
+    );
   }
 
   function handleUserChange(name, value) {
@@ -1043,9 +1102,23 @@ export default function AdminSettings() {
     }
   }
 
-  async function saveService(event) {
+  function handleServiceSubmit(event) {
     event.preventDefault();
 
+    if (!isServiceFormComplete) {
+      setServiceTouchedFields(
+        serviceRequiredFields.reduce((fields, field) => {
+          fields[field] = true;
+          return fields;
+        }, {})
+      );
+      return;
+    }
+
+    setShowServiceSaveConfirmModal(true);
+  }
+
+  async function saveService() {
     const payload = {
       name: serviceForm.name,
       category: serviceForm.category,
@@ -1064,6 +1137,8 @@ export default function AdminSettings() {
       closeOverlay();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service');
+    } finally {
+      setShowServiceSaveConfirmModal(false);
     }
   }
 
@@ -2908,29 +2983,36 @@ export default function AdminSettings() {
           styles={styles}
           title={serviceForm.id ? 'Update Service' : 'New Service'}
           onClose={closeOverlay}
-          onOverlayClick={handleOverlayClick}
+          onOverlayClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowServiceCancelConfirmModal(true);
+            }
+          }}
+          showCloseButton={false}
         >
-          <form onSubmit={saveService}>
+          <form onSubmit={handleServiceSubmit}>
             <div style={styles.formGrid}>
-              <Field label="Service Name" styles={styles}>
+              <Field label={renderServiceRequiredLabel('Service Name')} styles={styles}>
                 <input
                   type="text"
                   value={serviceForm.name}
                   onChange={(event) =>
                     handleServiceChange('name', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleServiceFieldBlur('name')}
+                  style={getServiceFieldStyle('name')}
                   required
                 />
               </Field>
 
-              <Field label="Category" styles={styles}>
+              <Field label={renderServiceRequiredLabel('Category')} styles={styles}>
                 <select
                   value={serviceForm.category}
                   onChange={(event) =>
                     handleServiceChange('category', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleServiceFieldBlur('category')}
+                  style={getServiceFieldStyle('category')}
                   required
                 >
                   <option value="" disabled>
@@ -2943,49 +3025,53 @@ export default function AdminSettings() {
                 </select>
               </Field>
 
-              <Field label="Price" styles={styles}>
+              <Field label={renderServiceRequiredLabel('Price')} styles={styles}>
                 <input
                   type="text"
                   value={serviceForm.price}
                   onChange={(event) =>
                     handleServiceChange('price', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleServiceFieldBlur('price')}
+                  style={getServiceFieldStyle('price')}
                   required
                 />
               </Field>
 
-              <Field label="Duration" styles={styles}>
+              <Field label={renderServiceRequiredLabel('Duration')} styles={styles}>
                 <input
                   type="text"
                   value={serviceForm.duration}
                   onChange={(event) =>
                     handleServiceChange('duration', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleServiceFieldBlur('duration')}
+                  style={getServiceFieldStyle('duration')}
                   required
                 />
               </Field>
 
-              <Field label="Time Buffer (minutes)" styles={styles}>
+              <Field label={renderServiceRequiredLabel('Time Buffer (minutes)')} styles={styles}>
                 <input
                   type="text"
                   value={serviceForm.time_buffer_min}
                   onChange={(event) =>
                     handleServiceChange('time_buffer_min', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleServiceFieldBlur('time_buffer_min')}
+                  style={getServiceFieldStyle('time_buffer_min')}
                   required
                 />
               </Field>
 
-              <Field label="Status" styles={styles}>
+              <Field label={renderServiceRequiredLabel('Status')} styles={styles}>
                 <select
                   value={serviceForm.status}
                   onChange={(event) =>
                     handleServiceChange('status', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleServiceFieldBlur('status')}
+                  style={getServiceFieldStyle('status')}
                   required
                 >
                   <option value="" disabled>
@@ -2999,9 +3085,138 @@ export default function AdminSettings() {
 
             </div>
 
-            <FormActions styles={styles} label="Save Service" />
+            <div style={styles.overlayActions}>
+              <button
+                type="button"
+                style={styles.secondaryBtn}
+                onClick={() => setShowServiceCancelConfirmModal(true)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                style={{
+                  ...styles.saveBtn,
+                  opacity: isServiceFormComplete ? 1 : 0.55,
+                  cursor: isServiceFormComplete ? 'pointer' : 'not-allowed',
+                }}
+                disabled={!isServiceFormComplete}
+              >
+                Save Service
+              </button>
+            </div>
           </form>
         </FormOverlay>
+      )}
+
+      {showServiceCancelConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowServiceCancelConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Service Form?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved service details will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowServiceCancelConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={closeOverlay}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showServiceSaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowServiceSaveConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Service Details</h2>
+            <p style={styles.modalText}>
+              Please confirm that the service information is correct before saving.
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {[
+                ['Service Name', serviceForm.name || 'Not entered'],
+                ['Category', serviceForm.category || 'Not selected'],
+                ['Price', serviceForm.price || 'Not entered'],
+                ['Duration', serviceForm.duration || 'Not entered'],
+                ['Time Buffer', serviceForm.time_buffer_min || 'Not entered'],
+                ['Status', serviceForm.status || 'Not selected'],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '6px 0',
+                    borderBottom: '1px solid #f1f5f9',
+                    fontSize: 13,
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ color: '#64748b' }}>{label}</span>
+                  <strong style={{ color: '#0f172a', textAlign: 'right' }}>
+                    {value}
+                  </strong>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowServiceSaveConfirmModal(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={saveService}
+              >
+                Save Service
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {serviceKitOverlay && (
