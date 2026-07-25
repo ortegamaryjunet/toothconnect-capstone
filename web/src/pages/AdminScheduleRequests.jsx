@@ -383,7 +383,7 @@ export default function AdminScheduleRequests({
             disabled={page <= 1}
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
           >
-            <i className="fi fi-rr-angle-left"></i>
+            Prev
           </button>
 
           <span style={styles.pageInfo}>
@@ -399,7 +399,7 @@ export default function AdminScheduleRequests({
             disabled={page >= totalPages}
             onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
           >
-            <i className="fi fi-rr-angle-right"></i>
+            Next
           </button>
         </div>
       </section>
