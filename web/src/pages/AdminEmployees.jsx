@@ -178,6 +178,7 @@ export default function AdminEmployees() {
   const [editedEmployee, setEditedEmployee] = useState(null);
   const [isEditingEmployee, setIsEditingEmployee] = useState(false);
   const [editErrors, setEditErrors] = useState(new Set());
+  const [liveEditErrors, setLiveEditErrors] = useState({});
   const [showEditErrorModal, setShowEditErrorModal] = useState(false);
   const [editErrorMessage, setEditErrorMessage] = useState('');
   const [usePerDayBranchSchedule, setUsePerDayBranchSchedule] =
@@ -763,6 +764,7 @@ export default function AdminEmployees() {
     setEditedEmployee(null);
     setIsEditingEmployee(false);
     setEditErrors(new Set());
+    setLiveEditErrors({});
     setUsePerDayBranchSchedule(false);
     setScheduleDraft({});
   }
@@ -796,6 +798,7 @@ export default function AdminEmployees() {
     setEditedEmployee({ ...selectedEmployee });
     setIsEditingEmployee(false);
     setEditErrors(new Set());
+    setLiveEditErrors({});
   }
 
   function handleEmployeeInputChange(event) {
@@ -805,6 +808,48 @@ export default function AdminEmployees() {
       ...prev,
       [name]: value,
     }));
+  }
+
+  function validateLiveEmployeeField(name, value) {
+    if (!['contactNumber', 'email'].includes(name)) {
+      return;
+    }
+
+    let message = '';
+
+    if (name === 'contactNumber' && value) {
+      message = isValidContactNumber(value)
+        ? ''
+        : 'Use 09XXXXXXXXX or +639XXXXXXXXX.';
+    }
+
+    if (name === 'email' && value) {
+      message = isValidEmailAddress(value) ? '' : 'Enter a valid email address.';
+    }
+
+    setLiveEditErrors((prev) => {
+      const next = { ...prev };
+
+      if (message) {
+        next[name] = message;
+      } else {
+        delete next[name];
+      }
+
+      return next;
+    });
+
+    setEditErrors((prev) => {
+      const next = new Set(prev);
+
+      if (message) {
+        next.add(name);
+      } else {
+        next.delete(name);
+      }
+
+      return next;
+    });
   }
 
   function validateEditFields() {
@@ -1033,6 +1078,15 @@ export default function AdminEmployees() {
 
     if (formatErrors.size > 0) {
       setEditErrors(formatErrors);
+      setLiveEditErrors((prev) => ({
+        ...prev,
+        ...(formatErrors.has('contactNumber')
+          ? { contactNumber: 'Use 09XXXXXXXXX or +639XXXXXXXXX.' }
+          : {}),
+        ...(formatErrors.has('email')
+          ? { email: 'Enter a valid email address.' }
+          : {}),
+      }));
       setEditErrorMessage('Please fix the highlighted fields before saving.');
       setShowEditErrorModal(true);
       return;
@@ -1068,6 +1122,7 @@ export default function AdminEmployees() {
       setSelectedEmployee(savedEmployee);
       setEditedEmployee(savedEmployee);
       setIsEditingEmployee(false);
+      setLiveEditErrors({});
       setEmployeeSaveConfirmModal(null);
       setUsePerDayBranchSchedule(
         Array.isArray(savedEmployee?.scheduleEntries) &&
@@ -1108,6 +1163,8 @@ export default function AdminEmployees() {
               ...prev,
               [name]: val,
             }));
+
+            validateLiveEmployeeField(name, val);
           }}
           readOnly={!isEditingEmployee}
           style={{
@@ -1121,6 +1178,19 @@ export default function AdminEmployees() {
               : {}),
           }}
         />
+
+        {liveEditErrors[name] && (
+          <span
+            style={{
+              color: '#dc2626',
+              fontSize: 12,
+              fontWeight: 700,
+              marginTop: 4,
+            }}
+          >
+            {liveEditErrors[name]}
+          </span>
+        )}
       </div>
     );
   }
