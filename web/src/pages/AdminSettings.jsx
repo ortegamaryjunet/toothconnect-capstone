@@ -223,9 +223,17 @@ export default function AdminSettings() {
   
   const [users, setUsers] = useState([]);
   const [adminAccountForm, setAdminAccountForm] = useState(initialAdminAccountForm);
+  const [adminAccountOriginal, setAdminAccountOriginal] = useState(initialAdminAccountForm);
   const [isEditingAdminAccount, setIsEditingAdminAccount] = useState(false);
   const [adminAccountMessage, setAdminAccountMessage] = useState('');
   const [adminAccountError, setAdminAccountError] = useState('');
+  const [showAdminAccountCancelConfirmModal, setShowAdminAccountCancelConfirmModal] =
+    useState(false);
+  const [adminAccountSaveConfirmModal, setAdminAccountSaveConfirmModal] =
+    useState(null);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showAdminConfirmPassword, setShowAdminConfirmPassword] =
+    useState(false);
 
   const [branchForm, setBranchForm] = useState(initialBranchForm);
   const [branchTouchedFields, setBranchTouchedFields] = useState({});
@@ -351,6 +359,8 @@ export default function AdminSettings() {
       websiteValidationModal ||
       showWebsiteContentCancelConfirmModal ||
       websiteContentSaveConfirmModal ||
+      showAdminAccountCancelConfirmModal ||
+      adminAccountSaveConfirmModal ||
       showServiceCancelConfirmModal ||
       showServiceSaveConfirmModal ||
       showServiceKitCancelConfirmModal ||
@@ -377,6 +387,8 @@ export default function AdminSettings() {
     websiteValidationModal,
     showWebsiteContentCancelConfirmModal,
     websiteContentSaveConfirmModal,
+    showAdminAccountCancelConfirmModal,
+    adminAccountSaveConfirmModal,
     showServiceCancelConfirmModal,
     showServiceSaveConfirmModal,
     showServiceKitCancelConfirmModal,
@@ -397,6 +409,8 @@ export default function AdminSettings() {
         setWebsiteAnnouncementOverlay(null);
       setWebsiteValidationModal(null);
       setShowWebsiteContentCancelConfirmModal(false);
+      setShowAdminAccountCancelConfirmModal(false);
+      setAdminAccountSaveConfirmModal(null);
       setShowServiceKitCancelConfirmModal(false);
       setShowServiceKitSaveConfirmModal(false);
       setShowUserCancelConfirmModal(false);
@@ -703,7 +717,7 @@ export default function AdminSettings() {
   async function loadAdminAccount() {
     try {
       const res = await api.get('/auth/me');
-      setAdminAccountForm({
+      const loadedAdminAccount = {
         id: res.data.id || '',
         name: res.data.name || '',
         email: res.data.email || '',
@@ -713,7 +727,9 @@ export default function AdminSettings() {
         role: res.data.role || 'admin',
         status: res.data.status || 'Active',
         created_at: res.data.created_at || '',
-      });
+      };
+      setAdminAccountForm(loadedAdminAccount);
+      setAdminAccountOriginal(loadedAdminAccount);
     } catch (err) {
       console.error('Failed to load admin account', err);
       setAdminAccountError('Failed to load admin account.');
@@ -1168,10 +1184,6 @@ export default function AdminSettings() {
       newValue = allowNumbersOnly(value);
     }
 
-    if (['password', 'confirmPassword'].includes(name)) {
-      newValue = value.replace(/[^a-zA-Z0-9]/g, '');
-    }
-
     setAdminAccountForm((prev) => ({
       ...prev,
       [name]: newValue,
@@ -1203,6 +1215,73 @@ export default function AdminSettings() {
     }
 
     return '';
+  }
+
+  function getAdminAccountSaveDetails() {
+    return [
+      {
+        key: 'name',
+        label: 'Full Name',
+        rawValue: String(adminAccountForm.name || '').trim(),
+        rawPreviousValue: String(adminAccountOriginal.name || '').trim(),
+        value: String(adminAccountForm.name || '').trim() || 'Not entered',
+        previousValue: String(adminAccountOriginal.name || '').trim() || 'Not set',
+      },
+      {
+        key: 'email',
+        label: 'Email Address',
+        rawValue: String(adminAccountForm.email || '').trim(),
+        rawPreviousValue: String(adminAccountOriginal.email || '').trim(),
+        value: String(adminAccountForm.email || '').trim() || 'Not entered',
+        previousValue: String(adminAccountOriginal.email || '').trim() || 'Not set',
+      },
+      {
+        key: 'phone',
+        label: 'Contact Number',
+        rawValue: String(adminAccountForm.phone || '').trim(),
+        rawPreviousValue: String(adminAccountOriginal.phone || '').trim(),
+        value: String(adminAccountForm.phone || '').trim() || 'Not entered',
+        previousValue: String(adminAccountOriginal.phone || '').trim() || 'Not set',
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        rawValue: String(adminAccountForm.status || '').trim(),
+        rawPreviousValue: String(adminAccountOriginal.status || '').trim(),
+        value: String(adminAccountForm.status || '').trim() || 'Not selected',
+        previousValue: String(adminAccountOriginal.status || '').trim() || 'Not set',
+      },
+      {
+        key: 'password',
+        label: 'Password',
+        value: adminAccountForm.password ? 'Changed' : 'Unchanged',
+        previousValue: 'Current password',
+      },
+    ].map((detail) => ({
+      ...detail,
+      changed:
+        detail.key === 'password'
+          ? !!adminAccountForm.password
+          : detail.rawValue !== detail.rawPreviousValue,
+    }));
+  }
+
+  function handleAdminAccountSubmit(event) {
+    event.preventDefault();
+
+    setAdminAccountMessage('');
+    setAdminAccountError('');
+
+    const passwordError = validateAdminPassword();
+
+    if (passwordError) {
+      setAdminAccountError(passwordError);
+      return;
+    }
+
+    setAdminAccountSaveConfirmModal({
+      details: getAdminAccountSaveDetails(),
+    });
   }
 
   function handleBranchSubmit(event) {
@@ -1647,9 +1726,7 @@ export default function AdminSettings() {
     }
   }
 
-  async function saveAdminAccount(event) {
-    event.preventDefault();
-
+  async function saveAdminAccount() {
     try {
       setAdminAccountMessage('');
       setAdminAccountError('');
@@ -1681,8 +1758,22 @@ export default function AdminSettings() {
         status: updated.status || adminAccountForm.status,
         created_at: updated.created_at || adminAccountForm.created_at,
       });
+      setAdminAccountOriginal({
+        id: updated.id || adminAccountForm.id,
+        name: updated.name || adminAccountForm.name,
+        email: updated.email || adminAccountForm.email,
+        phone: updated.phone || '',
+        password: '',
+        confirmPassword: '',
+        role: updated.role || 'admin',
+        status: updated.status || adminAccountForm.status,
+        created_at: updated.created_at || adminAccountForm.created_at,
+      });
       setAdminAccountMessage(res.data.message || 'Admin account updated.');
+      setAdminAccountSaveConfirmModal(null);
       setIsEditingAdminAccount(false);
+      setShowAdminPassword(false);
+      setShowAdminConfirmPassword(false);
       await loadUsers();
     } catch (err) {
       console.error('Failed to update admin account', err);
@@ -2316,8 +2407,13 @@ export default function AdminSettings() {
 
   function renderAdminAccountPanel() {
     const displayDate = String(adminAccountForm.created_at || '').slice(0, 10) || 'N/A';
+    const adminPasswordError = validateAdminPassword();
+    const shouldShowAdminPasswordError =
+      !!adminPasswordError &&
+      (!!adminAccountForm.password || !!adminAccountForm.confirmPassword);
 
     return (
+      <>
       <section style={styles.accountCard}>
         <div style={styles.accountHeader}>
           <div>
@@ -2357,6 +2453,9 @@ export default function AdminSettings() {
                 onClick={() => {
                   setAdminAccountMessage('');
                   setAdminAccountError('');
+                  setAdminAccountOriginal(adminAccountForm);
+                  setShowAdminPassword(false);
+                  setShowAdminConfirmPassword(false);
                   setIsEditingAdminAccount(true);
                 }}
               >
@@ -2365,7 +2464,7 @@ export default function AdminSettings() {
             </div>
           </>
         ) : (
-          <form onSubmit={saveAdminAccount}>
+          <form onSubmit={handleAdminAccountSubmit}>
             <div style={styles.formGrid}>
               <Field label="Full Name" styles={styles}>
                 <input
@@ -2418,29 +2517,71 @@ export default function AdminSettings() {
               </Field>
 
               <Field label="Password" styles={styles}>
-                <input
-                  type="password"
-                  value={adminAccountForm.password}
-                  onChange={(event) =>
-                    handleAdminAccountChange('password', event.target.value)
-                  }
-                  style={styles.formInput}
-                  placeholder="Optional new password"
-                  minLength={8}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showAdminPassword ? 'text' : 'password'}
+                    value={adminAccountForm.password}
+                    onChange={(event) =>
+                      handleAdminAccountChange('password', event.target.value)
+                    }
+                    style={{ ...styles.formInput, paddingRight: 76 }}
+                    placeholder="Optional new password"
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword((prev) => !prev)}
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#64748b',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: '4px 6px',
+                    }}
+                  >
+                    {showAdminPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
               </Field>
 
               <Field label="Confirm Password" styles={styles}>
-                <input
-                  type="password"
-                  value={adminAccountForm.confirmPassword}
-                  onChange={(event) =>
-                    handleAdminAccountChange('confirmPassword', event.target.value)
-                  }
-                  style={styles.formInput}
-                  placeholder="Confirm new password"
-                  minLength={8}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showAdminConfirmPassword ? 'text' : 'password'}
+                    value={adminAccountForm.confirmPassword}
+                    onChange={(event) =>
+                      handleAdminAccountChange('confirmPassword', event.target.value)
+                    }
+                    style={{ ...styles.formInput, paddingRight: 76 }}
+                    placeholder="Confirm new password"
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminConfirmPassword((prev) => !prev)}
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#64748b',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: '4px 6px',
+                    }}
+                  >
+                    {showAdminConfirmPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
               </Field>
 
               <Field label="Access Role" styles={styles}>
@@ -2465,17 +2606,17 @@ export default function AdminSettings() {
             <p style={styles.passwordHint}>
               Password is optional. Use at least 8 letters/numbers, with one letter and one number. Special characters are not allowed.
             </p>
+            {shouldShowAdminPasswordError && (
+              <p style={{ ...styles.errorText, marginTop: -6 }}>
+                {adminPasswordError}
+              </p>
+            )}
 
             <div style={styles.formActions}>
               <button
                 type="button"
                 style={styles.secondaryBtn}
-                onClick={() => {
-                  setAdminAccountMessage('');
-                  setAdminAccountError('');
-                  setIsEditingAdminAccount(false);
-                  loadAdminAccount();
-                }}
+                onClick={() => setShowAdminAccountCancelConfirmModal(true)}
               >
                 Cancel
               </button>
@@ -2487,6 +2628,131 @@ export default function AdminSettings() {
           </form>
         )}
       </section>
+
+      {showAdminAccountCancelConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowAdminAccountCancelConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Admin Account Editing?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved admin account changes will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowAdminAccountCancelConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={() => {
+                  setAdminAccountMessage('');
+                  setAdminAccountError('');
+                  setShowAdminAccountCancelConfirmModal(false);
+                  setAdminAccountSaveConfirmModal(null);
+                  setIsEditingAdminAccount(false);
+                  setShowAdminPassword(false);
+                  setShowAdminConfirmPassword(false);
+                  setAdminAccountForm(adminAccountOriginal);
+                }}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {adminAccountSaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setAdminAccountSaveConfirmModal(null);
+            }
+          }}
+        >
+          <div style={{ ...styles.modalContent, width: isMobile ? '100%' : 520, maxWidth: 520 }}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Admin Account Changes</h2>
+            <p style={styles.modalText}>
+              Please review the admin account details before saving.
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {adminAccountSaveConfirmModal.details.filter((detail) => detail.changed).length === 0 ? (
+                <div style={{ color: '#64748b', fontSize: 13, padding: '8px 0' }}>
+                  No admin account changes detected.
+                </div>
+              ) : (
+                adminAccountSaveConfirmModal.details
+                  .filter((detail) => detail.changed)
+                  .map((detail) => (
+                    <div
+                      key={detail.key}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '7px 0',
+                        borderBottom: '1px solid #f1f5f9',
+                        fontSize: 13,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ color: '#64748b' }}>
+                        {detail.label}
+                        <small style={{ display: 'block', color: '#94a3b8', marginTop: 2 }}>
+                          {detail.previousValue === 'Not set' ? 'Added' : 'Changed'}
+                        </small>
+                      </span>
+                      <strong style={{ color: '#0f172a', textAlign: 'right', maxWidth: 260, overflowWrap: 'anywhere' }}>
+                        {detail.value}
+                      </strong>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setAdminAccountSaveConfirmModal(null)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={saveAdminAccount}
+              >
+                Update Admin Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
