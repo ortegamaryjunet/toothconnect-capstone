@@ -72,6 +72,46 @@ function filterProfTextVal(val) {
   return val.replace(/[^a-zA-ZÀ-ÿ\s'\-.,()&/:]/g, '');
 }
 
+function isValidContactNumber(value) {
+  const contact = String(value || '').trim();
+
+  if (contact.startsWith('+')) {
+    return /^\+639\d{9}$/.test(contact);
+  }
+
+  return /^09\d{9}$/.test(contact);
+}
+
+function isValidEmailAddress(value) {
+  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(
+    String(value || '').trim()
+  );
+}
+
+function isValidDateValue(value) {
+  if (!value) {
+    return false;
+  }
+
+  const date = new Date(value);
+
+  return !Number.isNaN(date.getTime());
+}
+
+function isValidNonNegativeNumber(value) {
+  if (value === '' || value === null || typeof value === 'undefined') {
+    return true;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number) && number >= 0;
+}
+
+function isValidTimeValue(value) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || '').trim());
+}
+
 function getShiftTypeOptions(role) {
   if (role === 'Dentist') {
     return ['By Appointment'];
@@ -811,6 +851,46 @@ export default function AdminEmployees() {
     return errors;
   }
 
+  function validateEditFormatFields() {
+    const errors = new Set();
+
+    if (!isValidContactNumber(editedEmployee?.contactNumber)) {
+      errors.add('contactNumber');
+    }
+
+    if (!isValidEmailAddress(editedEmployee?.email)) {
+      errors.add('email');
+    }
+
+    if (!isValidDateValue(editedEmployee?.birthday)) {
+      errors.add('birthday');
+    }
+
+    if (!isValidDateValue(editedEmployee?.startDate)) {
+      errors.add('startDate');
+    }
+
+    if (!isValidNonNegativeNumber(editedEmployee?.age)) {
+      errors.add('age');
+    }
+
+    if (!isValidNonNegativeNumber(editedEmployee?.yearsExperience)) {
+      errors.add('yearsExperience');
+    }
+
+    if (editedEmployee?.role === 'Dentist') {
+      if (!isValidTimeValue(editedEmployee?.workStartTime)) {
+        errors.add('workStartTime');
+      }
+
+      if (!isValidTimeValue(editedEmployee?.workEndTime)) {
+        errors.add('workEndTime');
+      }
+    }
+
+    return errors;
+  }
+
   function getPreparedEmployeeForSave() {
     let nextEmployee = editedEmployee;
 
@@ -945,6 +1025,15 @@ export default function AdminEmployees() {
     if (errors.size > 0) {
       setEditErrors(errors);
       setEditErrorMessage('Please fill in all required fields before saving.');
+      setShowEditErrorModal(true);
+      return;
+    }
+
+    const formatErrors = validateEditFormatFields();
+
+    if (formatErrors.size > 0) {
+      setEditErrors(formatErrors);
+      setEditErrorMessage('Please fix the highlighted fields before saving.');
       setShowEditErrorModal(true);
       return;
     }
