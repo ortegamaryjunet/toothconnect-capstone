@@ -129,6 +129,10 @@ export default function AdminEmployees() {
     useState(false);
   const [showEmployeeEditConfirmModal, setShowEmployeeEditConfirmModal] =
     useState(false);
+  const [showEmployeeEditCancelConfirmModal, setShowEmployeeEditCancelConfirmModal] =
+    useState(false);
+  const [employeeSaveConfirmModal, setEmployeeSaveConfirmModal] =
+    useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [editedEmployee, setEditedEmployee] = useState(null);
@@ -234,6 +238,8 @@ export default function AdminEmployees() {
       showEmployeeModal ||
       showEmployeeCloseConfirmModal ||
       showEmployeeEditConfirmModal ||
+      showEmployeeEditCancelConfirmModal ||
+      employeeSaveConfirmModal ||
       showEditErrorModal ||
       showExportModal
     ) {
@@ -250,6 +256,8 @@ export default function AdminEmployees() {
     showEmployeeModal,
     showEmployeeCloseConfirmModal,
     showEmployeeEditConfirmModal,
+    showEmployeeEditCancelConfirmModal,
+    employeeSaveConfirmModal,
     showEditErrorModal,
     showExportModal,
   ]);
@@ -260,8 +268,14 @@ export default function AdminEmployees() {
         closeLogoutModal();
         setShowEmployeeCloseConfirmModal(false);
         setShowEmployeeEditConfirmModal(false);
+        setShowEmployeeEditCancelConfirmModal(false);
+        setEmployeeSaveConfirmModal(null);
         if (showEmployeeModal) {
-          setShowEmployeeCloseConfirmModal(true);
+          if (isEditingEmployee) {
+            setShowEmployeeEditCancelConfirmModal(true);
+          } else {
+            setShowEmployeeCloseConfirmModal(true);
+          }
         }
         setShowExportModal(false);
       }
@@ -272,7 +286,7 @@ export default function AdminEmployees() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showEmployeeModal]);
+  }, [showEmployeeModal, isEditingEmployee]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
@@ -703,6 +717,8 @@ export default function AdminEmployees() {
     setShowEmployeeModal(false);
     setShowEmployeeCloseConfirmModal(false);
     setShowEmployeeEditConfirmModal(false);
+    setShowEmployeeEditCancelConfirmModal(false);
+    setEmployeeSaveConfirmModal(null);
     setSelectedEmployee(null);
     setEditedEmployee(null);
     setIsEditingEmployee(false);
@@ -713,7 +729,11 @@ export default function AdminEmployees() {
 
   function handleEmployeeModalOverlayClick(event) {
     if (event.target === event.currentTarget) {
-      setShowEmployeeCloseConfirmModal(true);
+      if (isEditingEmployee) {
+        setShowEmployeeEditCancelConfirmModal(true);
+      } else {
+        setShowEmployeeCloseConfirmModal(true);
+      }
     }
   }
 
@@ -723,6 +743,8 @@ export default function AdminEmployees() {
   }
 
   function handleCancelEditEmployee() {
+    setShowEmployeeEditCancelConfirmModal(false);
+    setEmployeeSaveConfirmModal(null);
     setEditedEmployee({ ...selectedEmployee });
     setIsEditingEmployee(false);
     setEditErrors(new Set());
@@ -781,7 +803,135 @@ export default function AdminEmployees() {
     return errors;
   }
 
-  async function handleSaveEmployeeChanges() {
+  function getPreparedEmployeeForSave() {
+    let nextEmployee = editedEmployee;
+
+    if (editedEmployee?.role === 'Dentist') {
+      const checkedDays = parseWorkDays(editedEmployee?.workDays);
+      const assignedBranchId = Number(editedEmployee?.branchId);
+
+      const scheduleEntries = checkedDays
+        .map((day) => {
+          const weekday = DAY_TO_WEEKDAY[day];
+          const draft = scheduleDraft?.[weekday] || {};
+
+          const branchId = usePerDayBranchSchedule
+            ? Number(draft.branch_id || assignedBranchId)
+            : assignedBranchId;
+
+          const startTime =
+            (usePerDayBranchSchedule ? draft.start_time : '') ||
+            editedEmployee?.workStartTime ||
+            '';
+
+          const endTime =
+            (usePerDayBranchSchedule ? draft.end_time : '') ||
+            editedEmployee?.workEndTime ||
+            '';
+
+          if (!Number.isInteger(weekday)) {
+            return null;
+          }
+
+          if (!Number.isInteger(branchId) || branchId <= 0) {
+            return null;
+          }
+
+          if (!startTime || !endTime) {
+            return null;
+          }
+
+          return {
+            weekday,
+            branch_id: branchId,
+            start_time: startTime,
+            end_time: endTime,
+          };
+        })
+        .filter(Boolean);
+
+      nextEmployee = {
+        ...editedEmployee,
+        scheduleEntries,
+      };
+    }
+
+    return nextEmployee;
+  }
+
+  function formatEmployeeChangeValue(name, value, employee = editedEmployee) {
+    if (name === 'branchId') {
+      const branch = branches.find((item) => String(item.id) === String(value));
+      return branch?.address ? `${branch.name} - ${branch.address}` : branch?.name || employee?.branchAddress || value || 'Not selected';
+    }
+
+    if (name === 'workDays') {
+      const days = parseWorkDays(value);
+      return days.length ? days.join(', ') : 'Not selected';
+    }
+
+    if (name === 'scheduleEntries') {
+      const formatted = formatScheduleEntries(value);
+      return formatted.length ? formatted.join('; ') : 'Not set';
+    }
+
+    return String(value ?? '').trim() || 'Not entered';
+  }
+
+  function getEmployeeSaveDetails(nextEmployee) {
+    const fields = [
+      ['firstName', 'First Name'],
+      ['middleName', 'Middle Name'],
+      ['lastName', 'Last Name'],
+      ['nickname', 'Preferred Nickname'],
+      ['suffix', 'Suffix'],
+      ['birthday', 'Birthday'],
+      ['age', 'Age'],
+      ['gender', 'Gender'],
+      ['civilStatus', 'Civil Status'],
+      ['religion', 'Religion'],
+      ['nationality', 'Nationality'],
+      ['homeAddress', 'Home Address'],
+      ['contactNumber', 'Contact Number'],
+      ['email', 'Email Address'],
+      ['position', 'Position'],
+      ['medicalDegree', 'Medical Degree'],
+      ['licenseNumber', 'Medical License Number'],
+      ['specialization', 'Specialization / Department'],
+      ['yearsExperience', 'Years of Experience'],
+      ['skills', 'Skills'],
+      ['assignedDentist', 'Assigned Dentist'],
+      ['startDate', 'Start Date'],
+      ['branchId', 'Assigned Branch'],
+      ['employmentType', 'Employment Type'],
+      ['shiftType', 'Shift Type'],
+      ['workDays', 'Work Days'],
+      ['workStartTime', 'Work Start Time'],
+      ['workEndTime', 'Work End Time'],
+      ['scheduleEntries', 'Branch Schedule'],
+      ['status', 'Status'],
+      ['accessRole', 'Access Role'],
+    ];
+
+    return fields
+      .map(([key, label]) => {
+        const nextValue = key === 'scheduleEntries' ? nextEmployee?.scheduleEntries : nextEmployee?.[key];
+        const previousValue = key === 'scheduleEntries' ? selectedEmployee?.scheduleEntries : selectedEmployee?.[key];
+        const formattedNext = formatEmployeeChangeValue(key, nextValue, nextEmployee);
+        const formattedPrevious = formatEmployeeChangeValue(key, previousValue, selectedEmployee);
+
+        return {
+          key,
+          label,
+          value: formattedNext,
+          previousValue: formattedPrevious,
+          changed: formattedNext !== formattedPrevious,
+        };
+      })
+      .filter((detail) => detail.changed);
+  }
+
+  function handleSaveEmployeeChangesRequest() {
     const errors = validateEditFields();
 
     if (errors.size > 0) {
@@ -792,59 +942,16 @@ export default function AdminEmployees() {
     }
 
     setEditErrors(new Set());
+    const nextEmployee = getPreparedEmployeeForSave();
+    setEmployeeSaveConfirmModal({
+      nextEmployee,
+      details: getEmployeeSaveDetails(nextEmployee),
+    });
+  }
 
+  async function handleSaveEmployeeChanges() {
     try {
-      let nextEmployee = editedEmployee;
-
-      if (editedEmployee?.role === 'Dentist') {
-        const checkedDays = parseWorkDays(editedEmployee?.workDays);
-        const assignedBranchId = Number(editedEmployee?.branchId);
-
-        const scheduleEntries = checkedDays
-          .map((day) => {
-            const weekday = DAY_TO_WEEKDAY[day];
-            const draft = scheduleDraft?.[weekday] || {};
-
-            const branchId = usePerDayBranchSchedule
-              ? Number(draft.branch_id || assignedBranchId)
-              : assignedBranchId;
-
-            const startTime =
-              (usePerDayBranchSchedule ? draft.start_time : '') ||
-              editedEmployee?.workStartTime ||
-              '';
-
-            const endTime =
-              (usePerDayBranchSchedule ? draft.end_time : '') ||
-              editedEmployee?.workEndTime ||
-              '';
-
-            if (!Number.isInteger(weekday)) {
-              return null;
-            }
-
-            if (!Number.isInteger(branchId) || branchId <= 0) {
-              return null;
-            }
-
-            if (!startTime || !endTime) {
-              return null;
-            }
-
-            return {
-              weekday,
-              branch_id: branchId,
-              start_time: startTime,
-              end_time: endTime,
-            };
-          })
-          .filter(Boolean);
-
-        nextEmployee = {
-          ...editedEmployee,
-          scheduleEntries,
-        };
-      }
+      const nextEmployee = employeeSaveConfirmModal?.nextEmployee || getPreparedEmployeeForSave();
 
       const res = await api.patch(
         `/auth/staff-profiles/${editedEmployee.profileId}`,
@@ -864,6 +971,7 @@ export default function AdminEmployees() {
       setSelectedEmployee(savedEmployee);
       setEditedEmployee(savedEmployee);
       setIsEditingEmployee(false);
+      setEmployeeSaveConfirmModal(null);
       setUsePerDayBranchSchedule(
         Array.isArray(savedEmployee?.scheduleEntries) &&
           savedEmployee.scheduleEntries.length > 0
@@ -1612,7 +1720,10 @@ export default function AdminEmployees() {
 
               <button
                 type="button"
-                style={styles.employeeModalCloseBtn}
+                style={{
+                  ...styles.employeeModalCloseBtn,
+                  display: isEditingEmployee ? 'none' : 'flex',
+                }}
                 onClick={() => setShowEmployeeCloseConfirmModal(true)}
               >
                 ×
@@ -1820,18 +1931,18 @@ export default function AdminEmployees() {
                 <>
                   <button
                     type="button"
-                    style={styles.employeeSaveBtn}
-                    onClick={handleSaveEmployeeChanges}
+                    style={styles.employeeCloseBtn}
+                    onClick={() => setShowEmployeeEditCancelConfirmModal(true)}
                   >
-                    Save Changes
+                    Cancel
                   </button>
 
                   <button
                     type="button"
-                    style={styles.employeeCloseBtn}
-                    onClick={handleCancelEditEmployee}
+                    style={styles.employeeSaveBtn}
+                    onClick={handleSaveEmployeeChangesRequest}
                   >
-                    Cancel
+                    Save Changes
                   </button>
                 </>
               )}
@@ -1914,6 +2025,126 @@ export default function AdminEmployees() {
                 onClick={handleEditEmployee}
               >
                 Yes, Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEmployeeEditCancelConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowEmployeeEditCancelConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Employee Editing?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved employee changes will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowEmployeeEditCancelConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={handleCancelEditEmployee}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {employeeSaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setEmployeeSaveConfirmModal(null);
+            }
+          }}
+        >
+          <div style={{ ...styles.modalContent, width: isMobile ? '100%' : 560, maxWidth: 560 }}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Employee Changes</h2>
+            <p style={styles.modalText}>
+              Please review the employee information changes before saving.
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {employeeSaveConfirmModal.details.length === 0 ? (
+                <div style={{ color: '#64748b', fontSize: 13, padding: '8px 0' }}>
+                  No employee changes detected.
+                </div>
+              ) : (
+                employeeSaveConfirmModal.details.map((detail) => (
+                  <div
+                    key={detail.key}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      padding: '7px 0',
+                      borderBottom: '1px solid #f1f5f9',
+                      fontSize: 13,
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ color: '#64748b' }}>
+                      {detail.label}
+                      <small style={{ display: 'block', color: '#94a3b8', marginTop: 2 }}>
+                        {detail.previousValue === 'Not entered' || detail.previousValue === 'Not selected' || detail.previousValue === 'Not set'
+                          ? 'Added'
+                          : 'Changed'}
+                      </small>
+                    </span>
+                    <strong style={{ color: '#0f172a', textAlign: 'right', maxWidth: 300, overflowWrap: 'anywhere' }}>
+                      {detail.value}
+                    </strong>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setEmployeeSaveConfirmModal(null)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  ...styles.modalButton,
+                  background: '#d4af37',
+                  color: '#ffffff',
+                  boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+                }}
+                onClick={handleSaveEmployeeChanges}
+              >
+                Save Changes
               </button>
             </div>
           </div>
