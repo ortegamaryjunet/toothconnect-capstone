@@ -2103,6 +2103,13 @@ export default function InventoryPage() {
             </div>
 
             <div style={styles.stockSummaryGrid}>
+              <div style={{ ...styles.stockMetricCard, ...styles.stockMetricGreen }}>
+                <span style={styles.stockMetricLabel}>Total Quantity</span>
+                <strong style={{ ...styles.stockMetricValue, color: '#059669' }}>
+                  {stockSummary.totalQuantity}
+                </strong>
+              </div>
+
               <div
                 style={{
                   ...styles.stockMetricCard,
@@ -2127,13 +2134,6 @@ export default function InventoryPage() {
                 <span style={styles.stockMetricLabel}>Total Items</span>
                 <strong style={{ ...styles.stockMetricValue, color: '#1d4ed8' }}>
                   {stockSummary.totalItems}
-                </strong>
-              </div>
-
-              <div style={{ ...styles.stockMetricCard, ...styles.stockMetricGreen }}>
-                <span style={styles.stockMetricLabel}>Total Quantity</span>
-                <strong style={{ ...styles.stockMetricValue, color: '#059669' }}>
-                  {stockSummary.totalQuantity}
                 </strong>
               </div>
 
