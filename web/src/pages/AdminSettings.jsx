@@ -105,6 +105,7 @@ const branchRequiredFields = [
   'years_active',
   'status',
 ];
+const BRANCH_PHONE_REGEX = /^09\d{9}$/;
 
 const initialServiceForm = {
   id: '',
@@ -193,6 +194,8 @@ export default function AdminSettings() {
   const [websiteContentForm, setWebsiteContentForm] = useState({});
   const [websiteContentSaving, setWebsiteContentSaving] = useState(false);
   const [websiteContentEditing, setWebsiteContentEditing] = useState(false);
+  const [showWebsiteContentCancelConfirmModal, setShowWebsiteContentCancelConfirmModal] =
+    useState(false);
   const [websiteContentMsg, setWebsiteContentMsg] = useState({ text: '', type: '' });
   const [websiteValidationModal, setWebsiteValidationModal] = useState(null);
   const [websiteFaqOverlay, setWebsiteFaqOverlay] = useState(null);
@@ -271,7 +274,7 @@ export default function AdminSettings() {
 
   const isBranchFormComplete = branchRequiredFields.every(
     (field) => String(branchForm[field] ?? '').trim() !== ''
-  );
+  ) && BRANCH_PHONE_REGEX.test(String(branchForm.phone || '').trim());
 
   useEffect(() => {
     function handleResize() {
@@ -303,7 +306,17 @@ export default function AdminSettings() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || activeOverlay || websiteFaqOverlay || websiteServiceOverlay || websiteAnnouncementOverlay || websiteValidationModal || serviceKitOverlay || showServiceKitHistory) {
+    if (
+      showLogoutModal ||
+      activeOverlay ||
+      websiteFaqOverlay ||
+      websiteServiceOverlay ||
+      websiteAnnouncementOverlay ||
+      websiteValidationModal ||
+      showWebsiteContentCancelConfirmModal ||
+      serviceKitOverlay ||
+      showServiceKitHistory
+    ) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -312,7 +325,17 @@ export default function AdminSettings() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, activeOverlay, websiteFaqOverlay, websiteServiceOverlay, websiteAnnouncementOverlay, websiteValidationModal, serviceKitOverlay, showServiceKitHistory]);
+  }, [
+    showLogoutModal,
+    activeOverlay,
+    websiteFaqOverlay,
+    websiteServiceOverlay,
+    websiteAnnouncementOverlay,
+    websiteValidationModal,
+    showWebsiteContentCancelConfirmModal,
+    serviceKitOverlay,
+    showServiceKitHistory,
+  ]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -322,8 +345,9 @@ export default function AdminSettings() {
         setWebsiteFaqOverlay(null);
         setWebsiteServiceOverlay(null);
         setWebsiteAnnouncementOverlay(null);
-        setWebsiteValidationModal(null);
-        setServiceKitOverlay(false);
+      setWebsiteValidationModal(null);
+      setShowWebsiteContentCancelConfirmModal(false);
+      setServiceKitOverlay(false);
       }
     }
 
@@ -754,6 +778,16 @@ export default function AdminSettings() {
     setBranchTouchedFields({});
   }
 
+  function handleCancelWebsiteContentEdit() {
+    setShowWebsiteContentCancelConfirmModal(true);
+  }
+
+  function confirmCancelWebsiteContentEdit() {
+    setWebsiteContentForm(websiteContent);
+    setWebsiteContentEditing(false);
+    setShowWebsiteContentCancelConfirmModal(false);
+  }
+
   function handleOverlayClick(event) {
     if (event.target === event.currentTarget) {
       closeOverlay();
@@ -822,6 +856,10 @@ export default function AdminSettings() {
       newValue = allowLettersOnly(value);
     }
 
+    if (name === 'phone') {
+      newValue = allowNumbersOnly(value).slice(0, 11);
+    }
+
     setBranchForm((prev) => ({
       ...prev,
       [name]: newValue,
@@ -833,6 +871,14 @@ export default function AdminSettings() {
   }
 
   function isBranchFieldInvalid(name) {
+    if (name === 'phone') {
+      return (
+        branchTouchedFields[name] &&
+        (String(branchForm.phone || '').trim() === '' ||
+          !BRANCH_PHONE_REGEX.test(String(branchForm.phone || '').trim()))
+      );
+    }
+
     return (
       branchTouchedFields[name] &&
       String(branchForm[name] ?? '').trim() === ''
@@ -854,6 +900,22 @@ export default function AdminSettings() {
         {label} <span style={{ color: '#dc2626' }}>*</span>
       </>
     );
+  }
+
+  function getBranchPhoneError() {
+    if (!branchTouchedFields.phone) {
+      return '';
+    }
+
+    if (!String(branchForm.phone || '').trim()) {
+      return 'Contact number is required.';
+    }
+
+    if (!BRANCH_PHONE_REGEX.test(String(branchForm.phone || '').trim())) {
+      return 'Use 09XXXXXXXXX format.';
+    }
+
+    return '';
   }
 
   function handleServiceChange(name, value) {
@@ -1436,8 +1498,8 @@ export default function AdminSettings() {
       borderRadius: 8,
       borderWidth: 1,
       borderStyle: 'solid',
-      borderColor: active ? '#2563eb' : '#e2e8f0',
-      background: active ? '#2563eb' : '#fff',
+      borderColor: active ? '#d4af37' : '#e2e8f0',
+      background: active ? '#d4af37' : '#fff',
       color: active ? '#fff' : '#475569',
       cursor: 'pointer',
       fontSize: 13,
@@ -1536,6 +1598,28 @@ export default function AdminSettings() {
       </div>
     );
 
+    const contentEditActions = (sectionFields, requiredKeys = []) => (
+      <div style={styles.overlayActions}>
+        <button
+          type="button"
+          style={styles.secondaryBtn}
+          disabled={websiteContentSaving}
+          onClick={handleCancelWebsiteContentEdit}
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          style={styles.saveBtn}
+          disabled={websiteContentSaving}
+          onClick={() => saveWebsiteContent(sectionFields, requiredKeys)}
+        >
+          {websiteContentSaving ? 'Saving...' : 'Save Content'}
+        </button>
+      </div>
+    );
+
     function getContentSectionFields() {
       if (websiteContentSection === 'hero') {
         return (
@@ -1559,14 +1643,10 @@ export default function AdminSettings() {
             
             {sectionDesignFields('hero', 'Hero')}
             {websiteContentEditing && (
-              <button
-                type="button"
-                style={styles.saveBtn}
-                disabled={websiteContentSaving}
-                onClick={() => saveWebsiteContent(collectFieldsByPrefixes(['hero_']), ['hero_heading', 'hero_description'])}
-              >
-                {websiteContentSaving ? 'Saving…' : 'Save Hero Content'}
-              </button>
+              contentEditActions(
+                collectFieldsByPrefixes(['hero_']),
+                ['hero_heading', 'hero_description']
+              )
             )}
           </div>
         );
@@ -1579,14 +1659,10 @@ export default function AdminSettings() {
             {fieldRow('Paragraph 3', 'about_paragraph3', 'textarea')}
             {sectionDesignFields('about', 'About')}
             {websiteContentEditing && (
-              <button
-                type="button"
-                style={styles.saveBtn}
-                disabled={websiteContentSaving}
-                onClick={() => saveWebsiteContent(collectFieldsByPrefixes(['about_']), ['about_paragraph1'])}
-              >
-                {websiteContentSaving ? 'Saving…' : 'Save About Content'}
-              </button>
+              contentEditActions(
+                collectFieldsByPrefixes(['about_']),
+                ['about_paragraph1']
+              )
             )}
           </div>
         );
@@ -1605,14 +1681,10 @@ export default function AdminSettings() {
             {fieldRow('Sunday Note (e.g. By Appointment)', 'hours_sunday_note')}
             {sectionDesignFields('contact', 'Contact & Hours')}
             {websiteContentEditing && (
-              <button
-                type="button"
-                style={styles.saveBtn}
-                disabled={websiteContentSaving}
-                onClick={() => saveWebsiteContent(collectFieldsByPrefixes(['contact_', 'hours_']), ['contact_phone1', 'contact_email'])}
-              >
-                {websiteContentSaving ? 'Saving…' : 'Save Contact & Hours'}
-              </button>
+              contentEditActions(
+                collectFieldsByPrefixes(['contact_', 'hours_']),
+                ['contact_phone1', 'contact_email']
+              )
             )}
           </div>
         );
@@ -1625,14 +1697,10 @@ export default function AdminSettings() {
 
             {sectionDesignFields('footer', 'Footer')}
             {websiteContentEditing && (
-              <button
-                type="button"
-                style={styles.saveBtn}
-                disabled={websiteContentSaving}
-                onClick={() => saveWebsiteContent(collectFieldsByPrefixes(['footer_']), ['footer_brand_name'])}
-              >
-                {websiteContentSaving ? 'Saving…' : 'Save Footer Content'}
-              </button>
+              contentEditActions(
+                collectFieldsByPrefixes(['footer_']),
+                ['footer_brand_name']
+              )
             )}
           </div>
         );
@@ -2623,7 +2691,9 @@ export default function AdminSettings() {
 
               <Field label={renderBranchRequiredLabel('Contact Number')} styles={styles}>
                 <input
-                  type="tel"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={11}
                   value={branchForm.phone}
                   onChange={(event) =>
                     handleBranchChange('phone', event.target.value)
@@ -2631,6 +2701,11 @@ export default function AdminSettings() {
                   onBlur={() => handleBranchFieldBlur('phone')}
                   style={getBranchFieldStyle('phone')}
                 />
+                {getBranchPhoneError() && (
+                  <span style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>
+                    {getBranchPhoneError()}
+                  </span>
+                )}
               </Field>
 
               <Field label={renderBranchRequiredLabel('Contact Person')} styles={styles}>
@@ -2775,6 +2850,37 @@ export default function AdminSettings() {
             <p style={styles.modalText}>
               Please confirm that the branch information is correct before saving.
             </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {[
+                ['Branch Name', branchForm.name || 'Not entered'],
+                ['Clinic Location', branchForm.address || 'Not entered'],
+                ['Date Opened', branchForm.date_opened || 'Not selected'],
+                ['Contact Number', branchForm.phone || 'Not entered'],
+                ['Contact Person', branchForm.contact_person || 'Not entered'],
+                ['Operating Hours', branchForm.operating_hours || 'Not entered'],
+                ['Years Active', branchForm.years_active || 'Not entered'],
+                ['Status', branchForm.status || 'Not selected'],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '6px 0',
+                    borderBottom: '1px solid #f1f5f9',
+                    fontSize: 13,
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ color: '#64748b' }}>{label}</span>
+                  <strong style={{ color: '#0f172a', textAlign: 'right' }}>
+                    {value}
+                  </strong>
+                </div>
+              ))}
+            </div>
 
             <div style={styles.modalActions}>
               <button
@@ -3420,6 +3526,46 @@ export default function AdminSettings() {
             >
               Okay
             </button>
+          </div>
+        </div>
+      )}
+
+      {showWebsiteContentCancelConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowWebsiteContentCancelConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Content Editing?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved website content changes will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowWebsiteContentCancelConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCancelWebsiteContentEdit}
+              >
+                Yes, Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
