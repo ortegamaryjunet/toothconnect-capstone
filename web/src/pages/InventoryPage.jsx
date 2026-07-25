@@ -1036,6 +1036,12 @@ export default function InventoryPage() {
     setExpenseSaveError('');
   }
 
+  function handleCancelExpenseModal() {
+    if (window.confirm('Are you sure you want to cancel this expense input?')) {
+      closeExpenseModal();
+    }
+  }
+
   function closeExpenseConfirmModal() {
     setShowExpenseConfirmModal(false);
   }
@@ -2467,14 +2473,13 @@ export default function InventoryPage() {
       )}
 
       {!isReceptionist && showExpenseModal && (
-        <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeExpenseModal(); }}>
+        <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) handleCancelExpenseModal(); }}>
           <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '28px 28px 24px', boxShadow: '0 8px 32px rgba(0,0,0,0.16)', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a', fontFamily: 'Arial, sans-serif' }}>Expense Input</h3>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b', fontFamily: 'Arial, sans-serif' }}>Inventory purchase expense</p>
               </div>
-              <button type="button" onClick={closeExpenseModal} style={styles.closeBtn}>×</button>
             </div>
 
             <label style={styles.formGroup}>
@@ -2607,7 +2612,7 @@ export default function InventoryPage() {
               >
                 Save Expense
               </button>
-              <button type="button" style={styles.cancelEditBtn} onClick={closeExpenseModal}>
+              <button type="button" style={styles.cancelEditBtn} onClick={handleCancelExpenseModal}>
                 Cancel
               </button>
             </div>

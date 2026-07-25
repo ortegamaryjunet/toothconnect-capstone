@@ -536,7 +536,16 @@
       display: 'flex',
       alignItems: 'center',
       justifyContent: isSmallScreen ? 'stretch' : 'flex-end',
-      gap: 4,
+      gap: isMobile ? 10 : 14,
+      flexWrap: 'wrap',
+      width: isSmallScreen ? '100%' : 'auto',
+    },
+
+    tableButtonGroup: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: isSmallScreen ? 'stretch' : 'flex-end',
+      gap: isMobile ? 10 : 14,
       flexWrap: 'wrap',
       width: isSmallScreen ? '100%' : 'auto',
     },
