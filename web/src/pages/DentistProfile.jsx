@@ -1,13 +1,20 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 import api from '../api/axios';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createDentistProfileStyles from '../styles/DentistProfile';
 
 import clinicLogo from '../assets/dentistImages/clinic-logo.png';
+
+async function loadPdfTools() {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+
+  return { jsPDF, autoTable };
+}
 
 const initialProfile = {
   fullName: 'Dentist Name',
@@ -323,7 +330,8 @@ export default function DentistProfile() {
     }
   }
 
-  function exportProfileToPDF() {
+  async function exportProfileToPDF() {
+    const { jsPDF, autoTable } = await loadPdfTools();
     const doc = new jsPDF('p', 'mm', 'a4');
 
     const pageWidth = doc.internal.pageSize.getWidth();

@@ -1,14 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
 
 import {
   listEquipment,
@@ -16,14 +7,13 @@ import {
   listSupplies,
 } from '../api/inventory';
 import { fetchRecepDashboard } from '../api/recepDashboard';
+import LazyChart from '../components/LazyChart';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import { useAuth } from '../auth/AuthContext';
 import createRecepDashboardStyles from '../styles/RecepDashboard';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 export default function RecepDashboard() {
   const { user } = useAuth();
@@ -578,7 +568,7 @@ export default function RecepDashboard() {
               </div>
 
               <div style={styles.largeChart}>
-                <Bar data={visitChartData} options={visitChartOptions} />
+                <LazyChart data={visitChartData} options={visitChartOptions} />
               </div>
             </div>
 

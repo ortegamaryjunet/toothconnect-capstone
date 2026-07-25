@@ -1,7 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 import api from '../api/axios';
 import { useAuth } from '../auth/AuthContext';
@@ -13,6 +11,15 @@ import clinicLogo from '../assets/adminImages/clinic-logo.png';
 import doctorIcon from '../assets/adminImages/doctor.png';
 import dentalAssistantIcon from '../assets/adminImages/dental-assistant.png';
 import receptionistIcon from '../assets/adminImages/receptionist.png';
+
+async function loadPdfTools() {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+
+  return { jsPDF, autoTable };
+}
 
 const EDIT_DAY_OPTIONS = [
   'Monday',
@@ -371,7 +378,8 @@ export default function AdminEmployees() {
     URL.revokeObjectURL(url);
   }
 
-  function exportEmployeeToPDF(employee) {
+  async function exportEmployeeToPDF(employee) {
+    const { jsPDF, autoTable } = await loadPdfTools();
     const doc = new jsPDF('p', 'mm', 'a4');
 
     const pageWidth = doc.internal.pageSize.getWidth();

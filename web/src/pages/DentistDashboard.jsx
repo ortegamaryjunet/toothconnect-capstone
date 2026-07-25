@@ -1,20 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-} from 'chart.js';
-import { Doughnut } from 'react-chartjs-2';
-import { Bar } from 'react-chartjs-2';
 
 import createDentistDashboardStyles from '../styles/DentistDashboard';
 import { useAuth } from '../auth/AuthContext';
 import api from '../api/axios';
+import LazyChart from '../components/LazyChart';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
 import clinicLogo from '../assets/dentistImages/clinic-logo.png';
@@ -22,8 +12,6 @@ import patientsIcon from '../assets/dentistImages/patients.png';
 import appointmentIcon from '../assets/dentistImages/appt.png';
 import newPatientsIcon from '../assets/dentistImages/new.png';
 import returningPatientsIcon from '../assets/dentistImages/returning.png';
-
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 export default function DentistDashboard() {
   const { user } = useAuth();
@@ -462,7 +450,7 @@ export default function DentistDashboard() {
               </div>
 
               <div style={styles.visitChartBox}>
-                <Bar data={visitChartData} options={visitChartOptions} />
+                <LazyChart data={visitChartData} options={visitChartOptions} />
               </div>
             </div>
 

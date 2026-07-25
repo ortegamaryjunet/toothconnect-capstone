@@ -1,7 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 import { listPatients } from '../api/patients';
 import { useAuth } from '../auth/AuthContext';
@@ -9,6 +7,15 @@ import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminPatientsStyles from '../styles/AdminPatients';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
+
+async function loadPdfTools() {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+
+  return { jsPDF, autoTable };
+}
 
 export default function AdminPatients() {
   const { user } = useAuth();
@@ -233,7 +240,8 @@ export default function AdminPatients() {
     URL.revokeObjectURL(url);
   }
 
-  function exportPatientToPDF(patient) {
+  async function exportPatientToPDF(patient) {
+    const { jsPDF, autoTable } = await loadPdfTools();
     const doc = new jsPDF('p', 'mm', 'a4');
 
     const pageWidth = doc.internal.pageSize.getWidth();

@@ -1,17 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
 
 import {
   getClinicDentistPerformance,
@@ -25,18 +13,19 @@ import { getRevenueReport } from '../api/payments';
 import { listAuditLogs } from '../api/auditLogs';
 import api from '../api/axios';
 import { useAuth } from '../auth/AuthContext';
+import LazyChart from '../components/LazyChart';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminReportsStyles from '../styles/AdminReports';
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  Tooltip,
-  Legend
-);
+async function loadPdfTools() {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+
+  return { jsPDF, autoTable };
+}
 
 const reportOptions = [
   {
@@ -1255,7 +1244,7 @@ export default function AdminReports() {
     );
   }
 
-  function exportToPDF() {
+  async function exportToPDF() {
     const pdfRows = getReportExportRows();
 
     if (pdfRows.length === 0) {
@@ -1263,6 +1252,7 @@ export default function AdminReports() {
       return;
     }
 
+    const { jsPDF, autoTable } = await loadPdfTools();
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -1700,7 +1690,7 @@ export default function AdminReports() {
                   </div>
 
                   <div style={styles.chartBox}>
-                    <Bar data={mainChartData} options={mainChartOptions} />
+                    <LazyChart data={mainChartData} options={mainChartOptions} />
                   </div>
                 </div>
 
@@ -1719,7 +1709,8 @@ export default function AdminReports() {
                   </div>
 
                   <div style={styles.smallChart}>
-                    <Doughnut
+                    <LazyChart
+                      type="doughnut"
                       data={statusChartData}
                       options={statusChartOptions}
                     />
@@ -1980,7 +1971,7 @@ function RevenueReportSection({
               </div>
 
               <div style={styles.revenueChartBox}>
-                <Bar data={revenueChartData} options={revenueChartOptions} />
+                <LazyChart data={revenueChartData} options={revenueChartOptions} />
               </div>
             </div>
 

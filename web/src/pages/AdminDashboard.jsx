@@ -1,18 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
 
 import { getAdminDashboardReport } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
+import LazyChart from '../components/LazyChart';
 import createAdminDashboardStyles from '../styles/AdminDashboard';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
@@ -21,15 +12,6 @@ import appointmentIcon from '../assets/adminImages/appt.png';
 import staffIcon from '../assets/adminImages/clinic-staff.png';
 import revenueIcon from '../assets/adminImages/revenue.png';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  Tooltip,
-  Legend
-);
 
 const HIDDEN_EXPENSE_LABELS = new Set(['Rental', 'Wages', 'Others']);
 
@@ -697,7 +679,7 @@ export default function AdminDashboard() {
               </div>
 
               <div style={styles.largeChart}>
-                <Bar data={visitChartData} options={defaultChartOptions} />
+                <LazyChart data={visitChartData} options={defaultChartOptions} />
               </div>
             </div>
 
@@ -776,7 +758,7 @@ export default function AdminDashboard() {
 
               <div style={styles.chartBox}>
                 {hasIncomeExpenseData ? (
-                  <Bar data={incomeChartData} options={moneyChartOptions} />
+                  <LazyChart data={incomeChartData} options={moneyChartOptions} />
                 ) : (
                   <div style={styles.emptyChart}>
                     No income or expense records for {incomeYear}.
@@ -797,7 +779,8 @@ export default function AdminDashboard() {
 
               <div style={styles.chartBox}>
                 {hasExpenseBreakdownData ? (
-                  <Doughnut
+                  <LazyChart
+                    type="doughnut"
                     data={expenseChartData}
                     options={expenseChartOptions}
                   />

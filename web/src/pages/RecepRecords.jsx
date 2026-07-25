@@ -1,7 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -14,6 +12,15 @@ import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createRecepRecordsStyles from '../styles/RecepRecords';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
+
+async function loadPdfTools() {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+
+  return { jsPDF, autoTable };
+}
 
 const rowsPerPage = 10;
 
@@ -588,6 +595,7 @@ export default function RecepRecords() {
   }
 
   async function exportPatientToPDF(patient) {
+    const { jsPDF, autoTable } = await loadPdfTools();
     let fullPatient = patient;
 
     try {

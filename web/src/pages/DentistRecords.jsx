@@ -1,7 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 import { listMyPatients } from '../api/patients';
 import createDentistRecordsStyles from '../styles/DentistRecords';
@@ -10,6 +8,15 @@ import api from '../api/axios';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
 import clinicLogo from '../assets/dentistImages/clinic-logo.png';
+
+async function loadPdfTools() {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+
+  return { jsPDF, autoTable };
+}
 
 const rowsPerPage = 10;
 
@@ -275,7 +282,8 @@ export default function DentistRecords() {
     URL.revokeObjectURL(url);
   }
 
-  function exportPatientToPDF(patient) {
+  async function exportPatientToPDF(patient) {
+    const { jsPDF, autoTable } = await loadPdfTools();
     const doc = new jsPDF('p', 'mm', 'a4');
 
     const pageWidth = doc.internal.pageSize.getWidth();
