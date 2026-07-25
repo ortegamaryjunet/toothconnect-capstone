@@ -210,6 +210,16 @@ function getSummaryColumnLabel(type) {
 
 const emptyExpenseInventoryRows = { medicine: [], equipment: [], supplies: [] };
 const emptyExpenseItemOptions = { medicine: [], equipment: [], supplies: [] };
+const expenseRequiredFields = [
+  'date',
+  'branchId',
+  'category',
+  'itemName',
+  'supplier',
+  'orderQuantity',
+  'pricePerItem',
+  'threshold',
+];
 const expenseCategoryLabels = { medicine: 'Dental Medicine', equipment: 'Dental Equipment', supplies: 'Dental Supplies' };
 
 function uniqueSortedNames(rows, fieldName) {
@@ -258,6 +268,7 @@ export default function InventoryPage() {
     threshold: '',
     maxStock: '',
   });
+  const [expenseTouchedFields, setExpenseTouchedFields] = useState({});
   const [expenseInventoryRows, setExpenseInventoryRows] = useState(emptyExpenseInventoryRows);
   const [expenseBranchOptions, setExpenseBranchOptions] = useState([]);
   const [expenseSaving, setExpenseSaving] = useState(false);
@@ -573,6 +584,10 @@ export default function InventoryPage() {
 
   const computedExpense =
     Number(expenseForm.orderQuantity || 0) * Number(expenseForm.pricePerItem || 0);
+
+  const isExpenseFormComplete = expenseRequiredFields.every(
+    (field) => String(expenseForm[field] ?? '').trim() !== ''
+  );
 
   const selectedExpenseBranch = expenseBranchOptions.find(
     (b) => String(b.id) === String(expenseForm.branchId)
@@ -1053,6 +1068,7 @@ export default function InventoryPage() {
     setShowExpenseModal(false);
     setShowExpenseCancelConfirmModal(false);
     setExpenseSaveError('');
+    setExpenseTouchedFields({});
   }
 
   function handleCancelExpenseModal() {
@@ -1094,6 +1110,7 @@ export default function InventoryPage() {
   }
 
   function handleExpenseChange(field, value) {
+    setExpenseTouchedFields((prev) => ({ ...prev, [field]: true }));
     setExpenseForm((prev) => {
       const updatedForm = { ...prev, [field]: value };
       if (field === 'category' || field === 'branchId') {
@@ -1129,6 +1146,34 @@ export default function InventoryPage() {
       }
       return updatedForm;
     });
+  }
+
+  function handleExpenseFieldBlur(field) {
+    setExpenseTouchedFields((prev) => ({ ...prev, [field]: true }));
+  }
+
+  function isExpenseFieldInvalid(field) {
+    return (
+      expenseTouchedFields[field] &&
+      String(expenseForm[field] ?? '').trim() === ''
+    );
+  }
+
+  function getExpenseFieldStyle(field) {
+    return {
+      ...styles.formInput,
+      ...(isExpenseFieldInvalid(field)
+        ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+        : {}),
+    };
+  }
+
+  function renderRequiredLabel(label) {
+    return (
+      <span style={styles.formLabel}>
+        {label} <span style={{ color: '#dc2626' }}>*</span>
+      </span>
+    );
   }
 
   function handleSaveExpense() {
@@ -2508,22 +2553,24 @@ export default function InventoryPage() {
             </div>
 
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Date</span>
+              {renderRequiredLabel('Date')}
               <input
                 type="date"
                 value={expenseForm.date}
                 onChange={(e) => handleExpenseChange('date', e.target.value)}
-                style={styles.formInput}
+                onBlur={() => handleExpenseFieldBlur('date')}
+                style={getExpenseFieldStyle('date')}
               />
             </label>
 
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Branch</span>
+              {renderRequiredLabel('Branch')}
               <select
                 value={expenseForm.branchId}
                 onFocus={refreshExpenseFormOptions}
                 onChange={(e) => handleExpenseChange('branchId', e.target.value)}
-                style={styles.formInput}
+                onBlur={() => handleExpenseFieldBlur('branchId')}
+                style={getExpenseFieldStyle('branchId')}
               >
                 <option value="">Select branch</option>
                 {expenseBranchOptions.map((b) => (
@@ -2533,11 +2580,12 @@ export default function InventoryPage() {
             </label>
 
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Category</span>
+              {renderRequiredLabel('Category')}
               <select
                 value={expenseForm.category}
                 onChange={(e) => handleExpenseChange('category', e.target.value)}
-                style={styles.formInput}
+                onBlur={() => handleExpenseFieldBlur('category')}
+                style={getExpenseFieldStyle('category')}
               >
                 <option value="medicine">Dental Medicine</option>
                 <option value="equipment">Dental Equipment</option>
@@ -2546,14 +2594,15 @@ export default function InventoryPage() {
             </label>
 
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Item Name</span>
+              {renderRequiredLabel('Item Name')}
               <input
                 type="text"
                 list="inv-expense-item-options"
                 value={expenseForm.itemName}
                 onChange={(e) => handleExpenseChange('itemName', e.target.value)}
+                onBlur={() => handleExpenseFieldBlur('itemName')}
                 placeholder={!expenseForm.branchId ? 'Select Branch First' : expenseItemOptionsList.length ? 'Select or enter item name' : 'Enter item name'}
-                style={styles.formInput}
+                style={getExpenseFieldStyle('itemName')}
               />
               <datalist id="inv-expense-item-options">
                 {expenseItemOptionsList.map((name) => <option key={name} value={name} />)}
@@ -2561,14 +2610,15 @@ export default function InventoryPage() {
             </label>
 
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Supplier</span>
+              {renderRequiredLabel('Supplier')}
               <input
                 type="text"
                 list="inv-expense-supplier-options"
                 value={expenseForm.supplier}
                 onChange={(e) => handleExpenseChange('supplier', e.target.value)}
+                onBlur={() => handleExpenseFieldBlur('supplier')}
                 placeholder="Enter Supplier"
-                style={styles.formInput}
+                style={getExpenseFieldStyle('supplier')}
               />
               <datalist id="inv-expense-supplier-options">
                 {expenseSupplierOptions.map((s) => <option key={s} value={s} />)}
@@ -2576,31 +2626,33 @@ export default function InventoryPage() {
             </label>
 
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Order Quantity</span>
+              {renderRequiredLabel('Order Quantity')}
               <input
                 type="number"
                 min="1"
                 value={expenseForm.orderQuantity}
                 placeholder="Enter Quantity"
                 onChange={(e) => handleExpenseChange('orderQuantity', e.target.value === '' ? '' : Number(e.target.value))}
-                style={styles.formInput}
+                onBlur={() => handleExpenseFieldBlur('orderQuantity')}
+                style={getExpenseFieldStyle('orderQuantity')}
               />
             </label>
 
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Price per Item</span>
+              {renderRequiredLabel('Price per Item')}
               <input
                 type="number"
                 min="0"
                 value={expenseForm.pricePerItem}
                 placeholder="Enter Price Per Item"
                 onChange={(e) => handleExpenseChange('pricePerItem', e.target.value === '' ? '' : Number(e.target.value))}
-                style={styles.formInput}
+                onBlur={() => handleExpenseFieldBlur('pricePerItem')}
+                style={getExpenseFieldStyle('pricePerItem')}
               />
             </label>
 
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Critical Stock Level</span>
+              {renderRequiredLabel('Critical Stock Level')}
               <input
                 type="number"
                 inputMode="numeric"
@@ -2609,7 +2661,8 @@ export default function InventoryPage() {
                 value={expenseForm.threshold}
                 placeholder={!expenseForm.itemName ? 'Select item first' : ''}
                 onChange={(e) => handleExpenseChange('threshold', e.target.value)}
-                style={styles.formInput}
+                onBlur={() => handleExpenseFieldBlur('threshold')}
+                style={getExpenseFieldStyle('threshold')}
               />
             </label>
 
@@ -2633,9 +2686,11 @@ export default function InventoryPage() {
                 style={{
                   ...styles.saveBtn,
                   transform: saveExpenseClicked ? 'scale(0.97)' : 'scale(1)',
-                  opacity: saveExpenseClicked ? 0.82 : 1,
+                  opacity: !isExpenseFormComplete ? 0.55 : saveExpenseClicked ? 0.82 : 1,
                   transition: 'transform 120ms ease, opacity 120ms ease',
+                  cursor: isExpenseFormComplete ? 'pointer' : 'not-allowed',
                 }}
+                disabled={!isExpenseFormComplete}
                 onClick={handleSaveExpense}
               >
                 Save Expense
