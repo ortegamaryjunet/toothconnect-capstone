@@ -1370,7 +1370,7 @@ export default function AdminEmployeeForm() {
       <form style={styles.employeeForm} onSubmit={handleSubmit}>
         <div style={styles.container}>
           <div style={styles.header}>
-            <button type="button" style={styles.backBtn} onClick={handleBackClick} aria-label="Go back">←</button>
+            <button type="button" style={styles.backBtn} onClick={handleBackClick} aria-label="Go back">Back</button>
             <h2 style={styles.headerTitle}>Clinic Employee Form</h2>
             <p style={styles.headerText}>Complete the required details for the employee records.</p>
           </div>
@@ -1418,8 +1418,8 @@ export default function AdminEmployeeForm() {
               Are you sure you want to go back? Any unsaved changes to this employee form will be lost.
             </p>
             <div style={styles.modalActions}>
-              <button type="button" style={{ ...styles.modalButton, ...styles.confirmBtn }} onClick={confirmBack}>Yes</button>
               <button type="button" style={{ ...styles.modalButton, ...styles.cancelBtn }} onClick={closeBackModal}>No</button>
+              <button type="button" style={{ ...styles.modalButton, ...styles.confirmBtn }} onClick={confirmBack}>Yes</button>
             </div>
           </div>
         </div>

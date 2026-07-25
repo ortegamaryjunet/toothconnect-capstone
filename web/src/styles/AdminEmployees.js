@@ -823,12 +823,13 @@
       border: 'none',
       borderRadius: 12,
       padding: '12px 18px',
-      background: '#2563eb',
+      background: '#d4af37',
       color: '#ffffff',
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
       fontWeight: 800,
       fontSize: 14,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     employeeSaveBtn: {

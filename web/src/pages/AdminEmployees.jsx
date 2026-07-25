@@ -125,6 +125,10 @@ export default function AdminEmployees() {
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [showEmployeeCloseConfirmModal, setShowEmployeeCloseConfirmModal] =
+    useState(false);
+  const [showEmployeeEditConfirmModal, setShowEmployeeEditConfirmModal] =
+    useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [editedEmployee, setEditedEmployee] = useState(null);
@@ -228,6 +232,8 @@ export default function AdminEmployees() {
     if (
       showLogoutModal ||
       showEmployeeModal ||
+      showEmployeeCloseConfirmModal ||
+      showEmployeeEditConfirmModal ||
       showEditErrorModal ||
       showExportModal
     ) {
@@ -242,6 +248,8 @@ export default function AdminEmployees() {
   }, [
     showLogoutModal,
     showEmployeeModal,
+    showEmployeeCloseConfirmModal,
+    showEmployeeEditConfirmModal,
     showEditErrorModal,
     showExportModal,
   ]);
@@ -250,7 +258,11 @@ export default function AdminEmployees() {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
-        closeEmployeeModal();
+        setShowEmployeeCloseConfirmModal(false);
+        setShowEmployeeEditConfirmModal(false);
+        if (showEmployeeModal) {
+          setShowEmployeeCloseConfirmModal(true);
+        }
         setShowExportModal(false);
       }
     }
@@ -260,7 +272,7 @@ export default function AdminEmployees() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, []);
+  }, [showEmployeeModal]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
@@ -689,6 +701,8 @@ export default function AdminEmployees() {
 
   function closeEmployeeModal() {
     setShowEmployeeModal(false);
+    setShowEmployeeCloseConfirmModal(false);
+    setShowEmployeeEditConfirmModal(false);
     setSelectedEmployee(null);
     setEditedEmployee(null);
     setIsEditingEmployee(false);
@@ -699,11 +713,12 @@ export default function AdminEmployees() {
 
   function handleEmployeeModalOverlayClick(event) {
     if (event.target === event.currentTarget) {
-      closeEmployeeModal();
+      setShowEmployeeCloseConfirmModal(true);
     }
   }
 
   function handleEditEmployee() {
+    setShowEmployeeEditConfirmModal(false);
     setIsEditingEmployee(true);
   }
 
@@ -1598,7 +1613,7 @@ export default function AdminEmployees() {
               <button
                 type="button"
                 style={styles.employeeModalCloseBtn}
-                onClick={closeEmployeeModal}
+                onClick={() => setShowEmployeeCloseConfirmModal(true)}
               >
                 ×
               </button>
@@ -1796,17 +1811,9 @@ export default function AdminEmployees() {
                   <button
                     type="button"
                     style={styles.employeeEditBtn}
-                    onClick={handleEditEmployee}
+                    onClick={() => setShowEmployeeEditConfirmModal(true)}
                   >
                     Edit
-                  </button>
-
-                  <button
-                    type="button"
-                    style={styles.employeeCloseBtn}
-                    onClick={closeEmployeeModal}
-                  >
-                    Close
                   </button>
                 </>
               ) : (
@@ -1828,6 +1835,86 @@ export default function AdminEmployees() {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEmployeeCloseConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowEmployeeCloseConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Close Employee Details?</h2>
+            <p style={styles.modalText}>
+              Do you want to close this employee information window?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowEmployeeCloseConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={closeEmployeeModal}
+              >
+                Yes, Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEmployeeEditConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowEmployeeEditConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-edit" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Edit Employee Information?</h2>
+            <p style={styles.modalText}>
+              Do you want to edit this employee information?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowEmployeeEditConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.confirmBtn }}
+                onClick={handleEditEmployee}
+              >
+                Yes, Edit
+              </button>
             </div>
           </div>
         </div>
