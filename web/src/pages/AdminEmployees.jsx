@@ -88,6 +88,28 @@ function isValidEmailAddress(value) {
   );
 }
 
+function getLiveEmployeeFieldError(name, value) {
+  const fieldValue = String(value || '').trim();
+
+  if (!fieldValue) {
+    return '';
+  }
+
+  if (name === 'contactNumber') {
+    return isValidContactNumber(fieldValue)
+      ? ''
+      : 'Invalid contact format. Use 09XXXXXXXXX or +639XXXXXXXXX.';
+  }
+
+  if (name === 'email') {
+    return isValidEmailAddress(fieldValue)
+      ? ''
+      : 'Invalid email format. Enter a valid email address.';
+  }
+
+  return '';
+}
+
 function isValidDateValue(value) {
   if (!value) {
     return false;
@@ -815,17 +837,7 @@ export default function AdminEmployees() {
       return;
     }
 
-    let message = '';
-
-    if (name === 'contactNumber' && value) {
-      message = isValidContactNumber(value)
-        ? ''
-        : 'Use 09XXXXXXXXX or +639XXXXXXXXX.';
-    }
-
-    if (name === 'email' && value) {
-      message = isValidEmailAddress(value) ? '' : 'Enter a valid email address.';
-    }
+    const message = getLiveEmployeeFieldError(name, value);
 
     setLiveEditErrors((prev) => {
       const next = { ...prev };
@@ -1081,10 +1093,13 @@ export default function AdminEmployees() {
       setLiveEditErrors((prev) => ({
         ...prev,
         ...(formatErrors.has('contactNumber')
-          ? { contactNumber: 'Use 09XXXXXXXXX or +639XXXXXXXXX.' }
+          ? {
+              contactNumber:
+                'Invalid contact format. Use 09XXXXXXXXX or +639XXXXXXXXX.',
+            }
           : {}),
         ...(formatErrors.has('email')
-          ? { email: 'Enter a valid email address.' }
+          ? { email: 'Invalid email format. Enter a valid email address.' }
           : {}),
       }));
       setEditErrorMessage('Please fix the highlighted fields before saving.');
@@ -1138,7 +1153,11 @@ export default function AdminEmployees() {
   }
 
   function modalField(label, name, type = 'text', filterFn = null) {
-    const hasError = editErrors.has(name);
+    const liveErrorMessage = isEditingEmployee
+      ? getLiveEmployeeFieldError(name, editedEmployee?.[name])
+      : '';
+    const fieldErrorMessage = liveEditErrors[name] || liveErrorMessage;
+    const hasError = editErrors.has(name) || Boolean(fieldErrorMessage);
 
     return (
       <div style={styles.employeeModalField}>
@@ -1179,7 +1198,7 @@ export default function AdminEmployees() {
           }}
         />
 
-        {liveEditErrors[name] && (
+        {fieldErrorMessage && (
           <span
             style={{
               color: '#dc2626',
@@ -1188,7 +1207,7 @@ export default function AdminEmployees() {
               marginTop: 4,
             }}
           >
-            {liveEditErrors[name]}
+            {fieldErrorMessage}
           </span>
         )}
       </div>
