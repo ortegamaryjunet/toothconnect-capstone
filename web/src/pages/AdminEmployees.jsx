@@ -730,7 +730,7 @@ export default function AdminEmployees() {
   function handleEmployeeModalOverlayClick(event) {
     if (event.target === event.currentTarget) {
       if (isEditingEmployee) {
-        setShowEmployeeEditCancelConfirmModal(true);
+        handleCancelEmployeeEditModal();
       } else {
         setShowEmployeeCloseConfirmModal(true);
       }
@@ -742,7 +742,15 @@ export default function AdminEmployees() {
     setIsEditingEmployee(true);
   }
 
-  function handleCancelEditEmployee() {
+  function handleCancelEmployeeEditModal() {
+    setShowEmployeeEditCancelConfirmModal(true);
+  }
+
+  function closeEmployeeEditCancelConfirmModal() {
+    setShowEmployeeEditCancelConfirmModal(false);
+  }
+
+  function confirmCancelEmployeeEditModal() {
     setShowEmployeeEditCancelConfirmModal(false);
     setEmployeeSaveConfirmModal(null);
     setEditedEmployee({ ...selectedEmployee });
@@ -1932,14 +1940,17 @@ export default function AdminEmployees() {
                   <button
                     type="button"
                     style={styles.employeeCloseBtn}
-                    onClick={() => setShowEmployeeEditCancelConfirmModal(true)}
+                    onClick={handleCancelEmployeeEditModal}
                   >
                     Cancel
                   </button>
 
                   <button
                     type="button"
-                    style={styles.employeeSaveBtn}
+                    style={{
+                      ...styles.employeeEditBtn,
+                      minWidth: isMobile ? '100%' : 150,
+                    }}
                     onClick={handleSaveEmployeeChangesRequest}
                   >
                     Save Changes
@@ -2036,7 +2047,7 @@ export default function AdminEmployees() {
           style={styles.modal}
           onClick={(event) => {
             if (event.target === event.currentTarget) {
-              setShowEmployeeEditCancelConfirmModal(false);
+              closeEmployeeEditCancelConfirmModal();
             }
           }}
         >
@@ -2054,7 +2065,7 @@ export default function AdminEmployees() {
               <button
                 type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
-                onClick={() => setShowEmployeeEditCancelConfirmModal(false)}
+                onClick={closeEmployeeEditCancelConfirmModal}
               >
                 No
               </button>
@@ -2062,7 +2073,7 @@ export default function AdminEmployees() {
               <button
                 type="button"
                 style={{ ...styles.modalButton, ...styles.logoutBtn }}
-                onClick={handleCancelEditEmployee}
+                onClick={confirmCancelEmployeeEditModal}
               >
                 Yes, Cancel
               </button>
