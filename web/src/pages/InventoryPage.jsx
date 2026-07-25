@@ -585,9 +585,11 @@ export default function InventoryPage() {
   const computedExpense =
     Number(expenseForm.orderQuantity || 0) * Number(expenseForm.pricePerItem || 0);
 
+  const isExpenseOrderQuantityValid = Number(expenseForm.orderQuantity || 0) >= 1;
+
   const isExpenseFormComplete = expenseRequiredFields.every(
     (field) => String(expenseForm[field] ?? '').trim() !== ''
-  );
+  ) && isExpenseOrderQuantityValid;
 
   const selectedExpenseBranch = expenseBranchOptions.find(
     (b) => String(b.id) === String(expenseForm.branchId)
@@ -1153,6 +1155,14 @@ export default function InventoryPage() {
   }
 
   function isExpenseFieldInvalid(field) {
+    if (field === 'orderQuantity') {
+      return (
+        expenseTouchedFields[field] &&
+        (String(expenseForm[field] ?? '').trim() === '' ||
+          Number(expenseForm[field] || 0) < 1)
+      );
+    }
+
     return (
       expenseTouchedFields[field] &&
       String(expenseForm[field] ?? '').trim() === ''
@@ -2674,7 +2684,7 @@ export default function InventoryPage() {
             </div>
 
             {expenseSaveError && (
-              <p style={{ margin: 0, fontSize: 13, color: '#b91c1c', fontFamily: 'Arial, sans-serif' }}>{expenseSaveError}</p>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#b91c1c', fontFamily: 'Arial, sans-serif', lineHeight: 1.45 }}>{expenseSaveError}</p>
             )}
 
             <div style={styles.editModalActions}>
