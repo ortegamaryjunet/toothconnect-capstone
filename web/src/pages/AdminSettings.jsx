@@ -95,6 +95,17 @@ const initialBranchForm = {
   status: '',
 };
 
+const branchRequiredFields = [
+  'name',
+  'address',
+  'date_opened',
+  'phone',
+  'contact_person',
+  'operating_hours',
+  'years_active',
+  'status',
+];
+
 const initialServiceForm = {
   id: '',
   name: '',
@@ -201,6 +212,7 @@ export default function AdminSettings() {
   const [adminAccountError, setAdminAccountError] = useState('');
 
   const [branchForm, setBranchForm] = useState(initialBranchForm);
+  const [branchTouchedFields, setBranchTouchedFields] = useState({});
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
   const [serviceKitOverlay, setServiceKitOverlay] = useState(false);
   const [serviceKitServiceId, setServiceKitServiceId] = useState('');
@@ -256,6 +268,10 @@ export default function AdminSettings() {
     isTablet,
     isSmallScreen,
   });
+
+  const isBranchFormComplete = branchRequiredFields.every(
+    (field) => String(branchForm[field] ?? '').trim() !== ''
+  );
 
   useEffect(() => {
     function handleResize() {
@@ -735,6 +751,7 @@ export default function AdminSettings() {
     setActiveOverlay(null);
     setShowBranchCancelConfirmModal(false);
     setShowBranchSaveConfirmModal(false);
+    setBranchTouchedFields({});
   }
 
   function handleOverlayClick(event) {
@@ -752,6 +769,7 @@ export default function AdminSettings() {
   function openBranchForm(branch = null) {
     setShowBranchCancelConfirmModal(false);
     setShowBranchSaveConfirmModal(false);
+    setBranchTouchedFields({});
 
     if (branch) {
       setBranchForm(branch);
@@ -792,6 +810,8 @@ export default function AdminSettings() {
   }
 
   function handleBranchChange(name, value) {
+    setBranchTouchedFields((prev) => ({ ...prev, [name]: true }));
+
     let newValue = value;
 
     if (name === 'name') {
@@ -806,6 +826,34 @@ export default function AdminSettings() {
       ...prev,
       [name]: newValue,
     }));
+  }
+
+  function handleBranchFieldBlur(name) {
+    setBranchTouchedFields((prev) => ({ ...prev, [name]: true }));
+  }
+
+  function isBranchFieldInvalid(name) {
+    return (
+      branchTouchedFields[name] &&
+      String(branchForm[name] ?? '').trim() === ''
+    );
+  }
+
+  function getBranchFieldStyle(name) {
+    return {
+      ...styles.formInput,
+      ...(isBranchFieldInvalid(name)
+        ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+        : {}),
+    };
+  }
+
+  function renderBranchRequiredLabel(label) {
+    return (
+      <>
+        {label} <span style={{ color: '#dc2626' }}>*</span>
+      </>
+    );
   }
 
   function handleServiceChange(name, value) {
@@ -892,6 +940,17 @@ export default function AdminSettings() {
 
   function handleBranchSubmit(event) {
     event.preventDefault();
+
+    if (!isBranchFormComplete) {
+      setBranchTouchedFields(
+        branchRequiredFields.reduce((fields, field) => {
+          fields[field] = true;
+          return fields;
+        }, {})
+      );
+      return;
+    }
+
     setShowBranchSaveConfirmModal(true);
   }
 
@@ -2524,93 +2583,101 @@ export default function AdminSettings() {
         >
           <form onSubmit={handleBranchSubmit}>
             <div style={styles.formGrid}>
-              <Field label="Branch Name" styles={styles}>
+              <Field label={renderBranchRequiredLabel('Branch Name')} styles={styles}>
                 <input
                   type="text"
                   value={branchForm.name}
                   onChange={(event) =>
                     handleBranchChange('name', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleBranchFieldBlur('name')}
+                  style={getBranchFieldStyle('name')}
                   required
                 />
               </Field>
 
-              <Field label="Clinic Location" styles={styles}>
+              <Field label={renderBranchRequiredLabel('Clinic Location')} styles={styles}>
                 <input
                   type="text"
                   value={branchForm.address}
                   onChange={(event) =>
                     handleBranchChange('address', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleBranchFieldBlur('address')}
+                  style={getBranchFieldStyle('address')}
                   required
                 />
               </Field>
 
-              <Field label="Date Opened" styles={styles}>
+              <Field label={renderBranchRequiredLabel('Date Opened')} styles={styles}>
                 <input
                   type="date"
                   value={branchForm.date_opened}
                   onChange={(event) =>
                     handleBranchChange('date_opened', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleBranchFieldBlur('date_opened')}
+                  style={getBranchFieldStyle('date_opened')}
                 />
               </Field>
 
-              <Field label="Contact Number" styles={styles}>
+              <Field label={renderBranchRequiredLabel('Contact Number')} styles={styles}>
                 <input
                   type="tel"
                   value={branchForm.phone}
                   onChange={(event) =>
                     handleBranchChange('phone', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleBranchFieldBlur('phone')}
+                  style={getBranchFieldStyle('phone')}
                 />
               </Field>
 
-              <Field label="Contact Person" styles={styles}>
+              <Field label={renderBranchRequiredLabel('Contact Person')} styles={styles}>
                 <input
                   type="text"
                   value={branchForm.contact_person}
                   onChange={(event) =>
                     handleBranchChange('contact_person', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleBranchFieldBlur('contact_person')}
+                  style={getBranchFieldStyle('contact_person')}
                 />
               </Field>
 
-              <Field label="Operating Hours" styles={styles}>
+              <Field label={renderBranchRequiredLabel('Operating Hours')} styles={styles}>
                 <input
                   type="text"
                   value={branchForm.operating_hours}
                   onChange={(event) =>
                     handleBranchChange('operating_hours', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleBranchFieldBlur('operating_hours')}
+                  style={getBranchFieldStyle('operating_hours')}
                   placeholder="Mon - Sat, 9:00 AM - 5:00 PM"
                 />
               </Field>
 
-              <Field label="Years Active" styles={styles}>
+              <Field label={renderBranchRequiredLabel('Years Active')} styles={styles}>
                 <input
                   type="text"
                   value={branchForm.years_active}
                   onChange={(event) =>
                     handleBranchChange('years_active', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleBranchFieldBlur('years_active')}
+                  style={getBranchFieldStyle('years_active')}
                 />
               </Field>
 
-              <Field label="Status" styles={styles}>
+              <Field label={renderBranchRequiredLabel('Status')} styles={styles}>
                 <select
                   value={branchForm.status}
                   onChange={(event) =>
                     handleBranchChange('status', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleBranchFieldBlur('status')}
+                  style={getBranchFieldStyle('status')}
                   required
                 >
                   <option value="" disabled>
@@ -2634,7 +2701,15 @@ export default function AdminSettings() {
                 Cancel
               </button>
 
-              <button type="submit" style={styles.saveBtn}>
+              <button
+                type="submit"
+                style={{
+                  ...styles.saveBtn,
+                  opacity: isBranchFormComplete ? 1 : 0.55,
+                  cursor: isBranchFormComplete ? 'pointer' : 'not-allowed',
+                }}
+                disabled={!isBranchFormComplete}
+              >
                 Save Branch
               </button>
             </div>
