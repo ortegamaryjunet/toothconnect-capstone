@@ -205,6 +205,8 @@ export default function AdminSettings() {
   const [websiteContentEditing, setWebsiteContentEditing] = useState(false);
   const [showWebsiteContentCancelConfirmModal, setShowWebsiteContentCancelConfirmModal] =
     useState(false);
+  const [websiteContentSaveConfirmModal, setWebsiteContentSaveConfirmModal] =
+    useState(null);
   const [websiteContentMsg, setWebsiteContentMsg] = useState({ text: '', type: '' });
   const [websiteValidationModal, setWebsiteValidationModal] = useState(null);
   const [websiteFaqOverlay, setWebsiteFaqOverlay] = useState(null);
@@ -236,6 +238,8 @@ export default function AdminSettings() {
   const [serviceKitBranchId, setServiceKitBranchId] = useState('');
   const [serviceKitItems, setServiceKitItems] = useState([]);
   const [serviceKitItemErrors, setServiceKitItemErrors] = useState([]);
+  const [showServiceKitSaveConfirmModal, setShowServiceKitSaveConfirmModal] =
+    useState(false);
   const [serviceKitServicesForBranch, setServiceKitServicesForBranch] = useState([]);
   const [serviceKitInventory, setServiceKitInventory] = useState({
     supplies: [],
@@ -332,8 +336,10 @@ export default function AdminSettings() {
       websiteAnnouncementOverlay ||
       websiteValidationModal ||
       showWebsiteContentCancelConfirmModal ||
+      websiteContentSaveConfirmModal ||
       showServiceCancelConfirmModal ||
       showServiceSaveConfirmModal ||
+      showServiceKitSaveConfirmModal ||
       serviceKitOverlay ||
       showServiceKitHistory
     ) {
@@ -353,8 +359,10 @@ export default function AdminSettings() {
     websiteAnnouncementOverlay,
     websiteValidationModal,
     showWebsiteContentCancelConfirmModal,
+    websiteContentSaveConfirmModal,
     showServiceCancelConfirmModal,
     showServiceSaveConfirmModal,
+    showServiceKitSaveConfirmModal,
     serviceKitOverlay,
     showServiceKitHistory,
   ]);
@@ -369,6 +377,7 @@ export default function AdminSettings() {
         setWebsiteAnnouncementOverlay(null);
       setWebsiteValidationModal(null);
       setShowWebsiteContentCancelConfirmModal(false);
+      setShowServiceKitSaveConfirmModal(false);
       setServiceKitOverlay(false);
       }
     }
@@ -521,6 +530,45 @@ export default function AdminSettings() {
     } finally {
       setWebsiteContentSaving(false);
     }
+  }
+
+  function formatWebsiteContentFieldLabel(key) {
+    return String(key || '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function handleWebsiteContentSaveRequest(sectionFields, requiredKeys = []) {
+    if (!validateWebsiteFields(sectionFields, requiredKeys)) {
+      return;
+    }
+
+    const details = Object.entries(sectionFields).map(([key, value]) => ({
+      key,
+      label: formatWebsiteContentFieldLabel(key),
+      value: String(value || '').trim() || 'Not entered',
+      previousValue: String(websiteContent[key] || '').trim() || 'Not set',
+      changed:
+        String(value || '').trim() !==
+        String(websiteContent[key] || '').trim(),
+    }));
+
+    setWebsiteContentSaveConfirmModal({
+      sectionFields,
+      requiredKeys,
+      details,
+    });
+  }
+
+  async function confirmWebsiteContentSave() {
+    if (!websiteContentSaveConfirmModal) {
+      return;
+    }
+
+    const { sectionFields, requiredKeys } = websiteContentSaveConfirmModal;
+
+    setWebsiteContentSaveConfirmModal(null);
+    await saveWebsiteContent(sectionFields, requiredKeys);
   }
 
   async function saveFaq(data) {
@@ -1322,13 +1370,8 @@ export default function AdminSettings() {
     setServiceKitItemErrors((prev) => (Array.isArray(prev) ? prev.filter((_, idx) => idx !== index) : []));
   }
 
-  async function saveServiceKit() {
-    if (!serviceKitOverlay || !serviceKitServiceId) return;
-
-    const branchId = Number(serviceKitBranchId || 0);
-    if (!branchId) return;
-
-    const newErrors = serviceKitItems.map((row) => {
+  function getServiceKitValidationErrors(items = serviceKitItems) {
+    return items.map((row) => {
       const qty = Number(row.default_quantity || 0);
       const stock = row.current_stock;
       let qtyErr = '';
@@ -1340,8 +1383,39 @@ export default function AdminSettings() {
         default_quantity: qtyErr,
       };
     });
+  }
+
+  function validateServiceKitItems() {
+    if (serviceKitItems.length === 0) {
+      setServiceKitItemErrors([]);
+      return false;
+    }
+
+    const newErrors = getServiceKitValidationErrors();
     setServiceKitItemErrors(newErrors);
-    if (newErrors.some((e) => e.category || e.item_name || e.default_quantity)) return;
+    return !newErrors.some((e) => e.category || e.item_name || e.default_quantity);
+  }
+
+  function handleServiceKitSaveRequest() {
+    if (!serviceKitOverlay || !serviceKitServiceId) return;
+
+    const branchId = Number(serviceKitBranchId || 0);
+    if (!branchId) return;
+
+    if (!validateServiceKitItems()) return;
+    setShowServiceKitSaveConfirmModal(true);
+  }
+
+  async function saveServiceKit() {
+    if (!serviceKitOverlay || !serviceKitServiceId) return;
+
+    const branchId = Number(serviceKitBranchId || 0);
+    if (!branchId) return;
+
+    if (!validateServiceKitItems()) {
+      setShowServiceKitSaveConfirmModal(false);
+      return;
+    }
 
     const payload = {
       notes: null,
@@ -1354,6 +1428,7 @@ export default function AdminSettings() {
     };
     try {
       await saveManageServiceKit(Number(serviceKitServiceId), payload);
+      setShowServiceKitSaveConfirmModal(false);
       setServiceKitOverlay(false);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service kit.');
@@ -1412,7 +1487,14 @@ export default function AdminSettings() {
   const serviceKitBranchSelected = !!Number(serviceKitBranchId || 0);
   const serviceKitServiceSelected = !!Number(serviceKitServiceId || 0);
   const serviceKitRowInputsDisabled = !(serviceKitBranchSelected && serviceKitServiceSelected);
-  const kitSaveDisabled = serviceKitRowInputsDisabled || (Array.isArray(serviceKitItemErrors) && serviceKitItemErrors.some((e) => e?.default_quantity || e?.item_name || e?.category));
+  const serviceKitHasNoItems = serviceKitItems.length === 0;
+  const serviceKitHasInvalidItems = getServiceKitValidationErrors().some(
+    (e) => e.category || e.item_name || e.default_quantity
+  );
+  const kitSaveDisabled = serviceKitRowInputsDisabled || serviceKitHasNoItems || serviceKitHasInvalidItems;
+  const serviceKitRequiredAsterisk = !serviceKitRowInputsDisabled && serviceKitHasNoItems ? (
+    <span style={{ color: '#dc2626' }}> *</span>
+  ) : null;
   const serviceKitGridStyles = {
     display: 'grid',
     gridTemplateColumns: isMobile ? '1fr' : '140px minmax(0, 1fr) 90px 100px 100px',
@@ -1688,7 +1770,7 @@ export default function AdminSettings() {
           type="button"
           style={styles.saveBtn}
           disabled={websiteContentSaving}
-          onClick={() => saveWebsiteContent(sectionFields, requiredKeys)}
+          onClick={() => handleWebsiteContentSaveRequest(sectionFields, requiredKeys)}
         >
           {websiteContentSaving ? 'Saving...' : 'Save Content'}
         </button>
@@ -2036,21 +2118,13 @@ export default function AdminSettings() {
 
               {['hero', 'about', 'contact', 'footer'].includes(websiteContentSection) && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                  {!websiteContentEditing ? (
+                  {!websiteContentEditing && (
                     <button
                       type="button"
                       style={styles.primaryBtn}
                       onClick={() => setWebsiteContentEditing(true)}
                     >
                       <i className="fi fi-rr-edit"></i> <span>Edit Content</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      style={styles.secondaryBtn}
-                      onClick={() => { setWebsiteContentEditing(false); setWebsiteContentForm(websiteContent); setWebsiteContentMsg({ text: '', type: '' }); }}
-                    >
-                      Cancel
                     </button>
                   )}
                 </div>
@@ -3265,12 +3339,28 @@ export default function AdminSettings() {
           </div>
           <div style={{ marginTop: 12 }}>
             <div style={{ ...serviceKitGridStyles, marginBottom: 6 }}>
-              <div style={styles.fieldLabel}>Category</div>
-              <div style={styles.fieldLabel}>Item</div>
-              <div style={styles.fieldLabel}>Default Quantity</div>
-              <div style={styles.fieldLabel}>Current Stock</div>
-              <div style={styles.fieldLabel}>Action</div>
+              <div style={styles.fieldLabel}>Category{serviceKitRequiredAsterisk}</div>
+              <div style={styles.fieldLabel}>Item{serviceKitRequiredAsterisk}</div>
+              <div style={styles.fieldLabel}>Default Quantity{serviceKitRequiredAsterisk}</div>
+              <div style={styles.fieldLabel}>Current Stock{serviceKitRequiredAsterisk}</div>
+              <div style={styles.fieldLabel}>Action{serviceKitRequiredAsterisk}</div>
             </div>
+            {!serviceKitRowInputsDisabled && serviceKitHasNoItems && (
+              <div
+                style={{
+                  border: '1px solid #fecaca',
+                  borderRadius: 8,
+                  background: '#fef2f2',
+                  color: '#b91c1c',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: '10px 12px',
+                  marginBottom: 10,
+                }}
+              >
+                At least one service kit item is required.
+              </div>
+            )}
             {serviceKitItems.map((item, index) => (
               <div key={`${item.category}-${index}`} style={{ ...serviceKitGridStyles, marginBottom: 8 }}>
                 <select
@@ -3384,9 +3474,126 @@ export default function AdminSettings() {
           </div>
           <div style={styles.formActions}>
             <button type="button" style={styles.secondaryBtn} onClick={addServiceKitItem} disabled={serviceKitRowInputsDisabled}>Add Item</button>
-            <button type="button" style={styles.saveBtn} onClick={saveServiceKit} disabled={kitSaveDisabled}>Save Service Kit</button>
+            <button
+              type="button"
+              style={{
+                ...styles.saveBtn,
+                opacity: kitSaveDisabled ? 0.55 : 1,
+                cursor: kitSaveDisabled ? 'not-allowed' : 'pointer',
+              }}
+              onClick={handleServiceKitSaveRequest}
+              disabled={kitSaveDisabled}
+            >
+              Save Service Kit
+            </button>
           </div>
         </FormOverlay>
+      )}
+
+      {showServiceKitSaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowServiceKitSaveConfirmModal(false);
+            }
+          }}
+        >
+          <div style={{ ...styles.modalContent, maxWidth: 720 }}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Service Kit Details</h2>
+            <p style={styles.modalText}>
+              Please confirm that the service kit information is correct before saving.
+            </p>
+
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                fontFamily: 'Arial, sans-serif',
+                marginBottom: 8,
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
+                <div style={{ padding: 10, border: '1px solid #f1f5f9', borderRadius: 8 }}>
+                  <span style={{ display: 'block', color: '#64748b', fontSize: 12 }}>Branch</span>
+                  <strong style={{ color: '#0f172a', fontSize: 13 }}>
+                    {branches.find((branch) => String(branch.id) === String(serviceKitBranchId))?.address ||
+                      branches.find((branch) => String(branch.id) === String(serviceKitBranchId))?.name ||
+                      'Not selected'}
+                  </strong>
+                </div>
+                <div style={{ padding: 10, border: '1px solid #f1f5f9', borderRadius: 8 }}>
+                  <span style={{ display: 'block', color: '#64748b', fontSize: 12 }}>Service</span>
+                  <strong style={{ color: '#0f172a', fontSize: 13 }}>
+                    {services.find((service) => String(service.id) === String(serviceKitServiceId))?.name || 'Not selected'}
+                  </strong>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : '110px minmax(0, 1fr) 120px 110px 90px',
+                    gap: 0,
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  {['Category', 'Item', 'Default Quantity', 'Current Stock', 'Action'].map((label) => (
+                    <div key={label} style={{ padding: '9px 10px', borderBottom: '1px solid #e5e7eb' }}>
+                      {label}
+                    </div>
+                  ))}
+                </div>
+                {serviceKitItems.map((item, index) => (
+                  <div
+                    key={`${item.category}-${item.item_name}-${index}`}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : '110px minmax(0, 1fr) 120px 110px 90px',
+                      color: '#0f172a',
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ padding: '9px 10px', borderBottom: '1px solid #f1f5f9' }}>{item.category || 'Not selected'}</div>
+                    <div style={{ padding: '9px 10px', borderBottom: '1px solid #f1f5f9', fontWeight: 700 }}>{item.item_name || 'Not selected'}</div>
+                    <div style={{ padding: '9px 10px', borderBottom: '1px solid #f1f5f9' }}>{item.default_quantity || 'Not entered'}</div>
+                    <div style={{ padding: '9px 10px', borderBottom: '1px solid #f1f5f9' }}>{item.current_stock ?? 'Not available'}</div>
+                    <div style={{ padding: '9px 10px', borderBottom: '1px solid #f1f5f9' }}>Save</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowServiceKitSaveConfirmModal(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={saveServiceKit}
+              >
+                Save Service Kit
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {removeKitItemIndex !== null && (
@@ -3741,6 +3948,82 @@ export default function AdminSettings() {
             >
               Okay
             </button>
+          </div>
+        </div>
+      )}
+
+      {websiteContentSaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setWebsiteContentSaveConfirmModal(null);
+            }
+          }}
+        >
+          <div style={{ ...styles.modalContent, width: isMobile ? '100%' : 520, maxWidth: 520 }}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Content Changes</h2>
+            <p style={styles.modalText}>
+              Please review the website content details before saving.
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {websiteContentSaveConfirmModal.details.filter((detail) => detail.changed).length === 0 ? (
+                <div style={{ color: '#64748b', fontSize: 13, padding: '8px 0' }}>
+                  No content changes detected.
+                </div>
+              ) : (
+                websiteContentSaveConfirmModal.details
+                  .filter((detail) => detail.changed)
+                  .map((detail) => (
+                    <div
+                      key={detail.key}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '7px 0',
+                        borderBottom: '1px solid #f1f5f9',
+                        fontSize: 13,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ color: '#64748b' }}>
+                        {detail.label}
+                        <small style={{ display: 'block', color: '#94a3b8', marginTop: 2 }}>
+                          {detail.previousValue === 'Not set' ? 'Added' : 'Changed'}
+                        </small>
+                      </span>
+                      <strong style={{ color: '#0f172a', textAlign: 'right', maxWidth: 260, overflowWrap: 'anywhere' }}>
+                        {detail.value}
+                      </strong>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setWebsiteContentSaveConfirmModal(null)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                disabled={websiteContentSaving}
+                onClick={confirmWebsiteContentSave}
+              >
+                {websiteContentSaving ? 'Saving...' : 'Save Content'}
+              </button>
+            </div>
           </div>
         </div>
       )}
