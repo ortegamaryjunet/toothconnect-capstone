@@ -2625,6 +2625,9 @@ export default function InventoryPage() {
             )}
 
             <div style={styles.editModalActions}>
+              <button type="button" style={styles.cancelEditBtn} onClick={handleCancelExpenseModal}>
+                Cancel
+              </button>
               <button
                 type="button"
                 style={{
@@ -2636,9 +2639,6 @@ export default function InventoryPage() {
                 onClick={handleSaveExpense}
               >
                 Save Expense
-              </button>
-              <button type="button" style={styles.cancelEditBtn} onClick={handleCancelExpenseModal}>
-                Cancel
               </button>
             </div>
           </div>
@@ -2681,19 +2681,19 @@ export default function InventoryPage() {
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.saveBtn }}
-                disabled={expenseSaving}
-                onClick={handleConfirmExpenseSave}
-              >
-                {expenseSaving ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 disabled={expenseSaving}
                 onClick={closeExpenseConfirmModal}
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                disabled={expenseSaving}
+                onClick={handleConfirmExpenseSave}
+              >
+                {expenseSaving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -2718,7 +2718,7 @@ export default function InventoryPage() {
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={closeExpenseCancelConfirmModal}
               >
-                Keep Editing
+                No
               </button>
 
               <button
@@ -2726,7 +2726,7 @@ export default function InventoryPage() {
                 style={{ ...styles.modalButton, ...styles.logoutBtn }}
                 onClick={confirmCancelExpenseModal}
               >
-                Cancel Expense Input
+                Yes, Cancel
               </button>
             </div>
           </div>
