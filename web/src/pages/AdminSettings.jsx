@@ -189,6 +189,10 @@ export default function AdminSettings() {
   const [websiteAnnouncementOverlay, setWebsiteAnnouncementOverlay] = useState(null);
   const [deleteAnnouncementModal, setDeleteAnnouncementModal] = useState(false);
   const [deleteAnnouncementId, setDeleteAnnouncementId] = useState(null);
+  const [showBranchCancelConfirmModal, setShowBranchCancelConfirmModal] =
+    useState(false);
+  const [showBranchSaveConfirmModal, setShowBranchSaveConfirmModal] =
+    useState(false);
   
   const [users, setUsers] = useState([]);
   const [adminAccountForm, setAdminAccountForm] = useState(initialAdminAccountForm);
@@ -729,6 +733,8 @@ export default function AdminSettings() {
 
   function closeOverlay() {
     setActiveOverlay(null);
+    setShowBranchCancelConfirmModal(false);
+    setShowBranchSaveConfirmModal(false);
   }
 
   function handleOverlayClick(event) {
@@ -737,7 +743,16 @@ export default function AdminSettings() {
     }
   }
 
+  function handleBranchOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      setShowBranchCancelConfirmModal(true);
+    }
+  }
+
   function openBranchForm(branch = null) {
+    setShowBranchCancelConfirmModal(false);
+    setShowBranchSaveConfirmModal(false);
+
     if (branch) {
       setBranchForm(branch);
     } else {
@@ -875,9 +890,12 @@ export default function AdminSettings() {
     return '';
   }
 
-  async function saveBranch(event) {
+  function handleBranchSubmit(event) {
     event.preventDefault();
+    setShowBranchSaveConfirmModal(true);
+  }
 
+  async function saveBranch() {
     try {
       const payload = {
         name: branchForm.name,
@@ -899,6 +917,8 @@ export default function AdminSettings() {
     } catch (err) {
       console.error('Failed to save branch', err);
       alert(err.response?.data?.message || 'Failed to save branch');
+    } finally {
+      setShowBranchSaveConfirmModal(false);
     }
   }
 
@@ -2499,9 +2519,10 @@ export default function AdminSettings() {
           styles={styles}
           title={branchForm.id ? 'Update Branch' : 'New Branch'}
           onClose={closeOverlay}
-          onOverlayClick={handleOverlayClick}
+          onOverlayClick={handleBranchOverlayClick}
+          showCloseButton={false}
         >
-          <form onSubmit={saveBranch}>
+          <form onSubmit={handleBranchSubmit}>
             <div style={styles.formGrid}>
               <Field label="Branch Name" styles={styles}>
                 <input
@@ -2604,9 +2625,101 @@ export default function AdminSettings() {
               </Field>
             </div>
 
-            <FormActions styles={styles} label="Save Branch" />
+            <div style={styles.overlayActions}>
+              <button
+                type="button"
+                style={styles.secondaryBtn}
+                onClick={() => setShowBranchCancelConfirmModal(true)}
+              >
+                Cancel
+              </button>
+
+              <button type="submit" style={styles.saveBtn}>
+                Save Branch
+              </button>
+            </div>
           </form>
         </FormOverlay>
+      )}
+
+      {showBranchCancelConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowBranchCancelConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Branch Form?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved branch details will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowBranchCancelConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={closeOverlay}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBranchSaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowBranchSaveConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Branch Details</h2>
+            <p style={styles.modalText}>
+              Please confirm that the branch information is correct before saving.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowBranchSaveConfirmModal(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={saveBranch}
+              >
+                Save Branch
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {activeOverlay === 'services' && (
@@ -3353,16 +3466,25 @@ function SectionToolbar({
   );
 }
 
-function FormOverlay({ styles, title, onClose, onOverlayClick, children }) {
+function FormOverlay({
+  styles,
+  title,
+  onClose,
+  onOverlayClick,
+  children,
+  showCloseButton = true,
+}) {
   return (
     <div style={styles.overlay} onClick={onOverlayClick}>
       <div style={styles.overlayContent}>
         <div style={styles.overlayHeader}>
           <h3 style={styles.overlayTitle}>{title}</h3>
 
-          <button type="button" onClick={onClose} style={styles.overlayClose}>
-            &times;
-          </button>
+          {showCloseButton && (
+            <button type="button" onClick={onClose} style={styles.overlayClose}>
+              &times;
+            </button>
+          )}
         </div>
 
         <div style={styles.overlayBody}>{children}</div>
