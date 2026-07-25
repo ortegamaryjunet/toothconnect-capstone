@@ -390,8 +390,8 @@
       height: 43,
       padding: '0 16px',
       borderRadius: 14,
-      border: '1px solid #2563eb',
-      background: '#2563eb',
+      border: '1px solid #d4af37',
+      background: '#d4af37',
       color: '#ffffff',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
@@ -404,6 +404,7 @@
       textDecoration: 'none',
       width: isMobile ? '100%' : 'auto',
       boxSizing: 'border-box',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     addEmployeeIcon: {
