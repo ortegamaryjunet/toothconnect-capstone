@@ -136,6 +136,8 @@ const initialUserForm = {
   status: 'Active',
   created: '',
 };
+const USER_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const userRequiredFields = ['fullName', 'email', 'role', 'status'];
 
 const initialAdminAccountForm = {
   id: '',
@@ -254,6 +256,11 @@ export default function AdminSettings() {
   const [serviceKitHistoryFilters, setServiceKitHistoryFilters] = useState({ startDate: '', endDate: '', branchId: '' });
 
   const [userForm, setUserForm] = useState(initialUserForm);
+  const [userTouchedFields, setUserTouchedFields] = useState({});
+  const [showUserCancelConfirmModal, setShowUserCancelConfirmModal] =
+    useState(false);
+  const [showUserSaveConfirmModal, setShowUserSaveConfirmModal] =
+    useState(false);
 
   const [filters, setFilters] = useState({
     branchSearch: '',
@@ -298,6 +305,11 @@ export default function AdminSettings() {
     (field) => String(serviceForm[field] ?? '').trim() !== ''
   );
 
+  const isUserFormComplete =
+    userRequiredFields.every((field) => String(userForm[field] ?? '').trim() !== '') &&
+    USER_EMAIL_REGEX.test(String(userForm.email || '').trim()) &&
+    (userForm.role === 'Admin' || String(userForm.branch_id || '').trim() !== '');
+
   useEffect(() => {
     function handleResize() {
       setScreenWidth(window.innerWidth);
@@ -340,6 +352,8 @@ export default function AdminSettings() {
       showServiceCancelConfirmModal ||
       showServiceSaveConfirmModal ||
       showServiceKitSaveConfirmModal ||
+      showUserCancelConfirmModal ||
+      showUserSaveConfirmModal ||
       serviceKitOverlay ||
       showServiceKitHistory
     ) {
@@ -363,6 +377,8 @@ export default function AdminSettings() {
     showServiceCancelConfirmModal,
     showServiceSaveConfirmModal,
     showServiceKitSaveConfirmModal,
+    showUserCancelConfirmModal,
+    showUserSaveConfirmModal,
     serviceKitOverlay,
     showServiceKitHistory,
   ]);
@@ -378,6 +394,8 @@ export default function AdminSettings() {
       setWebsiteValidationModal(null);
       setShowWebsiteContentCancelConfirmModal(false);
       setShowServiceKitSaveConfirmModal(false);
+      setShowUserCancelConfirmModal(false);
+      setShowUserSaveConfirmModal(false);
       setServiceKitOverlay(false);
       }
     }
@@ -849,6 +867,9 @@ export default function AdminSettings() {
     setShowServiceCancelConfirmModal(false);
     setShowServiceSaveConfirmModal(false);
     setServiceTouchedFields({});
+    setShowUserCancelConfirmModal(false);
+    setShowUserSaveConfirmModal(false);
+    setUserTouchedFields({});
   }
 
   function handleCancelWebsiteContentEdit() {
@@ -902,6 +923,10 @@ export default function AdminSettings() {
   }
 
   function openUserForm(user = null) {
+    setShowUserCancelConfirmModal(false);
+    setShowUserSaveConfirmModal(false);
+    setUserTouchedFields({});
+
     if (user) {
       setUserForm({
         id: user.id || '',
@@ -1046,6 +1071,8 @@ export default function AdminSettings() {
   }
 
   function handleUserChange(name, value) {
+    setUserTouchedFields((prev) => ({ ...prev, [name]: true }));
+
     let newValue = value;
 
     if (name === 'fullName') {
@@ -1057,6 +1084,72 @@ export default function AdminSettings() {
       [name]: newValue,
       ...(name === 'role' && newValue === 'Admin' ? { branch_id: '' } : {}),
     }));
+  }
+
+  function handleUserFieldBlur(name) {
+    setUserTouchedFields((prev) => ({ ...prev, [name]: true }));
+  }
+
+  function isUserFieldRequired(name) {
+    if (name === 'branch_id') {
+      return userForm.role !== 'Admin';
+    }
+
+    return userRequiredFields.includes(name);
+  }
+
+  function isUserFieldInvalid(name) {
+    if (!userTouchedFields[name] || !isUserFieldRequired(name)) {
+      return false;
+    }
+
+    const value = String(userForm[name] ?? '').trim();
+
+    if (!value) {
+      return true;
+    }
+
+    if (name === 'email') {
+      return !USER_EMAIL_REGEX.test(value);
+    }
+
+    return false;
+  }
+
+  function getUserFieldStyle(name) {
+    return {
+      ...styles.formInput,
+      ...(isUserFieldInvalid(name)
+        ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+        : {}),
+    };
+  }
+
+  function renderUserRequiredLabel(label, name) {
+    return (
+      <>
+        {label}
+        {isUserFieldRequired(name) && <span style={{ color: '#dc2626' }}> *</span>}
+      </>
+    );
+  }
+
+  function getUserEmailError() {
+    if (!userTouchedFields.email) {
+      return '';
+    }
+
+    const email = String(userForm.email || '').trim();
+
+    if (!email) {
+      return 'Email address is required.';
+    }
+
+    if (!USER_EMAIL_REGEX.test(email)) {
+      return 'Please enter a valid email address format.';
+    }
+
+    return '';
   }
 
   function handleAdminAccountChange(name, value) {
@@ -1502,9 +1595,24 @@ export default function AdminSettings() {
     alignItems: 'center',
   };
 
-  async function saveUser(event) {
+  function handleUserSubmit(event) {
     event.preventDefault();
 
+    if (!isUserFormComplete) {
+      setUserTouchedFields({
+        fullName: true,
+        email: true,
+        role: true,
+        branch_id: true,
+        status: true,
+      });
+      return;
+    }
+
+    setShowUserSaveConfirmModal(true);
+  }
+
+  async function saveUser() {
     try {
       if (userForm.id) {
         await api.patch(`/auth/users/${userForm.id}`, {
@@ -1526,6 +1634,7 @@ export default function AdminSettings() {
       }
 
       await loadUsers();
+      setShowUserSaveConfirmModal(false);
       closeOverlay();
     } catch (err) {
       console.error('Failed to save user account', err);
@@ -3815,42 +3924,55 @@ export default function AdminSettings() {
         <FormOverlay
           styles={styles}
           title={userForm.id ? 'Update User Account' : 'New User Account'}
-          onClose={closeOverlay}
-          onOverlayClick={handleOverlayClick}
+          onClose={() => setShowUserCancelConfirmModal(true)}
+          onOverlayClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowUserCancelConfirmModal(true);
+            }
+          }}
+          showCloseButton={false}
         >
-          <form onSubmit={saveUser}>
+          <form onSubmit={handleUserSubmit}>
             <div style={styles.formGrid}>
-              <Field label="Full Name" styles={styles}>
+              <Field label={renderUserRequiredLabel('Full Name', 'fullName')} styles={styles}>
                 <input
                   type="text"
                   value={userForm.fullName}
                   onChange={(event) =>
                     handleUserChange('fullName', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleUserFieldBlur('fullName')}
+                  style={getUserFieldStyle('fullName')}
                   required
                 />
               </Field>
 
-              <Field label="Email Address" styles={styles}>
+              <Field label={renderUserRequiredLabel('Email Address', 'email')} styles={styles}>
                 <input
                   type="email"
                   value={userForm.email}
                   onChange={(event) =>
                     handleUserChange('email', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleUserFieldBlur('email')}
+                  style={getUserFieldStyle('email')}
                   required
                 />
+                {getUserEmailError() && (
+                  <span style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>
+                    {getUserEmailError()}
+                  </span>
+                )}
               </Field>
 
-              <Field label="Access Role" styles={styles}>
+              <Field label={renderUserRequiredLabel('Access Role', 'role')} styles={styles}>
                 <select
                   value={userForm.role}
                   onChange={(event) =>
                     handleUserChange('role', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleUserFieldBlur('role')}
+                  style={getUserFieldStyle('role')}
                   required
                 >
                   <option value="" disabled>
@@ -3863,13 +3985,14 @@ export default function AdminSettings() {
                 </select>
               </Field>
 
-              <Field label="Assigned Branch" styles={styles}>
+              <Field label={renderUserRequiredLabel('Assigned Branch', 'branch_id')} styles={styles}>
                 <select
                   value={userForm.branch_id}
                   onChange={(event) =>
                     handleUserChange('branch_id', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleUserFieldBlur('branch_id')}
+                  style={getUserFieldStyle('branch_id')}
                   disabled={userForm.role === 'Admin'}
                   required={userForm.role !== 'Admin'}
                 >
@@ -3892,19 +4015,21 @@ export default function AdminSettings() {
                     onChange={(event) =>
                       handleUserChange('password', event.target.value)
                     }
+                    onBlur={() => handleUserFieldBlur('password')}
                     style={styles.formInput}
                     placeholder="Leave blank to generate"
                   />
                 </Field>
               )}
 
-              <Field label="Status" styles={styles}>
+              <Field label={renderUserRequiredLabel('Status', 'status')} styles={styles}>
                 <select
                   value={userForm.status}
                   onChange={(event) =>
                     handleUserChange('status', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleUserFieldBlur('status')}
+                  style={getUserFieldStyle('status')}
                   required
                 >
                   <option value="" disabled>
@@ -3916,9 +4041,145 @@ export default function AdminSettings() {
               </Field>
             </div>
 
-            <FormActions styles={styles} label="Save User Account" />
+            <div style={styles.overlayActions}>
+              <button
+                type="button"
+                style={styles.secondaryBtn}
+                onClick={() => setShowUserCancelConfirmModal(true)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                style={{
+                  ...styles.saveBtn,
+                  opacity: isUserFormComplete ? 1 : 0.55,
+                  cursor: isUserFormComplete ? 'pointer' : 'not-allowed',
+                }}
+                disabled={!isUserFormComplete}
+              >
+                Save User Account
+              </button>
+            </div>
           </form>
         </FormOverlay>
+      )}
+
+      {showUserCancelConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowUserCancelConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel User Account Form?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved user account details will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowUserCancelConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={closeOverlay}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUserSaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowUserSaveConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm User Account Details</h2>
+            <p style={styles.modalText}>
+              Please confirm that the user account information is correct before saving.
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {[
+                ['Full Name', userForm.fullName || 'Not entered'],
+                ['Email Address', userForm.email || 'Not entered'],
+                ['Access Role', userForm.role || 'Not selected'],
+                [
+                  'Assigned Branch',
+                  userForm.role === 'Admin'
+                    ? 'Not required'
+                    : branches.find((branch) => String(branch.id) === String(userForm.branch_id))?.name ||
+                      branches.find((branch) => String(branch.id) === String(userForm.branch_id))?.address ||
+                      'Not selected',
+                ],
+                ['Password', userForm.id ? 'Unchanged' : userForm.password ? 'Manually entered' : 'Auto-generated'],
+                ['Status', userForm.status || 'Not selected'],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '6px 0',
+                    borderBottom: '1px solid #f1f5f9',
+                    fontSize: 13,
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ color: '#64748b' }}>{label}</span>
+                  <strong style={{ color: '#0f172a', textAlign: 'right' }}>
+                    {value}
+                  </strong>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowUserSaveConfirmModal(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={saveUser}
+              >
+                Save User Account
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {websiteValidationModal && (
