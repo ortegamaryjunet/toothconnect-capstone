@@ -273,6 +273,7 @@ export default function InventoryPage() {
   const [expenseBranchOptions, setExpenseBranchOptions] = useState([]);
   const [expenseSaving, setExpenseSaving] = useState(false);
   const [expenseSaveError, setExpenseSaveError] = useState('');
+  const [expenseStockLimitError, setExpenseStockLimitError] = useState(null);
   const [saveExpenseClicked, setSaveExpenseClicked] = useState(false);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -1070,6 +1071,7 @@ export default function InventoryPage() {
     setShowExpenseModal(false);
     setShowExpenseCancelConfirmModal(false);
     setExpenseSaveError('');
+    setExpenseStockLimitError(null);
     setExpenseTouchedFields({});
   }
 
@@ -1112,6 +1114,7 @@ export default function InventoryPage() {
   }
 
   function handleExpenseChange(field, value) {
+    setExpenseStockLimitError(null);
     setExpenseTouchedFields((prev) => ({ ...prev, [field]: true }));
     setExpenseForm((prev) => {
       const updatedForm = { ...prev, [field]: value };
@@ -1188,6 +1191,7 @@ export default function InventoryPage() {
 
   function handleSaveExpense() {
     setExpenseSaveError('');
+    setExpenseStockLimitError(null);
 
     const orderQuantity = Number(expenseForm.orderQuantity || 0);
     const maxStockValue = Number(expenseForm.maxStock || 0);
@@ -1202,9 +1206,11 @@ export default function InventoryPage() {
       const existingQuantity = Number(selectedExistingItem?.quantity || 0);
 
       if (existingQuantity + orderQuantity > maxStockValue) {
-        setExpenseSaveError(
-          `Cannot save. This order will exceed the maximum stock of ${maxStockValue}. Current quantity is ${existingQuantity}.`
-        );
+        setExpenseStockLimitError({
+          orderQuantity,
+          currentQuantity: existingQuantity,
+          maximumStock: maxStockValue,
+        });
         return;
       }
     }
@@ -2685,6 +2691,71 @@ export default function InventoryPage() {
 
             {expenseSaveError && (
               <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#b91c1c', fontFamily: 'Arial, sans-serif', lineHeight: 1.45 }}>{expenseSaveError}</p>
+            )}
+
+            {expenseStockLimitError && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'flex-start',
+                  border: '1px solid #fecaca',
+                  borderRadius: 10,
+                  background: '#fff1f2',
+                  padding: '14px 16px',
+                  fontFamily: 'Arial, sans-serif',
+                }}
+              >
+                <i
+                  className="fi fi-rr-triangle-warning"
+                  style={{
+                    color: '#ef4444',
+                    fontSize: 24,
+                    lineHeight: 1,
+                    marginTop: 2,
+                    flexShrink: 0,
+                  }}
+                ></i>
+
+                <div style={{ minWidth: 0 }}>
+                  <h4
+                    style={{
+                      margin: '0 0 4px',
+                      color: '#dc2626',
+                      fontSize: 13,
+                      fontWeight: 800,
+                    }}
+                  >
+                    Cannot save order
+                  </h4>
+
+                  <p
+                    style={{
+                      margin: 0,
+                      color: '#334155',
+                      fontSize: 13,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    The order quantity ({expenseStockLimitError.orderQuantity}) exceeds the maximum stock level ({expenseStockLimitError.maximumStock}). Please enter a quantity within the available stock limit.
+                  </p>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 18,
+                      flexWrap: 'wrap',
+                      marginTop: 8,
+                      color: '#dc2626',
+                      fontSize: 12,
+                      fontWeight: 800,
+                    }}
+                  >
+                    <span>Current stock: {expenseStockLimitError.currentQuantity}</span>
+                    <span>Maximum allowed: {expenseStockLimitError.maximumStock}</span>
+                  </div>
+                </div>
+              </div>
             )}
 
             <div style={styles.editModalActions}>
