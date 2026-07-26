@@ -146,8 +146,8 @@
       width: 40,
       height: 40,
       borderRadius: 13,
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#d4af37',
+      color: '#ffffff',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -428,6 +428,7 @@
       color: '#334155',
       cursor: 'pointer',
       boxSizing: 'border-box',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     addAppt: {
@@ -876,8 +877,8 @@
       width: 42,
       height: 42,
       borderRadius: 14,
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#d4af37',
+      color: '#ffffff',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1278,8 +1279,8 @@
       alignItems: 'center',
       justifyContent: 'center',
       border: 'none',
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#d4af37',
+      color: '#ffffff',
       borderRadius: 10,
       padding: '10px 12px',
       fontSize: 14,
@@ -1288,6 +1289,7 @@
       textDecoration: 'none',
       cursor: 'pointer',
       boxSizing: 'border-box',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
   };
 };

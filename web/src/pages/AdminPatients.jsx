@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { listPatients } from '../api/patients';
 import { useAuth } from '../auth/AuthContext';
+import AdminProfileMenu from '../components/AdminProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminPatientsStyles from '../styles/AdminPatients';
 
@@ -537,16 +538,7 @@ export default function AdminPatients() {
       <div style={styles.mainContainer}>
         <header style={styles.topHeader}>
           <div style={styles.headerActions}>
-            <div style={styles.adminProfile}>
-              <div style={styles.avatar}>
-                <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-              </div>
-
-              <div style={styles.adminInfo}>
-                <div style={styles.adminName}>{adminName}</div>
-                <div style={styles.adminPosition}>Admin</div>
-              </div>
-            </div>
+            <AdminProfileMenu styles={styles} adminName={adminName} />
           </div>
         </header>
 

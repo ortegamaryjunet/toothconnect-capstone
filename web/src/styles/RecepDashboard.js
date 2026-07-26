@@ -116,8 +116,8 @@
       alignItems: 'center',
       justifyContent: 'center',
       border: 'none',
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#d4af37',
+      color: '#ffffff',
       borderRadius: 10,
       padding: '10px 12px',
       fontSize: 14,
@@ -126,6 +126,7 @@
       textDecoration: 'none',
       cursor: 'pointer',
       boxSizing: 'border-box',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     logoutSection: {

@@ -11,6 +11,7 @@ import {
   listServiceKitHistory,
 } from '../api/inventory';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
+import AdminProfileMenu from '../components/AdminProfileMenu';
 import createAdminSettingsStyles from '../styles/AdminSettings';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
@@ -191,6 +192,14 @@ export default function AdminSettings() {
       setActiveSection('leaveRequests');
     }
   }, [highlightRequestId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const section = params.get('section');
+    if (section === 'adminAccount') {
+      setActiveSection('adminAccount');
+    }
+  }, [location.search]);
 
   const [branches, setBranches] = useState([]);
   const [services, setServices] = useState([]);
@@ -3107,18 +3116,10 @@ export default function AdminSettings() {
       <div style={styles.mainContainer}>
         <header style={styles.topHeader}>
           <div style={styles.headerActions}>
-            <div style={styles.adminProfile}>
-              <div style={styles.avatar}>
-                <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-              </div>
-
-              <div style={styles.adminInfo}>
-                <div style={styles.adminName}>
-                  {adminAccountForm.name || adminAccountForm.email || 'Admin'}
-                </div>
-                <div style={styles.adminPosition}>Admin</div>
-              </div>
-            </div>
+            <AdminProfileMenu
+              styles={styles}
+              adminName={adminAccountForm.name || adminAccountForm.email || 'Admin'}
+            />
           </div>
         </header>
 

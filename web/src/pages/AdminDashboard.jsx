@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { getAdminDashboardReport } from '../api/reports';
 import { useAuth } from '../auth/AuthContext';
+import AdminProfileMenu from '../components/AdminProfileMenu';
 import LazyChart from '../components/LazyChart';
 import createAdminDashboardStyles from '../styles/AdminDashboard';
 
@@ -514,16 +515,7 @@ export default function AdminDashboard() {
       <div style={styles.mainContainer}>
         <header style={styles.topHeader}>
           <div style={styles.headerActions}>
-            <div style={styles.adminProfile}>
-              <div style={styles.avatar}>
-                <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-              </div>
-
-              <div style={styles.adminInfo}>
-                <div style={styles.adminName}>{adminName}</div>
-                <div style={styles.adminPosition}>Admin</div>
-              </div>
-            </div>
+            <AdminProfileMenu styles={styles} adminName={adminName} />
           </div>
         </header>
 

@@ -13,6 +13,7 @@ import { getRevenueReport } from '../api/payments';
 import { listAuditLogs } from '../api/auditLogs';
 import api from '../api/axios';
 import { useAuth } from '../auth/AuthContext';
+import AdminProfileMenu from '../components/AdminProfileMenu';
 import LazyChart from '../components/LazyChart';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminReportsStyles from '../styles/AdminReports';
@@ -1463,16 +1464,7 @@ export default function AdminReports() {
       <div style={styles.mainContainer}>
         <header style={styles.topHeader}>
           <div style={styles.headerActions}>
-            <div style={styles.adminProfile}>
-              <div style={styles.avatar}>
-                <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-              </div>
-
-              <div style={styles.adminInfo}>
-                <div style={styles.adminName}>{adminName}</div>
-                <div style={styles.adminPosition}>Admin</div>
-              </div>
-            </div>
+            <AdminProfileMenu styles={styles} adminName={adminName} />
           </div>
         </header>
 

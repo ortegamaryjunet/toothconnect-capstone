@@ -14,6 +14,7 @@ import {
 } from '../api/inventory';
 import { getUnreadNotificationCount } from '../api/notifications';
 import api from '../api/axios';
+import AdminProfileMenu from '../components/AdminProfileMenu';
 import createInventoryPageStyles from '../styles/InventoryPage';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
@@ -1946,16 +1947,7 @@ export default function InventoryPage() {
                 </div>
               </Link>
             ) : (
-              <div style={styles.adminProfile}>
-                <div style={styles.avatar}>
-                  <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-                </div>
-
-                <div style={styles.adminInfo}>
-                  <div style={styles.adminName}>{profileName}</div>
-                  <div style={styles.adminPosition}>{profilePosition}</div>
-                </div>
-              </div>
+              <AdminProfileMenu styles={styles} adminName={profileName} />
             )}
           </div>
         </header>
