@@ -1166,7 +1166,7 @@ export default function RecepAppointmentForm() {
 
             <h2 style={styles.modalTitle}>Confirm Appointment</h2>
             <p style={styles.modalText}>
-              Please review the information. Are the details correct and do you want to create this appointment?
+              Please review the details below. Do you want to create this appointment?
             </p>
 
             <AppointmentSummaryRows rows={appointmentSummaryRows} styles={styles} />
