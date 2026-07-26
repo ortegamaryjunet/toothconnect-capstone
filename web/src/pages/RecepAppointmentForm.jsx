@@ -1129,7 +1129,7 @@ export default function RecepAppointmentForm() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Clear Appointment Form?</h2>
+            <h2 style={styles.modalTitle}>Clear Appointment Form</h2>
             <p style={styles.modalText}>
               Review the current details. Are you sure you want to clear this form? These details will not be saved.
             </p>
