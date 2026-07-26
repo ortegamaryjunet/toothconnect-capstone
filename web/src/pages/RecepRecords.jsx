@@ -321,19 +321,24 @@ export default function RecepRecords() {
       event.stopPropagation();
     }
 
+    const contactFormValue = getContactFormValue(patient?.contactNumber);
+    const emergencyContactFormValue = getContactFormValue(
+      patient?.emergencyContactNumber
+    );
+
     setEditPatient({
       ...patient,
-      contactCountry: getContactFormValue(patient.contactNumber).country,
-      emergencyContactCountry: getContactFormValue(patient.emergencyContactNumber).country,
+      contactCountry: contactFormValue.country,
+      emergencyContactCountry: emergencyContactFormValue.country,
       contactNumber: normalizePhoneNumber(
-        patient.contactNumber,
-        getContactFormValue(patient.contactNumber).country
+        patient?.contactNumber,
+        contactFormValue.country
       ),
-      fullName: [patient.firstName, patient.middleName, patient.lastName]
+      fullName: [patient?.firstName, patient?.middleName, patient?.lastName]
         .filter(Boolean)
         .join(' ')
         .trim(),
-      address: patient.address || '',
+      address: patient?.address || '',
       nationality: '',
       occupation: '',
       civilStatus: '',
@@ -348,7 +353,12 @@ export default function RecepRecords() {
     setEditModalReadOnly(true);
     setEditErrors({});
     setShowEditModal(true);
-    hydrateEditPatientProfile(patient.infoId);
+
+    if (patient?.infoId) {
+      hydrateEditPatientProfile(patient.infoId);
+    } else {
+      setEditProfileLoading(false);
+    }
   }
 
   function closePatientDetails() {
@@ -1205,6 +1215,7 @@ export default function RecepRecords() {
                               onClick={(event) =>
                                 openEditPatient(patient, event)
                               }
+                              aria-label="Edit patient"
                               title="Edit Patient"
                             >
                               <i className="fi fi-rr-edit"></i>
@@ -1560,7 +1571,6 @@ export default function RecepRecords() {
                       event.stopPropagation();
                       openEditConfirmModal();
                     }}
-                    disabled={editProfileLoading}
                   >
                     Edit
                   </button>

@@ -479,6 +479,7 @@
       justifyContent: 'center',
       cursor: 'pointer',
       transition: '0.2s ease',
+      fontSize: 16,
     },
 
     viewBtn: {
@@ -488,9 +489,10 @@
     },
 
     editBtn: {
-      background: '#eff6ff',
+      background: '#fff8e1',
       color: '#b8860b',
-      border: '1px solid #bfdbfe',
+      border: '1px solid #f3d46b',
+      boxShadow: '0 8px 18px rgba(184, 134, 11, 0.16)',
     },
 
     pdfBtn: {
