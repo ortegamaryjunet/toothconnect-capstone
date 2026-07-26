@@ -313,18 +313,21 @@ export default function RecepPatientAcc() {
   }
 
   function handleCreateChange(field, value) {
+    const nextValue =
+      field === 'contactNumber' ? value.replace(/\D/g, '').slice(0, 11) : value;
+
     setCreateTouched((current) => ({ ...current, [field]: true }));
 
     setCreateForm((current) => {
       const nextForm = {
         ...current,
-        [field]: value,
+        [field]: nextValue,
       };
 
       setCreateErrors((currentErrors) => ({
         ...currentErrors,
         form: '',
-        [field]: validateCreateAccountField(field, value, nextForm),
+        [field]: validateCreateAccountField(field, nextValue, nextForm),
       }));
 
       return nextForm;
@@ -462,6 +465,7 @@ export default function RecepPatientAcc() {
       setCreateErrors(errors);
       setCreateTouched({
         firstName: true,
+        middleName: true,
         lastName: true,
         email: true,
         contactNumber: true,
@@ -881,7 +885,7 @@ export default function RecepPatientAcc() {
                     handleUpdateChange('contactNumber', value)
                   }
                   error={updateErrors.contactNumber}
-                  placeholder="e.g. 09XXXXXXXXX or +639XXXXXXXXX"
+                  placeholder="09XXXXXXXXX"
                   inputMode="tel"
                   required
                 />
@@ -1023,8 +1027,9 @@ export default function RecepPatientAcc() {
                       ? createErrors.contactNumber
                       : ''
                   }
-                  placeholder="e.g. 09XXXXXXXXX or +639XXXXXXXXX"
-                  inputMode="tel"
+                  placeholder="09XXXXXXXXX"
+                  inputMode="numeric"
+                  maxLength={11}
                   required
                 />
 
@@ -1086,7 +1091,7 @@ export default function RecepPatientAcc() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Create Account?</h2>
+            <h2 style={styles.modalTitle}>Cancel Create Account</h2>
             <p style={styles.modalText}>
               Review the current details. Are you sure you want to cancel? These details will not be saved.
             </p>
@@ -1322,6 +1327,7 @@ function InputField({
   error = '',
   placeholder = '',
   inputMode,
+  maxLength,
   rightElement,
 }) {
   return (
@@ -1337,6 +1343,7 @@ function InputField({
           readOnly={readOnly}
           placeholder={placeholder}
           inputMode={inputMode}
+          maxLength={maxLength}
           style={{
             ...styles.fieldInput,
             ...(rightElement ? styles.fieldInputWithAction : {}),
@@ -1431,8 +1438,8 @@ function validateContactNumber(value) {
     return 'This field is required';
   }
 
-  if (!/^(09\d{9}|\+639\d{9})$/.test(contact)) {
-    return 'Contact number format is invalid. Use 09XXXXXXXXX or +639XXXXXXXXX.';
+  if (!/^09\d{9}$/.test(contact)) {
+    return 'Contact number must be 11 digits and start with 09.';
   }
 
   return '';
@@ -1460,6 +1467,20 @@ function validateRequiredField(value) {
   return '';
 }
 
+function validateNameField(value, required = false) {
+  const name = String(value || '').trim();
+
+  if (!name) {
+    return required ? 'This field is required.' : '';
+  }
+
+  if (!/^[A-Za-z\s]+$/.test(name)) {
+    return 'Numbers are not allowed. Only letters.';
+  }
+
+  return '';
+}
+
 function validateTemporaryPassword(value) {
   const password = String(value || '');
 
@@ -1480,7 +1501,11 @@ function validateTemporaryPassword(value) {
 
 function validateCreateAccountField(field, value) {
   if (field === 'firstName' || field === 'lastName') {
-    return validateRequiredField(value);
+    return validateNameField(value, true);
+  }
+
+  if (field === 'middleName') {
+    return validateNameField(value);
   }
 
   if (field === 'email') {
@@ -1502,11 +1527,16 @@ function validateAccountForm(account, requirePassword) {
   const errors = {};
   const contactError = validateContactNumber(account.contactNumber);
   const emailError = validateEmail(account.email);
-  const firstNameError = validateRequiredField(account.firstName);
-  const lastNameError = validateRequiredField(account.lastName);
+  const firstNameError = validateNameField(account.firstName, requirePassword);
+  const middleNameError = validateNameField(account.middleName);
+  const lastNameError = validateNameField(account.lastName, requirePassword);
 
   if (requirePassword && firstNameError) {
     errors.firstName = firstNameError;
+  }
+
+  if (middleNameError) {
+    errors.middleName = middleNameError;
   }
 
   if (requirePassword && lastNameError) {
