@@ -627,6 +627,7 @@
     },
 
     closeBtn: {
+      display: 'none',
       border: 'none',
       background: 'transparent',
       fontSize: 28,

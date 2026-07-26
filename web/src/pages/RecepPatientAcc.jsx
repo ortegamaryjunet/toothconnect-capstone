@@ -41,6 +41,8 @@ export default function RecepPatientAcc() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showUpdateOverlay, setShowUpdateOverlay] = useState(false);
   const [showCreateOverlay, setShowCreateOverlay] = useState(false);
+  const [showUpdateCancelModal, setShowUpdateCancelModal] = useState(false);
+  const [showUpdateConfirmModal, setShowUpdateConfirmModal] = useState(false);
   const [showCreateCancelModal, setShowCreateCancelModal] = useState(false);
   const [showCreateConfirmModal, setShowCreateConfirmModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -55,6 +57,8 @@ export default function RecepPatientAcc() {
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [createSaving, setCreateSaving] = useState(false);
   const [updateErrors, setUpdateErrors] = useState({});
+  const [updateTouched, setUpdateTouched] = useState({});
+  const [updateSaving, setUpdateSaving] = useState(false);
 
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -190,6 +194,8 @@ export default function RecepPatientAcc() {
       showLogoutModal ||
       showUpdateOverlay ||
       showCreateOverlay ||
+      showUpdateCancelModal ||
+      showUpdateConfirmModal ||
       showCreateCancelModal ||
       showCreateConfirmModal ||
       showExportModal;
@@ -203,6 +209,8 @@ export default function RecepPatientAcc() {
     showLogoutModal,
     showUpdateOverlay,
     showCreateOverlay,
+    showUpdateCancelModal,
+    showUpdateConfirmModal,
     showCreateCancelModal,
     showCreateConfirmModal,
     showExportModal,
@@ -226,6 +234,8 @@ export default function RecepPatientAcc() {
     setShowLogoutModal(false);
     setShowUpdateOverlay(false);
     setShowCreateOverlay(false);
+    setShowUpdateCancelModal(false);
+    setShowUpdateConfirmModal(false);
     setShowCreateCancelModal(false);
     setShowCreateConfirmModal(false);
     setShowExportModal(false);
@@ -250,14 +260,45 @@ export default function RecepPatientAcc() {
   }
 
   function openUpdateOverlay(account) {
-    setSelectedAccount({ ...account });
+    const phoneForm = getContactFormValue(account.contactNumber);
+
+    setSelectedAccount({
+      ...account,
+      contactCountry: phoneForm.country,
+      contactNumber: phoneForm.number,
+    });
     setUpdateErrors({});
+    setUpdateTouched({});
+    setUpdateSaving(false);
     setShowUpdateOverlay(true);
   }
 
   function closeUpdateOverlay() {
     setSelectedAccount(null);
+    setUpdateErrors({});
+    setUpdateTouched({});
+    setUpdateSaving(false);
+    setShowUpdateCancelModal(false);
+    setShowUpdateConfirmModal(false);
     setShowUpdateOverlay(false);
+  }
+
+  function openUpdateCancelModal() {
+    setShowUpdateCancelModal(true);
+  }
+
+  function closeUpdateCancelModal() {
+    setShowUpdateCancelModal(false);
+  }
+
+  function confirmUpdateCancel() {
+    closeUpdateOverlay();
+  }
+
+  function closeUpdateConfirmModal() {
+    if (!updateSaving) {
+      setShowUpdateConfirmModal(false);
+    }
   }
 
   function openCreateOverlay() {
@@ -298,29 +339,79 @@ export default function RecepPatientAcc() {
   }
 
   function handleUpdateChange(field, value) {
-    if (['contactNumber', 'email', 'password'].includes(field)) {
-      setUpdateErrors((current) => ({ ...current, [field]: '' }));
+    const nextValue =
+      field === 'contactNumber' ? value.replace(/\D/g, '').slice(0, 15) : value;
+
+    setUpdateTouched((current) => ({ ...current, [field]: true }));
+
+    setSelectedAccount((current) => {
+      const nextAccount = {
+        ...current,
+        [field]: nextValue,
+        name:
+          field === 'firstName' ||
+          field === 'middleName' ||
+          field === 'lastName'
+            ? buildFullName({
+                ...current,
+                [field]: nextValue,
+              })
+            : current.name,
+        deactivated:
+          field === 'status' && nextValue === 'INACTIVE'
+            ? current.deactivated || getTodayDate()
+            : field === 'status' && nextValue === 'ACTIVE'
+              ? ''
+              : current.deactivated,
+      };
+
+      setUpdateErrors((currentErrors) => ({
+        ...currentErrors,
+        form: '',
+        [field]: validateUpdateAccountField(field, nextValue, nextAccount),
+      }));
+
+      return nextAccount;
+    });
+  }
+
+  function handleUpdateBlur(field) {
+    setUpdateTouched((current) => ({ ...current, [field]: true }));
+
+    if (!selectedAccount) {
+      return;
     }
 
-    setSelectedAccount((current) => ({
-      ...current,
-      [field]: value,
-      name:
-        field === 'firstName' ||
-        field === 'middleName' ||
-        field === 'lastName'
-          ? buildFullName({
-              ...current,
-              [field]: value,
-            })
-          : current.name,
-      deactivated:
-        field === 'status' && value === 'INACTIVE'
-          ? current.deactivated || getTodayDate()
-          : field === 'status' && value === 'ACTIVE'
-            ? ''
-            : current.deactivated,
+    setUpdateErrors((currentErrors) => ({
+      ...currentErrors,
+      [field]: validateUpdateAccountField(
+        field,
+        selectedAccount[field],
+        selectedAccount
+      ),
     }));
+  }
+
+  function handleUpdatePhoneCountryChange(country) {
+    setUpdateTouched((current) => ({ ...current, contactNumber: true }));
+
+    setSelectedAccount((current) => {
+      const nextAccount = {
+        ...current,
+        contactCountry: country,
+      };
+
+      setUpdateErrors((currentErrors) => ({
+        ...currentErrors,
+        form: '',
+        contactNumber: validateContactNumber(
+          nextAccount.contactNumber,
+          nextAccount.contactCountry
+        ),
+      }));
+
+      return nextAccount;
+    });
   }
 
   function handleCreateChange(field, value) {
@@ -455,18 +546,40 @@ export default function RecepPatientAcc() {
       return;
     }
 
-    const errors = validateAccountForm(selectedAccount, false);
+    const errors = validateAccountForm(selectedAccount, false, true);
 
     if (Object.keys(errors).length > 0) {
       setUpdateErrors(errors);
+      setUpdateTouched({
+        firstName: true,
+        middleName: true,
+        lastName: true,
+        email: true,
+        contactNumber: true,
+        password: true,
+      });
       return;
     }
+
+    setShowUpdateConfirmModal(true);
+  }
+
+  async function handleConfirmUpdateAccount() {
+    if (!selectedAccount) {
+      return;
+    }
+
+    setUpdateSaving(true);
+    setUpdateErrors((current) => ({ ...current, form: '' }));
 
     try {
       const saved = await updatePatientAccount(selectedAccount.userId, {
         full_name: buildFullName(selectedAccount),
         email: selectedAccount.email,
-        contact_number: normalizeContactNumber(selectedAccount.contactNumber),
+        contact_number: normalizeContactNumber(
+          selectedAccount.contactNumber,
+          selectedAccount.contactCountry
+        ),
         status: selectedAccount.status === 'INACTIVE' ? 'Inactive' : 'Active',
         temporary_password: selectedAccount.password || undefined,
       });
@@ -481,10 +594,13 @@ export default function RecepPatientAcc() {
 
       closeUpdateOverlay();
     } catch (err) {
+      setShowUpdateConfirmModal(false);
       setUpdateErrors({
         form:
           err.response?.data?.message || 'Failed to update patient account.',
       });
+    } finally {
+      setUpdateSaving(false);
     }
   }
 
@@ -549,9 +665,21 @@ export default function RecepPatientAcc() {
     }
   }
 
+  function handleUpdateCancelOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeUpdateCancelModal();
+    }
+  }
+
   function handleCreateConfirmOverlayClick(event) {
     if (event.target === event.currentTarget) {
       closeCreateConfirmModal();
+    }
+  }
+
+  function handleUpdateConfirmOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeUpdateConfirmModal();
     }
   }
 
@@ -569,6 +697,27 @@ export default function RecepPatientAcc() {
     ],
     ['Temporary Password', createForm.password ? 'Provided' : 'N/A'],
   ];
+
+  const updateAccountSummaryRows = selectedAccount
+    ? [
+        ['First Name', selectedAccount.firstName || 'N/A'],
+        ['Middle Name', selectedAccount.middleName || 'N/A'],
+        ['Last Name', selectedAccount.lastName || 'N/A'],
+        ['Email', selectedAccount.email || 'N/A'],
+        [
+          'Contact Number',
+          normalizeContactNumber(
+            selectedAccount.contactNumber,
+            selectedAccount.contactCountry
+          ) || 'N/A',
+        ],
+        ['Temporary Password', selectedAccount.password ? 'Changed' : 'Unchanged'],
+        [
+          'Status',
+          selectedAccount.status === 'INACTIVE' ? 'Inactive' : 'Active',
+        ],
+      ]
+    : [];
 
   return (
     <div style={styles.page}>
@@ -869,7 +1018,7 @@ export default function RecepPatientAcc() {
       {showUpdateOverlay && selectedAccount && (
         <div
           style={styles.overlay}
-          onClick={(event) => handleOverlayClick(event, closeUpdateOverlay)}
+          onClick={(event) => handleOverlayClick(event, openUpdateCancelModal)}
         >
           <div style={styles.overlayContent}>
             <div style={styles.overlayHeader}>
@@ -889,7 +1038,7 @@ export default function RecepPatientAcc() {
               </button>
             </div>
 
-            <form style={styles.overlayBody} onSubmit={handleUpdateSubmit}>
+            <form style={styles.overlayBody} onSubmit={handleUpdateSubmit} noValidate>
               {updateErrors.form && (
                 <div style={styles.formError}>{updateErrors.form}</div>
               )}
@@ -900,6 +1049,8 @@ export default function RecepPatientAcc() {
                   label="First Name"
                   value={selectedAccount.firstName}
                   onChange={(value) => handleUpdateChange('firstName', value)}
+                  onBlur={() => handleUpdateBlur('firstName')}
+                  error={updateTouched.firstName ? updateErrors.firstName : ''}
                   required
                 />
 
@@ -908,6 +1059,8 @@ export default function RecepPatientAcc() {
                   label="Middle Name"
                   value={selectedAccount.middleName}
                   onChange={(value) => handleUpdateChange('middleName', value)}
+                  onBlur={() => handleUpdateBlur('middleName')}
+                  error={updateTouched.middleName ? updateErrors.middleName : ''}
                 />
 
                 <InputField
@@ -915,20 +1068,26 @@ export default function RecepPatientAcc() {
                   label="Last Name"
                   value={selectedAccount.lastName}
                   onChange={(value) => handleUpdateChange('lastName', value)}
+                  onBlur={() => handleUpdateBlur('lastName')}
+                  error={updateTouched.lastName ? updateErrors.lastName : ''}
                   required
                 />
 
-                <InputField
+                <PhoneField
                   styles={styles}
                   label="Contact Number"
-                  type="tel"
+                  country={selectedAccount.contactCountry}
+                  onCountryChange={handleUpdatePhoneCountryChange}
                   value={selectedAccount.contactNumber}
                   onChange={(value) =>
                     handleUpdateChange('contactNumber', value)
                   }
-                  error={updateErrors.contactNumber}
-                  placeholder="09XXXXXXXXX"
-                  inputMode="tel"
+                  onBlur={() => handleUpdateBlur('contactNumber')}
+                  error={
+                    updateTouched.contactNumber
+                      ? updateErrors.contactNumber
+                      : ''
+                  }
                   required
                 />
 
@@ -938,7 +1097,8 @@ export default function RecepPatientAcc() {
                   type="email"
                   value={selectedAccount.email}
                   onChange={(value) => handleUpdateChange('email', value)}
-                  error={updateErrors.email}
+                  onBlur={() => handleUpdateBlur('email')}
+                  error={updateTouched.email ? updateErrors.email : ''}
                   required
                 />
 
@@ -955,7 +1115,8 @@ export default function RecepPatientAcc() {
                   type="password"
                   value={selectedAccount.password || ''}
                   onChange={(value) => handleUpdateChange('password', value)}
-                  error={updateErrors.password}
+                  onBlur={() => handleUpdateBlur('password')}
+                  error={updateTouched.password ? updateErrors.password : ''}
                   placeholder="Leave blank to keep current password"
                 />
 
@@ -979,12 +1140,19 @@ export default function RecepPatientAcc() {
                 <button
                   type="button"
                   style={styles.cancelOverlayBtn}
-                  onClick={closeUpdateOverlay}
+                  onClick={openUpdateCancelModal}
                 >
                   Cancel
                 </button>
 
-                <button type="submit" style={styles.submitBtn}>
+                <button
+                  type="submit"
+                  style={{
+                    ...styles.submitBtn,
+                    ...(updateSaving ? styles.buttonDisabled : {}),
+                  }}
+                  disabled={updateSaving}
+                >
                   Update
                 </button>
               </div>
@@ -1120,6 +1288,88 @@ export default function RecepPatientAcc() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showUpdateCancelModal && (
+        <div style={styles.modal} onClick={handleUpdateCancelOverlayClick}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Update Account</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? These changes will not be saved.
+            </p>
+
+            <AccountSummaryRows rows={updateAccountSummaryRows} styles={styles} />
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeUpdateCancelModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmUpdateCancel}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUpdateConfirmModal && (
+        <div style={styles.modal} onClick={handleUpdateConfirmOverlayClick}>
+          <div style={styles.modalContent}>
+            <div style={{ ...styles.modalIcon, ...styles.submitModalIcon }}>
+              <i className="fi fi-rr-user-pen" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Patient Account Update</h2>
+            <p style={styles.modalText}>
+              Please review the details below. Do you want to update this account?
+            </p>
+
+            <AccountSummaryRows rows={updateAccountSummaryRows} styles={styles} />
+
+            {updateErrors.form && (
+              <p style={{ ...styles.modalText, color: '#dc2626' }}>
+                {updateErrors.form}
+              </p>
+            )}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                disabled={updateSaving}
+                onClick={closeUpdateConfirmModal}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  ...styles.modalButton,
+                  ...styles.confirmSubmitBtn,
+                  ...(updateSaving ? styles.buttonDisabled : {}),
+                }}
+                disabled={updateSaving}
+                onClick={handleConfirmUpdateAccount}
+              >
+                {updateSaving ? 'Updating...' : 'Update'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1469,6 +1719,7 @@ function mapPatientAccount(patient = {}) {
   const fullName = patient.full_name || patient.name || '';
   const nameParts = splitFullName(fullName);
   const status = String(patient.status || 'Active').toUpperCase();
+  const phoneForm = getContactFormValue(patient.contact_number || '');
 
   return {
     id: `P${patient.patient_id || patient.id}`,
@@ -1485,6 +1736,7 @@ function mapPatientAccount(patient = {}) {
         lastName: patient.last_name,
       }),
     contactNumber: patient.contact_number || '',
+    contactCountry: phoneForm.country,
     email: patient.email || '',
     password: '',
     registered: formatDate(patient.registered_at || patient.created_at),
@@ -1526,6 +1778,22 @@ function normalizeContactNumber(value, country = 'PH') {
 
   const phoneNumber = parseContactNumber(value, country);
   return phoneNumber?.number || `+${digits}`;
+}
+
+function getContactFormValue(value) {
+  const phoneNumber = parseContactNumber(value);
+
+  if (!phoneNumber) {
+    return {
+      country: 'PH',
+      number: String(value || '').replace(/\D/g, ''),
+    };
+  }
+
+  return {
+    country: phoneNumber.country || 'PH',
+    number: phoneNumber.nationalNumber || String(value || '').replace(/\D/g, ''),
+  };
 }
 
 function validateContactNumber(value, country = 'PH') {
@@ -1649,27 +1917,51 @@ function validateCreateAccountField(field, value, account = emptyCreateForm) {
   return '';
 }
 
-function validateAccountForm(account, requirePassword) {
+function validateUpdateAccountField(field, value, account = emptyCreateForm) {
+  if (field === 'firstName' || field === 'lastName') {
+    return validateNameField(value, true);
+  }
+
+  if (field === 'middleName') {
+    return validateNameField(value);
+  }
+
+  if (field === 'email') {
+    return validateEmail(value);
+  }
+
+  if (field === 'contactNumber') {
+    return validateContactNumber(value, account.contactCountry);
+  }
+
+  if (field === 'password') {
+    return value ? validateTemporaryPassword(value) : '';
+  }
+
+  return '';
+}
+
+function validateAccountForm(account, requirePassword, requireNames = requirePassword) {
   const errors = {};
   const contactError = validateContactNumber(
     account.contactNumber,
     account.contactCountry
   );
   const emailError = validateEmail(account.email);
-  const firstNameError = validateNameField(account.firstName, requirePassword);
+  const requiredFirstNameError = validateNameField(account.firstName, requireNames);
   const middleNameError = validateNameField(account.middleName);
-  const lastNameError = validateNameField(account.lastName, requirePassword);
+  const requiredLastNameError = validateNameField(account.lastName, requireNames);
 
-  if (requirePassword && firstNameError) {
-    errors.firstName = firstNameError;
+  if (requireNames && requiredFirstNameError) {
+    errors.firstName = requiredFirstNameError;
   }
 
   if (middleNameError) {
     errors.middleName = middleNameError;
   }
 
-  if (requirePassword && lastNameError) {
-    errors.lastName = lastNameError;
+  if (requireNames && requiredLastNameError) {
+    errors.lastName = requiredLastNameError;
   }
 
   if (!buildFullName(account)) {
