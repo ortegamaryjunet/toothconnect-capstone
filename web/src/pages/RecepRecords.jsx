@@ -1519,7 +1519,15 @@ export default function RecepRecords() {
 
             <div style={styles.modalActions}>
               {editModalReadOnly ? (
-                <div style={styles.singleActionRow}>
+                <>
+                  <button
+                    type="button"
+                    style={styles.cancelModalBtn}
+                    onClick={openEditCloseModal}
+                  >
+                    Close
+                  </button>
+
                   <button
                     type="button"
                     style={styles.saveBtn}
@@ -1532,7 +1540,7 @@ export default function RecepRecords() {
                   >
                     Edit
                   </button>
-                </div>
+                </>
               ) : (
                 <>
                   <button

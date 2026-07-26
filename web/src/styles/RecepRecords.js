@@ -628,8 +628,7 @@
       gridColumn: '1 / -1',
       margin: '2px 0 4px',
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 16,
-      fontWeight: 800,
+      fontSize: 13,
       letterSpacing: 0.4,
       textTransform: 'uppercase',
       color: '#1e3a8a',
@@ -750,12 +749,6 @@
 
     centerActions: {
       justifyContent: 'center',
-    },
-
-    singleActionRow: {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      width: '100%',
     },
 
     saveBtn: {
