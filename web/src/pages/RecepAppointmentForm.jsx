@@ -1203,20 +1203,20 @@ export default function RecepAppointmentForm() {
 
       {showConfirmModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
-          <div style={styles.modalContent}>
-            <div style={styles.modalIcon}>
+          <div style={styles.backModalContent}>
+            <div style={styles.backModalIcon}>
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Leave Appointment Form?</h2>
-            <p style={styles.modalText}>
+            <h2 style={styles.backModalTitle}>Leave Appointment Form?</h2>
+            <p style={styles.backModalText}>
               Are you sure you want to go back? Any unsaved changes will be lost.
             </p>
 
-            <div style={styles.modalActions}>
+            <div style={styles.backModalActions}>
               <button
                 type="button"
-                style={styles.confirmNo}
+                style={{ ...styles.backModalButton, ...styles.backCancelBtn }}
                 onClick={closeConfirmModal}
               >
                 No
@@ -1224,7 +1224,7 @@ export default function RecepAppointmentForm() {
 
               <button
                 type="button"
-                style={styles.confirmYes}
+                style={{ ...styles.backModalButton, ...styles.backConfirmBtn }}
                 onClick={handleBackConfirm}
               >
                 Yes

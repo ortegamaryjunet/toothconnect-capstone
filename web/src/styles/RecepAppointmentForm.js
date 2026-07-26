@@ -720,6 +720,17 @@ const createRecepAppointmentFormStyles = ({
       boxSizing: 'border-box',
     },
 
+    backModalContent: {
+      width: '100%',
+      maxWidth: 410,
+      background: '#ffffff',
+      padding: isVerySmall ? '26px 20px' : '30px 25px',
+      borderRadius: 22,
+      textAlign: 'center',
+      boxShadow: '0 20px 50px rgba(15, 23, 42, 0.2)',
+      boxSizing: 'border-box',
+    },
+
     modalIcon: {
       width: 82,
       height: 82,
@@ -730,6 +741,18 @@ const createRecepAppointmentFormStyles = ({
       justifyContent: 'center',
       alignItems: 'center',
       color: '#ef4444',
+    },
+
+    backModalIcon: {
+      width: 82,
+      height: 82,
+      margin: '0 auto 16px',
+      background: '#fee2e2',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#dc2626',
     },
 
     modalIconText: {
@@ -743,11 +766,27 @@ const createRecepAppointmentFormStyles = ({
       margin: '0 0 10px',
     },
 
+    backModalTitle: {
+      margin: '0 0 10px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 21,
+      color: '#0f172a',
+      fontWeight: 600,
+    },
+
     modalText: {
       fontFamily: 'Arial, sans-serif',
       fontSize: 15,
       color: '#64748b',
       margin: '0 0 24px',
+      lineHeight: 1.5,
+    },
+
+    backModalText: {
+      margin: '0 0 24px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 15,
+      color: '#64748b',
       lineHeight: 1.5,
     },
 
@@ -784,6 +823,34 @@ const createRecepAppointmentFormStyles = ({
       display: 'flex',
       gap: 14,
       flexDirection: isVerySmall ? 'column' : 'row',
+    },
+
+    backModalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isVerySmall ? 'column' : 'row',
+    },
+
+    backModalButton: {
+      minWidth: isVerySmall ? '100%' : 100,
+      border: 'none',
+      borderRadius: 12,
+      padding: '12px 18px',
+      cursor: 'pointer',
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
+      fontSize: 14,
+    },
+
+    backCancelBtn: {
+      background: '#e5e7eb',
+      color: '#0f172a',
+    },
+
+    backConfirmBtn: {
+      background: '#dc2626',
+      color: '#ffffff',
     },
 
     confirmNo: {
