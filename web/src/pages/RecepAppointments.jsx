@@ -1211,7 +1211,7 @@ export default function RecepAppointments() {
                       }}
                       onClick={handlePrevMonth}
                     >
-                      <i className="fi fi-rr-angle-left"></i>
+                      Prev
                     </button>
 
                     <h3 style={styles.calendarMonthTitle}>
@@ -1226,7 +1226,7 @@ export default function RecepAppointments() {
                       }}
                       onClick={handleNextMonth}
                     >
-                      <i className="fi fi-rr-angle-right"></i>
+                      Next
                     </button>
                   </div>
                 </div>
