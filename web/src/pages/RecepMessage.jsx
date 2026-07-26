@@ -582,18 +582,18 @@ export default function RecepMessage() {
 
       {showBackConfirmModal && (
         <div style={styles.modal} onClick={handleBackModalOverlayClick}>
-          <div style={styles.modalContent}>
-            <div style={styles.modalIcon}>
+          <div style={styles.backModalContent}>
+            <div style={styles.backModalIcon}>
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Leave Messages</h2>
-            <p style={styles.modalText}>Are you sure you want to go back?</p>
+            <h2 style={styles.backModalTitle}>Leave Messages</h2>
+            <p style={styles.backModalText}>Are you sure you want to go back?</p>
 
-            <div style={styles.modalActions}>
+            <div style={styles.backModalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.cancelModalBtn }}
+                style={{ ...styles.backModalButton, ...styles.backCancelBtn }}
                 onClick={closeBackConfirmModal}
               >
                 No
@@ -601,7 +601,7 @@ export default function RecepMessage() {
 
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.confirmModalBtn }}
+                style={{ ...styles.backModalButton, ...styles.backConfirmBtn }}
                 onClick={handleBackConfirm}
               >
                 Yes
