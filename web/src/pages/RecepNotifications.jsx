@@ -28,7 +28,7 @@ export default function RecepNotifications() {
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
 
-  const isMobile = screenWidth <= 992;
+  const isMobile = screenWidth <= 850;
   const isVerySmall = screenWidth <= 560;
   const isSmallScreen = screenWidth <= 1200;
   const isTablet = screenWidth <= 768;

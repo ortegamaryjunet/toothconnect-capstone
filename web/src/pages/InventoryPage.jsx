@@ -378,7 +378,8 @@ export default function InventoryPage() {
   const [supplies, setSupplies] = useState([]);
 
   const isMobile = screenWidth <= 850;
-  const isTablet = screenWidth > 850 && screenWidth <= 1200;
+  const isTablet =
+    !isReceptionist && screenWidth > 850 && screenWidth <= 1200;
   const isSmallScreen = screenWidth <= 1200;
 
   const styles = createInventoryPageStyles({
