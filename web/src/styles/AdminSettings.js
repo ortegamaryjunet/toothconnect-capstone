@@ -163,6 +163,7 @@
 
     adminInfo: {
       display: isMobile ? 'none' : 'block',
+      textAlign: 'left',
     },
 
     adminName: {
@@ -174,6 +175,7 @@
 
     adminPosition: {
       fontSize: 12,
+      textAlign: 'left',
       color: '#64748b',
       marginTop: 2,
     },
