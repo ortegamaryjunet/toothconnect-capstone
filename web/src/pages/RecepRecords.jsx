@@ -1,11 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import PhoneInput from 'react-phone-input-2';
 import {
   getCountryCallingCode,
   parsePhoneNumberFromString,
 } from 'libphonenumber-js';
-import 'react-phone-input-2/lib/style.css';
 
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -510,12 +508,19 @@ export default function RecepRecords() {
   }
 
   function handleEditPhoneChange(field, phone, countryData) {
-    const nextValue = phone ? `+${String(phone).replace(/\D/g, '')}` : '';
+    const rawValue = String(phone || '').trim();
     const countryField =
       field === 'emergencyContactNumber'
         ? 'emergencyContactCountry'
         : 'contactCountry';
-    const countryCode = String(countryData?.countryCode || 'ph').toUpperCase();
+    const currentCountry =
+      field === 'emergencyContactNumber'
+        ? editPatient?.emergencyContactCountry
+        : editPatient?.contactCountry;
+    const countryCode = String(
+      countryData?.countryCode || currentCountry || 'PH'
+    ).toUpperCase();
+    const nextValue = normalizePhoneNumber(rawValue, countryCode);
 
     setEditPatient((current) => ({
       ...current,
@@ -1806,28 +1811,17 @@ function PhoneField({
         {error && <span style={styles.fieldErrorAsterisk}>*</span>}
       </label>
 
-      <PhoneInput
-        country="ph"
-        preferredCountries={['ph']}
+      <input
+        type="tel"
         value={value || ''}
-        onChange={(phone, countryData) => onChange?.(phone, countryData)}
-        enableSearch
-        countryCodeEditable={false}
+        onChange={(event) => onChange?.(event.target.value)}
         disabled={disabled}
-        inputProps={{ required: true }}
-        containerStyle={styles.phoneInputContainer}
-        inputStyle={{
-          ...styles.phoneInput,
-          ...(disabled ? styles.readOnlyInput : {}),
-          ...(error ? styles.fieldInputError : {}),
-        }}
-        buttonStyle={{
-          ...styles.phoneButton,
+        placeholder="+639XXXXXXXXX"
+        style={{
+          ...styles.fieldInput,
           ...(disabled ? styles.phoneButtonDisabled : {}),
           ...(error ? styles.fieldInputError : {}),
         }}
-        dropdownStyle={styles.phoneDropdown}
-        searchStyle={styles.phoneSearch}
       />
 
       {error && <p style={styles.fieldErrorText}>{error}</p>}
