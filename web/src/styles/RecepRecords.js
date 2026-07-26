@@ -597,6 +597,7 @@
     },
 
     modalX: {
+      display: 'none',
       border: 'none',
       background: 'transparent',
       fontSize: 28,
@@ -734,6 +735,11 @@
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+
+    editConfirmIcon: {
+      background: '#fff8e1',
+      color: '#b8860b',
     },
 
     modalIconText: {

@@ -112,6 +112,8 @@ export default function RecepRecords() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditCloseModal, setShowEditCloseModal] = useState(false);
+  const [showEditConfirmModal, setShowEditConfirmModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
   const profileMenuRef = useRef(null);
@@ -212,6 +214,8 @@ export default function RecepRecords() {
       showLogoutModal ||
       showDetailsModal ||
       showEditModal ||
+      showEditCloseModal ||
+      showEditConfirmModal ||
       showExportModal;
 
     document.body.style.overflow = modalOpen ? 'hidden' : '';
@@ -219,7 +223,14 @@ export default function RecepRecords() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showDetailsModal, showEditModal, showExportModal]);
+  }, [
+    showLogoutModal,
+    showDetailsModal,
+    showEditModal,
+    showEditCloseModal,
+    showEditConfirmModal,
+    showExportModal,
+  ]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -276,6 +287,8 @@ export default function RecepRecords() {
     setShowLogoutModal(false);
     setShowDetailsModal(false);
     setShowEditModal(false);
+    setShowEditCloseModal(false);
+    setShowEditConfirmModal(false);
     setShowExportModal(false);
   }
 
@@ -335,10 +348,33 @@ export default function RecepRecords() {
 
   function closeEditPatient() {
     setShowEditModal(false);
+    setShowEditCloseModal(false);
+    setShowEditConfirmModal(false);
     setEditPatient(null);
     setEditModalReadOnly(true);
     setEditProfileLoading(false);
     setEditErrors({});
+  }
+
+  function openEditCloseModal() {
+    setShowEditCloseModal(true);
+  }
+
+  function closeEditCloseModal() {
+    setShowEditCloseModal(false);
+  }
+
+  function openEditConfirmModal() {
+    setShowEditConfirmModal(true);
+  }
+
+  function closeEditConfirmModal() {
+    setShowEditConfirmModal(false);
+  }
+
+  function confirmEnableEditMode() {
+    setShowEditConfirmModal(false);
+    setEditModalReadOnly(false);
   }
 
   async function hydrateEditPatientProfile(patientId) {
@@ -415,11 +451,9 @@ export default function RecepRecords() {
     }));
   }
 
-  async function savePatientChanges(event) {
-    event.preventDefault();
-
+  function validateEditPatient() {
     if (!editPatient || editModalReadOnly) {
-      return;
+      return false;
     }
 
     const requiredFieldChecks = [
@@ -474,6 +508,22 @@ export default function RecepRecords() {
 
     if (Object.keys(nextErrors).length > 0) {
       setEditErrors(nextErrors);
+      return false;
+    }
+
+    return true;
+  }
+
+  function handleEditSubmit(event) {
+    event.preventDefault();
+
+    if (validateEditPatient()) {
+      openEditConfirmModal();
+    }
+  }
+
+  async function savePatientChanges() {
+    if (!editPatient || editModalReadOnly) {
       return;
     }
 
@@ -525,6 +575,7 @@ export default function RecepRecords() {
 
       closeEditPatient();
     } catch (err) {
+      closeEditConfirmModal();
       window.alert(
         err.response?.data?.message || 'Failed to save patient record.'
       );
@@ -1148,12 +1199,12 @@ export default function RecepRecords() {
       {showEditModal && editPatient && (
         <div
           style={styles.modal}
-          onClick={(event) => handleModalOverlayClick(event, closeEditPatient)}
+          onClick={(event) => handleModalOverlayClick(event, openEditCloseModal)}
         >
           <form
             style={{ ...styles.modalContent, ...styles.largeModal }}
             onClick={(event) => event.stopPropagation()}
-            onSubmit={savePatientChanges}
+            onSubmit={handleEditSubmit}
           >
             <div style={styles.modalHeader}>
               <div>
@@ -1420,7 +1471,7 @@ export default function RecepRecords() {
                   <button
                     type="button"
                     style={styles.cancelModalBtn}
-                    onClick={closeEditPatient}
+                    onClick={openEditCloseModal}
                   >
                     Close
                   </button>
@@ -1431,7 +1482,7 @@ export default function RecepRecords() {
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
-                      setEditModalReadOnly(false);
+                      openEditConfirmModal();
                     }}
                     disabled={editProfileLoading}
                   >
@@ -1443,7 +1494,7 @@ export default function RecepRecords() {
                   <button
                     type="button"
                     style={styles.cancelModalBtn}
-                    onClick={() => setEditModalReadOnly(true)}
+                    onClick={openEditCloseModal}
                   >
                     Cancel
                   </button>
@@ -1455,6 +1506,85 @@ export default function RecepRecords() {
               )}
             </div>
           </form>
+        </div>
+      )}
+
+      {showEditCloseModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => handleModalOverlayClick(event, closeEditCloseModal)}
+        >
+          <div style={{ ...styles.modalContent, ...styles.smallModal }}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Close Patient Details</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to close the details for this patient?
+            </p>
+
+            <div style={{ ...styles.modalActions, ...styles.centerActions }}>
+              <button
+                type="button"
+                style={styles.cancelModalBtn}
+                onClick={closeEditCloseModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={styles.logoutBtn}
+                onClick={closeEditPatient}
+              >
+                Yes, Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => handleModalOverlayClick(event, closeEditConfirmModal)}
+        >
+          <div style={{ ...styles.modalContent, ...styles.smallModal }}>
+            <div style={{ ...styles.modalIcon, ...styles.editConfirmIcon }}>
+              <i
+                className={editModalReadOnly ? 'fi fi-rr-edit' : 'fi fi-rr-disk'}
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>
+              {editModalReadOnly ? 'Edit Patient Details' : 'Update Patient Details'}
+            </h2>
+            <p style={styles.modalText}>
+              {editModalReadOnly
+                ? 'Are you sure you want to edit the details for this patient?'
+                : 'Are you sure the updated details for this patient are correct?'}
+            </p>
+
+            <div style={{ ...styles.modalActions, ...styles.centerActions }}>
+              <button
+                type="button"
+                style={styles.cancelModalBtn}
+                onClick={closeEditConfirmModal}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={styles.saveBtn}
+                onClick={editModalReadOnly ? confirmEnableEditMode : savePatientChanges}
+              >
+                {editModalReadOnly ? 'Edit' : 'Update'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
