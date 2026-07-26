@@ -667,6 +667,7 @@
 
     fieldInput: {
       height: 44,
+      width: '100%',
       border: '1px solid #cbd5e1',
       borderRadius: 12,
       padding: '0 12px',
@@ -676,6 +677,15 @@
       color: '#172033',
       background: '#ffffff',
       boxSizing: 'border-box',
+    },
+
+    inputWithAction: {
+      position: 'relative',
+      width: '100%',
+    },
+
+    fieldInputWithAction: {
+      paddingRight: 70,
     },
 
     fieldInputReadonly: {
@@ -693,6 +703,20 @@
       color: '#dc2626',
       fontSize: 12,
       lineHeight: 1.35,
+    },
+
+    passwordToggle: {
+      position: 'absolute',
+      top: '50%',
+      right: 8,
+      transform: 'translateY(-50%)',
+      border: 'none',
+      background: 'transparent',
+      color: '#8b6508',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 12,
+      cursor: 'pointer',
+      padding: '6px 4px',
     },
 
     overlayActions: {

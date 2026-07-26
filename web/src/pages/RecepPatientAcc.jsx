@@ -38,6 +38,8 @@ export default function RecepPatientAcc() {
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [createForm, setCreateForm] = useState(emptyCreateForm);
   const [createErrors, setCreateErrors] = useState({});
+  const [createTouched, setCreateTouched] = useState({});
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [updateErrors, setUpdateErrors] = useState({});
 
   const [searchText, setSearchText] = useState('');
@@ -241,11 +243,16 @@ export default function RecepPatientAcc() {
   function openCreateOverlay() {
     setCreateForm(emptyCreateForm);
     setCreateErrors({});
+    setCreateTouched({});
+    setShowCreatePassword(false);
     setShowCreateOverlay(true);
   }
 
   function closeCreateOverlay() {
     setCreateForm(emptyCreateForm);
+    setCreateErrors({});
+    setCreateTouched({});
+    setShowCreatePassword(false);
     setShowCreateOverlay(false);
   }
 
@@ -276,13 +283,29 @@ export default function RecepPatientAcc() {
   }
 
   function handleCreateChange(field, value) {
-    if (['contactNumber', 'email', 'password'].includes(field)) {
-      setCreateErrors((current) => ({ ...current, [field]: '' }));
-    }
+    setCreateTouched((current) => ({ ...current, [field]: true }));
 
-    setCreateForm((current) => ({
-      ...current,
-      [field]: value,
+    setCreateForm((current) => {
+      const nextForm = {
+        ...current,
+        [field]: value,
+      };
+
+      setCreateErrors((currentErrors) => ({
+        ...currentErrors,
+        form: '',
+        [field]: validateCreateAccountField(field, value, nextForm),
+      }));
+
+      return nextForm;
+    });
+  }
+
+  function handleCreateBlur(field) {
+    setCreateTouched((current) => ({ ...current, [field]: true }));
+    setCreateErrors((currentErrors) => ({
+      ...currentErrors,
+      [field]: validateCreateAccountField(field, createForm[field], createForm),
     }));
   }
 
@@ -406,6 +429,13 @@ export default function RecepPatientAcc() {
 
     if (Object.keys(errors).length > 0) {
       setCreateErrors(errors);
+      setCreateTouched({
+        firstName: true,
+        lastName: true,
+        email: true,
+        contactNumber: true,
+        password: true,
+      });
       return;
     }
 
@@ -783,7 +813,7 @@ export default function RecepPatientAcc() {
                     handleUpdateChange('contactNumber', value)
                   }
                   error={updateErrors.contactNumber}
-                  placeholder="09XXXXXXXXX"
+                  placeholder="e.g. 09XXXXXXXXX or +639XXXXXXXXX"
                   inputMode="tel"
                   required
                 />
@@ -863,16 +893,9 @@ export default function RecepPatientAcc() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                style={styles.closeBtn}
-                onClick={closeCreateOverlay}
-              >
-                ×
-              </button>
             </div>
 
-            <form style={styles.overlayBody} onSubmit={handleCreateSubmit}>
+            <form style={styles.overlayBody} onSubmit={handleCreateSubmit} noValidate>
               {createErrors.form && (
                 <div style={styles.formError}>{createErrors.form}</div>
               )}
@@ -883,6 +906,8 @@ export default function RecepPatientAcc() {
                   label="First Name"
                   value={createForm.firstName}
                   onChange={(value) => handleCreateChange('firstName', value)}
+                  onBlur={() => handleCreateBlur('firstName')}
+                  error={createTouched.firstName ? createErrors.firstName : ''}
                   required
                 />
 
@@ -891,6 +916,8 @@ export default function RecepPatientAcc() {
                   label="Middle Name"
                   value={createForm.middleName}
                   onChange={(value) => handleCreateChange('middleName', value)}
+                  onBlur={() => handleCreateBlur('middleName')}
+                  error={createTouched.middleName ? createErrors.middleName : ''}
                 />
 
                 <InputField
@@ -898,6 +925,8 @@ export default function RecepPatientAcc() {
                   label="Last Name"
                   value={createForm.lastName}
                   onChange={(value) => handleCreateChange('lastName', value)}
+                  onBlur={() => handleCreateBlur('lastName')}
+                  error={createTouched.lastName ? createErrors.lastName : ''}
                   required
                 />
 
@@ -907,7 +936,8 @@ export default function RecepPatientAcc() {
                   type="email"
                   value={createForm.email}
                   onChange={(value) => handleCreateChange('email', value)}
-                  error={createErrors.email}
+                  onBlur={() => handleCreateBlur('email')}
+                  error={createTouched.email ? createErrors.email : ''}
                   required
                 />
 
@@ -919,8 +949,13 @@ export default function RecepPatientAcc() {
                   onChange={(value) =>
                     handleCreateChange('contactNumber', value)
                   }
-                  error={createErrors.contactNumber}
-                  placeholder="09XXXXXXXXX"
+                  onBlur={() => handleCreateBlur('contactNumber')}
+                  error={
+                    createTouched.contactNumber
+                      ? createErrors.contactNumber
+                      : ''
+                  }
+                  placeholder="e.g. 09XXXXXXXXX or +639XXXXXXXXX"
                   inputMode="tel"
                   required
                 />
@@ -928,10 +963,25 @@ export default function RecepPatientAcc() {
                 <InputField
                   styles={styles}
                   label="Temporary Password"
-                  type="password"
+                  type={showCreatePassword ? 'text' : 'password'}
                   value={createForm.password}
                   onChange={(value) => handleCreateChange('password', value)}
-                  error={createErrors.password}
+                  onBlur={() => handleCreateBlur('password')}
+                  error={createTouched.password ? createErrors.password : ''}
+                  rightElement={
+                    <button
+                      type="button"
+                      style={styles.passwordToggle}
+                      onClick={() => setShowCreatePassword((current) => !current)}
+                      aria-label={
+                        showCreatePassword
+                          ? 'Hide temporary password'
+                          : 'Show temporary password'
+                      }
+                    >
+                      {showCreatePassword ? 'Hide' : 'Show'}
+                    </button>
+                  }
                   required
                 />
               </div>
@@ -1095,30 +1145,37 @@ function InputField({
   label,
   value,
   onChange,
+  onBlur,
   type = 'text',
   required = false,
   readOnly = false,
   error = '',
   placeholder = '',
   inputMode,
+  rightElement,
 }) {
   return (
     <div style={styles.field}>
       <label style={styles.fieldLabel}>{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange?.(event.target.value)}
-        required={required}
-        readOnly={readOnly}
-        placeholder={placeholder}
-        inputMode={inputMode}
-        style={{
-          ...styles.fieldInput,
-          ...(readOnly ? styles.fieldInputReadonly : {}),
-          ...(error ? styles.fieldInputError : {}),
-        }}
-      />
+      <div style={rightElement ? styles.inputWithAction : undefined}>
+        <input
+          type={type}
+          value={value}
+          onChange={(event) => onChange?.(event.target.value)}
+          onBlur={onBlur}
+          required={required}
+          readOnly={readOnly}
+          placeholder={placeholder}
+          inputMode={inputMode}
+          style={{
+            ...styles.fieldInput,
+            ...(rightElement ? styles.fieldInputWithAction : {}),
+            ...(readOnly ? styles.fieldInputReadonly : {}),
+            ...(error ? styles.fieldInputError : {}),
+          }}
+        />
+        {rightElement}
+      </div>
       {error && <span style={styles.fieldError}>{error}</span>}
     </div>
   );
@@ -1198,14 +1255,14 @@ function normalizeContactNumber(value) {
 }
 
 function validateContactNumber(value) {
-  const normalized = normalizeContactNumber(value);
+  const contact = String(value || '').trim();
 
-  if (!normalized) {
-    return 'Contact number is required.';
+  if (!contact) {
+    return 'This field is required';
   }
 
-  if (!/^09\d{9}$/.test(normalized)) {
-    return 'Enter a valid 11-digit PH mobile number starting with 09.';
+  if (!/^(09\d{9}|\+639\d{9})$/.test(contact)) {
+    return 'Contact number format is invalid. Use 09XXXXXXXXX or +639XXXXXXXXX.';
   }
 
   return '';
@@ -1215,11 +1272,57 @@ function validateEmail(value) {
   const email = String(value || '').trim();
 
   if (!email) {
-    return 'Email is required.';
+    return 'This field is required.';
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return 'Please enter a valid email address.';
+    return 'Email format is invalid.';
+  }
+
+  return '';
+}
+
+function validateRequiredField(value) {
+  if (!String(value || '').trim()) {
+    return 'This field is required.';
+  }
+
+  return '';
+}
+
+function validateTemporaryPassword(value) {
+  const password = String(value || '');
+
+  if (!password.trim()) {
+    return 'This field is required.';
+  }
+
+  if (password.length < 8) {
+    return 'Temporary password must be at least 8 characters.';
+  }
+
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    return 'Temporary password must contain a letter and a number.';
+  }
+
+  return '';
+}
+
+function validateCreateAccountField(field, value) {
+  if (field === 'firstName' || field === 'lastName') {
+    return validateRequiredField(value);
+  }
+
+  if (field === 'email') {
+    return validateEmail(value);
+  }
+
+  if (field === 'contactNumber') {
+    return validateContactNumber(value);
+  }
+
+  if (field === 'password') {
+    return validateTemporaryPassword(value);
   }
 
   return '';
@@ -1229,6 +1332,16 @@ function validateAccountForm(account, requirePassword) {
   const errors = {};
   const contactError = validateContactNumber(account.contactNumber);
   const emailError = validateEmail(account.email);
+  const firstNameError = validateRequiredField(account.firstName);
+  const lastNameError = validateRequiredField(account.lastName);
+
+  if (requirePassword && firstNameError) {
+    errors.firstName = firstNameError;
+  }
+
+  if (requirePassword && lastNameError) {
+    errors.lastName = lastNameError;
+  }
 
   if (!buildFullName(account)) {
     errors.form = 'Patient name is required.';
@@ -1242,8 +1355,12 @@ function validateAccountForm(account, requirePassword) {
     errors.email = emailError;
   }
 
-  if (requirePassword && !account.password) {
-    errors.password = 'Temporary password is required.';
+  if (requirePassword) {
+    const passwordError = validateTemporaryPassword(account.password);
+
+    if (passwordError) {
+      errors.password = passwordError;
+    }
   } else if (account.password && account.password.length < 8) {
     errors.password = 'Temporary password must be at least 8 characters.';
   }
