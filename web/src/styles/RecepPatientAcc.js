@@ -706,6 +706,13 @@
     phoneInputContainer: {
       width: '100%',
       fontFamily: 'Arial, sans-serif',
+      position: 'relative',
+      zIndex: 25,
+    },
+
+    phoneField: {
+      position: 'relative',
+      zIndex: 25,
     },
 
     phoneInput: {
@@ -724,9 +731,11 @@
 
     phoneButton: {
       height: 44,
+      width: 48,
       border: '1px solid #cbd5e1',
       borderRadius: '12px 0 0 12px',
       background: '#f8fafc',
+      cursor: 'pointer',
     },
 
     phoneButtonError: {
@@ -737,8 +746,9 @@
     phoneDropdown: {
       fontFamily: 'Arial, sans-serif',
       borderRadius: 12,
-      overflow: 'hidden',
-      zIndex: 10000,
+      overflow: 'auto',
+      zIndex: 100000,
+      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.18)',
     },
 
     phoneSearch: {

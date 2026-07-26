@@ -1366,10 +1366,13 @@ function PhoneField({
   required = false,
 }) {
   return (
-    <div style={styles.field}>
+    <div style={{ ...styles.field, ...styles.phoneField }}>
       <label style={styles.fieldLabel}>{label}</label>
       <PhoneInput
         country="ph"
+        preferredCountries={['ph']}
+        disableDropdown={false}
+        countryCodeEditable={false}
         value={value}
         onChange={(phone) => onChange?.(phone)}
         onBlur={onBlur}
