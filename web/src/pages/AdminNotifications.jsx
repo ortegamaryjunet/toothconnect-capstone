@@ -337,7 +337,7 @@ export default function AdminNotifications() {
 
         <main style={styles.mainContent}>
           <section style={styles.heroSection}>
-            <div style={styles.heroContent}>
+            <div>
               <span style={styles.heroBadge}>Clinic Notifications</span>
 
               <h2 style={styles.heroTitle}>

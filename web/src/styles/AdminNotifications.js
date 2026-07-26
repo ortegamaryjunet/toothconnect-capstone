@@ -111,13 +111,13 @@
       top: 0,
       left: sidebarWidth,
       right: 0,
-      height: isMobile ? 76 : 86,
+      height: 78,
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      padding: isMobile ? '0 18px' : '0 28px',
+      padding: isMobile ? '0 14px' : '0 28px',
       zIndex: 150,
       boxSizing: 'border-box',
     },
@@ -158,6 +158,7 @@
 
     adminInfo: {
       display: isMobile ? 'none' : 'block',
+      textAlign: 'left',
     },
 
     adminName: {
@@ -175,11 +176,7 @@
     },
 
     mainContent: {
-      padding: isMobile
-        ? '94px 18px 22px'
-        : isSmallScreen
-          ? '98px 22px 24px'
-          : '104px 28px 28px',
+      padding: isMobile ? '96px 14px 22px' : '104px 28px 28px',
       boxSizing: 'border-box',
       width: '100%',
       maxWidth: '100%',
@@ -205,18 +202,14 @@
       boxShadow: '0 18px 40px rgba(185, 140, 20, 0.22)',
     },
 
-    heroContent: {
-      minWidth: 0,
-    },
-
     heroBadge: {
       display: 'inline-flex',
       alignItems: 'center',
-      padding: isMobile ? '5px 12px' : '6px 14px',
+      padding: '6px 14px',
       borderRadius: 50,
       background: 'rgba(255, 255, 255, 0.16)',
       color: '#ffffff',
-      fontSize: isMobile ? 11 : 12,
+      fontSize: 12,
       fontWeight: 600,
       marginBottom: 16,
       fontFamily: 'Arial, sans-serif',
