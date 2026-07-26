@@ -665,6 +665,55 @@
       color: '#0f172a',
     },
 
+    phoneInputContainer: {
+      width: '100%',
+      fontFamily: 'Arial, sans-serif',
+      position: 'relative',
+      zIndex: 20,
+    },
+
+    phoneInput: {
+      width: '100%',
+      height: 48,
+      border: '1px solid #cbd5e1',
+      borderRadius: 12,
+      paddingLeft: 54,
+      outline: 'none',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      color: '#0f172a',
+      background: '#ffffff',
+      boxSizing: 'border-box',
+    },
+
+    phoneButton: {
+      height: 48,
+      border: '1px solid #cbd5e1',
+      borderRadius: '12px 0 0 12px',
+      background: '#f8fafc',
+    },
+
+    phoneButtonDisabled: {
+      background: '#f1f5f9',
+      cursor: 'not-allowed',
+    },
+
+    phoneDropdown: {
+      fontFamily: 'Arial, sans-serif',
+      borderRadius: 12,
+      overflow: 'auto',
+      zIndex: 100000,
+      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.18)',
+    },
+
+    phoneSearch: {
+      width: '90%',
+      height: 34,
+      border: '1px solid #cbd5e1',
+      borderRadius: 8,
+      fontFamily: 'Arial, sans-serif',
+    },
+
     readOnlyInput: {
       background: '#f8fafc',
       color: '#475569',

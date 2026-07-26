@@ -1,5 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PhoneInput from 'react-phone-input-2';
+import {
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+} from 'libphonenumber-js';
+import 'react-phone-input-2/lib/style.css';
 
 import api from '../api/axios';
 import createAdminEmployeeFormStyles from '../styles/AdminEmployeeForm';
@@ -87,18 +93,6 @@ function makeInputFilter(disallowedRegex) {
 // Letters, spaces, hyphens, apostrophes only (name fields)
 const filterNameInput = makeInputFilter(/[^a-zA-ZÀ-ÿ\s'\-]/g);
 
-// PH phone only: 09XXXXXXXXX (11 digits) or +639XXXXXXXXX (13 chars)
-function filterContactInput(event) {
-  const el = event.target;
-  let val = el.value.replace(/[^0-9+]/g, '');
-  // + only at position 0
-  val = val.replace(/(.)\+/g, '$1');
-  // Enforce PH length: international +63... = 13, local 09... = 11
-  const maxLen = val.startsWith('+') ? 13 : 11;
-  if (val.length > maxLen) val = val.slice(0, maxLen);
-  if (val !== el.value) el.value = val;
-}
-
 // Standard email characters only
 const filterEmailInput = makeInputFilter(/[^a-zA-Z0-9._%+\-@]/g);
 
@@ -130,6 +124,52 @@ function FieldRaw({ label, name, type = 'text', readOnly = false, value, onChang
         style={{ ...styles.input, ...(readOnly ? styles.readOnlyInput : {}), ...(hasError ? { borderColor: '#dc2626', borderWidth: '2px' } : {}) }}
       />
       {errorMessage && <span style={{ color: '#dc2626', fontSize: '11px', marginTop: '3px', display: 'block' }}>{errorMessage}</span>}
+    </div>
+  );
+}
+
+function PhoneFieldRaw({
+  label,
+  name,
+  value,
+  onChange,
+  onBlur,
+  hasError = false,
+  errorMessage,
+  styles,
+}) {
+  return (
+    <div style={styles.field}>
+      <label style={styles.label}>
+        {label}
+        {hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+      </label>
+      <PhoneInput
+        country="ph"
+        preferredCountries={['ph']}
+        value={value}
+        onChange={(phone, countryData) => onChange?.(phone, countryData)}
+        onBlur={onBlur}
+        enableSearch
+        countryCodeEditable={false}
+        inputProps={{ name, required: true }}
+        containerStyle={styles.phoneInputContainer}
+        inputStyle={{
+          ...styles.phoneInput,
+          ...(hasError ? styles.phoneInputError : {}),
+        }}
+        buttonStyle={{
+          ...styles.phoneButton,
+          ...(hasError ? styles.phoneInputError : {}),
+        }}
+        dropdownStyle={styles.phoneDropdown}
+        searchStyle={styles.phoneSearch}
+      />
+      {errorMessage && (
+        <span style={{ color: '#dc2626', fontSize: '11px', marginTop: '3px', display: 'block' }}>
+          {errorMessage}
+        </span>
+      )}
     </div>
   );
 }
@@ -238,6 +278,64 @@ function DurationFieldRaw({ startName, endName, styles }) {
   );
 }
 
+function normalizePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isDialCodeOnly(digits, country)) {
+    return '';
+  }
+
+  const phoneNumber = parseContactNumber(value, country);
+  return phoneNumber?.number || `+${digits}`;
+}
+
+function validatePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isDialCodeOnly(digits, country)) {
+    return 'This field is required';
+  }
+
+  const phoneNumber = parseContactNumber(value, country);
+
+  if (!phoneNumber?.isValid()) {
+    return 'Contact number is invalid.';
+  }
+
+  return null;
+}
+
+function parseContactNumber(value, country = 'PH') {
+  const rawValue = String(value || '').trim();
+  const digits = rawValue.replace(/\D/g, '');
+
+  if (!digits) {
+    return null;
+  }
+
+  if (rawValue.startsWith('+')) {
+    return parsePhoneNumberFromString(rawValue);
+  }
+
+  if (digits.startsWith('00')) {
+    return parsePhoneNumberFromString(`+${digits.slice(2)}`);
+  }
+
+  if (digits.startsWith('0')) {
+    return parsePhoneNumberFromString(digits, country);
+  }
+
+  return parsePhoneNumberFromString(digits, country);
+}
+
+function isDialCodeOnly(digits, country = 'PH') {
+  try {
+    return digits === getCountryCallingCode(country);
+  } catch {
+    return false;
+  }
+}
+
 function BirthdayFieldRaw({ type, prefix, birthdayParts, onPartChange, hasError = false, styles }) {
   const { month, day, year } = birthdayParts[type];
   const birthdayValue = month && day && year ? `${year}-${month}-${day}` : '';
@@ -298,6 +396,8 @@ export default function AdminEmployeeForm() {
   const [dentistWorkDays, setDentistWorkDays] = useState([]);
   const [recepWorkHours, setRecepWorkHours] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [phoneValues, setPhoneValues] = useState({});
+  const [phoneCountries, setPhoneCountries] = useState({});
 
   const accessPasswordRef = useRef('');
 
@@ -517,11 +617,8 @@ export default function AdminEmployeeForm() {
     return value && value.trim() ? null : 'This field is required';
   }
 
-  function validateContactValue(value) {
-    if (!value || !value.trim()) return 'Contact number is required';
-    const v = value.trim();
-    if (v.startsWith('+')) return /^\+639\d{9}$/.test(v) ? null : 'Format: +639XXXXXXXXX (13 digits)';
-    return /^09\d{9}$/.test(v) ? null : 'Format: 09XXXXXXXXX (11 digits)';
+  function validateContactValue(value, country = 'PH') {
+    return validatePhoneNumber(value, country);
   }
 
   function validateEmailValue(value) {
@@ -534,6 +631,18 @@ export default function AdminEmployeeForm() {
     if (value === '' || value === null || value === undefined) return null;
     const n = Number(value);
     return isNaN(n) || n < 0 ? 'Must be 0 or greater' : null;
+  }
+
+  function handlePhoneChange(name, phone, countryData) {
+    const nextValue = phone ? `+${String(phone).replace(/\D/g, '')}` : '';
+    const countryCode = String(countryData?.countryCode || 'ph').toUpperCase();
+
+    setPhoneValues((prev) => ({ ...prev, [name]: nextValue }));
+    setPhoneCountries((prev) => ({ ...prev, [name]: countryCode }));
+
+    const err = validatePhoneNumber(nextValue, countryCode);
+    setFieldError(name, err);
+    if (!err) clearSubmitError(name);
   }
 
   function validateRequiredFields(formData) {
@@ -588,9 +697,25 @@ export default function AdminEmployeeForm() {
     const formData = new FormData(event.currentTarget);
     const payload = Object.fromEntries(formData.entries());
     payload.employeeType = employeeType;
+    const activePrefix = employeeType === 'dentist' ? 'doctor'
+      : employeeType === 'dentalAssistant' ? 'da' : 'recep';
+    const activeContactName = `${activePrefix}Contact`;
+    const normalizedActiveContact = normalizePhoneNumber(
+      phoneValues[activeContactName] || payload[activeContactName] || '',
+      phoneCountries[activeContactName] || 'PH'
+    );
+    payload[activeContactName] = normalizedActiveContact;
+
+    const contactError = validateContactValue(
+      normalizedActiveContact,
+      phoneCountries[activeContactName] || 'PH'
+    );
+    setFieldError(activeContactName, contactError);
 
     const errors = validateRequiredFields(formData);
-    const hasFormatErrors = Object.keys(fieldErrors).length > 0;
+    const hasFormatErrors =
+      Object.keys(fieldErrors).some((name) => name !== activeContactName) ||
+      Boolean(contactError);
     if (errors.size > 0 || hasFormatErrors) {
       setFormErrors(errors);
       setOpenSections((prev) => ({ ...prev, ...getSectionsWithErrors(errors) }));
@@ -838,17 +963,22 @@ export default function AdminEmployeeForm() {
 
         <div style={styles.rowThree}>
           <FieldRaw label="Home Address:" name={`${prefix}Address`} hasError={formErrors.has(`${prefix}Address`)} styles={styles} />
-          <FieldRaw
+          <PhoneFieldRaw
             label="Contact Number:"
             name={`${prefix}Contact`}
-            type="tel"
-            onInput={(e) => {
-              filterContactInput(e);
-              const err = validateContactValue(e.target.value);
-              setFieldError(`${prefix}Contact`, err);
-              if (!err) clearSubmitError(`${prefix}Contact`);
-            }}
-            maxLength={13}
+            value={phoneValues[`${prefix}Contact`] || ''}
+            onChange={(phone, countryData) =>
+              handlePhoneChange(`${prefix}Contact`, phone, countryData)
+            }
+            onBlur={() =>
+              setFieldError(
+                `${prefix}Contact`,
+                validateContactValue(
+                  phoneValues[`${prefix}Contact`] || '',
+                  phoneCountries[`${prefix}Contact`] || 'PH'
+                )
+              )
+            }
             hasError={formErrors.has(`${prefix}Contact`) || !!fieldErrors[`${prefix}Contact`]}
             errorMessage={fieldErrors[`${prefix}Contact`]}
             styles={styles}

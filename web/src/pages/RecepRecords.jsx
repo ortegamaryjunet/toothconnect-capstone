@@ -1,5 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import PhoneInput from 'react-phone-input-2';
+import {
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+} from 'libphonenumber-js';
+import 'react-phone-input-2/lib/style.css';
 
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -101,8 +107,6 @@ const NATIONALITY_OPTIONS = [
   'Ukrainian',
   'Vietnamese',
 ];
-
-const PH_PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 
 export default function RecepRecords() {
   const navigate = useNavigate();
@@ -319,6 +323,12 @@ export default function RecepRecords() {
 
     setEditPatient({
       ...patient,
+      contactCountry: getContactFormValue(patient.contactNumber).country,
+      emergencyContactCountry: getContactFormValue(patient.emergencyContactNumber).country,
+      contactNumber: normalizePhoneNumber(
+        patient.contactNumber,
+        getContactFormValue(patient.contactNumber).country
+      ),
       fullName: [patient.firstName, patient.middleName, patient.lastName]
         .filter(Boolean)
         .join(' ')
@@ -394,7 +404,13 @@ export default function RecepRecords() {
         infoId: patientId,
         fullName: profile.full_name || current?.fullName || '',
         email: profile.email || current?.email || '',
-        contactNumber: profile.contact_number || current?.contactNumber || '',
+        contactNumber: normalizePhoneNumber(
+          profile.contact_number || current?.contactNumber || '',
+          getContactFormValue(profile.contact_number || current?.contactNumber || '').country
+        ),
+        contactCountry: getContactFormValue(
+          profile.contact_number || current?.contactNumber || ''
+        ).country,
         address: profile.address || current?.address || '',
         dateOfBirth: profile.birthday || current?.dateOfBirth || '',
         age: profile.age || calculateAge(profile.birthday) || current?.age || '',
@@ -406,7 +422,13 @@ export default function RecepRecords() {
         occupation: profile.occupation || '',
         civilStatus: profile.civil_status || '',
         emergencyContactName: profile.emergency_contact_name || '',
-        emergencyContactNumber: profile.emergency_contact_number || '',
+        emergencyContactNumber: normalizePhoneNumber(
+          profile.emergency_contact_number || '',
+          getContactFormValue(profile.emergency_contact_number || '').country
+        ),
+        emergencyContactCountry: getContactFormValue(
+          profile.emergency_contact_number || ''
+        ).country,
         medicalConditions: profile.medical_conditions || '',
         allergies: profile.allergies || '',
         medications: profile.medications || '',
@@ -429,16 +451,6 @@ export default function RecepRecords() {
       sanitized = String(value || '').replace(/[0-9]/g, '');
     }
 
-    if (field === 'contactNumber' || field === 'emergencyContactNumber') {
-      const digitsOnly = String(value || '').replace(/[^0-9]/g, '');
-      sanitized = String(value || '').startsWith('+')
-        ? `+${digitsOnly}`
-        : digitsOnly;
-
-      const maxLen = sanitized.startsWith('+') ? 13 : 11;
-      sanitized = sanitized.slice(0, maxLen);
-    }
-
     setEditPatient((current) => ({
       ...current,
       [field]: sanitized,
@@ -448,6 +460,31 @@ export default function RecepRecords() {
     setEditErrors((current) => ({
       ...current,
       [field]: '',
+    }));
+  }
+
+  function handleEditPhoneChange(field, phone, countryData) {
+    const nextValue = phone ? `+${String(phone).replace(/\D/g, '')}` : '';
+    const countryField =
+      field === 'emergencyContactNumber'
+        ? 'emergencyContactCountry'
+        : 'contactCountry';
+    const countryCode = String(countryData?.countryCode || 'ph').toUpperCase();
+
+    setEditPatient((current) => ({
+      ...current,
+      [field]: nextValue,
+      [countryField]: countryCode,
+    }));
+
+    const error =
+      field === 'emergencyContactNumber' && !nextValue
+        ? ''
+        : validatePhoneNumber(nextValue, countryCode);
+
+    setEditErrors((current) => ({
+      ...current,
+      [field]: error,
     }));
   }
 
@@ -488,21 +525,23 @@ export default function RecepRecords() {
       }
     }
 
-    if (
-      editPatient.contactNumber &&
-      !PH_PHONE_REGEX.test(String(editPatient.contactNumber).trim())
-    ) {
-      nextErrors.contactNumber = 'Use 09XXXXXXXXX or +639XXXXXXXXX format.';
+    const contactError = validatePhoneNumber(
+      editPatient.contactNumber,
+      editPatient.contactCountry || 'PH'
+    );
+
+    if (contactError) {
+      nextErrors.contactNumber = contactError;
     }
 
     if (editPatient.emergencyContactNumber) {
-      const emergencyNumber = String(
-        editPatient.emergencyContactNumber
-      ).trim();
+      const emergencyError = validatePhoneNumber(
+        editPatient.emergencyContactNumber,
+        editPatient.emergencyContactCountry || 'PH'
+      );
 
-      if (!PH_PHONE_REGEX.test(emergencyNumber)) {
-        nextErrors.emergencyContactNumber =
-          'Use 09XXXXXXXXX or +639XXXXXXXXX format.';
+      if (emergencyError) {
+        nextErrors.emergencyContactNumber = emergencyError;
       }
     }
 
@@ -540,7 +579,10 @@ export default function RecepRecords() {
       const saved = await updateStaffPatientProfile(editPatient.infoId, {
         full_name: fullName,
         email: editPatient.email,
-        contact_number: editPatient.contactNumber,
+        contact_number: normalizePhoneNumber(
+          editPatient.contactNumber,
+          editPatient.contactCountry || 'PH'
+        ),
         birthday: editPatient.dateOfBirth,
         age: calculateAge(editPatient.dateOfBirth) || editPatient.age,
         sex: editPatient.gender,
@@ -549,7 +591,12 @@ export default function RecepRecords() {
         occupation: editPatient.occupation || '',
         civil_status: editPatient.civilStatus || '',
         emergency_contact_name: editPatient.emergencyContactName || '',
-        emergency_contact_number: editPatient.emergencyContactNumber || '',
+        emergency_contact_number: editPatient.emergencyContactNumber
+          ? normalizePhoneNumber(
+              editPatient.emergencyContactNumber,
+              editPatient.emergencyContactCountry || 'PH'
+            )
+          : '',
         medical_conditions: editPatient.medicalConditions || '',
         allergies: editPatient.allergies || '',
         medications: editPatient.medications || '',
@@ -1287,14 +1334,15 @@ export default function RecepRecords() {
                 onChange={(value) => handleEditChange('email', value)}
               />
 
-              <FieldInput
+              <PhoneField
                 styles={styles}
                 label="Contact Number"
-                type="tel"
                 value={editPatient.contactNumber}
-                readOnly={editModalReadOnly}
+                disabled={editModalReadOnly}
                 error={editErrors.contactNumber}
-                onChange={(value) => handleEditChange('contactNumber', value)}
+                onChange={(phone, countryData) =>
+                  handleEditPhoneChange('contactNumber', phone, countryData)
+                }
               />
 
               <FieldInput
@@ -1431,14 +1479,18 @@ export default function RecepRecords() {
                 }
               />
 
-              <FieldInput
+              <PhoneField
                 styles={styles}
                 label="Emergency Contact Number"
                 value={editPatient.emergencyContactNumber || ''}
-                readOnly={editModalReadOnly}
+                disabled={editModalReadOnly}
                 error={editErrors.emergencyContactNumber}
-                onChange={(value) =>
-                  handleEditChange('emergencyContactNumber', value)
+                onChange={(phone, countryData) =>
+                  handleEditPhoneChange(
+                    'emergencyContactNumber',
+                    phone,
+                    countryData
+                  )
                 }
               />
                 </div>
@@ -1742,6 +1794,50 @@ function FieldInput({
   );
 }
 
+function PhoneField({
+  styles,
+  label,
+  value,
+  onChange,
+  disabled = false,
+  error = '',
+}) {
+  return (
+    <div style={styles.field}>
+      <label style={styles.fieldLabel}>
+        {label}
+        {error && <span style={styles.fieldErrorAsterisk}>*</span>}
+      </label>
+
+      <PhoneInput
+        country="ph"
+        preferredCountries={['ph']}
+        value={value || ''}
+        onChange={(phone, countryData) => onChange?.(phone, countryData)}
+        enableSearch
+        countryCodeEditable={false}
+        disabled={disabled}
+        inputProps={{ required: true }}
+        containerStyle={styles.phoneInputContainer}
+        inputStyle={{
+          ...styles.phoneInput,
+          ...(disabled ? styles.readOnlyInput : {}),
+          ...(error ? styles.fieldInputError : {}),
+        }}
+        buttonStyle={{
+          ...styles.phoneButton,
+          ...(disabled ? styles.phoneButtonDisabled : {}),
+          ...(error ? styles.fieldInputError : {}),
+        }}
+        dropdownStyle={styles.phoneDropdown}
+        searchStyle={styles.phoneSearch}
+      />
+
+      {error && <p style={styles.fieldErrorText}>{error}</p>}
+    </div>
+  );
+}
+
 function TextAreaField({
   styles,
   label,
@@ -1771,6 +1867,80 @@ function TextAreaField({
       {error && <p style={styles.fieldErrorText}>{error}</p>}
     </div>
   );
+}
+
+function normalizePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isDialCodeOnly(digits, country)) {
+    return '';
+  }
+
+  const phoneNumber = parseContactNumber(value, country);
+  return phoneNumber?.number || `+${digits}`;
+}
+
+function validatePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isDialCodeOnly(digits, country)) {
+    return 'This field is required';
+  }
+
+  const phoneNumber = parseContactNumber(value, country);
+
+  if (!phoneNumber?.isValid()) {
+    return 'Contact number is invalid.';
+  }
+
+  return '';
+}
+
+function getContactFormValue(value) {
+  const phoneNumber = parseContactNumber(value);
+
+  if (!phoneNumber) {
+    return {
+      country: 'PH',
+      number: String(value || '').replace(/\D/g, ''),
+    };
+  }
+
+  return {
+    country: phoneNumber.country || 'PH',
+    number: phoneNumber.number || String(value || '').replace(/\D/g, ''),
+  };
+}
+
+function parseContactNumber(value, country = 'PH') {
+  const rawValue = String(value || '').trim();
+  const digits = rawValue.replace(/\D/g, '');
+
+  if (!digits) {
+    return null;
+  }
+
+  if (rawValue.startsWith('+')) {
+    return parsePhoneNumberFromString(rawValue);
+  }
+
+  if (digits.startsWith('00')) {
+    return parsePhoneNumberFromString(`+${digits.slice(2)}`);
+  }
+
+  if (digits.startsWith('0')) {
+    return parsePhoneNumberFromString(digits, country);
+  }
+
+  return parsePhoneNumberFromString(digits, country);
+}
+
+function isDialCodeOnly(digits, country = 'PH') {
+  try {
+    return digits === getCountryCallingCode(country);
+  } catch {
+    return false;
+  }
 }
 
 function normalizePatients(items) {
