@@ -11,7 +11,7 @@ const createRecepMessageStyles = ({
       height: isMobile ? 'auto' : '100vh',
       minHeight: '100vh',
       flexDirection: isMobile ? 'column' : 'row',
-      background: 'linear-gradient(135deg, #eaf3ff 0%, #f8fbff 45%, #eef6ff 100%)',
+      background: 'linear-gradient(135deg, #fff8e1 0%, #fffdf7 45%, #f8f4e8 100%)',
       fontFamily: 'Arial, sans-serif',
       color: '#0f172a',
       overflow: isMobile ? 'visible' : 'hidden',
@@ -23,8 +23,8 @@ const createRecepMessageStyles = ({
       height: isMobile ? 'auto' : '100vh',
       maxHeight: isMobile ? '52vh' : 'none',
       background: 'rgba(255, 255, 255, 0.96)',
-      borderRight: isMobile ? 'none' : '1px solid #dbeafe',
-      borderBottom: isMobile ? '1px solid #dbeafe' : 'none',
+      borderRight: isMobile ? 'none' : '1px solid #ead8a7',
+      borderBottom: isMobile ? '1px solid #ead8a7' : 'none',
       display: 'flex',
       flexDirection: 'column',
       boxSizing: 'border-box',
@@ -53,13 +53,14 @@ const createRecepMessageStyles = ({
       justifyContent: isVerySmall ? 'center' : 'flex-start',
       gap: 8,
       textDecoration: 'none',
-      color: '#b8860b',
       fontSize: 14,
       fontWeight: 800,
       padding: '10px 15px',
       borderRadius: 999,
-      background: '#eff6ff',
-      border: '1px solid #dbeafe',
+      background: '#d4af37',
+      border: '1px solid #d4af37',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+      color: '#ffffff',
       cursor: 'pointer',
       transition: '0.25s ease',
       fontFamily: 'Arial, sans-serif',
@@ -114,20 +115,20 @@ const createRecepMessageStyles = ({
       maxWidth: '100%',
       height: 48,
       borderRadius: 16,
-      background: '#f8fbff',
-      border: '1px solid #bfdbfe',
-      color: '#2563eb',
+      background: '#fff8e1',
+      border: '1px solid #ead8a7',
+      color: '#8b6508',
       display: 'flex',
       alignItems: 'center',
       gap: 9,
       padding: '0 12px',
       boxSizing: 'border-box',
       flexShrink: 0,
-      boxShadow: '0 8px 18px rgba(37, 99, 235, 0.08)',
+      boxShadow: '0 8px 18px rgba(139, 101, 8, 0.08)',
     },
 
     newChatSelectIcon: {
-      color: '#2563eb',
+      color: '#d4af37',
       fontSize: 17,
       flexShrink: 0,
     },
@@ -149,8 +150,8 @@ const createRecepMessageStyles = ({
       margin: isVerySmall ? '0 14px 12px' : '0 20px 14px',
       padding: '12px 14px',
       borderRadius: 16,
-      background: '#f8fbff',
-      border: '1px solid #dbeafe',
+      background: '#fffdf7',
+      border: '1px solid #ead8a7',
       display: 'flex',
       alignItems: 'center',
       gap: 10,
@@ -159,7 +160,7 @@ const createRecepMessageStyles = ({
     },
 
     searchIcon: {
-      color: '#2563eb',
+      color: '#d4af37',
       fontSize: 17,
     },
 
@@ -182,7 +183,7 @@ const createRecepMessageStyles = ({
     filterBtn: {
       flex: 1,
       padding: '10px 12px',
-      border: '1px solid #e2e8f0',
+      border: 'none',
       borderRadius: 999,
       background: '#ffffff',
       color: '#64748b',
@@ -194,10 +195,10 @@ const createRecepMessageStyles = ({
     },
 
     filterBtnActive: {
-      background: '#2563eb',
-      borderColor: '#2563eb',
+      background: '#d4af37',
+      borderColor: '#d4af37',
       color: '#ffffff',
-      boxShadow: '0 10px 18px rgba(37, 99, 235, 0.22)',
+      boxShadow: '0 10px 18px rgba(139, 101, 8, 0.22)',
     },
 
     chatList: {
@@ -224,21 +225,21 @@ const createRecepMessageStyles = ({
     },
 
     chatItemActive: {
-      background: '#eff6ff',
-      border: '1px solid #bfdbfe',
-      boxShadow: '0 10px 22px rgba(37, 99, 235, 0.10)',
+      background: '#fff8e1',
+      border: '1px solid #ead8a7',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.10)',
     },
 
     chatItemUnread: {
-      background: '#f8fbff',
-      border: '1px solid #dbeafe',
+      background: '#fffdf7',
+      border: '1px solid #ead8a7',
     },
 
     avatar: {
       width: 46,
       height: 46,
       borderRadius: 16,
-      background: 'linear-gradient(135deg, #1d4ed8, #60a5fa)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       display: 'flex',
       justifyContent: 'center',
@@ -246,7 +247,7 @@ const createRecepMessageStyles = ({
       fontSize: 17,
       fontWeight: 900,
       flexShrink: 0,
-      boxShadow: '0 10px 18px rgba(37, 99, 235, 0.24)',
+      boxShadow: '0 10px 18px rgba(139, 101, 8, 0.24)',
     },
 
     avatarLarge: {
@@ -346,13 +347,13 @@ const createRecepMessageStyles = ({
       width: 82,
       height: 82,
       borderRadius: 28,
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#fff8e1',
+      color: '#d4af37',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: 34,
-      boxShadow: '0 12px 24px rgba(37, 99, 235, 0.12)',
+      boxShadow: '0 12px 24px rgba(139, 101, 8, 0.12)',
     },
 
     emptyTitle: {
@@ -378,7 +379,7 @@ const createRecepMessageStyles = ({
     conversationHeader: {
       height: isVerySmall ? 72 : 82,
       background: 'rgba(255, 255, 255, 0.96)',
-      borderBottom: '1px solid #dbeafe',
+      borderBottom: '1px solid #ead8a7',
       padding: isVerySmall ? '0 16px' : isTablet ? '0 20px' : '0 28px',
       display: 'flex',
       alignItems: 'center',
@@ -422,10 +423,10 @@ const createRecepMessageStyles = ({
     closeThreadBtn: {
       width: isVerySmall ? 38 : 42,
       height: isVerySmall ? 38 : 42,
-      border: '1px solid #dbeafe',
+      border: '1px solid #ead8a7',
       borderRadius: '50%',
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#fff8e1',
+      color: '#d4af37',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -472,14 +473,14 @@ const createRecepMessageStyles = ({
     },
 
     messageBubbleSent: {
-      background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
     },
 
     messageBubbleReceived: {
       background: '#ffffff',
       color: '#0f172a',
-      border: '1px solid #dbeafe',
+      border: '1px solid #ead8a7',
     },
 
     sentBubbleLast: {
@@ -506,20 +507,20 @@ const createRecepMessageStyles = ({
 
     dateDivider: {
       alignSelf: 'center',
-      background: '#dbeafe',
-      color: '#2563eb',
+      background: '#fff8e1',
+      color: '#8b6508',
       fontSize: 12,
       padding: '7px 14px',
       borderRadius: 999,
       margin: '8px 0',
       fontWeight: 900,
-      boxShadow: '0 8px 18px rgba(37, 99, 235, 0.08)',
+      boxShadow: '0 8px 18px rgba(139, 101, 8, 0.08)',
     },
 
     messageInputContainer: {
       padding: isVerySmall ? 12 : '16px 22px',
       background: '#ffffff',
-      borderTop: '1px solid #dbeafe',
+      borderTop: '1px solid #ead8a7',
       display: 'flex',
       alignItems: 'center',
       flexWrap: 'wrap',
@@ -532,11 +533,11 @@ const createRecepMessageStyles = ({
     messageInput: {
       flex: 1,
       padding: isVerySmall ? '12px 15px' : '14px 18px',
-      border: '1px solid #bfdbfe',
+      border: '1px solid #ead8a7',
       borderRadius: 999,
       outline: 'none',
       fontSize: 15,
-      background: '#f8fbff',
+      background: '#fffdf7',
       fontFamily: 'Arial, sans-serif',
       color: '#0f172a',
       minWidth: 0,
@@ -547,7 +548,7 @@ const createRecepMessageStyles = ({
       height: isVerySmall ? 42 : 48,
       border: 'none',
       borderRadius: '50%',
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
       color: '#ffffff',
       display: 'flex',
       justifyContent: 'center',
@@ -556,7 +557,7 @@ const createRecepMessageStyles = ({
       fontSize: 18,
       transition: '0.25s ease',
       flexShrink: 0,
-      boxShadow: '0 12px 20px rgba(37, 99, 235, 0.24)',
+      boxShadow: '0 12px 20px rgba(139, 101, 8, 0.24)',
     },
 
     sendBtnDisabled: {
@@ -577,6 +578,89 @@ const createRecepMessageStyles = ({
       color: '#64748b',
       fontSize: 14,
       padding: 15,
+    },
+
+    modal: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 10000,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 18,
+      boxSizing: 'border-box',
+    },
+
+    modalContent: {
+      width: '100%',
+      maxWidth: 390,
+      background: '#ffffff',
+      borderRadius: 22,
+      padding: isVerySmall ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 25px 60px rgba(15, 23, 42, 0.25)',
+      boxSizing: 'border-box',
+    },
+
+    modalIcon: {
+      width: 70,
+      height: 70,
+      margin: '0 auto 16px',
+      borderRadius: '50%',
+      background: '#fee2e2',
+      color: '#dc2626',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    modalIconText: {
+      fontSize: 30,
+      lineHeight: 1,
+    },
+
+    modalTitle: {
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
+      color: '#0f172a',
+      margin: '0 0 10px',
+    },
+
+    modalText: {
+      fontSize: 15,
+      color: '#64748b',
+      margin: '0 0 24px',
+      lineHeight: 1.5,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    modalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isVerySmall ? 'column' : 'row',
+    },
+
+    modalButton: {
+      minWidth: 120,
+      height: 44,
+      borderRadius: 12,
+      border: 'none',
+      cursor: 'pointer',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+    },
+
+    cancelModalBtn: {
+      background: '#f1f5f9',
+      color: '#334155',
+    },
+
+    confirmModalBtn: {
+      background: '#dc2626',
+      color: '#ffffff',
     },
 
     newMessageModal: {
@@ -600,7 +684,7 @@ const createRecepMessageStyles = ({
       padding: isVerySmall ? 22 : 28,
       boxShadow: '0 25px 60px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
-      border: '1px solid #e0edff',
+      border: '1px solid #ead8a7',
     },
 
     newMessageTitle: {
@@ -622,14 +706,14 @@ const createRecepMessageStyles = ({
     newMessageInput: {
       width: '100%',
       padding: '14px 15px',
-      border: '1px solid #bfdbfe',
+      border: '1px solid #ead8a7',
       borderRadius: 14,
       outline: 'none',
       fontSize: 14,
       marginBottom: 18,
       boxSizing: 'border-box',
       fontFamily: 'Arial, sans-serif',
-      background: '#f8fbff',
+      background: '#fffdf7',
       color: '#0f172a',
     },
 
@@ -657,10 +741,10 @@ const createRecepMessageStyles = ({
       borderRadius: 14,
       cursor: 'pointer',
       fontWeight: 900,
-      background: '#2563eb',
+      background: '#d4af37',
       color: '#ffffff',
       width: isVerySmall ? '100%' : 'auto',
-      boxShadow: '0 12px 20px rgba(37, 99, 235, 0.22)',
+      boxShadow: '0 12px 20px rgba(139, 101, 8, 0.22)',
     },
   };
 };

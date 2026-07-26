@@ -37,6 +37,7 @@ export default function RecepMessage() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageError, setMessageError] = useState('');
   const [selectedPresence, setSelectedPresence] = useState(null);
+  const [showBackConfirmModal, setShowBackConfirmModal] = useState(false);
 
   const isMobile = screenWidth <= 768;
   const isVerySmall = screenWidth <= 560;
@@ -346,6 +347,24 @@ export default function RecepMessage() {
     }, 0);
   }
 
+  function openBackConfirmModal() {
+    setShowBackConfirmModal(true);
+  }
+
+  function closeBackConfirmModal() {
+    setShowBackConfirmModal(false);
+  }
+
+  function handleBackConfirm() {
+    navigate(-1);
+  }
+
+  function handleBackModalOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeBackConfirmModal();
+    }
+  }
+
   return (
     <div style={styles.chatContainer}>
       <aside style={styles.chatSidebar}>
@@ -354,9 +373,8 @@ export default function RecepMessage() {
             <button
               type="button"
               style={styles.backLink}
-              onClick={() => navigate(-1)}
+              onClick={openBackConfirmModal}
             >
-              <i className="fi fi-rr-angle-left"></i>
               Back
             </button>
           </div>
@@ -561,6 +579,37 @@ export default function RecepMessage() {
           </div>
         )}
       </main>
+
+      {showBackConfirmModal && (
+        <div style={styles.modal} onClick={handleBackModalOverlayClick}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Leave Messages?</h2>
+            <p style={styles.modalText}>Are you sure you want to go back?</p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelModalBtn }}
+                onClick={closeBackConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.confirmModalBtn }}
+                onClick={handleBackConfirm}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
