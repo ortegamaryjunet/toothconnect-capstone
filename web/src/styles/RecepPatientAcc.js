@@ -708,6 +708,9 @@
       fontFamily: 'Arial, sans-serif',
       position: 'relative',
       zIndex: 25,
+      display: 'grid',
+      gridTemplateColumns: isSingleColumn ? '1fr' : '150px minmax(0, 1fr)',
+      gap: 10,
     },
 
     phoneField: {
@@ -720,7 +723,7 @@
       height: 44,
       border: '1px solid #cbd5e1',
       borderRadius: 12,
-      paddingLeft: 54,
+      padding: '0 14px',
       outline: 'none',
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
@@ -729,12 +732,17 @@
       boxSizing: 'border-box',
     },
 
-    phoneButton: {
+    phoneCountrySelect: {
+      width: '100%',
       height: 44,
-      width: 48,
       border: '1px solid #cbd5e1',
-      borderRadius: '12px 0 0 12px',
+      borderRadius: 12,
       background: '#f8fafc',
+      color: '#172033',
+      outline: 'none',
+      padding: '0 12px',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
       cursor: 'pointer',
     },
 

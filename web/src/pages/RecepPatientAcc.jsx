@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState, useRef } from 'react';
-import PhoneInput from 'react-phone-input-2';
-import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import 'react-phone-input-2/lib/style.css';
+import {
+  getCountries,
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+} from 'libphonenumber-js';
 
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -23,9 +25,15 @@ const emptyCreateForm = {
   middleName: '',
   lastName: '',
   email: '',
+  contactCountry: 'PH',
   contactNumber: '',
   password: '',
 };
+
+const phoneCountries = getCountries().map((country) => ({
+  country,
+  callingCode: getCountryCallingCode(country),
+}));
 
 export default function RecepPatientAcc() {
   const { user } = useAuth();
@@ -337,6 +345,28 @@ export default function RecepPatientAcc() {
     });
   }
 
+  function handleCreatePhoneCountryChange(country) {
+    setCreateTouched((current) => ({ ...current, contactNumber: true }));
+
+    setCreateForm((current) => {
+      const nextForm = {
+        ...current,
+        contactCountry: country,
+      };
+
+      setCreateErrors((currentErrors) => ({
+        ...currentErrors,
+        form: '',
+        contactNumber: validateContactNumber(
+          nextForm.contactNumber,
+          nextForm.contactCountry
+        ),
+      }));
+
+      return nextForm;
+    });
+  }
+
   function handleCreateBlur(field) {
     setCreateTouched((current) => ({ ...current, [field]: true }));
     setCreateErrors((currentErrors) => ({
@@ -488,7 +518,10 @@ export default function RecepPatientAcc() {
       await createStaffPatient({
         full_name: buildFullName(createForm),
         email: createForm.email,
-        contact_number: normalizeContactNumber(createForm.contactNumber),
+        contact_number: normalizeContactNumber(
+          createForm.contactNumber,
+          createForm.contactCountry
+        ),
         temporary_password: createForm.password,
       });
 
@@ -527,7 +560,13 @@ export default function RecepPatientAcc() {
     ['Middle Name', createForm.middleName || 'N/A'],
     ['Last Name', createForm.lastName || 'N/A'],
     ['Email', createForm.email || 'N/A'],
-    ['Contact Number', normalizeContactNumber(createForm.contactNumber) || 'N/A'],
+    [
+      'Contact Number',
+      normalizeContactNumber(
+        createForm.contactNumber,
+        createForm.contactCountry
+      ) || 'N/A',
+    ],
     ['Temporary Password', createForm.password ? 'Provided' : 'N/A'],
   ];
 
@@ -1019,6 +1058,8 @@ export default function RecepPatientAcc() {
                 <PhoneField
                   styles={styles}
                   label="Contact Number"
+                  country={createForm.contactCountry}
+                  onCountryChange={handleCreatePhoneCountryChange}
                   value={createForm.contactNumber}
                   onChange={(value) =>
                     handleCreateChange('contactNumber', value)
@@ -1360,6 +1401,8 @@ function InputField({
 function PhoneField({
   styles,
   label,
+  country,
+  onCountryChange,
   value,
   onChange,
   onBlur,
@@ -1369,31 +1412,37 @@ function PhoneField({
   return (
     <div style={{ ...styles.field, ...styles.phoneField }}>
       <label style={styles.fieldLabel}>{label}</label>
-      <PhoneInput
-        country="ph"
-        preferredCountries={['ph']}
-        disableDropdown={false}
-        countryCodeEditable={false}
-        value={value}
-        onChange={(phone) => onChange?.(phone)}
-        onBlur={onBlur}
-        inputProps={{
-          required,
-          name: 'contactNumber',
-        }}
-        enableSearch
-        containerStyle={styles.phoneInputContainer}
-        inputStyle={{
-          ...styles.phoneInput,
-          ...(error ? styles.fieldInputError : {}),
-        }}
-        buttonStyle={{
-          ...styles.phoneButton,
-          ...(error ? styles.phoneButtonError : {}),
-        }}
-        dropdownStyle={styles.phoneDropdown}
-        searchStyle={styles.phoneSearch}
-      />
+      <div style={styles.phoneInputContainer}>
+        <select
+          value={country}
+          onChange={(event) => onCountryChange?.(event.target.value)}
+          style={{
+            ...styles.phoneCountrySelect,
+            ...(error ? styles.phoneButtonError : {}),
+          }}
+          aria-label="Country code"
+        >
+          {phoneCountries.map((option) => (
+            <option key={option.country} value={option.country}>
+              {option.country} +{option.callingCode}
+            </option>
+          ))}
+        </select>
+        <input
+          type="tel"
+          value={value}
+          onChange={(event) => onChange?.(event.target.value)}
+          onBlur={onBlur}
+          style={{
+            ...styles.phoneInput,
+            ...(error ? styles.fieldInputError : {}),
+          }}
+          placeholder="9123456789"
+          inputMode="numeric"
+          required={required}
+          name="contactNumber"
+        />
+      </div>
       {error && <span style={styles.fieldError}>{error}</span>}
     </div>
   );
@@ -1462,25 +1511,25 @@ function formatDate(value) {
   return date.toISOString().slice(0, 10);
 }
 
-function normalizeContactNumber(value) {
+function normalizeContactNumber(value, country = 'PH') {
   const digits = String(value || '').replace(/\D/g, '');
 
   if (!digits) {
     return '';
   }
 
-  const phoneNumber = parseContactNumber(value);
+  const phoneNumber = parseContactNumber(value, country);
   return phoneNumber?.number || `+${digits}`;
 }
 
-function validateContactNumber(value) {
+function validateContactNumber(value, country = 'PH') {
   const digits = String(value || '').replace(/\D/g, '');
 
   if (!digits) {
     return 'This field is required';
   }
 
-  const phoneNumber = parseContactNumber(value);
+  const phoneNumber = parseContactNumber(value, country);
 
   if (!phoneNumber?.isValid()) {
     return 'Contact number is invalid.';
@@ -1489,7 +1538,7 @@ function validateContactNumber(value) {
   return '';
 }
 
-function parseContactNumber(value) {
+function parseContactNumber(value, country = 'PH') {
   const rawValue = String(value || '').trim();
   const digits = rawValue.replace(/\D/g, '');
 
@@ -1506,10 +1555,10 @@ function parseContactNumber(value) {
   }
 
   if (digits.startsWith('0')) {
-    return parsePhoneNumberFromString(digits, 'PH');
+    return parsePhoneNumberFromString(digits, country);
   }
 
-  return parsePhoneNumberFromString(`+${digits}`);
+  return parsePhoneNumberFromString(digits, country);
 }
 
 function validateEmail(value) {
@@ -1566,7 +1615,7 @@ function validateTemporaryPassword(value) {
   return '';
 }
 
-function validateCreateAccountField(field, value) {
+function validateCreateAccountField(field, value, account = emptyCreateForm) {
   if (field === 'firstName' || field === 'lastName') {
     return validateNameField(value, true);
   }
@@ -1580,7 +1629,7 @@ function validateCreateAccountField(field, value) {
   }
 
   if (field === 'contactNumber') {
-    return validateContactNumber(value);
+    return validateContactNumber(value, account.contactCountry);
   }
 
   if (field === 'password') {
@@ -1592,7 +1641,10 @@ function validateCreateAccountField(field, value) {
 
 function validateAccountForm(account, requirePassword) {
   const errors = {};
-  const contactError = validateContactNumber(account.contactNumber);
+  const contactError = validateContactNumber(
+    account.contactNumber,
+    account.contactCountry
+  );
   const emailError = validateEmail(account.email);
   const firstNameError = validateNameField(account.firstName, requirePassword);
   const middleNameError = validateNameField(account.middleName);
