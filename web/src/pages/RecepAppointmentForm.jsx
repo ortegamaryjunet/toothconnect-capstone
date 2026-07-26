@@ -54,6 +54,7 @@ export default function RecepAppointmentForm() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
   const [patientOptions, setPatientOptions] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showPatientOptions, setShowPatientOptions] = useState(false);
@@ -98,6 +99,20 @@ export default function RecepAppointmentForm() {
       ? toTimePickerValue(formData.hour, formData.minute)
       : '';
   const selectedTime = timePickerValue ? formatTimePickerValue(timePickerValue) : '';
+  const isFormSubmittable = useMemo(() => {
+    const nextFieldErrors = validateRequiredPatientFields(formData);
+    return (
+      !metaLoading &&
+      !submitting &&
+      Boolean(formData.branchId) &&
+      Boolean(formData.serviceId) &&
+      Boolean(formData.dentistId) &&
+      Boolean(selectedDate) &&
+      Boolean(formData.hour) &&
+      Boolean(formData.minute) &&
+      Object.values(nextFieldErrors).every((message) => !message)
+    );
+  }, [formData, metaLoading, selectedDate, submitting]);
 
   const selectedService = useMemo(() => {
     return services.find((service) => String(service.id) === String(formData.serviceId));
@@ -355,6 +370,7 @@ export default function RecepAppointmentForm() {
 
   function handleInputChange(field, value) {
     let sanitized = value;
+    const previousValue = formData[field];
 
     if (field === 'patientName') {
       sanitized = value.replace(/[^a-zA-ZÀ-ɏ\s]/g, '');
@@ -377,7 +393,25 @@ export default function RecepAppointmentForm() {
       setFormError('');
     }
 
-    if (fieldErrors[field]) {
+    if (isPatientRequiredField(field)) {
+      const shouldShowRequiredError =
+        !String(sanitized || '').trim() &&
+        (String(sanitized || '').length > 0 || String(previousValue || '').length > 0);
+      const shouldValidate =
+        touchedFields[field] ||
+        fieldErrors[field] ||
+        shouldShowRequiredError ||
+        (['contactNumber', 'email'].includes(field) && Boolean(String(sanitized || '').trim()));
+
+      if (shouldShowRequiredError) {
+        setTouchedFields((current) => ({ ...current, [field]: true }));
+      }
+
+      setFieldErrors((current) => ({
+        ...current,
+        [field]: shouldValidate ? validatePatientField(field, sanitized) : '',
+      }));
+    } else if (fieldErrors[field]) {
       setFieldErrors((current) => ({
         ...current,
         [field]: '',
@@ -388,6 +422,48 @@ export default function RecepAppointmentForm() {
       ...current,
       [field]: sanitized,
     }));
+  }
+
+  function handleFieldBlur(field) {
+    if (!isPatientRequiredField(field)) return;
+
+    setTouchedFields((current) => ({ ...current, [field]: true }));
+    setFieldErrors((current) => ({
+      ...current,
+      [field]: validatePatientField(field, formData[field]),
+    }));
+  }
+
+  function showRequiredError(field) {
+    if (!isPatientRequiredField(field)) return;
+
+    setTouchedFields((current) => ({ ...current, [field]: true }));
+    setFieldErrors((current) => ({
+      ...current,
+      [field]: 'This field is required',
+    }));
+  }
+
+  function handleRequiredKeyDown(field, event) {
+    const value = event.currentTarget.value || '';
+    const selectionStart = event.currentTarget.selectionStart ?? value.length;
+    const selectionEnd = event.currentTarget.selectionEnd ?? selectionStart;
+
+    if (event.key === ' ' && !value.trim()) {
+      showRequiredError(field);
+      return;
+    }
+
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      const nextValue =
+        event.key === 'Backspace'
+          ? value.slice(0, selectionStart === selectionEnd ? Math.max(0, selectionStart - 1) : selectionStart) + value.slice(selectionEnd)
+          : value.slice(0, selectionStart) + value.slice(selectionStart === selectionEnd ? selectionEnd + 1 : selectionEnd);
+
+      if (!nextValue.trim()) {
+        showRequiredError(field);
+      }
+    }
   }
 
   function handleSelectSlot(slot) {
@@ -437,6 +513,18 @@ export default function RecepAppointmentForm() {
       contactNumber: patient.contact_number || '',
       email: patient.email || '',
     }));
+    setTouchedFields((current) => ({
+      ...current,
+      patientName: true,
+      contactNumber: true,
+      email: true,
+    }));
+    setFieldErrors((current) => ({
+      ...current,
+      patientName: validatePatientName(patient.name || ''),
+      contactNumber: validateContactNumber(patient.contact_number || ''),
+      email: validateEmail(patient.email || ''),
+    }));
   }
 
   function openConfirmModal() {
@@ -475,6 +563,7 @@ export default function RecepAppointmentForm() {
     setShowPatientOptions(false);
     setFormError('');
     setFieldErrors({});
+    setTouchedFields({});
     setSelectedDate(toDateKey(today));
   }
 
@@ -497,19 +586,15 @@ export default function RecepAppointmentForm() {
       return;
     }
 
-    const newFieldErrors = {};
+    const newFieldErrors = validateRequiredPatientFields(formData);
 
-    const nameError = validatePatientName(formData.patientName);
-    if (nameError) newFieldErrors.patientName = nameError;
-
-    const contactError = validateContactNumber(formData.contactNumber);
-    if (contactError) newFieldErrors.contactNumber = contactError;
-
-    const emailError = validateEmail(formData.email);
-    if (emailError) newFieldErrors.email = emailError;
-
-    if (Object.keys(newFieldErrors).length > 0) {
+    if (Object.values(newFieldErrors).some(Boolean)) {
       setFieldErrors(newFieldErrors);
+      setTouchedFields({
+        patientName: true,
+        contactNumber: true,
+        email: true,
+      });
       return;
     }
 
@@ -594,7 +679,7 @@ export default function RecepAppointmentForm() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div style={styles.formSection}>
             <div style={styles.formPanel}>
               <h3 style={styles.panelTitle}>Patient Information</h3>
@@ -612,6 +697,8 @@ export default function RecepAppointmentForm() {
                   onChange={(event) =>
                     handleInputChange('patientName', event.target.value)
                   }
+                  onKeyDown={(event) => handleRequiredKeyDown('patientName', event)}
+                  onBlur={() => handleFieldBlur('patientName')}
                   required
                   style={{
                     ...styles.input,
@@ -666,6 +753,8 @@ export default function RecepAppointmentForm() {
                   onChange={(event) =>
                     handleInputChange('contactNumber', event.target.value)
                   }
+                  onKeyDown={(event) => handleRequiredKeyDown('contactNumber', event)}
+                  onBlur={() => handleFieldBlur('contactNumber')}
                   required
                   maxLength={13}
                   style={{
@@ -692,6 +781,8 @@ export default function RecepAppointmentForm() {
                   onChange={(event) =>
                     handleInputChange('email', event.target.value)
                   }
+                  onKeyDown={(event) => handleRequiredKeyDown('email', event)}
+                  onBlur={() => handleFieldBlur('email')}
                   required
                   style={{
                     ...styles.input,
@@ -959,9 +1050,9 @@ export default function RecepAppointmentForm() {
               type="submit"
               style={{
                 ...styles.submitBtn,
-                ...(submitting || metaLoading ? styles.buttonDisabled : {}),
+                ...(!isFormSubmittable ? styles.buttonDisabled : {}),
               }}
-              disabled={submitting || metaLoading}
+              disabled={!isFormSubmittable}
             >
               {submitting ? 'Submitting...' : 'Submit Appointment'}
             </button>
@@ -1170,16 +1261,16 @@ function validateEmail(value) {
   const email = String(value || '').trim();
 
   if (!email) {
-    return 'Email address is required.';
+    return 'This field is required';
   }
 
   if (/[^a-zA-Z0-9.@_\-]/.test(email)) {
-    return 'Email may only contain letters, numbers, and . - _ characters.';
+    return 'Email format is invalid.';
   }
 
   const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._\-]*@[a-zA-Z0-9][a-zA-Z0-9._\-]*\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(email)) {
-    return 'Please enter a valid email address.';
+    return 'Email format is invalid.';
   }
 
   return '';
@@ -1189,7 +1280,7 @@ function validatePatientName(value) {
   const name = String(value || '').trim();
 
   if (!name) {
-    return 'Patient name is required.';
+    return 'This field is required';
   }
 
   if (/[^a-zA-ZÀ-ɏ\s]/.test(name)) {
@@ -1203,14 +1294,33 @@ function validateContactNumber(value) {
   const contact = String(value || '').trim();
 
   if (!contact) {
-    return 'Contact number is required.';
+    return 'This field is required';
   }
 
   if (!/^(09\d{9}|\+639\d{9})$/.test(contact)) {
-    return 'Enter a valid PH number (09XXXXXXXXX or +639XXXXXXXXX).';
+    return 'Contact number format is invalid. Use 09XXXXXXXXX or +639XXXXXXXXX.';
   }
 
   return '';
+}
+
+function isPatientRequiredField(field) {
+  return ['patientName', 'contactNumber', 'email'].includes(field);
+}
+
+function validatePatientField(field, value) {
+  if (field === 'patientName') return validatePatientName(value);
+  if (field === 'contactNumber') return validateContactNumber(value);
+  if (field === 'email') return validateEmail(value);
+  return '';
+}
+
+function validateRequiredPatientFields(formData) {
+  return {
+    patientName: validatePatientName(formData.patientName),
+    contactNumber: validateContactNumber(formData.contactNumber),
+    email: validateEmail(formData.email),
+  };
 }
 
 // Returns all 30-min slots within clinic hours for the selected date.

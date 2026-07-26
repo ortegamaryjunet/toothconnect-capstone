@@ -575,7 +575,7 @@ const createRecepAppointmentFormStyles = ({
 
     slotChip: {
       padding: '8px 14px',
-      border: '1px solid #ead8a7',
+      border: 'none',
       borderRadius: 8,
       background: '#fff8e1',
       color: '#8b6508',
@@ -588,13 +588,11 @@ const createRecepAppointmentFormStyles = ({
 
     slotChipSelected: {
       background: '#d4af37',
-      borderColor: '#d4af37',
       color: '#ffffff',
     },
 
     slotChipBlocked: {
       background: '#f1f5f9',
-      borderColor: '#e2e8f0',
       color: '#94a3b8',
       cursor: 'not-allowed',
       textDecoration: 'line-through',
