@@ -1208,7 +1208,7 @@ export default function RecepAppointmentForm() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.backModalTitle}>Leave Appointment Form?</h2>
+            <h2 style={styles.backModalTitle}>Leave Appointment Form</h2>
             <p style={styles.backModalText}>
               Are you sure you want to go back? Any unsaved changes will be lost.
             </p>
