@@ -50,6 +50,8 @@ export default function RecepAppointmentForm() {
   );
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
   const [metaLoading, setMetaLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -117,6 +119,26 @@ export default function RecepAppointmentForm() {
   const selectedService = useMemo(() => {
     return services.find((service) => String(service.id) === String(formData.serviceId));
   }, [services, formData.serviceId]);
+  const selectedBranch = useMemo(() => {
+    return branches.find((branch) => String(branch.id) === String(formData.branchId));
+  }, [branches, formData.branchId]);
+  const selectedDentist = useMemo(() => {
+    return dentists.find((dentist) => String(dentist.id) === String(formData.dentistId));
+  }, [dentists, formData.dentistId]);
+  const appointmentSummaryRows = useMemo(
+    () => [
+      ['Patient Name', formData.patientName.trim() || 'Not entered'],
+      ['Contact Number', formData.contactNumber.trim() || 'Not entered'],
+      ['Email', formData.email.trim() || 'Not entered'],
+      ['Branch', getBranchLabel(selectedBranch)],
+      ['Purpose of Visit', selectedService?.name || 'Not selected'],
+      ['Doctor', selectedDentist?.name || 'Not selected'],
+      ['Date', selectedDate || 'Not selected'],
+      ['Time', selectedTime || 'Not selected'],
+      ['Note', formData.note.trim() || 'None'],
+    ],
+    [formData, selectedBranch, selectedDate, selectedDentist, selectedService, selectedTime]
+  );
 
   const availableServices = useMemo(() => {
     if (!formData.branchId) return services;
@@ -231,17 +253,22 @@ export default function RecepAppointmentForm() {
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = showConfirmModal ? 'hidden' : '';
+    document.body.style.overflow =
+      showConfirmModal || showClearConfirmModal || showSubmitConfirmModal
+        ? 'hidden'
+        : '';
 
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showConfirmModal]);
+  }, [showClearConfirmModal, showConfirmModal, showSubmitConfirmModal]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeConfirmModal();
+        closeClearConfirmModal();
+        closeSubmitConfirmModal();
       }
     }
 
@@ -535,6 +562,23 @@ export default function RecepAppointmentForm() {
     setShowConfirmModal(false);
   }
 
+  function openClearConfirmModal() {
+    setShowClearConfirmModal(true);
+  }
+
+  function closeClearConfirmModal() {
+    setShowClearConfirmModal(false);
+  }
+
+  function confirmClearForm() {
+    closeClearConfirmModal();
+    handleClearForm();
+  }
+
+  function closeSubmitConfirmModal() {
+    setShowSubmitConfirmModal(false);
+  }
+
   function handleBackConfirm() {
     navigate('/receptionistAppointments');
   }
@@ -542,6 +586,18 @@ export default function RecepAppointmentForm() {
   function handleModalOverlayClick(event) {
     if (event.target === event.currentTarget) {
       closeConfirmModal();
+    }
+  }
+
+  function handleClearOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeClearConfirmModal();
+    }
+  }
+
+  function handleSubmitOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeSubmitConfirmModal();
     }
   }
 
@@ -598,7 +654,12 @@ export default function RecepAppointmentForm() {
       return;
     }
 
+    setShowSubmitConfirmModal(true);
+  }
+
+  async function handleConfirmSubmitAppointment() {
     setSubmitting(true);
+    setFormError('');
 
     try {
       let patient = selectedPatient;
@@ -640,6 +701,7 @@ export default function RecepAppointmentForm() {
 
       await createAppointment(appointmentPayload);
 
+      setShowSubmitConfirmModal(false);
       navigate('/receptionistAppointments');
     } catch (err) {
       if (err.response?.status === 409) {
@@ -1042,7 +1104,7 @@ export default function RecepAppointmentForm() {
           </div>
 
           <div style={styles.buttonRow}>
-            <button type="button" style={styles.clearBtn} onClick={handleClearForm}>
+            <button type="button" style={styles.clearBtn} onClick={openClearConfirmModal}>
               Clear
             </button>
 
@@ -1059,6 +1121,85 @@ export default function RecepAppointmentForm() {
           </div>
         </form>
       </div>
+
+      {showClearConfirmModal && (
+        <div style={styles.modal} onClick={handleClearOverlayClick}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Clear Appointment Form?</h2>
+            <p style={styles.modalText}>
+              Review the current details. Are you sure you want to clear this form? These details will not be saved.
+            </p>
+
+            <AppointmentSummaryRows rows={appointmentSummaryRows} styles={styles} />
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={styles.confirmNo}
+                onClick={closeClearConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={styles.confirmYes}
+                onClick={confirmClearForm}
+              >
+                Yes, Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSubmitConfirmModal && (
+        <div style={styles.modal} onClick={handleSubmitOverlayClick}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-calendar-check" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Appointment</h2>
+            <p style={styles.modalText}>
+              Please review the information. Are the details correct and do you want to create this appointment?
+            </p>
+
+            <AppointmentSummaryRows rows={appointmentSummaryRows} styles={styles} />
+
+            {formError && (
+              <p style={{ ...styles.modalText, color: '#dc2626' }}>{formError}</p>
+            )}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={styles.confirmNo}
+                disabled={submitting}
+                onClick={closeSubmitConfirmModal}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  ...styles.confirmSubmit,
+                  ...(submitting ? styles.buttonDisabled : {}),
+                }}
+                disabled={submitting}
+                onClick={handleConfirmSubmitAppointment}
+              >
+                {submitting ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showConfirmModal && (
         <div style={styles.modal} onClick={handleModalOverlayClick}>
@@ -1092,6 +1233,19 @@ export default function RecepAppointmentForm() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AppointmentSummaryRows({ rows, styles }) {
+  return (
+    <div style={styles.modalDetailList}>
+      {rows.map(([label, value]) => (
+        <div key={label} style={styles.modalDetailRow}>
+          <span style={styles.modalDetailLabel}>{label}</span>
+          <strong style={styles.modalDetailValue}>{value}</strong>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1321,6 +1475,11 @@ function validateRequiredPatientFields(formData) {
     contactNumber: validateContactNumber(formData.contactNumber),
     email: validateEmail(formData.email),
   };
+}
+
+function getBranchLabel(branch) {
+  if (!branch) return 'Not selected';
+  return branch.branch_name || branch.name || branch.location || `Branch #${branch.id}`;
 }
 
 // Returns all 30-min slots within clinic hours for the selected date.
