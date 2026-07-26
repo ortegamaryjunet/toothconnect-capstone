@@ -1075,18 +1075,18 @@ export default function RecepAppointmentForm() {
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={styles.confirmYes}
-                onClick={handleBackConfirm}
-              >
-                Yes
-              </button>
-
-              <button
-                type="button"
                 style={styles.confirmNo}
                 onClick={closeConfirmModal}
               >
                 No
+              </button>
+
+              <button
+                type="button"
+                style={styles.confirmYes}
+                onClick={handleBackConfirm}
+              >
+                Yes
               </button>
             </div>
           </div>

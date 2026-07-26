@@ -774,7 +774,7 @@ const createRecepAppointmentFormStyles = ({
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
       cursor: 'pointer',
-      backgroundColor: '#ef4444',
+      backgroundColor: '#dc2626',
       color: '#ffffff',
     },
   };
