@@ -189,18 +189,20 @@
     heroSection: {
       position: 'relative',
       width: '100%',
-      minHeight: isMobile ? 'auto' : 190,
-      borderRadius: isMobile ? 22 : isTablet ? 24 : 28,
+      minHeight: isMobile ? 170 : 225,
+      borderRadius: isMobile ? 22 : 28,
       background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
-      padding: isMobile ? 20 : isTablet ? 22 : isSmallScreen ? 26 : 30,
+      padding: isMobile ? 20 : 30,
       marginBottom: 22,
       overflow: 'hidden',
       display: 'flex',
       alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'space-between',
-      gap: isMobile ? 18 : 24,
+      gap: 24,
       flexDirection: isMobile ? 'column' : 'row',
+      textAlign: 'left',
       boxSizing: 'border-box',
+      boxShadow: '0 18px 40px rgba(185, 140, 20, 0.22)',
     },
 
     heroContent: {
@@ -222,37 +224,39 @@
 
     heroTitle: {
       maxWidth: 760,
-      fontSize: isMobile ? 20 : isTablet ? 22 : isSmallScreen ? 28 : 31,
+      fontSize: isMobile ? 23 : 31,
       color: '#ffffff',
       marginBottom: 12,
       marginTop: 0,
-      lineHeight: isSmallScreen ? 1.4 : 1.2,
+      lineHeight: 1.2,
       fontFamily: 'Arial, sans-serif',
     },
 
     heroText: {
       marginTop: 10,
-      marginBottom: 0,
       color: '#ffffff',
-      fontSize: isMobile ? 12 : isMobile ? 13 : 14,
-      lineHeight: isMobile ? 1.6 : 1.5,
+      fontSize: 14,
+      lineHeight: 1.5,
       fontFamily: 'Arial, sans-serif',
     },
 
     heroIconBox: {
-      width: isSmallScreen ? 78 : 90,
-      height: isSmallScreen ? 78 : 90,
-      minWidth: isSmallScreen ? 78 : 90,
+      width: isMobile ? 70 : 90,
+      height: isMobile ? 70 : 90,
+      minWidth: isMobile ? 70 : 90,
       borderRadius: 24,
-      background: 'rgba(255, 255, 255, 0.18)',
-      display: isMobile ? 'none' : 'flex',
+      background: 'rgba(255, 255, 255, 0.22)',
+      display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      color: '#ffffff',
+      flexShrink: 0,
     },
 
     heroIcon: {
-      fontSize: isSmallScreen ? 36 : 42,
+      fontSize: isMobile ? 32 : 42,
       color: '#ffffff',
+      verticalAlign: 'middle',
     },
 
     notificationSummary: {
