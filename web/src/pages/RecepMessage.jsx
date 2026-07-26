@@ -587,7 +587,7 @@ export default function RecepMessage() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Leave Messages?</h2>
+            <h2 style={styles.modalTitle}>Leave Messages</h2>
             <p style={styles.modalText}>Are you sure you want to go back?</p>
 
             <div style={styles.modalActions}>
