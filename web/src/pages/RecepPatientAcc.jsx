@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import PhoneInput from 'react-phone-input-2';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import 'react-phone-input-2/lib/style.css';
 
 import { useAuth } from '../auth/AuthContext';
@@ -1468,19 +1469,8 @@ function normalizeContactNumber(value) {
     return '';
   }
 
-  if (String(value || '').trim().startsWith('+')) {
-    return `+${digits}`;
-  }
-
-  if (digits.length === 12 && digits.startsWith('63')) {
-    return `+${digits}`;
-  }
-
-  if (digits.length === 11 && digits.startsWith('09')) {
-    return digits;
-  }
-
-  return `+${digits}`;
+  const phoneNumber = parseContactNumber(value);
+  return phoneNumber?.number || `+${digits}`;
 }
 
 function validateContactNumber(value) {
@@ -1490,11 +1480,36 @@ function validateContactNumber(value) {
     return 'This field is required';
   }
 
-  if (digits.length < 8 || digits.length > 15) {
+  const phoneNumber = parseContactNumber(value);
+
+  if (!phoneNumber?.isValid()) {
     return 'Contact number is invalid.';
   }
 
   return '';
+}
+
+function parseContactNumber(value) {
+  const rawValue = String(value || '').trim();
+  const digits = rawValue.replace(/\D/g, '');
+
+  if (!digits) {
+    return null;
+  }
+
+  if (rawValue.startsWith('+')) {
+    return parsePhoneNumberFromString(rawValue);
+  }
+
+  if (digits.startsWith('00')) {
+    return parsePhoneNumberFromString(`+${digits.slice(2)}`);
+  }
+
+  if (digits.startsWith('0')) {
+    return parsePhoneNumberFromString(digits, 'PH');
+  }
+
+  return parsePhoneNumberFromString(`+${digits}`);
 }
 
 function validateEmail(value) {
