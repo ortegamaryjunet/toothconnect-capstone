@@ -587,7 +587,13 @@ export default function RecepPatientAcc() {
       setPatientAccounts((currentAccounts) =>
         currentAccounts.map((account) =>
           account.userId === selectedAccount.userId
-            ? mapPatientAccount(saved)
+            ? {
+                ...mapPatientAccount(saved),
+                deactivated:
+                  selectedAccount.status === 'INACTIVE'
+                    ? selectedAccount.deactivated || getTodayDate()
+                    : '',
+              }
             : account
         )
       );

@@ -168,6 +168,17 @@ pool.query(
   });
 });
 
+pool.query(
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at DATE NULL AFTER created_at`
+).catch(() => {
+  pool.query(`SHOW COLUMNS FROM users LIKE 'deactivated_at'`).then(([rows]) => {
+    if (rows.length === 0) {
+      pool.query(`ALTER TABLE users ADD COLUMN deactivated_at DATE NULL AFTER created_at`)
+        .catch((err) => console.error('[migration] Failed to add deactivated_at to users:', err.message));
+    }
+  });
+});
+
 pool.query('DROP TABLE IF EXISTS risk_assessments')
   .catch((err) => console.error('[migration] Failed to drop risk_assessments:', err.message));
 

@@ -234,7 +234,7 @@ function mapPatientAccountRow(row) {
     status: row.status || 'Active',
     created_at: row.created_at,
     registered_at: row.created_at,
-    deactivated_at: null,
+    deactivated_at: row.deactivated_at || null,
     birthday: row.birthday,
     age: row.age,
     gender: row.sex || '',
@@ -273,7 +273,7 @@ router.get('/', requireRole('receptionist', 'admin'), async (req, res) => {
 
     const [rows] = await pool.query(
       `SELECT
-         u.id, u.name, u.email, u.phone, u.status, u.created_at,
+         u.id, u.name, u.email, u.phone, u.status, u.created_at, u.deactivated_at,
          pp.full_name, pp.email AS profile_email, pp.contact_number,
          pp.address, pp.birthday, pp.age, pp.sex
        FROM users u
@@ -282,7 +282,7 @@ router.get('/', requireRole('receptionist', 'admin'), async (req, res) => {
        LEFT JOIN appointments a ON a.patient_id = u.id
        WHERE u.role = 'patient' ${scopedCondition}
        GROUP BY
-         u.id, u.name, u.email, u.phone, u.status, u.created_at,
+         u.id, u.name, u.email, u.phone, u.status, u.created_at, u.deactivated_at,
          pp.full_name, pp.email, pp.contact_number, pp.address,
          pp.birthday, pp.age, pp.sex
        ORDER BY u.created_at DESC`,
@@ -521,8 +521,8 @@ router.patch('/:patientId/account', requireRole('receptionist', 'admin'), async 
   try {
     await updatePatientContact(patientId, fullName, contactNumber, email);
 
-    const updateFields = ['status = ?'];
-    const updateParams = [status];
+    const updateFields = ['status = ?', "deactivated_at = IF(? = 'Inactive', CURDATE(), NULL)"];
+    const updateParams = [status, status];
 
     if (temporaryPassword) {
       updateFields.push('password_hash = ?', 'must_change_password = TRUE');
@@ -542,7 +542,7 @@ router.patch('/:patientId/account', requireRole('receptionist', 'admin'), async 
 
     const [rows] = await pool.query(
       `SELECT
-         u.id, u.name, u.email, u.phone, u.status, u.created_at,
+         u.id, u.name, u.email, u.phone, u.status, u.created_at, u.deactivated_at,
          pp.full_name, pp.email AS profile_email, pp.contact_number,
          pp.address, pp.birthday, pp.age, pp.sex
        FROM users u

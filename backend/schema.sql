@@ -66,6 +66,7 @@ CREATE TABLE users (
   push_token VARCHAR(255) NULL,
   push_token_updated_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deactivated_at DATE NULL,
   recall_reminder_sent_at TIMESTAMP NULL,
   FOREIGN KEY (home_branch_id) REFERENCES branches(id)
 );
