@@ -62,7 +62,7 @@ const createRegisterStyles = ({ isMobile = false } = {}) => {
       width: '100%',
       height: '54px',
       padding: '0 16px',
-      marginBottom: '18px',
+      marginBottom: '6px',
       border: '1px solid #ead8a7',
       borderRadius: '16px',
       outline: 'none',
@@ -72,6 +72,20 @@ const createRegisterStyles = ({ isMobile = false } = {}) => {
       fontWeight: 500,
       transition: '0.25s ease',
       boxSizing: 'border-box',
+    },
+
+    inputError: {
+      border: '1px solid #dc2626',
+      background: '#fff7f7',
+    },
+
+    fieldError: {
+      margin: '0 0 14px',
+      minHeight: '17px',
+      color: '#b42318',
+      fontSize: '12px',
+      fontWeight: 700,
+      lineHeight: 1.35,
     },
 
     error: {
