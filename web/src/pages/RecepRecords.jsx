@@ -408,12 +408,6 @@ export default function RecepRecords() {
       }
 
       const nameParts = splitFullName(profile.full_name || '');
-      const profileContactValue = getContactFormValue(
-        profile.contact_number || ''
-      );
-      const profileEmergencyContactValue = getContactFormValue(
-        profile.emergency_contact_number || ''
-      );
 
       setEditPatient((current) => ({
         ...(current || {}),
@@ -422,41 +416,33 @@ export default function RecepRecords() {
         email: profile.email || current?.email || '',
         contactNumber: normalizePhoneNumber(
           profile.contact_number || current?.contactNumber || '',
-          profile.contact_number
-            ? profileContactValue.country
-            : current?.contactCountry || 'PH'
+          getContactFormValue(profile.contact_number || current?.contactNumber || '').country
         ),
-        contactCountry: profile.contact_number
-          ? profileContactValue.country
-          : current?.contactCountry || 'PH',
+        contactCountry: getContactFormValue(
+          profile.contact_number || current?.contactNumber || ''
+        ).country,
         address: profile.address || current?.address || '',
         dateOfBirth: profile.birthday || current?.dateOfBirth || '',
         age: profile.age || calculateAge(profile.birthday) || current?.age || '',
         gender: profile.sex || current?.gender || '',
-        lastName: nameParts.lastName || current?.lastName || '',
-        firstName: nameParts.firstName || current?.firstName || '',
-        middleName: nameParts.middleName || current?.middleName || '',
-        nationality: profile.nationality || current?.nationality || '',
-        occupation: profile.occupation || current?.occupation || '',
-        civilStatus: profile.civil_status || current?.civilStatus || '',
-        emergencyContactName:
-          profile.emergency_contact_name || current?.emergencyContactName || '',
+        lastName: current?.lastName || nameParts.lastName || '',
+        firstName: current?.firstName || nameParts.firstName || '',
+        middleName: current?.middleName || nameParts.middleName || '',
+        nationality: profile.nationality || '',
+        occupation: profile.occupation || '',
+        civilStatus: profile.civil_status || '',
+        emergencyContactName: profile.emergency_contact_name || '',
         emergencyContactNumber: normalizePhoneNumber(
-          profile.emergency_contact_number ||
-            current?.emergencyContactNumber ||
-            '',
-          profile.emergency_contact_number
-            ? profileEmergencyContactValue.country
-            : current?.emergencyContactCountry || 'PH'
+          profile.emergency_contact_number || '',
+          getContactFormValue(profile.emergency_contact_number || '').country
         ),
-        emergencyContactCountry: profile.emergency_contact_number
-          ? profileEmergencyContactValue.country
-          : current?.emergencyContactCountry || 'PH',
-        medicalConditions:
-          profile.medical_conditions || current?.medicalConditions || '',
-        allergies: profile.allergies || current?.allergies || '',
-        medications: profile.medications || current?.medications || '',
-        dentalHistory: profile.dental_history || current?.dentalHistory || '',
+        emergencyContactCountry: getContactFormValue(
+          profile.emergency_contact_number || ''
+        ).country,
+        medicalConditions: profile.medical_conditions || '',
+        allergies: profile.allergies || '',
+        medications: profile.medications || '',
+        dentalHistory: profile.dental_history || '',
       }));
     } catch {
     } finally {
