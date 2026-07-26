@@ -576,7 +576,7 @@ export default function RecepAppointmentForm() {
       <div style={styles.container}>
         <div style={styles.header}>
           <button type="button" style={styles.backBtn} onClick={openConfirmModal}>
-            <i className="fi fi-rr-angle-left" style={styles.backIcon}></i>
+            Back
           </button>
 
           <div>

@@ -10,7 +10,10 @@ const createRecepAppointmentFormStyles = ({
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'flex-start',
-      background: 'linear-gradient(135deg, #dbeafe, #eef2ff)',
+      background:
+        'radial-gradient(circle at 12% 20%, rgba(212, 175, 55, 0.16), transparent 28%),' +
+        'radial-gradient(circle at 90% 10%, rgba(139, 101, 8, 0.10), transparent 28%),' +
+        'linear-gradient(135deg, #ffffff, #fff8e1)',
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
     },
@@ -21,14 +24,14 @@ const createRecepAppointmentFormStyles = ({
       background: '#ffffff',
       borderRadius: isVerySmall ? 18 : 22,
       padding: isMobile ? 20 : 26,
-      boxShadow: '0 18px 45px rgba(37, 99, 235, 0.14)',
+      boxShadow: '0 18px 45px rgba(139, 101, 8, 0.14)',
       boxSizing: 'border-box',
     },
 
     header: {
       position: 'relative',
       textAlign: 'center',
-      padding: isVerySmall ? '4px 42px 20px' : '0 50px 24px',
+      padding: isVerySmall ? '4px 82px 20px' : '0 86px 24px',
       borderBottom: '1px solid #e5e7eb',
       marginBottom: 28,
     },
@@ -53,17 +56,21 @@ const createRecepAppointmentFormStyles = ({
       position: 'absolute',
       left: 0,
       top: 0,
-      width: 42,
+      minWidth: 72,
       height: 42,
-      border: 'none',
-      background: 'transparent',
-      borderRadius: '50%',
+      padding: '0 16px',
+      border: '1px solid #d4af37',
+      background: '#d4af37',
+      borderRadius: 14,
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       transition: '0.2s ease',
-      color: '#2563eb',
+      color: '#ffffff',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     backIcon: {
@@ -144,7 +151,7 @@ const createRecepAppointmentFormStyles = ({
       gap: 4,
       padding: 6,
       background: '#ffffff',
-      border: '1px solid #dbeafe',
+      border: '1px solid #ead8a7',
       borderRadius: 12,
       boxShadow: '0 16px 36px rgba(15, 23, 42, 0.14)',
       boxSizing: 'border-box',
@@ -284,7 +291,7 @@ const createRecepAppointmentFormStyles = ({
       justifyContent: 'center',
       cursor: 'pointer',
       transition: 'all 0.2s ease',
-      color: '#2563eb',
+      color: '#b8860b',
       fontSize: 18,
       flexShrink: 0,
     },
@@ -313,7 +320,7 @@ const createRecepAppointmentFormStyles = ({
       textAlign: 'center',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 18,
-      color: '#2563eb',
+      color: '#b8860b',
       marginBottom: 14,
       fontWeight: 800,
     },
@@ -503,7 +510,7 @@ const createRecepAppointmentFormStyles = ({
 
     slotSuggestionBtn: {
       padding: '5px 14px',
-      background: '#2563eb',
+      background: '#d4af37',
       color: '#fff',
       border: 'none',
       borderRadius: 6,
@@ -546,10 +553,10 @@ const createRecepAppointmentFormStyles = ({
     suggestedSlotBtn: {
       minWidth: 92,
       padding: '9px 14px',
-      border: '1px solid #93c5fd',
+      border: '1px solid #ead8a7',
       borderRadius: 8,
       background: '#ffffff',
-      color: '#2563eb',
+      color: '#8b6508',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
       cursor: 'pointer',
@@ -566,10 +573,10 @@ const createRecepAppointmentFormStyles = ({
 
     slotChip: {
       padding: '8px 14px',
-      border: '1px solid #93c5fd',
+      border: '1px solid #ead8a7',
       borderRadius: 8,
-      background: '#eff6ff',
-      color: '#1d4ed8',
+      background: '#fff8e1',
+      color: '#8b6508',
       fontFamily: 'Arial, sans-serif',
       fontSize: 13,
       fontWeight: 600,
@@ -578,8 +585,8 @@ const createRecepAppointmentFormStyles = ({
     },
 
     slotChipSelected: {
-      background: '#2563eb',
-      borderColor: '#2563eb',
+      background: '#d4af37',
+      borderColor: '#d4af37',
       color: '#ffffff',
     },
 
@@ -620,7 +627,7 @@ const createRecepAppointmentFormStyles = ({
     },
 
     infoIconBlue: {
-      color: '#2563eb',
+      color: '#b8860b',
       fontSize: 17,
       marginTop: 2,
     },
@@ -657,10 +664,10 @@ const createRecepAppointmentFormStyles = ({
     clearBtn: {
       width: isVerySmall ? '100%' : 190,
       padding: 13,
-      border: '1px solid #93c5fd',
+      border: '1px solid #ead8a7',
       borderRadius: 10,
       background: '#ffffff',
-      color: '#2563eb',
+      color: '#8b6508',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 15,
       cursor: 'pointer',
@@ -672,13 +679,13 @@ const createRecepAppointmentFormStyles = ({
       padding: 13,
       border: 'none',
       borderRadius: 10,
-      background: '#28a745',
+      background: '#d4af37',
       color: '#ffffff',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 15,
       cursor: 'pointer',
       transition: '0.2s ease',
-      boxShadow: '0 10px 22px rgba(40, 167, 69, 0.22)',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     buttonDisabled: {
