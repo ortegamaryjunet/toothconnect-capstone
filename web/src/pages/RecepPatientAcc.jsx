@@ -1133,7 +1133,7 @@ export default function RecepPatientAcc() {
 
             <h2 style={styles.modalTitle}>Cancel Create Account</h2>
             <p style={styles.modalText}>
-              Review the current details. Are you sure you want to cancel? These details will not be saved.
+              Are you sure you want to cancel? These details will not be saved.
             </p>
 
             <AccountSummaryRows rows={createAccountSummaryRows} styles={styles} />
@@ -1168,7 +1168,7 @@ export default function RecepPatientAcc() {
 
             <h2 style={styles.modalTitle}>Confirm Patient Account</h2>
             <p style={styles.modalText}>
-              Please review the details below. Is the information correct and do you want to create this account?
+              Please review the details below. Do you want to create this account?
             </p>
 
             <AccountSummaryRows rows={createAccountSummaryRows} styles={styles} />
@@ -1372,7 +1372,10 @@ function InputField({
 }) {
   return (
     <div style={styles.field}>
-      <label style={styles.fieldLabel}>{label}</label>
+      <label style={styles.fieldLabel}>
+        {label}
+        {error && <span style={styles.fieldErrorAsterisk}> *</span>}
+      </label>
       <div style={rightElement ? styles.inputWithAction : undefined}>
         <input
           type={type}
@@ -1411,7 +1414,10 @@ function PhoneField({
 }) {
   return (
     <div style={{ ...styles.field, ...styles.phoneField }}>
-      <label style={styles.fieldLabel}>{label}</label>
+      <label style={styles.fieldLabel}>
+        {label}
+        {error && <span style={styles.fieldErrorAsterisk}> *</span>}
+      </label>
       <div style={styles.phoneInputContainer}>
         <select
           value={country}
@@ -1604,6 +1610,10 @@ function validateTemporaryPassword(value) {
     return 'This field is required.';
   }
 
+  if (!/^[A-Za-z0-9]+$/.test(password)) {
+    return 'Special characters are not allowed. Only letters and numbers.';
+  }
+
   if (password.length < 8) {
     return 'Temporary password must be at least 8 characters.';
   }
@@ -1680,8 +1690,12 @@ function validateAccountForm(account, requirePassword) {
     if (passwordError) {
       errors.password = passwordError;
     }
-  } else if (account.password && account.password.length < 8) {
-    errors.password = 'Temporary password must be at least 8 characters.';
+  } else if (account.password) {
+    const passwordError = validateTemporaryPassword(account.password);
+
+    if (passwordError) {
+      errors.password = passwordError;
+    }
   }
 
   return errors;

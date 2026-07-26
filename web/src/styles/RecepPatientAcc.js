@@ -669,6 +669,11 @@
       color: '#475569',
     },
 
+    fieldErrorAsterisk: {
+      color: '#dc2626',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+    },
+
     fieldInput: {
       height: 44,
       width: '100%',
@@ -796,7 +801,7 @@
     },
 
     submitBtn: {
-      minWidth: 130,
+      minWidth: 120,
       width: isSingleColumn ? '100%' : 'auto',
       height: 44,
       borderRadius: 12,
@@ -804,12 +809,14 @@
       cursor: 'pointer',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
-      background: '#2563eb',
+      fontWeight: 'bold',
+      background: '#d4af37',
       color: '#ffffff',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     cancelOverlayBtn: {
-      minWidth: 130,
+      minWidth: 120,
       width: isSingleColumn ? '100%' : 'auto',
       height: 44,
       borderRadius: 12,
@@ -817,6 +824,7 @@
       cursor: 'pointer',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
+      fontWeight: 'bold',
       background: '#f1f5f9',
       color: '#334155',
     },
