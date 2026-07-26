@@ -1504,18 +1504,18 @@ export default function RecepRecords() {
             <div style={{ ...styles.modalActions, ...styles.centerActions }}>
               <button
                 type="button"
-                style={styles.logoutBtn}
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-
-              <button
-                type="button"
                 style={styles.cancelModalBtn}
                 onClick={closeLogoutModal}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={styles.logoutBtn}
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>

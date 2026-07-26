@@ -763,18 +763,18 @@ export default function RecepInquiries() {
             <div style={s.modalActions}>
               <button
                 type="button"
-                style={{ ...s.modalButton, ...s.logoutBtn }}
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-
-              <button
-                type="button"
                 style={{ ...s.modalButton, ...s.cancelBtn }}
                 onClick={() => setShowLogoutModal(false)}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...s.modalButton, ...s.logoutBtn }}
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>
