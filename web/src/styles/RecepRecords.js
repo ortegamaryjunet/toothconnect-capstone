@@ -562,9 +562,9 @@
     },
 
     largeModal: {
-      width: 1180,
+      width: 760,
       maxWidth: '96%',
-      padding: 0,
+      padding: isVerySmall ? 20 : 28,
     },
 
     smallModal: {
@@ -579,8 +579,7 @@
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 18,
-      padding: isVerySmall ? '24px 22px 18px' : '28px 30px 22px',
-      borderBottom: '1px solid #e2e8f0',
+      marginBottom: 22,
     },
 
     modalHeaderTitle: {
@@ -609,24 +608,8 @@
 
     formGrid: {
       display: 'grid',
-      gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, minmax(0, 1fr))',
-      gap: 18,
-    },
-
-    editFormSections: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 18,
-      padding: isVerySmall ? 20 : 28,
-      paddingBottom: 8,
-    },
-
-    editFormSection: {
-      background: '#ffffff',
-      border: '1px solid #e2e8f0',
-      borderRadius: 20,
-      padding: isVerySmall ? 16 : 22,
-      boxSizing: 'border-box',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+      gap: 15,
     },
 
     field: {
@@ -638,25 +621,25 @@
     fieldLabel: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 13,
-      color: '#0f172a',
+      color: '#475569',
     },
 
     formSectionTitle: {
       gridColumn: '1 / -1',
-      margin: '0 0 18px',
+      margin: '2px 0 4px',
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: isMobile ? 16 : 20,
+      fontSize: 16,
       fontWeight: 800,
-      letterSpacing: 0,
-      textTransform: 'none',
-      color: '#2563eb',
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+      color: '#1e3a8a',
     },
 
     fieldInput: {
-      height: 48,
+      height: 44,
       border: '1px solid #cbd5e1',
       borderRadius: 12,
-      padding: '0 14px',
+      padding: '0 12px',
       outline: 'none',
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
@@ -740,7 +723,7 @@
       display: 'flex',
       flexDirection: 'column',
       gap: 7,
-      gridColumn: '1 / -1',
+      gridColumn: isMobile ? 'auto' : '1 / -1',
     },
 
     textAreaInput: {
@@ -761,9 +744,7 @@
       display: 'flex',
       justifyContent: 'flex-end',
       gap: 12,
-      marginTop: 0,
-      padding: isVerySmall ? '18px 20px 22px' : '20px 28px 28px',
-      borderTop: '1px solid #e2e8f0',
+      marginTop: 24,
       flexDirection: isMobile ? 'column' : 'row',
     },
 

@@ -1283,10 +1283,8 @@ export default function RecepRecords() {
               </p>
             )}
 
-            <div style={styles.editFormSections}>
-              <section style={styles.editFormSection}>
-                <div style={styles.formSectionTitle}>Personal Information</div>
-                <div style={styles.formGrid}>
+            <div style={styles.formGrid}>
+              <div style={styles.formSectionTitle}>Personal Information</div>
 
               <FieldInput
                 styles={styles}
@@ -1353,12 +1351,7 @@ export default function RecepRecords() {
               />
 
               <div style={styles.field}>
-                <label style={styles.fieldLabel}>
-                  Gender
-                  {editErrors.gender && (
-                    <span style={styles.fieldErrorAsterisk}>*</span>
-                  )}
-                </label>
+                <label style={styles.fieldLabel}>Gender</label>
                 <select
                   value={editPatient.gender}
                   onChange={(event) =>
@@ -1367,8 +1360,7 @@ export default function RecepRecords() {
                   disabled={editModalReadOnly}
                   style={{
                     ...styles.fieldInput,
-                    ...(editModalReadOnly ? styles.readOnlyInput : {}),
-                    ...(editErrors.gender ? styles.fieldInputError : {}),
+                    ...(editErrors.gender ? { borderColor: '#dc2626' } : {}),
                   }}
                 >
                   <option value="">Select Gender</option>
@@ -1391,12 +1383,7 @@ export default function RecepRecords() {
               />
 
               <div style={styles.field}>
-                <label style={styles.fieldLabel}>
-                  Nationality
-                  {editErrors.nationality && (
-                    <span style={styles.fieldErrorAsterisk}>*</span>
-                  )}
-                </label>
+                <label style={styles.fieldLabel}>Nationality</label>
                 <select
                   value={editPatient.nationality || ''}
                   onChange={(event) =>
@@ -1405,8 +1392,9 @@ export default function RecepRecords() {
                   disabled={editModalReadOnly}
                   style={{
                     ...styles.fieldInput,
-                    ...(editModalReadOnly ? styles.readOnlyInput : {}),
-                    ...(editErrors.nationality ? styles.fieldInputError : {}),
+                    ...(editErrors.nationality
+                      ? { borderColor: '#dc2626' }
+                      : {}),
                   }}
                 >
                   <option value="">Select Nationality</option>
@@ -1435,12 +1423,7 @@ export default function RecepRecords() {
               />
 
               <div style={styles.field}>
-                <label style={styles.fieldLabel}>
-                  Civil Status
-                  {editErrors.civilStatus && (
-                    <span style={styles.fieldErrorAsterisk}>*</span>
-                  )}
-                </label>
+                <label style={styles.fieldLabel}>Civil Status</label>
                 <select
                   value={editPatient.civilStatus || ''}
                   onChange={(event) =>
@@ -1449,8 +1432,9 @@ export default function RecepRecords() {
                   disabled={editModalReadOnly}
                   style={{
                     ...styles.fieldInput,
-                    ...(editModalReadOnly ? styles.readOnlyInput : {}),
-                    ...(editErrors.civilStatus ? styles.fieldInputError : {}),
+                    ...(editErrors.civilStatus
+                      ? { borderColor: '#dc2626' }
+                      : {}),
                   }}
                 >
                   <option value="">Select Civil Status</option>
@@ -1493,12 +1477,8 @@ export default function RecepRecords() {
                   )
                 }
               />
-                </div>
-              </section>
 
-              <section style={styles.editFormSection}>
-                <div style={styles.formSectionTitle}>Medical Assessment</div>
-                <div style={styles.formGrid}>
+              <div style={styles.formSectionTitle}>Medical Assessment</div>
 
               <TextAreaField
                 styles={styles}
@@ -1507,12 +1487,8 @@ export default function RecepRecords() {
                 readOnly={editModalReadOnly}
                 onChange={(value) => handleEditChange('dentalHistory', value)}
               />
-                </div>
-              </section>
 
-              <section style={styles.editFormSection}>
-                <div style={styles.formSectionTitle}>Health Condition</div>
-                <div style={styles.formGrid}>
+              <div style={styles.formSectionTitle}>Health Condition</div>
 
               <TextAreaField
                 styles={styles}
@@ -1539,8 +1515,6 @@ export default function RecepRecords() {
                 readOnly={editModalReadOnly}
                 onChange={(value) => handleEditChange('medications', value)}
               />
-                </div>
-              </section>
             </div>
 
             <div style={styles.modalActions}>
@@ -1771,10 +1745,7 @@ function FieldInput({
 }) {
   return (
     <div style={styles.field}>
-      <label style={styles.fieldLabel}>
-        {label}
-        {error && <span style={styles.fieldErrorAsterisk}>*</span>}
-      </label>
+      <label style={styles.fieldLabel}>{label}</label>
 
       <input
         type={type}
@@ -1784,8 +1755,7 @@ function FieldInput({
         disabled={disabled}
         style={{
           ...styles.fieldInput,
-          ...((readOnly || disabled) ? styles.readOnlyInput : {}),
-          ...(error ? styles.fieldInputError : {}),
+          ...(error ? { borderColor: '#dc2626' } : {}),
         }}
       />
 
