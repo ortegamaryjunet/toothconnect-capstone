@@ -783,7 +783,7 @@ export default function RecepAppointmentForm() {
                       style={styles.calendarNav}
                       onClick={handlePreviousMonth}
                     >
-                      <i className="fi fi-rr-angle-left"></i>
+                      Prev
                     </button>
 
                     <div style={styles.calendarDropdowns}>
@@ -821,7 +821,7 @@ export default function RecepAppointmentForm() {
                       style={styles.calendarNav}
                       onClick={handleNextMonth}
                     >
-                      <i className="fi fi-rr-angle-right"></i>
+                      Next
                     </button>
                   </div>
 
