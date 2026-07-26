@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState, useRef } from 'react';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -314,7 +316,7 @@ export default function RecepPatientAcc() {
 
   function handleCreateChange(field, value) {
     const nextValue =
-      field === 'contactNumber' ? value.replace(/\D/g, '').slice(0, 11) : value;
+      field === 'contactNumber' ? value.replace(/\D/g, '').slice(0, 15) : value;
 
     setCreateTouched((current) => ({ ...current, [field]: true }));
 
@@ -524,7 +526,7 @@ export default function RecepPatientAcc() {
     ['Middle Name', createForm.middleName || 'N/A'],
     ['Last Name', createForm.lastName || 'N/A'],
     ['Email', createForm.email || 'N/A'],
-    ['Contact Number', createForm.contactNumber || 'N/A'],
+    ['Contact Number', normalizeContactNumber(createForm.contactNumber) || 'N/A'],
     ['Temporary Password', createForm.password ? 'Provided' : 'N/A'],
   ];
 
@@ -1013,10 +1015,9 @@ export default function RecepPatientAcc() {
                   required
                 />
 
-                <InputField
+                <PhoneField
                   styles={styles}
                   label="Contact Number"
-                  type="tel"
                   value={createForm.contactNumber}
                   onChange={(value) =>
                     handleCreateChange('contactNumber', value)
@@ -1027,9 +1028,6 @@ export default function RecepPatientAcc() {
                       ? createErrors.contactNumber
                       : ''
                   }
-                  placeholder="09XXXXXXXXX"
-                  inputMode="numeric"
-                  maxLength={11}
                   required
                 />
 
@@ -1358,6 +1356,45 @@ function InputField({
   );
 }
 
+function PhoneField({
+  styles,
+  label,
+  value,
+  onChange,
+  onBlur,
+  error = '',
+  required = false,
+}) {
+  return (
+    <div style={styles.field}>
+      <label style={styles.fieldLabel}>{label}</label>
+      <PhoneInput
+        country="ph"
+        value={value}
+        onChange={(phone) => onChange?.(phone)}
+        onBlur={onBlur}
+        inputProps={{
+          required,
+          name: 'contactNumber',
+        }}
+        enableSearch
+        containerStyle={styles.phoneInputContainer}
+        inputStyle={{
+          ...styles.phoneInput,
+          ...(error ? styles.fieldInputError : {}),
+        }}
+        buttonStyle={{
+          ...styles.phoneButton,
+          ...(error ? styles.phoneButtonError : {}),
+        }}
+        dropdownStyle={styles.phoneDropdown}
+        searchStyle={styles.phoneSearch}
+      />
+      {error && <span style={styles.fieldError}>{error}</span>}
+    </div>
+  );
+}
+
 function buildFullName(account) {
   return [account.firstName, account.middleName, account.lastName]
     .filter(Boolean)
@@ -1424,22 +1461,34 @@ function formatDate(value) {
 function normalizeContactNumber(value) {
   const digits = String(value || '').replace(/\D/g, '');
 
-  if (digits.length === 12 && digits.startsWith('63')) {
-    return `0${digits.slice(2)}`;
+  if (!digits) {
+    return '';
   }
 
-  return digits;
+  if (String(value || '').trim().startsWith('+')) {
+    return `+${digits}`;
+  }
+
+  if (digits.length === 12 && digits.startsWith('63')) {
+    return `+${digits}`;
+  }
+
+  if (digits.length === 11 && digits.startsWith('09')) {
+    return digits;
+  }
+
+  return `+${digits}`;
 }
 
 function validateContactNumber(value) {
-  const contact = String(value || '').trim();
+  const digits = String(value || '').replace(/\D/g, '');
 
-  if (!contact) {
+  if (!digits) {
     return 'This field is required';
   }
 
-  if (!/^09\d{9}$/.test(contact)) {
-    return 'Contact number must be 11 digits and start with 09.';
+  if (digits.length < 8 || digits.length > 15) {
+    return 'Contact number is invalid.';
   }
 
   return '';
