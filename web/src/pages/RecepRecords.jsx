@@ -321,34 +321,66 @@ export default function RecepRecords() {
       event.stopPropagation();
     }
 
+    const sourcePatient = patient || {};
+    const contactFormValue = getContactFormValue(sourcePatient.contactNumber);
+    const emergencyContactFormValue = getContactFormValue(
+      sourcePatient.emergencyContactNumber
+    );
+    const infoId =
+      sourcePatient.infoId ||
+      sourcePatient.userInfoId ||
+      sourcePatient.user_id ||
+      sourcePatient.id ||
+      '';
+
     setEditPatient({
-      ...patient,
-      contactCountry: getContactFormValue(patient.contactNumber).country,
-      emergencyContactCountry: getContactFormValue(patient.emergencyContactNumber).country,
+      ...sourcePatient,
+      infoId,
+      firstName: sourcePatient.firstName || '',
+      middleName: sourcePatient.middleName || '',
+      lastName: sourcePatient.lastName || '',
+      email: sourcePatient.email || '',
+      dateOfBirth: sourcePatient.dateOfBirth || '',
+      age: sourcePatient.age || '',
+      gender: sourcePatient.gender || '',
+      contactCountry: contactFormValue.country,
+      emergencyContactCountry: emergencyContactFormValue.country,
       contactNumber: normalizePhoneNumber(
-        patient.contactNumber,
-        getContactFormValue(patient.contactNumber).country
+        sourcePatient.contactNumber,
+        contactFormValue.country
       ),
-      fullName: [patient.firstName, patient.middleName, patient.lastName]
+      fullName: [
+        sourcePatient.firstName,
+        sourcePatient.middleName,
+        sourcePatient.lastName,
+      ]
         .filter(Boolean)
         .join(' ')
         .trim(),
-      address: patient.address || '',
-      nationality: '',
-      occupation: '',
-      civilStatus: '',
-      emergencyContactName: '',
-      emergencyContactNumber: '',
-      medicalConditions: '',
-      allergies: '',
-      medications: '',
-      dentalHistory: '',
+      address: sourcePatient.address || '',
+      nationality: sourcePatient.nationality || '',
+      occupation: sourcePatient.occupation || '',
+      civilStatus: sourcePatient.civilStatus || '',
+      emergencyContactName: sourcePatient.emergencyContactName || '',
+      emergencyContactNumber: normalizePhoneNumber(
+        sourcePatient.emergencyContactNumber,
+        emergencyContactFormValue.country
+      ),
+      medicalConditions: sourcePatient.medicalConditions || '',
+      allergies: sourcePatient.allergies || '',
+      medications: sourcePatient.medications || '',
+      dentalHistory: sourcePatient.dentalHistory || '',
     });
 
     setEditModalReadOnly(true);
     setEditErrors({});
     setShowEditModal(true);
-    hydrateEditPatientProfile(patient.infoId);
+
+    if (infoId) {
+      hydrateEditPatientProfile(infoId);
+    } else {
+      setEditProfileLoading(false);
+    }
   }
 
   function closePatientDetails() {
@@ -398,6 +430,12 @@ export default function RecepRecords() {
       }
 
       const nameParts = splitFullName(profile.full_name || '');
+      const profileContactValue = getContactFormValue(
+        profile.contact_number || ''
+      );
+      const profileEmergencyContactValue = getContactFormValue(
+        profile.emergency_contact_number || ''
+      );
 
       setEditPatient((current) => ({
         ...(current || {}),
@@ -406,33 +444,41 @@ export default function RecepRecords() {
         email: profile.email || current?.email || '',
         contactNumber: normalizePhoneNumber(
           profile.contact_number || current?.contactNumber || '',
-          getContactFormValue(profile.contact_number || current?.contactNumber || '').country
+          profile.contact_number
+            ? profileContactValue.country
+            : current?.contactCountry || 'PH'
         ),
-        contactCountry: getContactFormValue(
-          profile.contact_number || current?.contactNumber || ''
-        ).country,
+        contactCountry: profile.contact_number
+          ? profileContactValue.country
+          : current?.contactCountry || 'PH',
         address: profile.address || current?.address || '',
         dateOfBirth: profile.birthday || current?.dateOfBirth || '',
         age: profile.age || calculateAge(profile.birthday) || current?.age || '',
         gender: profile.sex || current?.gender || '',
-        lastName: current?.lastName || nameParts.lastName || '',
-        firstName: current?.firstName || nameParts.firstName || '',
-        middleName: current?.middleName || nameParts.middleName || '',
-        nationality: profile.nationality || '',
-        occupation: profile.occupation || '',
-        civilStatus: profile.civil_status || '',
-        emergencyContactName: profile.emergency_contact_name || '',
+        lastName: nameParts.lastName || current?.lastName || '',
+        firstName: nameParts.firstName || current?.firstName || '',
+        middleName: nameParts.middleName || current?.middleName || '',
+        nationality: profile.nationality || current?.nationality || '',
+        occupation: profile.occupation || current?.occupation || '',
+        civilStatus: profile.civil_status || current?.civilStatus || '',
+        emergencyContactName:
+          profile.emergency_contact_name || current?.emergencyContactName || '',
         emergencyContactNumber: normalizePhoneNumber(
-          profile.emergency_contact_number || '',
-          getContactFormValue(profile.emergency_contact_number || '').country
+          profile.emergency_contact_number ||
+            current?.emergencyContactNumber ||
+            '',
+          profile.emergency_contact_number
+            ? profileEmergencyContactValue.country
+            : current?.emergencyContactCountry || 'PH'
         ),
-        emergencyContactCountry: getContactFormValue(
-          profile.emergency_contact_number || ''
-        ).country,
-        medicalConditions: profile.medical_conditions || '',
-        allergies: profile.allergies || '',
-        medications: profile.medications || '',
-        dentalHistory: profile.dental_history || '',
+        emergencyContactCountry: profile.emergency_contact_number
+          ? profileEmergencyContactValue.country
+          : current?.emergencyContactCountry || 'PH',
+        medicalConditions:
+          profile.medical_conditions || current?.medicalConditions || '',
+        allergies: profile.allergies || current?.allergies || '',
+        medications: profile.medications || current?.medications || '',
+        dentalHistory: profile.dental_history || current?.dentalHistory || '',
       }));
     } catch {
     } finally {
