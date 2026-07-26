@@ -30,6 +30,8 @@ export default function RecepPatientAcc() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showUpdateOverlay, setShowUpdateOverlay] = useState(false);
   const [showCreateOverlay, setShowCreateOverlay] = useState(false);
+  const [showCreateCancelModal, setShowCreateCancelModal] = useState(false);
+  const [showCreateConfirmModal, setShowCreateConfirmModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
   const profileMenuRef = useRef(null);
@@ -40,6 +42,7 @@ export default function RecepPatientAcc() {
   const [createErrors, setCreateErrors] = useState({});
   const [createTouched, setCreateTouched] = useState({});
   const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [createSaving, setCreateSaving] = useState(false);
   const [updateErrors, setUpdateErrors] = useState({});
 
   const [searchText, setSearchText] = useState('');
@@ -176,6 +179,8 @@ export default function RecepPatientAcc() {
       showLogoutModal ||
       showUpdateOverlay ||
       showCreateOverlay ||
+      showCreateCancelModal ||
+      showCreateConfirmModal ||
       showExportModal;
 
     document.body.style.overflow = hasOpenModal ? 'hidden' : '';
@@ -187,6 +192,8 @@ export default function RecepPatientAcc() {
     showLogoutModal,
     showUpdateOverlay,
     showCreateOverlay,
+    showCreateCancelModal,
+    showCreateConfirmModal,
     showExportModal,
   ]);
 
@@ -208,6 +215,8 @@ export default function RecepPatientAcc() {
     setShowLogoutModal(false);
     setShowUpdateOverlay(false);
     setShowCreateOverlay(false);
+    setShowCreateCancelModal(false);
+    setShowCreateConfirmModal(false);
     setShowExportModal(false);
   }
 
@@ -253,7 +262,28 @@ export default function RecepPatientAcc() {
     setCreateErrors({});
     setCreateTouched({});
     setShowCreatePassword(false);
+    setShowCreateCancelModal(false);
+    setShowCreateConfirmModal(false);
+    setCreateSaving(false);
     setShowCreateOverlay(false);
+  }
+
+  function openCreateCancelModal() {
+    setShowCreateCancelModal(true);
+  }
+
+  function closeCreateCancelModal() {
+    setShowCreateCancelModal(false);
+  }
+
+  function confirmCreateCancel() {
+    closeCreateOverlay();
+  }
+
+  function closeCreateConfirmModal() {
+    if (!createSaving) {
+      setShowCreateConfirmModal(false);
+    }
   }
 
   function handleUpdateChange(field, value) {
@@ -424,6 +454,7 @@ export default function RecepPatientAcc() {
 
   async function handleCreateSubmit(event) {
     event.preventDefault();
+    setCreateErrors((current) => ({ ...current, form: '' }));
 
     const errors = validateAccountForm(createForm, true);
 
@@ -439,6 +470,13 @@ export default function RecepPatientAcc() {
       return;
     }
 
+    setShowCreateConfirmModal(true);
+  }
+
+  async function handleConfirmCreateAccount() {
+    setCreateSaving(true);
+    setCreateErrors((current) => ({ ...current, form: '' }));
+
     try {
       await createStaffPatient({
         full_name: buildFullName(createForm),
@@ -450,11 +488,41 @@ export default function RecepPatientAcc() {
       await fetchPatientAccounts();
       closeCreateOverlay();
     } catch (err) {
+      setShowCreateConfirmModal(false);
       setCreateErrors({
         form: err.response?.data?.message || 'Failed to create patient account.',
       });
+    } finally {
+      setCreateSaving(false);
     }
   }
+
+  function handleCreateOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      openCreateCancelModal();
+    }
+  }
+
+  function handleCreateCancelOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeCreateCancelModal();
+    }
+  }
+
+  function handleCreateConfirmOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeCreateConfirmModal();
+    }
+  }
+
+  const createAccountSummaryRows = [
+    ['First Name', createForm.firstName || 'N/A'],
+    ['Middle Name', createForm.middleName || 'N/A'],
+    ['Last Name', createForm.lastName || 'N/A'],
+    ['Email', createForm.email || 'N/A'],
+    ['Contact Number', createForm.contactNumber || 'N/A'],
+    ['Temporary Password', createForm.password ? 'Provided' : 'N/A'],
+  ];
 
   return (
     <div style={styles.page}>
@@ -882,7 +950,7 @@ export default function RecepPatientAcc() {
       {showCreateOverlay && (
         <div
           style={styles.overlay}
-          onClick={(event) => handleOverlayClick(event, closeCreateOverlay)}
+          onClick={handleCreateOverlayClick}
         >
           <div style={styles.overlayContent}>
             <div style={styles.overlayHeader}>
@@ -990,16 +1058,105 @@ export default function RecepPatientAcc() {
                 <button
                   type="button"
                   style={styles.cancelOverlayBtn}
-                  onClick={closeCreateOverlay}
+                  onClick={openCreateCancelModal}
                 >
                   Cancel
                 </button>
 
-                <button type="submit" style={styles.submitBtn}>
+                <button
+                  type="submit"
+                  style={{
+                    ...styles.submitBtn,
+                    ...(createSaving ? styles.buttonDisabled : {}),
+                  }}
+                  disabled={createSaving}
+                >
                   Create Account
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showCreateCancelModal && (
+        <div style={styles.modal} onClick={handleCreateCancelOverlayClick}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Create Account?</h2>
+            <p style={styles.modalText}>
+              Review the current details. Are you sure you want to cancel? These details will not be saved.
+            </p>
+
+            <AccountSummaryRows rows={createAccountSummaryRows} styles={styles} />
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeCreateCancelModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCreateCancel}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateConfirmModal && (
+        <div style={styles.modal} onClick={handleCreateConfirmOverlayClick}>
+          <div style={styles.modalContent}>
+            <div style={{ ...styles.modalIcon, ...styles.submitModalIcon }}>
+              <i className="fi fi-rr-user-add" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Patient Account</h2>
+            <p style={styles.modalText}>
+              Please review the details below. Is the information correct and do you want to create this account?
+            </p>
+
+            <AccountSummaryRows rows={createAccountSummaryRows} styles={styles} />
+
+            {createErrors.form && (
+              <p style={{ ...styles.modalText, color: '#dc2626' }}>
+                {createErrors.form}
+              </p>
+            )}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                disabled={createSaving}
+                onClick={closeCreateConfirmModal}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  ...styles.modalButton,
+                  ...styles.confirmSubmitBtn,
+                  ...(createSaving ? styles.buttonDisabled : {}),
+                }}
+                disabled={createSaving}
+                onClick={handleConfirmCreateAccount}
+              >
+                {createSaving ? 'Creating...' : 'Create'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1136,6 +1293,19 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
       >
         <i className="fi fi-rr-angle-right"></i>
       </button>
+    </div>
+  );
+}
+
+function AccountSummaryRows({ rows, styles }) {
+  return (
+    <div style={styles.modalDetailList}>
+      {rows.map(([label, value]) => (
+        <div key={label} style={styles.modalDetailRow}>
+          <span style={styles.modalDetailLabel}>{label}</span>
+          <strong style={styles.modalDetailValue}>{value}</strong>
+        </div>
+      ))}
     </div>
   );
 }

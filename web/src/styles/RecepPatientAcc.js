@@ -753,6 +753,12 @@
       color: '#334155',
     },
 
+    buttonDisabled: {
+      opacity: 0.55,
+      cursor: 'not-allowed',
+      boxShadow: 'none',
+    },
+
     modal: {
       display: 'flex',
       position: 'fixed',
@@ -788,6 +794,11 @@
       justifyContent: 'center',
     },
 
+    submitModalIcon: {
+      background: '#fff8e1',
+      color: '#d4af37',
+    },
+
     modalIconText: {
       fontSize: 30,
       lineHeight: 1,
@@ -807,6 +818,35 @@
       marginBottom: 24,
       marginTop: 0,
       lineHeight: 1.5,
+    },
+
+    modalDetailList: {
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'Arial, sans-serif',
+      marginBottom: 18,
+    },
+
+    modalDetailRow: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 14,
+      padding: '7px 0',
+      borderBottom: '1px solid #f1f5f9',
+      fontSize: 13,
+      textAlign: 'left',
+    },
+
+    modalDetailLabel: {
+      color: '#64748b',
+      flexShrink: 0,
+    },
+
+    modalDetailValue: {
+      color: '#0f172a',
+      textAlign: 'right',
+      wordBreak: 'break-word',
     },
 
     modalActions: {
@@ -836,6 +876,13 @@
       background: '#f1f5f9',
       color: '#334155',
       fontWeight: 'bold',
+    },
+
+    confirmSubmitBtn: {
+      background: '#d4af37',
+      color: '#ffffff',
+      fontWeight: 'bold',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     exportModalOverlay: {
