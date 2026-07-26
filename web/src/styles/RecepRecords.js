@@ -558,17 +558,13 @@
       boxShadow: '0 18px 45px rgba(37, 99, 235, 0.14)',
       boxSizing: 'border-box',
       maxHeight: '90vh',
-      overflow: 'hidden',
+      overflowY: 'auto',
     },
 
     largeModal: {
       width: 1180,
       maxWidth: '96%',
-      height: '90vh',
       padding: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      minHeight: 0,
     },
 
     smallModal: {
@@ -586,7 +582,6 @@
       gap: 18,
       padding: isVerySmall ? '24px 76px 22px 22px' : '28px 86px 24px 30px',
       borderBottom: '1px solid #e5e7eb',
-      flexShrink: 0,
     },
 
     modalHeaderTitle: {
@@ -637,9 +632,6 @@
       gap: 18,
       padding: isVerySmall ? 20 : 28,
       paddingBottom: 8,
-      flex: 1,
-      minHeight: 0,
-      overflowY: 'auto',
     },
 
     editFormSection: {
@@ -787,7 +779,6 @@
       padding: isVerySmall ? '18px 20px 22px' : '20px 28px 28px',
       borderTop: '1px solid #e2e8f0',
       flexDirection: isMobile ? 'column' : 'row',
-      flexShrink: 0,
     },
 
     centerActions: {
