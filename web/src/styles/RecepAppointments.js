@@ -437,7 +437,7 @@
       border: '1px solid #d4af37',
       background: '#d4af37',
       color: '#ffffff',
-      boxShadow: '0 8px 18px rgba(212, 175, 55, 0.28)',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
       cursor: 'pointer',
