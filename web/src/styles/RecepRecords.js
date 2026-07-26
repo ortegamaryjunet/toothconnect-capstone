@@ -554,8 +554,8 @@
 
     modalContent: {
       background: '#ffffff',
-      borderRadius: isMobile ? 20 : 24,
-      boxShadow: '0 18px 45px rgba(37, 99, 235, 0.14)',
+      borderRadius: 22,
+      boxShadow: '0 25px 60px rgba(15, 23, 42, 0.25)',
       boxSizing: 'border-box',
       maxHeight: '90vh',
       overflowY: 'auto',
@@ -575,49 +575,36 @@
     },
 
     modalHeader: {
-      position: 'relative',
       display: 'flex',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 18,
-      padding: isVerySmall ? '24px 76px 22px 22px' : '28px 86px 24px 30px',
-      borderBottom: '1px solid #e5e7eb',
+      padding: isVerySmall ? '24px 22px 18px' : '28px 30px 22px',
+      borderBottom: '1px solid #e2e8f0',
     },
 
     modalHeaderTitle: {
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
       color: '#0f172a',
-      fontSize: isVerySmall ? 22 : 26,
-      fontWeight: 600,
+      fontSize: isVerySmall ? 20 : 23,
       margin: 0,
     },
 
     modalHeaderText: {
-      margin: '8px 0 0',
+      marginTop: 4,
       color: '#64748b',
-      fontSize: isVerySmall ? 13 : 14,
-      lineHeight: 1.5,
-      fontFamily: 'Arial, sans-serif',
+      fontSize: 13,
+      marginBottom: 0,
     },
 
     modalX: {
-      position: 'absolute',
-      top: isVerySmall ? 16 : 20,
-      right: isVerySmall ? 18 : 28,
-      width: isVerySmall ? 40 : 44,
-      height: isVerySmall ? 40 : 44,
-      borderRadius: '50%',
+      display: 'none',
       border: 'none',
-      background: '#f1f5f9',
-      fontSize: isVerySmall ? 22 : 24,
-      fontWeight: 800,
+      background: 'transparent',
+      fontSize: 28,
       cursor: 'pointer',
-      color: '#0f172a',
+      color: '#64748b',
       lineHeight: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: 'Arial, sans-serif',
     },
 
     formGrid: {
@@ -649,17 +636,16 @@
     },
 
     fieldLabel: {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: 14,
-      fontWeight: 600,
-      color: '#334155',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 13,
+      color: '#0f172a',
     },
 
     formSectionTitle: {
       gridColumn: '1 / -1',
       margin: '0 0 18px',
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: isMobile ? 16 : 22,
+      fontSize: isMobile ? 16 : 20,
       fontWeight: 800,
       letterSpacing: 0,
       textTransform: 'none',
@@ -675,7 +661,7 @@
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
-      background: '#f8fafc',
+      background: '#ffffff',
       color: '#0f172a',
     },
 
@@ -696,7 +682,7 @@
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
       color: '#0f172a',
-      background: '#f8fafc',
+      background: '#ffffff',
       boxSizing: 'border-box',
     },
 
@@ -766,7 +752,7 @@
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
-      background: '#f8fafc',
+      background: '#ffffff',
       color: '#0f172a',
       resize: 'vertical',
     },
@@ -792,17 +778,15 @@
     },
 
     saveBtn: {
-      minWidth: 135,
-      height: 50,
-      borderRadius: 14,
+      minWidth: 120,
+      height: 44,
+      borderRadius: 12,
       border: 'none',
       cursor: 'pointer',
-      fontFamily: 'Arial, sans-serif',
-      background: '#d4af37',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      background: '#b8860b',
       color: '#ffffff',
       fontSize: 14,
-      fontWeight: 700,
-      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     cancelModalBtn: {

@@ -1255,17 +1255,17 @@ export default function RecepRecords() {
           >
             <div style={styles.modalHeader}>
               <div>
-                <h2 style={styles.modalHeaderTitle}>Patient Record Form</h2>
+                <h2 style={styles.modalHeaderTitle}>Edit Patient</h2>
                 <p style={styles.modalHeaderText}>
-                  {editPatient.id || editPatient.patientId || 'Patient'} • Patient
+                  Review patient profile details, then click Edit to enable
+                  fields.
                 </p>
               </div>
 
               <button
                 type="button"
-                aria-label="Close patient record"
                 style={styles.modalX}
-                onClick={openEditCloseModal}
+                onClick={closeEditPatient}
               >
                 ×
               </button>
@@ -1285,9 +1285,7 @@ export default function RecepRecords() {
 
             <div style={styles.editFormSections}>
               <section style={styles.editFormSection}>
-                <div style={styles.formSectionTitle}>
-                  Section 1 - Personal Information
-                </div>
+                <div style={styles.formSectionTitle}>Personal Information</div>
                 <div style={styles.formGrid}>
 
               <FieldInput
@@ -1499,9 +1497,7 @@ export default function RecepRecords() {
               </section>
 
               <section style={styles.editFormSection}>
-                <div style={styles.formSectionTitle}>
-                  Section 2 - Medical Assessment
-                </div>
+                <div style={styles.formSectionTitle}>Medical Assessment</div>
                 <div style={styles.formGrid}>
 
               <TextAreaField
@@ -1515,9 +1511,7 @@ export default function RecepRecords() {
               </section>
 
               <section style={styles.editFormSection}>
-                <div style={styles.formSectionTitle}>
-                  Section 3 - Health Condition
-                </div>
+                <div style={styles.formSectionTitle}>Health Condition</div>
                 <div style={styles.formGrid}>
 
               <TextAreaField
@@ -1595,10 +1589,9 @@ export default function RecepRecords() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Close Patient Details?</h2>
+            <h2 style={styles.modalTitle}>Close Patient Details</h2>
             <p style={styles.modalText}>
-              Are you sure you want to close this patient record? Unsaved
-              patient details will be lost.
+              Are you sure you want to close the details for this patient?
             </p>
 
             <div style={{ ...styles.modalActions, ...styles.centerActions }}>
@@ -1615,7 +1608,7 @@ export default function RecepRecords() {
                 style={styles.logoutBtn}
                 onClick={closeEditPatient}
               >
-                Yes
+                Yes, Close
               </button>
             </div>
           </div>
