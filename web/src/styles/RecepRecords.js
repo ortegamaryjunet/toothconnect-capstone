@@ -562,9 +562,9 @@
     },
 
     largeModal: {
-      width: 760,
+      width: 1180,
       maxWidth: '96%',
-      padding: isVerySmall ? 20 : 28,
+      padding: 0,
     },
 
     smallModal: {
@@ -579,7 +579,8 @@
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 18,
-      marginBottom: 22,
+      padding: isVerySmall ? '24px 22px 18px' : '28px 30px 22px',
+      borderBottom: '1px solid #e2e8f0',
     },
 
     modalHeaderTitle: {
@@ -608,8 +609,24 @@
 
     formGrid: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-      gap: 15,
+      gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+      gap: 18,
+    },
+
+    editFormSections: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 18,
+      padding: isVerySmall ? 20 : 28,
+      paddingBottom: 8,
+    },
+
+    editFormSection: {
+      background: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: 20,
+      padding: isVerySmall ? 16 : 22,
+      boxSizing: 'border-box',
     },
 
     field: {
@@ -621,31 +638,46 @@
     fieldLabel: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 13,
-      color: '#475569',
+      color: '#0f172a',
     },
 
     formSectionTitle: {
       gridColumn: '1 / -1',
-      margin: '2px 0 4px',
+      margin: '0 0 18px',
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 16,
+      fontSize: isMobile ? 16 : 20,
       fontWeight: 800,
-      letterSpacing: 0.4,
-      textTransform: 'uppercase',
-      color: '#1e3a8a',
+      letterSpacing: 0,
+      textTransform: 'none',
+      color: '#2563eb',
     },
 
     fieldInput: {
-      height: 44,
+      height: 48,
       border: '1px solid #cbd5e1',
       borderRadius: 12,
-      padding: '0 12px',
+      padding: '0 14px',
       outline: 'none',
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
       background: '#ffffff',
       color: '#0f172a',
+    },
+
+    readOnlyInput: {
+      background: '#f8fafc',
+      color: '#475569',
+    },
+
+    fieldInputError: {
+      borderColor: '#dc2626',
+      borderWidth: 2,
+    },
+
+    fieldErrorAsterisk: {
+      color: '#dc2626',
+      marginLeft: 3,
     },
 
     fieldErrorText: {
@@ -659,7 +691,7 @@
       display: 'flex',
       flexDirection: 'column',
       gap: 7,
-      gridColumn: isMobile ? 'auto' : '1 / -1',
+      gridColumn: '1 / -1',
     },
 
     textAreaInput: {
@@ -680,7 +712,9 @@
       display: 'flex',
       justifyContent: 'flex-end',
       gap: 12,
-      marginTop: 24,
+      marginTop: 0,
+      padding: isVerySmall ? '18px 20px 22px' : '20px 28px 28px',
+      borderTop: '1px solid #e2e8f0',
       flexDirection: isMobile ? 'column' : 'row',
     },
 

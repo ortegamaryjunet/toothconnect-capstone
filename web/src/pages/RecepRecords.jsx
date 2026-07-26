@@ -1236,8 +1236,10 @@ export default function RecepRecords() {
               </p>
             )}
 
-            <div style={styles.formGrid}>
-              <div style={styles.formSectionTitle}>Personal Information</div>
+            <div style={styles.editFormSections}>
+              <section style={styles.editFormSection}>
+                <div style={styles.formSectionTitle}>Personal Information</div>
+                <div style={styles.formGrid}>
 
               <FieldInput
                 styles={styles}
@@ -1303,7 +1305,12 @@ export default function RecepRecords() {
               />
 
               <div style={styles.field}>
-                <label style={styles.fieldLabel}>Gender</label>
+                <label style={styles.fieldLabel}>
+                  Gender
+                  {editErrors.gender && (
+                    <span style={styles.fieldErrorAsterisk}>*</span>
+                  )}
+                </label>
                 <select
                   value={editPatient.gender}
                   onChange={(event) =>
@@ -1312,7 +1319,8 @@ export default function RecepRecords() {
                   disabled={editModalReadOnly}
                   style={{
                     ...styles.fieldInput,
-                    ...(editErrors.gender ? { borderColor: '#dc2626' } : {}),
+                    ...(editModalReadOnly ? styles.readOnlyInput : {}),
+                    ...(editErrors.gender ? styles.fieldInputError : {}),
                   }}
                 >
                   <option value="">Select Gender</option>
@@ -1335,7 +1343,12 @@ export default function RecepRecords() {
               />
 
               <div style={styles.field}>
-                <label style={styles.fieldLabel}>Nationality</label>
+                <label style={styles.fieldLabel}>
+                  Nationality
+                  {editErrors.nationality && (
+                    <span style={styles.fieldErrorAsterisk}>*</span>
+                  )}
+                </label>
                 <select
                   value={editPatient.nationality || ''}
                   onChange={(event) =>
@@ -1344,9 +1357,8 @@ export default function RecepRecords() {
                   disabled={editModalReadOnly}
                   style={{
                     ...styles.fieldInput,
-                    ...(editErrors.nationality
-                      ? { borderColor: '#dc2626' }
-                      : {}),
+                    ...(editModalReadOnly ? styles.readOnlyInput : {}),
+                    ...(editErrors.nationality ? styles.fieldInputError : {}),
                   }}
                 >
                   <option value="">Select Nationality</option>
@@ -1375,7 +1387,12 @@ export default function RecepRecords() {
               />
 
               <div style={styles.field}>
-                <label style={styles.fieldLabel}>Civil Status</label>
+                <label style={styles.fieldLabel}>
+                  Civil Status
+                  {editErrors.civilStatus && (
+                    <span style={styles.fieldErrorAsterisk}>*</span>
+                  )}
+                </label>
                 <select
                   value={editPatient.civilStatus || ''}
                   onChange={(event) =>
@@ -1384,9 +1401,8 @@ export default function RecepRecords() {
                   disabled={editModalReadOnly}
                   style={{
                     ...styles.fieldInput,
-                    ...(editErrors.civilStatus
-                      ? { borderColor: '#dc2626' }
-                      : {}),
+                    ...(editModalReadOnly ? styles.readOnlyInput : {}),
+                    ...(editErrors.civilStatus ? styles.fieldInputError : {}),
                   }}
                 >
                   <option value="">Select Civil Status</option>
@@ -1425,8 +1441,12 @@ export default function RecepRecords() {
                   handleEditChange('emergencyContactNumber', value)
                 }
               />
+                </div>
+              </section>
 
-              <div style={styles.formSectionTitle}>Medical Assessment</div>
+              <section style={styles.editFormSection}>
+                <div style={styles.formSectionTitle}>Medical Assessment</div>
+                <div style={styles.formGrid}>
 
               <TextAreaField
                 styles={styles}
@@ -1435,8 +1455,12 @@ export default function RecepRecords() {
                 readOnly={editModalReadOnly}
                 onChange={(value) => handleEditChange('dentalHistory', value)}
               />
+                </div>
+              </section>
 
-              <div style={styles.formSectionTitle}>Health Condition</div>
+              <section style={styles.editFormSection}>
+                <div style={styles.formSectionTitle}>Health Condition</div>
+                <div style={styles.formGrid}>
 
               <TextAreaField
                 styles={styles}
@@ -1463,6 +1487,8 @@ export default function RecepRecords() {
                 readOnly={editModalReadOnly}
                 onChange={(value) => handleEditChange('medications', value)}
               />
+                </div>
+              </section>
             </div>
 
             <div style={styles.modalActions}>
@@ -1693,7 +1719,10 @@ function FieldInput({
 }) {
   return (
     <div style={styles.field}>
-      <label style={styles.fieldLabel}>{label}</label>
+      <label style={styles.fieldLabel}>
+        {label}
+        {error && <span style={styles.fieldErrorAsterisk}>*</span>}
+      </label>
 
       <input
         type={type}
@@ -1703,7 +1732,8 @@ function FieldInput({
         disabled={disabled}
         style={{
           ...styles.fieldInput,
-          ...(error ? { borderColor: '#dc2626' } : {}),
+          ...((readOnly || disabled) ? styles.readOnlyInput : {}),
+          ...(error ? styles.fieldInputError : {}),
         }}
       />
 
@@ -1712,17 +1742,33 @@ function FieldInput({
   );
 }
 
-function TextAreaField({ styles, label, value, onChange, readOnly = false }) {
+function TextAreaField({
+  styles,
+  label,
+  value,
+  onChange,
+  readOnly = false,
+  error = '',
+}) {
   return (
     <div style={styles.textAreaField}>
-      <label style={styles.fieldLabel}>{label}</label>
+      <label style={styles.fieldLabel}>
+        {label}
+        {error && <span style={styles.fieldErrorAsterisk}>*</span>}
+      </label>
 
       <textarea
         value={value || ''}
         onChange={(event) => onChange?.(event.target.value)}
         readOnly={readOnly}
-        style={styles.textAreaInput}
+        style={{
+          ...styles.textAreaInput,
+          ...(readOnly ? styles.readOnlyInput : {}),
+          ...(error ? styles.fieldInputError : {}),
+        }}
       />
+
+      {error && <p style={styles.fieldErrorText}>{error}</p>}
     </div>
   );
 }
