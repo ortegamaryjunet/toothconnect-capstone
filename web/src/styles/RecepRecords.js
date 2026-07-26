@@ -592,7 +592,7 @@
     modalHeaderTitle: {
       fontFamily: 'Arial, sans-serif',
       color: '#0f172a',
-      fontSize: isMobile ? 22 : 26,
+      fontSize: isVerySmall ? 22 : 26,
       fontWeight: 600,
       margin: 0,
     },

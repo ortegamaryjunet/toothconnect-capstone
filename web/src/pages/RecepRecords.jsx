@@ -1255,7 +1255,7 @@ export default function RecepRecords() {
           >
             <div style={styles.modalHeader}>
               <div>
-                <h2 style={styles.modalHeaderTitle}>Edit Patient</h2>
+                <h2 style={styles.modalHeaderTitle}>Patient Record Form</h2>
                 <p style={styles.modalHeaderText}>
                   {editPatient.id || editPatient.patientId || 'Patient'} • Patient
                 </p>
