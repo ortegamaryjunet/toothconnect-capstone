@@ -372,7 +372,7 @@ export default function RecepRecords() {
       dentalHistory: sourcePatient.dentalHistory || '',
     });
 
-    setEditModalReadOnly(true);
+    setEditModalReadOnly(false);
     setEditErrors({});
     setShowEditModal(true);
 
@@ -1303,8 +1303,8 @@ export default function RecepRecords() {
               <div>
                 <h2 style={styles.modalHeaderTitle}>Edit Patient</h2>
                 <p style={styles.modalHeaderText}>
-                  Review patient profile details, then click Edit to enable
-                  fields.
+                  Add or update the patient profile details, then save the
+                  changes.
                 </p>
               </div>
 
@@ -1564,44 +1564,17 @@ export default function RecepRecords() {
             </div>
 
             <div style={styles.modalActions}>
-              {editModalReadOnly ? (
-                <>
-                  <button
-                    type="button"
-                    style={styles.cancelModalBtn}
-                    onClick={openEditCloseModal}
-                  >
-                    Close
-                  </button>
+              <button
+                type="button"
+                style={styles.cancelModalBtn}
+                onClick={openEditCloseModal}
+              >
+                Cancel
+              </button>
 
-                  <button
-                    type="button"
-                    style={styles.saveBtn}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openEditConfirmModal();
-                    }}
-                    disabled={editProfileLoading}
-                  >
-                    Edit
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    style={styles.cancelModalBtn}
-                    onClick={openEditCloseModal}
-                  >
-                    Cancel
-                  </button>
-
-                  <button type="submit" style={styles.saveBtn}>
-                    Save
-                  </button>
-                </>
-              )}
+              <button type="submit" style={styles.saveBtn}>
+                Save
+              </button>
             </div>
           </form>
         </div>
