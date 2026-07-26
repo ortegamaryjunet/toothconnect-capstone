@@ -377,6 +377,8 @@
     leftActions: {
       display: 'flex',
       flex: 1,
+      width: isSmallScreen ? '100%' : 'auto',
+      minWidth: 0,
     },
 
     searchBox: {
@@ -411,7 +413,8 @@
       alignItems: 'center',
       gap: 10,
       width: isSmallScreen ? '100%' : 'auto',
-      flexDirection: isMobile ? 'column' : 'row',
+      flexDirection: isSmallScreen ? 'column' : 'row',
+      minWidth: 0,
     },
 
     select: {
@@ -448,7 +451,7 @@
       gap: 8,
       whiteSpace: 'nowrap',
       textDecoration: 'none',
-      width: isMobile ? '100%' : 'auto',
+      width: isSmallScreen ? '100%' : 'auto',
       boxSizing: 'border-box',
     },
 

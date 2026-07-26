@@ -1273,7 +1273,7 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
         disabled={page <= 1}
         onClick={onPrev}
       >
-        <i className="fi fi-rr-angle-left"></i>
+        Prev
       </button>
 
       <span style={styles.pageInfo}>
@@ -1291,7 +1291,7 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
         disabled={page >= totalPages || totalPages === 0}
         onClick={onNext}
       >
-        <i className="fi fi-rr-angle-right"></i>
+        Next
       </button>
     </div>
   );

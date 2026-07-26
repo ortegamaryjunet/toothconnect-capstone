@@ -550,12 +550,16 @@
     },
 
     pageBtn: {
-      width: 35,
+      minWidth: 58,
       height: 35,
+      padding: '0 12px',
       border: '1px solid #f3d46b',
       borderRadius: 11,
       background: '#fff8e1',
       color: '#b8860b',
+      fontSize: 13,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
