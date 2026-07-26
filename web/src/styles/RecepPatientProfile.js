@@ -42,18 +42,21 @@ const createRecepPatientProfileStyles = ({
     },
 
     backBtn: {
-      width: 38,
-      height: 38,
-      minWidth: 38,
-      border: 'none',
+      minWidth: 72,
+      height: 42,
+      padding: '0 16px',
+      border: '1px solid #d4af37',
       borderRadius: 12,
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#d4af37',
+      color: '#ffffff',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: 18,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     sidebar: {
@@ -171,8 +174,8 @@ const createRecepPatientProfileStyles = ({
       width: isVerySmall ? 66 : 78,
       height: isVerySmall ? 66 : 78,
       borderRadius: 18,
-      background: '#dbeafe',
-      color: '#2563eb',
+      background: '#fff3c4',
+      color: '#d4af37',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -580,6 +583,89 @@ const createRecepPatientProfileStyles = ({
       background: '#f8fbff',
       border: '1px solid #dbeafe',
       borderRadius: 14,
+    },
+
+    modal: {
+      display: 'flex',
+      position: 'fixed',
+      zIndex: 9999,
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.45)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 18,
+      boxSizing: 'border-box',
+    },
+
+    backModalContent: {
+      width: '100%',
+      maxWidth: 410,
+      background: '#ffffff',
+      padding: isVerySmall ? '26px 20px' : '30px 25px',
+      borderRadius: 22,
+      textAlign: 'center',
+      boxShadow: '0 20px 50px rgba(15, 23, 42, 0.2)',
+      boxSizing: 'border-box',
+    },
+
+    backModalIcon: {
+      width: 82,
+      height: 82,
+      margin: '0 auto 16px',
+      background: '#fee2e2',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#dc2626',
+    },
+
+    modalIconText: {
+      fontSize: 34,
+    },
+
+    backModalTitle: {
+      margin: '0 0 10px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 21,
+      color: '#0f172a',
+      fontWeight: 600,
+    },
+
+    backModalText: {
+      margin: '0 0 24px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 15,
+      color: '#64748b',
+      lineHeight: 1.5,
+    },
+
+    backModalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isVerySmall ? 'column' : 'row',
+    },
+
+    backModalButton: {
+      minWidth: isVerySmall ? '100%' : 100,
+      border: 'none',
+      borderRadius: 12,
+      padding: '12px 18px',
+      cursor: 'pointer',
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
+      fontSize: 14,
+    },
+
+    backCancelBtn: {
+      background: '#e5e7eb',
+      color: '#0f172a',
+    },
+
+    backConfirmBtn: {
+      background: '#dc2626',
+      color: '#ffffff',
     },
   };
 };

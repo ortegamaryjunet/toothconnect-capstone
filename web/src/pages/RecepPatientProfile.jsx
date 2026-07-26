@@ -47,6 +47,7 @@ export default function RecepPatientProfile() {
   const [scheduleData, setScheduleData] = useState({ upcoming: [], past: [] });
   const [payments, setPayments] = useState([]);
   const [profileError, setProfileError] = useState('');
+  const [showBackModal, setShowBackModal] = useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -171,6 +172,24 @@ export default function RecepPatientProfile() {
     }
   }
 
+  function openBackModal() {
+    setShowBackModal(true);
+  }
+
+  function closeBackModal() {
+    setShowBackModal(false);
+  }
+
+  function handleBackConfirm() {
+    navigate('/receptionistRecords');
+  }
+
+  function handleBackOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeBackModal();
+    }
+  }
+
   async function fetchPatientDetails() {
     if (!patientId) {
       setProfileError('No patient selected.');
@@ -205,9 +224,9 @@ export default function RecepPatientProfile() {
         <button
           type="button"
           style={styles.backBtn}
-          onClick={() => navigate('/receptionistRecords')}
+          onClick={openBackModal}
         >
-          <i className="fi fi-rr-angle-left"></i>
+          Back
         </button>
 
         <h2 style={styles.topHeaderTitle}>Patient Information Record</h2>
@@ -596,6 +615,39 @@ export default function RecepPatientProfile() {
           </section>
         )}
       </main>
+
+      {showBackModal && (
+        <div style={styles.modal} onClick={handleBackOverlayClick}>
+          <div style={styles.backModalContent}>
+            <div style={styles.backModalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.backModalTitle}>Leave Patient Record</h2>
+            <p style={styles.backModalText}>
+              Are you sure you want to go back? Any unsaved changes will be lost.
+            </p>
+
+            <div style={styles.backModalActions}>
+              <button
+                type="button"
+                style={{ ...styles.backModalButton, ...styles.backCancelBtn }}
+                onClick={closeBackModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.backModalButton, ...styles.backConfirmBtn }}
+                onClick={handleBackConfirm}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
