@@ -351,11 +351,12 @@
 
     editBtn: {
       border: 'none',
-      background: '#2563eb',
+      background: '#d4af37',
       color: '#ffffff',
       padding: '13px 18px',
       borderRadius: 14,
       fontSize: 14,
+      fontWeight: 800,
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
@@ -365,6 +366,7 @@
       fontFamily: 'Arial, sans-serif',
       whiteSpace: 'nowrap',
       boxSizing: 'border-box',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     pdfBtn: {
@@ -410,10 +412,10 @@
 
     card: {
       background: '#ffffff',
-      border: '1px solid #edf0f5',
+      border: '1px solid #f3d879',
       borderRadius: isMobile ? 18 : 22,
       padding: isMobile ? 16 : isTablet ? 20 : 24,
-      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+      boxShadow: '0 12px 28px rgba(139, 101, 8, 0.08)',
       boxSizing: 'border-box',
       minWidth: 0,
       overflow: 'hidden',
@@ -429,15 +431,15 @@
       gap: 12,
       marginBottom: isMobile ? 16 : 20,
       paddingBottom: isMobile ? 14 : 16,
-      borderBottom: '1px solid #e2e8f0',
+      borderBottom: '1px solid #f3d879',
       minWidth: 0,
     },
 
     cardTitleIcon: {
       width: isMobile ? 38 : 42,
       height: isMobile ? 38 : 42,
-      background: '#dbeafe',
-      color: '#2563eb',
+      background: '#fff8df',
+      color: '#8b6508',
       borderRadius: 14,
       display: 'flex',
       alignItems: 'center',
@@ -448,11 +450,12 @@
 
     cardTitleText: {
       fontSize: isMobile ? 18 : 20,
-      color: '#0f172a',
+      color: '#8b6508',
       margin: 0,
       fontFamily: 'Arial, sans-serif',
       lineHeight: 1.25,
       wordBreak: 'break-word',
+      fontWeight: 800,
     },
 
     infoGrid: {
@@ -474,8 +477,9 @@
     },
 
     infoItem: {
-      background: '#f8fafc',
-      border: '1px solid #e2e8f0',
+      background: '#fffdf7',
+      border: '1px solid #f3d879',
+      borderLeft: '4px solid #d4af37',
       borderRadius: 16,
       padding: isMobile ? 14 : 16,
       boxSizing: 'border-box',
@@ -489,11 +493,14 @@
 
     infoLabel: {
       display: 'block',
-      color: '#64748b',
-      fontSize: 13,
+      color: '#8b6508',
+      fontSize: 12,
       marginBottom: 7,
       fontFamily: 'Arial, sans-serif',
       lineHeight: 1.3,
+      fontWeight: 800,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
     },
 
     infoValue: {
@@ -508,15 +515,15 @@
     subTitle: {
       margin: '24px 0 12px',
       fontSize: 15,
-      fontWeight: 700,
-      color: '#0f172a',
+      fontWeight: 800,
+      color: '#8b6508',
       fontFamily: 'Arial, sans-serif',
       lineHeight: 1.3,
     },
 
     emptyBox: {
-      background: '#f8fafc',
-      border: '1px dashed #93c5fd',
+      background: '#fffdf7',
+      border: '1px dashed #d4af37',
       color: '#64748b',
       padding: 18,
       borderRadius: 16,
@@ -525,6 +532,20 @@
       fontFamily: 'Arial, sans-serif',
       lineHeight: 1.5,
       boxSizing: 'border-box',
+    },
+
+    addWorkBtn: {
+      fontSize: 13,
+      padding: '10px 18px',
+      borderRadius: 10,
+      border: 'none',
+      background: '#d4af37',
+      color: '#ffffff',
+      cursor: 'pointer',
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+      whiteSpace: 'nowrap',
     },
 
     editOverlay: {
@@ -569,14 +590,15 @@
 
     modalClose: {
       border: 'none',
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#fff8df',
+      color: '#8b6508',
       width: 38,
       height: 38,
       borderRadius: 12,
       cursor: 'pointer',
       fontSize: 20,
       flexShrink: 0,
+      boxShadow: '0 8px 18px rgba(139, 101, 8, 0.14)',
     },
 
     editForm: {
@@ -621,6 +643,11 @@
       minWidth: 0,
     },
 
+    formInputInvalid: {
+      borderColor: '#dc2626',
+      background: '#fff1f2',
+    },
+
     formTextarea: {
       minHeight: 90,
       resize: 'vertical',
@@ -635,16 +662,19 @@
     },
 
     saveBtn: {
+      height: 40,
       border: 'none',
-      padding: '13px 18px',
-      borderRadius: 14,
-      fontSize: 14,
-      cursor: 'pointer',
-      background: '#2563eb',
+      borderRadius: 10,
+      background: '#d4af37',
       color: '#ffffff',
+      padding: '0 18px',
+      fontWeight: 800,
+      cursor: 'pointer',
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
       whiteSpace: 'nowrap',
+      fontSize: 14,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     cancelEditBtn: {
@@ -658,6 +688,15 @@
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
       whiteSpace: 'nowrap',
+    },
+
+    editErrorText: {
+      margin: '0 0 16px',
+      fontSize: 16,
+      fontWeight: 800,
+      color: '#b91c1c',
+      fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.45,
     },
 
     modal: {
@@ -743,6 +782,35 @@
       background: '#f1f5f9',
       color: '#334155',
       fontWeight: 'bold',
+    },
+
+    confirmDetailsList: {
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'Arial, sans-serif',
+      marginBottom: 8,
+    },
+
+    confirmDetailRow: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 12,
+      padding: '6px 0',
+      borderBottom: '1px solid #f1f5f9',
+      fontSize: 13,
+      textAlign: 'left',
+    },
+
+    confirmDetailLabel: {
+      color: '#64748b',
+    },
+
+    confirmDetailValue: {
+      color: '#0f172a',
+      textAlign: 'right',
+      maxWidth: 220,
+      overflowWrap: 'anywhere',
     },
 
     notificationBadge: {

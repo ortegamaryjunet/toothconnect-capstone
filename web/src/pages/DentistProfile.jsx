@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import api from '../api/axios';
+import DentistProfileMenu from '../components/DentistProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createDentistProfileStyles from '../styles/DentistProfile';
 
@@ -40,10 +41,34 @@ const initialProfile = {
 };
 
 const SUFFIX_OPTIONS = ['Jr', 'Sr', 'II', 'III', 'IV'];
+const PROFILE_REQUIRED_FIELDS = [
+  'fullName',
+  'birthday',
+  'religion',
+  'nationality',
+  'contactNumber',
+  'emailAddress',
+  'homeAddress',
+];
+
+const PROFILE_FIELD_LABELS = {
+  fullName: 'Full Name',
+  preferredNickname: 'Preferred Nickname',
+  suffix: 'Suffix',
+  birthday: 'Birthday',
+  religion: 'Religion',
+  nationality: 'Nationality',
+  contactNumber: 'Contact Number',
+  emailAddress: 'Email Address',
+  homeAddress: 'Home Address',
+};
 
 export default function DentistProfile() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showProfileCloseConfirmModal, setShowProfileCloseConfirmModal] =
+    useState(false);
+  const [profileSaveConfirmModal, setProfileSaveConfirmModal] = useState(null);
 
   const [profile, setProfile] = useState(initialProfile);
   const [editForm, setEditForm] = useState(initialProfile);
@@ -51,6 +76,8 @@ export default function DentistProfile() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState('');
+  const [profileEditError, setProfileEditError] = useState('');
+  const [profileTouchedFields, setProfileTouchedFields] = useState({});
 
   const [previousWork, setPreviousWork] = useState([]);
   const [showWorkModal, setShowWorkModal] = useState(false);
@@ -155,7 +182,13 @@ export default function DentistProfile() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showEditModal || showWorkModal) {
+    if (
+      showLogoutModal ||
+      showEditModal ||
+      showWorkModal ||
+      showProfileCloseConfirmModal ||
+      profileSaveConfirmModal
+    ) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -164,14 +197,24 @@ export default function DentistProfile() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showEditModal, showWorkModal]);
+  }, [
+    showLogoutModal,
+    showEditModal,
+    showWorkModal,
+    showProfileCloseConfirmModal,
+    profileSaveConfirmModal,
+  ]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
-        closeEditModal();
+        if (showEditModal) {
+          requestCloseEditModal();
+        }
         closeWorkModal();
+        setShowProfileCloseConfirmModal(false);
+        setProfileSaveConfirmModal(null);
       }
     }
 
@@ -180,7 +223,7 @@ export default function DentistProfile() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, []);
+  }, [showEditModal, editForm, profile]);
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -196,12 +239,30 @@ export default function DentistProfile() {
 
   function openEditModal() {
     setEditForm(profile);
+    setProfileEditError('');
+    setProfileTouchedFields({});
     setShowEditModal(true);
   }
 
   function closeEditModal() {
     setEditForm(profile);
+    setProfileEditError('');
+    setProfileTouchedFields({});
+    setShowProfileCloseConfirmModal(false);
+    setProfileSaveConfirmModal(null);
     setShowEditModal(false);
+  }
+
+  function requestCloseEditModal() {
+    setShowProfileCloseConfirmModal(true);
+  }
+
+  function closeProfileCloseConfirmModal() {
+    setShowProfileCloseConfirmModal(false);
+  }
+
+  function confirmCloseProfileDetails() {
+    closeEditModal();
   }
 
   function handleLogoutOverlayClick(event) {
@@ -212,7 +273,7 @@ export default function DentistProfile() {
 
   function handleEditOverlayClick(event) {
     if (event.target === event.currentTarget) {
-      closeEditModal();
+      requestCloseEditModal();
     }
   }
 
@@ -295,9 +356,37 @@ export default function DentistProfile() {
       ...prev,
       [name]: value,
     }));
+    setProfileTouchedFields((prev) => ({
+      ...prev,
+      [name]: true,
+    }));
+    setProfileEditError('');
   }
 
-  async function handleSaveProfile(event) {
+  function isProfileFormComplete(form = editForm) {
+    return PROFILE_REQUIRED_FIELDS.every(
+      (field) => String(form[field] ?? '').trim() !== ''
+    );
+  }
+
+  function getProfileSaveDetails(nextProfile) {
+    return [
+      'fullName',
+      'preferredNickname',
+      'suffix',
+      'birthday',
+      'religion',
+      'nationality',
+      'contactNumber',
+      'emailAddress',
+      'homeAddress',
+    ].map((field) => ({
+      label: PROFILE_FIELD_LABELS[field],
+      value: String(nextProfile[field] || '').trim() || 'Not entered',
+    }));
+  }
+
+  function handleSaveProfileRequest(event) {
     event.preventDefault();
 
     const nextProfile = {
@@ -305,8 +394,38 @@ export default function DentistProfile() {
       suffix: String(editForm.suffix || '').trim(),
     };
 
+    if (!isProfileFormComplete(nextProfile)) {
+      setProfileTouchedFields(
+        PROFILE_REQUIRED_FIELDS.reduce((fields, field) => {
+          fields[field] = true;
+          return fields;
+        }, {})
+      );
+      setProfileEditError('Please complete all required profile details before saving.');
+      return;
+    }
+
+    setProfileSaveConfirmModal({
+      nextProfile,
+      details: getProfileSaveDetails(nextProfile),
+    });
+  }
+
+  function closeProfileSaveConfirmModal() {
+    setProfileSaveConfirmModal(null);
+  }
+
+  async function confirmSaveProfile() {
+    if (!profileSaveConfirmModal?.nextProfile) {
+      return;
+    }
+
+    const nextProfile = profileSaveConfirmModal.nextProfile;
+
     setSavingProfile(true);
     setProfileError('');
+    setProfileEditError('');
+    setProfileSaveConfirmModal(null);
 
     try {
       const res = await api.patch(
@@ -319,12 +438,14 @@ export default function DentistProfile() {
       setProfileId(res.data.profile.profileId || profileId);
       setProfile(mappedProfile);
       setEditForm(mappedProfile);
+      setProfileTouchedFields({});
       setShowEditModal(false);
     } catch (err) {
+      const message = err.response?.data?.message || 'Failed to save dentist profile.';
       setProfileError(
-        err.response?.data?.message || 'Failed to save dentist profile.'
+        message
       );
-      alert(err.response?.data?.message || 'Failed to save dentist profile.');
+      setProfileEditError(message);
     } finally {
       setSavingProfile(false);
     }
@@ -655,20 +776,11 @@ export default function DentistProfile() {
       <div style={styles.mainContainer}>
         <header style={styles.topHeader}>
           <div style={styles.headerActions}>
-            <div style={styles.doctorProfile}>
-              <div style={styles.avatarSmall}>
-                <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-              </div>
-
-              <div style={styles.doctorInfo}>
-                <div style={styles.doctorName}>
-                  {loadingProfile ? '...' : profile.fullName}
-                </div>
-                <div style={styles.doctorSpecialization}>
-                  {loadingProfile ? '...' : profile.specialization}
-                </div>
-              </div>
-            </div>
+            <DentistProfileMenu
+              styles={styles}
+              dentistName={loadingProfile ? '...' : profile.fullName}
+              specialization={loadingProfile ? '...' : profile.specialization}
+            />
           </div>
         </header>
 
@@ -900,17 +1012,7 @@ export default function DentistProfile() {
                     <button
                       type="button"
                       onClick={openWorkModal}
-                      style={{
-                        fontSize: "13px",
-                        padding: "10px 18px",
-                        borderRadius: "10px",
-                        border: "none",
-                        backgroundColor: "#2563eb",
-                        color: "#fff",
-                        cursor: "pointer",
-                        fontFamily: "Arial, sans-serif",
-                        fontWeight: 600,
-                      }}
+                      style={styles.addWorkBtn}
                     >
                       + Add
                     </button>
@@ -927,11 +1029,13 @@ export default function DentistProfile() {
                           alignItems: 'flex-start',
                           justifyContent: 'space-between',
                           gap: 12,
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
+                          background: '#fffdf7',
+                          border: '1px solid #f3d879',
+                          borderLeft: '4px solid #d4af37',
                           borderRadius: 12,
                           padding: '14px 16px',
                           marginBottom: 10,
+                          boxShadow: '0 8px 18px rgba(139, 101, 8, 0.06)',
                         }}
                       >
                         <div style={{ flex: 1 }}>
@@ -1023,13 +1127,17 @@ export default function DentistProfile() {
               <button
                 type="button"
                 style={styles.modalClose}
-                onClick={closeEditModal}
+                onClick={requestCloseEditModal}
               >
                 <i className="fi fi-rr-cross-small"></i>
               </button>
             </div>
 
-            <form style={styles.editForm} onSubmit={handleSaveProfile}>
+            <form style={styles.editForm} onSubmit={handleSaveProfileRequest}>
+              {profileEditError && (
+                <p style={styles.editErrorText}>{profileEditError}</p>
+              )}
+
               <div style={styles.formGrid}>
                 <FormGroup styles={styles} label="Full Name">
                   <input
@@ -1039,7 +1147,15 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('fullName', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, fullName: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.fullName && !String(editForm.fullName || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -1082,7 +1198,15 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('birthday', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, birthday: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.birthday && !String(editForm.birthday || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -1094,7 +1218,15 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('religion', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, religion: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.religion && !String(editForm.religion || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -1106,7 +1238,15 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('nationality', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, nationality: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.nationality && !String(editForm.nationality || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -1118,7 +1258,15 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('contactNumber', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, contactNumber: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.contactNumber && !String(editForm.contactNumber || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -1130,7 +1278,15 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('emailAddress', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, emailAddress: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.emailAddress && !String(editForm.emailAddress || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -1141,7 +1297,16 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('homeAddress', event.target.value)
                     }
-                    style={{ ...styles.formInput, ...styles.formTextarea }}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, homeAddress: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...styles.formTextarea,
+                      ...(profileTouchedFields.homeAddress && !String(editForm.homeAddress || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -1271,23 +1436,109 @@ export default function DentistProfile() {
                   type="submit"
                   style={{
                     ...styles.saveBtn,
-                    ...(savingProfile ? styles.disabledBtn : {}),
+                    ...(!isProfileFormComplete(editForm) || savingProfile
+                      ? styles.disabledBtn
+                      : {}),
                   }}
-                  disabled={savingProfile}
+                  disabled={!isProfileFormComplete(editForm) || savingProfile}
                 >
                   {savingProfile ? 'Saving...' : 'Save Changes'}
                 </button>
-
-                <button
-                  type="button"
-                  style={styles.cancelEditBtn}
-                  onClick={closeEditModal}
-                  disabled={savingProfile}
-                >
-                  Cancel
-                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {profileSaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeProfileSaveConfirmModal();
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={{ ...styles.modalIcon, background: '#fff8df', color: '#d4af37' }}>
+              <i className="fi fi-rr-user-pen" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Profile Changes</h2>
+            <p style={styles.modalText}>Please review the details before saving this profile.</p>
+
+            <div style={styles.confirmDetailsList}>
+              {profileSaveConfirmModal.details.map((detail) => (
+                <div key={detail.label} style={styles.confirmDetailRow}>
+                  <span style={styles.confirmDetailLabel}>{detail.label}</span>
+                  <strong style={styles.confirmDetailValue}>{detail.value}</strong>
+                </div>
+              ))}
+            </div>
+
+            {profileEditError && (
+              <p style={{ ...styles.modalText, color: '#dc2626' }}>{profileEditError}</p>
+            )}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                disabled={savingProfile}
+                onClick={closeProfileSaveConfirmModal}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                disabled={savingProfile}
+                onClick={confirmSaveProfile}
+              >
+                {savingProfile ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProfileCloseConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeProfileCloseConfirmModal();
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Close Profile Details?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to close? Any unsaved profile details will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeProfileCloseConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCloseProfileDetails}
+              >
+                Yes, Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1423,18 +1674,18 @@ export default function DentistProfile() {
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-
-              <button
-                type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={closeLogoutModal}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>

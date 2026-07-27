@@ -5,16 +5,12 @@
 } = {}) => {
   const topHeaderHeight = isMobile ? 68 : 72;
   const sidebarWidth = isMobile ? 74 : 230;
-  const primaryGradient = isAdminView
-    ? 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)'
-    : 'linear-gradient(135deg, #2563eb, #60a5fa)';
-  const primary = isAdminView ? '#d4af37' : '#2563eb';
-  const primaryDark = isAdminView ? '#8b6508' : '#172554';
-  const primarySoft = isAdminView ? '#fff3c4' : '#eff6ff';
-  const primaryBorder = isAdminView ? '#f3d879' : '#dbeafe';
-  const primaryShadow = isAdminView
-    ? '0 18px 40px rgba(139, 101, 8, 0.18)'
-    : '0 18px 40px rgba(37, 99, 235, 0.18)';
+  const primaryGradient = 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)';
+  const primary = '#d4af37';
+  const primaryDark = '#8b6508';
+  const primarySoft = '#fff8df';
+  const primaryBorder = '#f3d879';
+  const primaryShadow = '0 18px 40px rgba(139, 101, 8, 0.18)';
 
   return {
     page: {
@@ -178,11 +174,11 @@
 
     patientCard: {
       background: '#ffffff',
-      border: '1px solid #edf0f5',
+      border: `1px solid ${primaryBorder}`,
       borderRadius: 22,
       padding: 24,
       marginBottom: 20,
-      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+      boxShadow: '0 14px 32px rgba(139, 101, 8, 0.09)',
       display: 'flex',
       alignItems: isMobile ? 'flex-start' : 'center',
       gap: 18,
@@ -193,8 +189,8 @@
       width: 78,
       height: 78,
       borderRadius: 18,
-      background: primarySoft,
-      color: primary,
+      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      color: '#ffffff',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -218,19 +214,20 @@
 
     infoCard: {
       background: '#ffffff',
-      border: '1px solid #edf0f5',
+      border: `1px solid ${primaryBorder}`,
       borderRadius: 22,
       padding: 24,
       marginBottom: 20,
-      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+      boxShadow: '0 10px 26px rgba(139, 101, 8, 0.07)',
       boxSizing: 'border-box',
     },
 
     infoCardTitle: {
       margin: '0 0 18px',
       fontSize: 18,
-      color: '#0f172a',
+      color: primaryDark,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
     },
 
     subHeading: {
@@ -248,12 +245,13 @@
     },
 
     infoBox: {
-      background: '#f8fafc',
-      border: '1px solid #e2e8f0',
+      background: '#fffdf7',
+      border: `1px solid ${primaryBorder}`,
       borderRadius: 16,
       padding: 18,
       minHeight: 78,
       boxSizing: 'border-box',
+      borderLeft: `4px solid ${primary}`,
     },
 
     infoBoxFull: {
@@ -263,9 +261,12 @@
     infoLabel: {
       display: 'block',
       fontSize: 12,
-      color: '#64748b',
+      color: primaryDark,
       marginBottom: 8,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
     },
 
     infoValue: {

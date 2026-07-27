@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import createDentistScheduleStyles from '../styles/DentistSchedule';
 import { useAuth } from '../auth/AuthContext';
 import api from '../api/axios';
+import DentistProfileMenu from '../components/DentistProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
 import clinicLogo from '../assets/dentistImages/clinic-logo.png';
@@ -590,18 +591,11 @@ export default function DentistSchedule() {
       <div style={styles.mainContainer}>
         <header style={styles.topHeader}>
           <div style={styles.headerActions}>
-            <div style={styles.doctorProfile}>
-              <div style={styles.avatar}>
-                <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-              </div>
-
-              <div style={styles.doctorInfo}>
-                <div style={styles.doctorName}>{user?.name || 'Dentist'}</div>
-                <div style={styles.doctorSpecialization}>
-                  {serviceNames || 'Dentist'}
-                </div>
-              </div>
-            </div>
+            <DentistProfileMenu
+              styles={styles}
+              dentistName={user?.name || 'Dentist'}
+              specialization={serviceNames || 'Dentist'}
+            />
           </div>
         </header>
 
@@ -1163,18 +1157,18 @@ export default function DentistSchedule() {
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-
-              <button
-                type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={closeLogoutModal}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={handleLogout}
+              >
+                Logout
               </button>
             </div>
           </div>
