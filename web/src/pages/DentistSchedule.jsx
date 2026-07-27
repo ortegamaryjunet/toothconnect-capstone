@@ -101,6 +101,7 @@ export default function DentistSchedule() {
   const [showLeaveCancelConfirmModal, setShowLeaveCancelConfirmModal] =
     useState(false);
   const [showLeaveConflictModal, setShowLeaveConflictModal] = useState(false);
+  const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
 
   const [validationTitle, setValidationTitle] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
@@ -237,7 +238,8 @@ export default function DentistSchedule() {
       showValidationModal ||
       showCancelConfirmModal ||
       showLeaveCancelConfirmModal ||
-      showLeaveConflictModal;
+      showLeaveConflictModal ||
+      showLeaveConfirmModal;
 
     document.body.style.overflow = hasOpenModal ? 'hidden' : '';
 
@@ -252,6 +254,7 @@ export default function DentistSchedule() {
     showCancelConfirmModal,
     showLeaveCancelConfirmModal,
     showLeaveConflictModal,
+    showLeaveConfirmModal,
   ]);
 
   useEffect(() => {
@@ -262,6 +265,7 @@ export default function DentistSchedule() {
         closeCancelConfirmModal();
         closeLeaveCancelConfirmModal();
         closeLeaveConflictModal();
+        closeLeaveConfirmModal();
         setSelectedRequest(null);
 
         if (showLeaveModal) {
@@ -336,8 +340,13 @@ export default function DentistSchedule() {
     closeLeaveModal();
   }
 
+  function handleLeaveFormCancel() {
+    requestCloseLeaveModal();
+  }
+
   function confirmCloseLeaveModal() {
     setShowLeaveCancelConfirmModal(false);
+    setShowLeaveConfirmModal(false);
     closeLeaveModal();
     resetLeaveForm();
   }
@@ -355,6 +364,18 @@ export default function DentistSchedule() {
     if (submitLoading) return;
 
     setShowLeaveConflictModal(false);
+  }
+
+  function closeLeaveConfirmModal() {
+    if (submitLoading) return;
+
+    setShowLeaveConfirmModal(false);
+  }
+
+  function requestCancelLeaveConfirmModal() {
+    if (submitLoading) return;
+
+    setShowLeaveCancelConfirmModal(true);
   }
 
   function handleModalOverlayClick(event) {
@@ -396,6 +417,12 @@ export default function DentistSchedule() {
   function handleLeaveConflictOverlayClick(event) {
     if (event.target === event.currentTarget) {
       closeLeaveConflictModal();
+    }
+  }
+
+  function handleLeaveConfirmOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeLeaveConfirmModal();
     }
   }
 
@@ -493,6 +520,7 @@ export default function DentistSchedule() {
       .then(() => {
         setShowLeaveModal(false);
         setShowLeaveConflictModal(false);
+        setShowLeaveConfirmModal(false);
         resetLeaveForm();
         loadRequests();
         openValidationModal(
@@ -536,7 +564,8 @@ export default function DentistSchedule() {
           return null;
         }
 
-        return submitLeaveRequest();
+        setShowLeaveConfirmModal(true);
+        return null;
       })
       .catch((err) => {
         setSubmitError(
@@ -546,10 +575,6 @@ export default function DentistSchedule() {
       .finally(() => {
         setSubmitLoading(false);
       });
-  }
-
-  function confirmLeaveWithConflicts() {
-    submitLeaveRequest();
   }
 
   function openCancelRequestModal(request) {
@@ -977,7 +1002,7 @@ export default function DentistSchedule() {
               <button
                 type="button"
                 style={styles.leaveCancelButton}
-                onClick={requestCloseLeaveModal}
+                onClick={handleLeaveFormCancel}
                 disabled={submitLoading}
               >
                 Cancel
@@ -1014,7 +1039,7 @@ export default function DentistSchedule() {
 
             <h2 style={styles.modalTitle}>Appointments Found</h2>
             <p style={styles.modalText}>
-              These appointments fall within your selected leave dates. Please review them before submitting your request.
+              You already have scheduled appointments within your selected leave dates. Please review the affected appointments and choose a different date range before submitting a leave request.
             </p>
 
             <div style={styles.leaveConflictList}>
@@ -1040,20 +1065,69 @@ export default function DentistSchedule() {
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                style={{ ...styles.modalButton, ...styles.confirmGoldBtn }}
                 onClick={closeLeaveConflictModal}
                 disabled={submitLoading}
               >
                 Review Dates
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLeaveConfirmModal && (
+        <div style={styles.modal} onClick={handleLeaveConfirmOverlayClick}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-calendar-check" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Leave Request</h2>
+            <p style={styles.modalText}>
+              No scheduled appointments were found in this date range. Please review the details before saving this leave request.
+            </p>
+
+            <div style={styles.leaveConfirmDetails}>
+              {[
+                ['From Date', formatReadableDate(leaveForm.dateFrom)],
+                ['To Date', formatReadableDate(leaveForm.dateTo)],
+                [
+                  'Duration',
+                  `${leaveDays} ${leaveDays === 1 ? 'day' : 'days'}`,
+                ],
+                ['Reason', leaveForm.reason.trim() || 'No reason provided.'],
+              ].map(([label, value]) => (
+                <div key={label} style={styles.leaveConfirmRow}>
+                  <span style={styles.leaveConfirmLabel}>{label}</span>
+                  <strong style={styles.leaveConfirmValue}>{value}</strong>
+                </div>
+              ))}
+            </div>
+
+            {submitError ? (
+              <p style={{ ...styles.modalText, color: '#dc2626' }}>
+                {submitError}
+              </p>
+            ) : null}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={requestCancelLeaveConfirmModal}
+                disabled={submitLoading}
+              >
+                Cancel
+              </button>
 
               <button
                 type="button"
                 style={{ ...styles.modalButton, ...styles.confirmGoldBtn }}
-                onClick={confirmLeaveWithConflicts}
+                onClick={submitLeaveRequest}
                 disabled={submitLoading}
               >
-                {submitLoading ? 'Submitting...' : 'Proceed'}
+                {submitLoading ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -1243,7 +1317,7 @@ export default function DentistSchedule() {
                 onClick={handleCancelRequest}
                 disabled={cancelLoading}
               >
-                {cancelLoading ? 'Cancelling...' : 'Yes'}
+                {cancelLoading ? 'Cancelling...' : 'Yes, Cancel'}
               </button>
             </div>
           </div>

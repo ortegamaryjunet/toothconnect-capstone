@@ -805,6 +805,36 @@ export default function createDentistScheduleStyles({
       lineHeight: 1.4,
     },
 
+    leaveConfirmDetails: {
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'Arial, sans-serif',
+      marginBottom: 18,
+      textAlign: 'left',
+    },
+
+    leaveConfirmRow: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 14,
+      padding: '8px 0',
+      borderBottom: '1px solid #f1f5f9',
+      fontSize: 13,
+    },
+
+    leaveConfirmLabel: {
+      color: '#64748b',
+      flexShrink: 0,
+    },
+
+    leaveConfirmValue: {
+      color: '#0f172a',
+      textAlign: 'right',
+      lineHeight: 1.4,
+      wordBreak: 'break-word',
+    },
+
     leaveModalHeader: {
       display: 'flex',
       alignItems: 'center',
@@ -1025,7 +1055,10 @@ export default function createDentistScheduleStyles({
     },
 
     validationModalActions: {
+      width: '100%',
       display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
       gap: 12,
       flexDirection: isMobile ? 'column' : 'row',
     },
