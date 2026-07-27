@@ -412,10 +412,10 @@
 
     card: {
       background: '#ffffff',
-      border: '1px solid #f3d879',
+      border: '1px solid #edf0f5',
       borderRadius: isMobile ? 18 : 22,
       padding: isMobile ? 16 : isTablet ? 20 : 24,
-      boxShadow: '0 12px 28px rgba(139, 101, 8, 0.08)',
+      boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
       boxSizing: 'border-box',
       minWidth: 0,
       overflow: 'hidden',
@@ -431,15 +431,15 @@
       gap: 12,
       marginBottom: isMobile ? 16 : 20,
       paddingBottom: isMobile ? 14 : 16,
-      borderBottom: '1px solid #f3d879',
+      borderBottom: '1px solid #edf0f5',
       minWidth: 0,
     },
 
     cardTitleIcon: {
       width: isMobile ? 38 : 42,
       height: isMobile ? 38 : 42,
-      background: '#fff8df',
-      color: '#8b6508',
+      background: '#fff8e1',
+      color: '#b8860b',
       borderRadius: 14,
       display: 'flex',
       alignItems: 'center',
@@ -450,7 +450,7 @@
 
     cardTitleText: {
       fontSize: isMobile ? 18 : 20,
-      color: '#8b6508',
+      color: '#0f172a',
       margin: 0,
       fontFamily: 'Arial, sans-serif',
       lineHeight: 1.25,
@@ -477,10 +477,9 @@
     },
 
     infoItem: {
-      background: '#fffdf7',
-      border: '1px solid #f3d879',
-      borderLeft: '4px solid #d4af37',
-      borderRadius: 16,
+      background: '#ffffff',
+      border: '1px solid #dbe3ef',
+      borderRadius: 14,
       padding: isMobile ? 14 : 16,
       boxSizing: 'border-box',
       minWidth: 0,
@@ -493,18 +492,15 @@
 
     infoLabel: {
       display: 'block',
-      color: '#8b6508',
-      fontSize: 12,
+      color: '#64748b',
+      fontSize: 13,
       marginBottom: 7,
       fontFamily: 'Arial, sans-serif',
       lineHeight: 1.3,
-      fontWeight: 800,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
     },
 
     infoValue: {
-      color: '#0f172a',
+      color: '#172033',
       fontSize: 15,
       fontWeight: 700,
       lineHeight: 1.4,
@@ -522,8 +518,8 @@
     },
 
     emptyBox: {
-      background: '#fffdf7',
-      border: '1px dashed #d4af37',
+      background: '#f8fafc',
+      border: '1px dashed #dbe3ef',
       color: '#64748b',
       padding: 18,
       borderRadius: 16,

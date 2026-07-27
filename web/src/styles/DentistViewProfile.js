@@ -10,15 +10,15 @@
   const primaryDark = '#8b6508';
   const primarySoft = '#fff8df';
   const primaryBorder = '#f3d879';
-  const primaryShadow = '0 18px 40px rgba(139, 101, 8, 0.18)';
+  const primaryShadow = '0 12px 28px rgba(37, 99, 235, 0.18)';
 
   return {
     page: {
       minHeight: '100vh',
       width: '100%',
-      background: '#f5f7fb',
+      background: '#eef4ff',
       fontFamily: 'Arial, sans-serif',
-      color: '#172033',
+      color: '#172554',
       overflow: 'hidden',
       boxSizing: 'border-box',
     },
@@ -30,7 +30,7 @@
       height: topHeaderHeight,
       width: '100%',
       background: '#ffffff',
-      borderBottom: '1px solid #e5e7eb',
+      borderBottom: '1px solid #dbeafe',
       display: 'flex',
       alignItems: 'center',
       gap: isMobile ? 10 : 18,
@@ -63,8 +63,8 @@
     headerTitle: {
       margin: 0,
       fontSize: isMobile ? 17 : 20,
-      color: '#0f172a',
-      fontFamily: 'Arial, sans-serif',
+      color: '#172554',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
     },
 
     sidebar: {
@@ -74,7 +74,7 @@
       bottom: 0,
       width: sidebarWidth,
       background: '#ffffff',
-      borderRight: '1px solid #e5e7eb',
+      borderRight: '1px solid #dbeafe',
       padding: isMobile ? '16px 10px' : '18px 14px',
       overflowY: 'auto',
       boxSizing: 'border-box',
@@ -123,7 +123,7 @@
       bottom: 0,
       overflowY: 'auto',
       overflowX: 'hidden',
-      background: '#f5f7fb',
+      background: '#eef4ff',
       padding: isMobile ? 18 : 28,
       boxSizing: 'border-box',
     },
@@ -139,29 +139,30 @@
     },
 
     loadingBox: {
-      color: '#64748b',
+      color: primaryDark,
       marginBottom: 14,
-      background: '#ffffff',
-      border: '1px solid #e5e7eb',
+      background: primarySoft,
+      border: `1px solid ${primaryBorder}`,
       borderRadius: 12,
       padding: 14,
       fontSize: 14,
+      fontWeight: 700,
     },
 
     sectionBanner: {
       background: primaryGradient,
       color: '#ffffff',
       padding: isMobile ? 24 : '28px 30px',
-      borderRadius: isMobile ? 22 : 24,
+      borderRadius: 18,
       marginBottom: 22,
       boxShadow: primaryShadow,
     },
 
     sectionBannerTitle: {
       margin: 0,
-      fontSize: isMobile ? 23 : 28,
+      fontSize: isMobile ? 21 : 24,
       color: '#ffffff',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
     },
 
     sectionBannerText: {
@@ -174,11 +175,10 @@
 
     patientCard: {
       background: '#ffffff',
-      border: `1px solid ${primaryBorder}`,
-      borderRadius: 22,
+      border: '1px solid #d7e6ff',
+      borderRadius: 18,
       padding: 24,
       marginBottom: 20,
-      boxShadow: '0 14px 32px rgba(139, 101, 8, 0.09)',
       display: 'flex',
       alignItems: isMobile ? 'flex-start' : 'center',
       gap: 18,
@@ -189,8 +189,8 @@
       width: 78,
       height: 78,
       borderRadius: 18,
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
-      color: '#ffffff',
+      background: '#fff3c4',
+      color: '#d4af37',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -201,39 +201,39 @@
     patientName: {
       margin: '0 0 6px',
       fontSize: 24,
-      color: '#0f172a',
-      fontFamily: 'Arial, sans-serif',
+      color: '#071b5f',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
     },
 
     patientNumber: {
       margin: 0,
-      color: '#64748b',
+      color: '#41609b',
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
     },
 
     infoCard: {
       background: '#ffffff',
-      border: `1px solid ${primaryBorder}`,
-      borderRadius: 22,
+      border: '1px solid #d7e6ff',
+      borderRadius: 18,
       padding: 24,
       marginBottom: 20,
-      boxShadow: '0 10px 26px rgba(139, 101, 8, 0.07)',
       boxSizing: 'border-box',
     },
 
     infoCardTitle: {
       margin: '0 0 18px',
       fontSize: 18,
-      color: primaryDark,
-      fontFamily: 'Arial, sans-serif',
+      color: '#071b5f',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
       fontWeight: 800,
+      textTransform: 'uppercase',
     },
 
     subHeading: {
       margin: '18px 0 12px',
       fontSize: 13,
-      color: primary,
+      color: '#2563eb',
       textTransform: 'uppercase',
       fontFamily: 'Arial, sans-serif',
     },
@@ -245,13 +245,12 @@
     },
 
     infoBox: {
-      background: '#fffdf7',
-      border: `1px solid ${primaryBorder}`,
-      borderRadius: 16,
+      background: '#ffffff',
+      border: '1px solid #d7e6ff',
+      borderRadius: 14,
       padding: 18,
       minHeight: 78,
       boxSizing: 'border-box',
-      borderLeft: `4px solid ${primary}`,
     },
 
     infoBoxFull: {
@@ -260,28 +259,26 @@
 
     infoLabel: {
       display: 'block',
-      fontSize: 12,
-      color: primaryDark,
+      fontSize: 13,
+      color: '#406292',
       marginBottom: 8,
       fontFamily: 'Arial, sans-serif',
-      fontWeight: 800,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
     },
 
     infoValue: {
       display: 'block',
       fontSize: 15,
-      color: '#0f172a',
+      color: '#00185c',
       lineHeight: 1.4,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
     },
 
     emptyBox: {
-      padding: 18,
-      borderRadius: 16,
-      background: '#f8fafc',
-      border: '1px dashed #cbd5e1',
+      padding: 16,
+      borderRadius: 12,
+      background: '#f8fbff',
+      border: '1px solid #d7e6ff',
       color: '#64748b',
       fontSize: 14,
       textAlign: 'center',
@@ -298,19 +295,19 @@
       display: 'inline-flex',
       alignItems: 'center',
       gap: 8,
-      padding: '10px 14px',
-      borderRadius: 999,
-      background: primarySoft,
-      color: primaryDark,
-      fontSize: 13,
-      fontWeight: 700,
+      padding: '12px 14px',
+      borderRadius: 12,
+      background: '#f8fbff',
+      border: '1px solid #d7e6ff',
+      color: '#071b5f',
+      fontSize: 14,
       fontFamily: 'Arial, sans-serif',
     },
 
     filterCard: {
       background: '#ffffff',
       border: '1px solid #edf0f5',
-      borderRadius: 20,
+      borderRadius: 22,
       padding: 18,
       marginBottom: 18,
       boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
@@ -325,7 +322,7 @@
       display: 'flex',
       alignItems: 'center',
       gap: 10,
-      border: '1px solid #e2e8f0',
+      border: '1px solid #dbe3ef',
       borderRadius: 14,
       padding: '0 14px',
       background: '#f8fafc',
@@ -333,7 +330,7 @@
     },
 
     searchIcon: {
-      color: '#64748b',
+      color: primary,
       fontSize: 16,
     },
 
@@ -349,10 +346,10 @@
 
     filterSelect: {
       height: 46,
-      border: '1px solid #e2e8f0',
+      border: '1px solid #dbe3ef',
       borderRadius: 14,
       padding: '0 14px',
-      background: '#f8fafc',
+      background: '#ffffff',
       color: '#0f172a',
       fontSize: 14,
       outline: 'none',
@@ -372,8 +369,8 @@
     tableWrapper: {
       width: '100%',
       overflowX: 'auto',
-      borderRadius: 16,
-      border: '1px solid #e5e7eb',
+      borderRadius: 18,
+      border: '1px solid #edf0f5',
     },
 
     dataTable: {
@@ -386,7 +383,7 @@
 
     tableHead: {
       background: '#f8fafc',
-      color: '#475569',
+      color: '#64748b',
       fontSize: 12,
       textTransform: 'uppercase',
       letterSpacing: 0.4,
@@ -413,9 +410,10 @@
     emptyRow: {
       padding: 28,
       textAlign: 'center',
-      color: '#64748b',
+      color: primaryDark,
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
     },
 
     statusBadge: {
@@ -475,13 +473,14 @@
     pageBtnDisabled: {
       opacity: 0.45,
       cursor: 'not-allowed',
-      color: '#94a3b8',
+      color: '#b79b41',
     },
 
     pageInfo: {
       fontSize: 13,
-      color: '#64748b',
+      color: primaryDark,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
     },
 
     modal: {

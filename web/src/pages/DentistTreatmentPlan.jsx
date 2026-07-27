@@ -374,7 +374,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <button style={styles.closeIconBtn} onClick={() => setChoiceModalOpen(false)}>✕</button>
             <h3 style={styles.modalTitle}>Tooth #{choiceTooth}</h3>
-            <p style={{ fontSize: 14, color: '#374151', marginBottom: 20, margin: '0 0 20px', fontFamily: 'Arial, sans-serif' }}>
+            <p style={styles.mutedText}>
               This tooth already has a treatment plan. What would you like to do?
             </p>
             <div style={styles.modalActions}>
@@ -399,7 +399,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             <div style={styles.formGroup}>
               <label style={styles.label}>Tooth</label>
               <input
-                style={{ ...styles.input, background: '#f1f5f9', color: '#64748b' }}
+                style={{ ...styles.input, ...styles.readonlyInput }}
                 value={
                   form.applyToAll
                     ? 'All Teeth (Braces / Aligners)'

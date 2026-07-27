@@ -1,4 +1,10 @@
 const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
+  const primary = '#d4af37';
+  const primaryDark = '#8b6508';
+  const primarySoft = '#fff8df';
+  const primaryBorder = '#f3d879';
+  const primaryGradient = 'linear-gradient(135deg, #8b6508, #d4af37)';
+
   return {
     wrapper: {
       display: 'flex',
@@ -10,25 +16,27 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     card: {
       background: '#ffffff',
-      border: '1px solid #e5e7eb',
-      borderRadius: 14,
+      border: `1px solid ${primaryBorder}`,
+      borderRadius: 22,
       padding: isMobile ? 14 : 20,
       boxSizing: 'border-box',
+      boxShadow: '0 10px 26px rgba(139, 101, 8, 0.07)',
     },
 
     cardTitle: {
       margin: '0 0 4px',
       fontSize: 16,
-      fontWeight: 700,
-      color: '#0f172a',
+      fontWeight: 800,
+      color: primaryDark,
       fontFamily: 'Arial, sans-serif',
     },
 
     chartSubtitle: {
       fontSize: 12,
-      color: '#94a3b8',
+      color: '#9b7a1d',
       marginBottom: 16,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
     },
 
     chartBox: {
@@ -47,7 +55,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     archLabel: {
       fontSize: 10,
-      color: '#94a3b8',
+      color: primaryDark,
       textTransform: 'uppercase',
       letterSpacing: '0.5px',
       width: 20,
@@ -58,7 +66,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     archLabelRight: {
       fontSize: 10,
-      color: '#94a3b8',
+      color: primaryDark,
       textTransform: 'uppercase',
       letterSpacing: '0.5px',
       width: 20,
@@ -70,7 +78,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     midline: {
       width: 1,
       height: 44,
-      background: '#cbd5e0',
+      background: primaryBorder,
       margin: '0 4px',
       flexShrink: 0,
     },
@@ -90,7 +98,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     toothNum: {
       fontSize: 9,
-      color: '#94a3b8',
+      color: primaryDark,
       fontFamily: 'monospace',
       lineHeight: 1,
     },
@@ -98,15 +106,16 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     toothBox: {
       width: 26,
       height: 34,
-      border: '1.5px solid #cbd5e0',
+      border: `1.5px solid ${primaryBorder}`,
       borderRadius: 4,
-      background: '#f8fafc',
+      background: '#fffdf7',
       transition: 'border-color 0.15s, background 0.15s',
     },
 
     toothBoxPlanned: {
-      background: '#bfdbfe',
-      borderColor: '#3b82f6',
+      background: primarySoft,
+      borderColor: primary,
+      boxShadow: 'inset 0 0 0 2px rgba(212, 175, 55, 0.2)',
     },
 
     /* Legend */
@@ -122,14 +131,15 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       width: 12,
       height: 12,
       borderRadius: 3,
-      background: '#bfdbfe',
-      border: '1.5px solid #3b82f6',
+      background: primarySoft,
+      border: `1.5px solid ${primary}`,
     },
 
     legendText: {
       fontSize: 11,
-      color: '#64748b',
+      color: primaryDark,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
     },
 
     /* Card header row */
@@ -143,14 +153,15 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     bracesBtn: {
       padding: '6px 12px',
       fontSize: 12,
-      fontWeight: 600,
-      border: '1px solid #a855f7',
-      borderRadius: 7,
-      background: '#faf5ff',
-      color: '#7e22ce',
+      fontWeight: 800,
+      border: `1px solid ${primary}`,
+      borderRadius: 10,
+      background: primaryGradient,
+      color: '#ffffff',
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
       whiteSpace: 'nowrap',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.16)',
     },
 
     /* Checkbox */
@@ -160,7 +171,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       gap: 8,
       fontSize: 13,
       fontWeight: 500,
-      color: '#374151',
+      color: primaryDark,
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
     },
@@ -176,8 +187,8 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     tableWrapper: {
       width: '100%',
       overflowX: 'auto',
-      border: '1px solid #e5e7eb',
-      borderRadius: 10,
+      border: `1px solid ${primaryBorder}`,
+      borderRadius: 16,
     },
 
     table: {
@@ -189,9 +200,9 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     th: {
       padding: '12px 14px',
-      background: '#f8fafc',
-      borderBottom: '1px solid #e5e7eb',
-      color: '#334155',
+      background: primarySoft,
+      borderBottom: `1px solid ${primaryBorder}`,
+      color: primaryDark,
       fontSize: 13,
       fontWeight: 700,
       textAlign: 'left',
@@ -200,7 +211,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     td: {
       padding: '14px',
-      borderBottom: '1px solid #f1f5f9',
+      borderBottom: '1px solid #f8ead0',
       color: '#1e293b',
       fontSize: 14,
       verticalAlign: 'middle',
@@ -211,15 +222,16 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     tableRowHighlighted: {
-      background: '#fef9c3',
+      background: primarySoft,
       transition: 'background 0.5s',
     },
 
     emptyRow: {
       padding: '24px 14px',
-      color: '#94a3b8',
+      color: primaryDark,
       fontSize: 14,
       textAlign: 'center',
+      fontWeight: 700,
     },
 
     /* Action group */
@@ -233,11 +245,11 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     viewBtn: {
       padding: '5px 10px',
       fontSize: 12,
-      fontWeight: 600,
-      border: '1px solid #cbd5e0',
-      borderRadius: 6,
-      background: '#f8fafc',
-      color: '#334155',
+      fontWeight: 800,
+      border: `1px solid ${primary}`,
+      borderRadius: 8,
+      background: primarySoft,
+      color: primaryDark,
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
     },
@@ -245,11 +257,11 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     editBtn: {
       padding: '5px 10px',
       fontSize: 12,
-      fontWeight: 600,
-      border: '1px solid #3b82f6',
-      borderRadius: 6,
-      background: '#eff6ff',
-      color: '#2563eb',
+      fontWeight: 800,
+      border: `1px solid ${primary}`,
+      borderRadius: 8,
+      background: primaryGradient,
+      color: '#ffffff',
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
     },
@@ -280,13 +292,13 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     statusPlanned: {
-      background: '#dbeafe',
-      color: '#2563eb',
+      background: primarySoft,
+      color: primaryDark,
     },
 
     statusInProgress: {
-      background: '#fef9c3',
-      color: '#a16207',
+      background: '#fef3c7',
+      color: '#b45309',
     },
 
     statusCompleted: {
@@ -308,23 +320,39 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     loadingBox: {
       padding: '12px 0',
-      color: '#94a3b8',
+      color: primaryDark,
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
     },
 
     empty: {
       padding: 24,
-      color: '#94a3b8',
+      color: primaryDark,
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
+    },
+
+    mutedText: {
+      fontSize: 14,
+      color: primaryDark,
+      margin: '0 0 20px',
+      fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.5,
+    },
+
+    readonlyInput: {
+      background: primarySoft,
+      color: primaryDark,
+      fontWeight: 700,
     },
 
     /* Modal overlay */
     overlay: {
       position: 'fixed',
       inset: 0,
-      background: 'rgba(0,0,0,0.4)',
+      background: 'rgba(15, 23, 42, 0.45)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -334,34 +362,35 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     modal: {
       position: 'relative',
       background: '#ffffff',
-      borderRadius: 14,
+      borderRadius: 22,
       padding: 28,
       width: '100%',
       maxWidth: 440,
       boxSizing: 'border-box',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+      boxShadow: '0 20px 50px rgba(15, 23, 42, 0.2)',
+      border: `1px solid ${primaryBorder}`,
     },
 
     closeIconBtn: {
       position: 'absolute',
       top: 12,
       right: 14,
-      background: 'none',
-      border: 'none',
+      background: primarySoft,
+      border: `1px solid ${primaryBorder}`,
       fontSize: 18,
-      color: '#94a3b8',
+      color: primaryDark,
       cursor: 'pointer',
       padding: '2px 6px',
       lineHeight: 1,
-      borderRadius: 4,
+      borderRadius: 8,
       fontFamily: 'Arial, sans-serif',
     },
 
     modalTitle: {
       margin: '0 0 20px',
       fontSize: 17,
-      fontWeight: 700,
-      color: '#0f172a',
+      fontWeight: 800,
+      color: primaryDark,
       fontFamily: 'Arial, sans-serif',
     },
 
@@ -373,7 +402,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       display: 'block',
       fontSize: 13,
       fontWeight: 600,
-      color: '#374151',
+      color: primaryDark,
       marginBottom: 5,
       fontFamily: 'Arial, sans-serif',
     },
@@ -385,24 +414,25 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     input: {
       width: '100%',
       padding: '9px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: 7,
+      border: `1px solid ${primaryBorder}`,
+      borderRadius: 10,
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
       color: '#0f172a',
       boxSizing: 'border-box',
       outline: 'none',
+      background: '#fffdf7',
     },
 
     select: {
       width: '100%',
       padding: '9px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: 7,
+      border: `1px solid ${primaryBorder}`,
+      borderRadius: 10,
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
       color: '#0f172a',
-      background: '#fff',
+      background: '#fffdf7',
       boxSizing: 'border-box',
       outline: 'none',
     },
@@ -410,14 +440,15 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     textarea: {
       width: '100%',
       padding: '9px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: 7,
+      border: `1px solid ${primaryBorder}`,
+      borderRadius: 10,
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
       color: '#0f172a',
       resize: 'vertical',
       boxSizing: 'border-box',
       outline: 'none',
+      background: '#fffdf7',
     },
 
     formError: {
@@ -441,11 +472,11 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     cancelBtn: {
       padding: '9px 18px',
       fontSize: 14,
-      fontWeight: 600,
-      border: '1px solid #d1d5db',
-      borderRadius: 8,
-      background: '#f8fafc',
-      color: '#374151',
+      fontWeight: 700,
+      border: `1px solid ${primaryBorder}`,
+      borderRadius: 12,
+      background: primarySoft,
+      color: primaryDark,
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
     },
@@ -455,15 +486,15 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       fontSize: 14,
       fontWeight: 700,
       border: 'none',
-      borderRadius: 8,
-      background: '#2563eb',
+      borderRadius: 12,
+      background: primaryGradient,
       color: '#ffffff',
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
     },
 
     saveBtnDisabled: {
-      background: '#93c5fd',
+      background: '#ead98f',
       cursor: 'not-allowed',
     },
 
@@ -474,13 +505,13 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       alignItems: 'flex-start',
       gap: 12,
       padding: '10px 0',
-      borderBottom: '1px solid #f1f5f9',
+      borderBottom: '1px solid #f8ead0',
     },
 
     viewLabel: {
       fontSize: 13,
       fontWeight: 600,
-      color: '#64748b',
+      color: primaryDark,
       flexShrink: 0,
       fontFamily: 'Arial, sans-serif',
     },

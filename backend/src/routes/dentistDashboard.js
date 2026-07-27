@@ -21,6 +21,38 @@ function formatTime12h(timeStr) {
   return `${h12}:${mm} ${period}`;
 }
 
+function normalizeDateKey(value) {
+  const raw = String(value || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+}
+
+function formatAppointmentDateTime(value) {
+  if (!value) {
+    return { date: '-', time: '-' };
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return {
+      date: String(value).slice(0, 10),
+      time: '-',
+    };
+  }
+
+  return {
+    date: parsed.toLocaleDateString('en-PH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }),
+    time: parsed.toLocaleTimeString('en-PH', {
+      hour: 'numeric',
+      minute: '2-digit',
+    }),
+  };
+}
+
 async function notifyDentistAboutRequestDecision(dentistId, status, requestType) {
   const title = status === 'approved' ? 'Schedule request approved' : 'Schedule request rejected';
   const body = `Your ${requestType === 'leave' ? 'leave' : 'schedule transfer'} request was ${status}.`;
@@ -264,11 +296,40 @@ router.post('/schedule-requests', requireRole('dentist'), async (req, res) => {
     return res.status(400).json({ message: 'date_from and date_to are required for leave requests' });
   }
 
+  if (request_type === 'leave') {
+    const fromKey = normalizeDateKey(date_from);
+    const toKey = normalizeDateKey(date_to);
+
+    if (!fromKey || !toKey || toKey < fromKey) {
+      return res.status(400).json({ message: 'Invalid leave date range.' });
+    }
+  }
+
   if (request_type === 'transfer' && !requested_branch_id) {
     return res.status(400).json({ message: 'requested_branch_id is required for transfer requests' });
   }
 
   try {
+    if (request_type === 'leave') {
+      const [pendingRows] = await pool.query(
+        `SELECT id, date_from, date_to
+         FROM schedule_requests
+         WHERE dentist_id = ?
+           AND request_type = 'leave'
+           AND status = 'pending'
+         ORDER BY submitted_at DESC
+         LIMIT 1`,
+        [dentistId]
+      );
+
+      if (pendingRows.length > 0) {
+        return res.status(409).json({
+          message: 'You already have a pending leave request awaiting admin approval.',
+          pendingLeaveRequest: pendingRows[0],
+        });
+      }
+    }
+
     const [result] = await pool.query(
       `INSERT INTO schedule_requests
          (dentist_id, request_type, date_from, date_to, reason, requested_branch_id, transfer_type, duration)
@@ -323,6 +384,56 @@ router.post('/schedule-requests', requireRole('dentist'), async (req, res) => {
   } catch (err) {
     console.error('[schedule-requests POST]', err);
     return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/schedule-requests/leave-conflicts', requireRole('dentist'), async (req, res) => {
+  const dentistId = getUserId(req);
+  const dateFrom = normalizeDateKey(req.query.date_from);
+  const dateTo = normalizeDateKey(req.query.date_to);
+
+  if (!dateFrom || !dateTo || dateTo < dateFrom) {
+    return res.status(400).json({ message: 'Valid date_from and date_to are required.' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT a.id,
+              a.start_time,
+              a.status,
+              p.name AS patient_name,
+              s.name AS service_name,
+              b.name AS branch_name
+       FROM appointments a
+       JOIN users p ON p.id = a.patient_id
+       LEFT JOIN services s ON s.id = a.service_id
+       LEFT JOIN branches b ON b.id = a.branch_id
+       WHERE a.dentist_id = ?
+         AND a.status IN ('scheduled', 'arrived')
+         AND DATE(a.start_time) BETWEEN ? AND ?
+       ORDER BY a.start_time ASC`,
+      [dentistId, dateFrom, dateTo]
+    );
+
+    return res.json({
+      conflicts: rows.map((row) => {
+        const when = formatAppointmentDateTime(row.start_time);
+
+        return {
+          id: row.id,
+          date: when.date,
+          time: when.time,
+          rawDate: String(row.start_time || '').slice(0, 10),
+          patientName: row.patient_name || 'Patient',
+          serviceName: row.service_name || 'Appointment',
+          branchName: row.branch_name || '',
+          status: row.status,
+        };
+      }),
+    });
+  } catch (err) {
+    console.error('[leave conflicts GET]', err);
+    return res.status(500).json({ message: 'Failed to check leave appointments.' });
   }
 });
 
@@ -574,9 +685,11 @@ router.patch('/admin/schedule-requests/:id', requireRole('admin'), async (req, r
 
     await pool.query(
       `UPDATE schedule_requests
-       SET status = ?
+       SET status = ?,
+           reviewed_at = CURRENT_TIMESTAMP,
+           reviewed_by = ?
        WHERE id = ?`,
-      [status, id]
+      [status, getUserId(req), id]
     );
 
     await notifyDentistAboutRequestDecision(

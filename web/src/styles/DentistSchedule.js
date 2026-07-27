@@ -616,6 +616,13 @@ export default function createDentistScheduleStyles({
       whiteSpace: "nowrap",
     },
 
+    primaryButtonDisabled: {
+      backgroundColor: '#e5e7eb',
+      color: '#94a3b8',
+      cursor: 'not-allowed',
+      boxShadow: 'none',
+    },
+
     modal: {
       display: 'flex',
       position: 'fixed',
@@ -701,6 +708,12 @@ export default function createDentistScheduleStyles({
       fontWeight: 'bold',
     },
 
+    confirmGoldBtn: {
+      background: '#d4af37',
+      color: '#ffffff',
+      fontWeight: 'bold',
+    },
+
     submitLeaveButton: {
       flex: 1,
       height: 42,
@@ -726,6 +739,54 @@ export default function createDentistScheduleStyles({
       boxSizing: 'border-box',
       maxHeight: '90vh',
       overflowY: 'auto',
+    },
+
+    leaveConflictModalContent: {
+      width: isMobile ? '100%' : 520,
+      maxWidth: '92vw',
+      maxHeight: '90vh',
+      overflowY: 'auto',
+      background: '#ffffff',
+      borderRadius: 22,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
+    },
+
+    leaveConflictList: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+      margin: '0 0 22px',
+      maxHeight: 260,
+      overflowY: 'auto',
+      textAlign: 'left',
+    },
+
+    leaveConflictItem: {
+      border: '1px solid #f3d879',
+      borderRadius: 12,
+      background: '#fffdf7',
+      padding: '12px 14px',
+      boxSizing: 'border-box',
+    },
+
+    leaveConflictDate: {
+      display: 'block',
+      color: '#0f172a',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      lineHeight: 1.35,
+      marginBottom: 4,
+    },
+
+    leaveConflictMeta: {
+      margin: 0,
+      color: '#64748b',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 13,
+      lineHeight: 1.4,
     },
 
     leaveModalHeader: {

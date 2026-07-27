@@ -100,10 +100,12 @@ export default function DentistSchedule() {
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [showLeaveCancelConfirmModal, setShowLeaveCancelConfirmModal] =
     useState(false);
+  const [showLeaveConflictModal, setShowLeaveConflictModal] = useState(false);
 
   const [validationTitle, setValidationTitle] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
   const [requestToCancel, setRequestToCancel] = useState(null);
+  const [leaveConflicts, setLeaveConflicts] = useState([]);
 
   const [serviceNames, setServiceNames] = useState('');
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -234,7 +236,8 @@ export default function DentistSchedule() {
       selectedRequest ||
       showValidationModal ||
       showCancelConfirmModal ||
-      showLeaveCancelConfirmModal;
+      showLeaveCancelConfirmModal ||
+      showLeaveConflictModal;
 
     document.body.style.overflow = hasOpenModal ? 'hidden' : '';
 
@@ -248,6 +251,7 @@ export default function DentistSchedule() {
     showValidationModal,
     showCancelConfirmModal,
     showLeaveCancelConfirmModal,
+    showLeaveConflictModal,
   ]);
 
   useEffect(() => {
@@ -257,6 +261,7 @@ export default function DentistSchedule() {
         closeValidationModal();
         closeCancelConfirmModal();
         closeLeaveCancelConfirmModal();
+        closeLeaveConflictModal();
         setSelectedRequest(null);
 
         if (showLeaveModal) {
@@ -312,6 +317,7 @@ export default function DentistSchedule() {
       dateTo: '',
       reason: '',
     });
+    setLeaveConflicts([]);
   }
 
   function closeLeaveModal() {
@@ -343,6 +349,12 @@ export default function DentistSchedule() {
   function closeCancelConfirmModal() {
     setShowCancelConfirmModal(false);
     setRequestToCancel(null);
+  }
+
+  function closeLeaveConflictModal() {
+    if (submitLoading) return;
+
+    setShowLeaveConflictModal(false);
   }
 
   function handleModalOverlayClick(event) {
@@ -381,6 +393,12 @@ export default function DentistSchedule() {
     }
   }
 
+  function handleLeaveConflictOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeLeaveConflictModal();
+    }
+  }
+
   function handleLeaveChange(field, value) {
     setSubmitError('');
 
@@ -404,6 +422,14 @@ export default function DentistSchedule() {
   }
 
   function validateLeaveForm() {
+    if (pendingLeaveRequest) {
+      openValidationModal(
+        'Pending Leave Request',
+        'You already have a pending leave request awaiting admin approval. Please cancel it first before submitting another request.'
+      );
+      return false;
+    }
+
     if (!leaveForm.dateFrom || !leaveForm.dateTo) {
       openValidationModal(
         'Incomplete Leave Date',
@@ -453,16 +479,10 @@ export default function DentistSchedule() {
     return true;
   }
 
-  function handleLeaveSubmit() {
-    setSubmitError('');
-
-    if (!validateLeaveForm()) {
-      return;
-    }
-
+  function submitLeaveRequest() {
     setSubmitLoading(true);
 
-    api
+    return api
       .post('/dentist-dashboard/schedule-requests', {
         request_type: 'leave',
         date_from: leaveForm.dateFrom,
@@ -472,6 +492,7 @@ export default function DentistSchedule() {
       })
       .then(() => {
         setShowLeaveModal(false);
+        setShowLeaveConflictModal(false);
         resetLeaveForm();
         loadRequests();
         openValidationModal(
@@ -483,10 +504,52 @@ export default function DentistSchedule() {
         setSubmitError(
           err.response?.data?.message || 'Failed to submit request.'
         );
+        setShowLeaveConflictModal(false);
       })
       .finally(() => {
         setSubmitLoading(false);
       });
+  }
+
+  function handleLeaveSubmit() {
+    setSubmitError('');
+
+    if (!validateLeaveForm()) {
+      return;
+    }
+
+    setSubmitLoading(true);
+
+    api
+      .get('/dentist-dashboard/schedule-requests/leave-conflicts', {
+        params: {
+          date_from: leaveForm.dateFrom,
+          date_to: leaveForm.dateTo,
+        },
+      })
+      .then((res) => {
+        const conflicts = res.data?.conflicts || [];
+
+        if (conflicts.length > 0) {
+          setLeaveConflicts(conflicts);
+          setShowLeaveConflictModal(true);
+          return null;
+        }
+
+        return submitLeaveRequest();
+      })
+      .catch((err) => {
+        setSubmitError(
+          err.response?.data?.message || 'Failed to check leave appointments.'
+        );
+      })
+      .finally(() => {
+        setSubmitLoading(false);
+      });
+  }
+
+  function confirmLeaveWithConflicts() {
+    submitLeaveRequest();
   }
 
   function openCancelRequestModal(request) {
@@ -648,9 +711,14 @@ export default function DentistSchedule() {
 
               <button
                 type="button"
-                style={styles.primaryButton}
+                style={{
+                  ...styles.primaryButton,
+                  ...(pendingLeaveRequest ? styles.primaryButtonDisabled : {}),
+                }}
+                disabled={Boolean(pendingLeaveRequest)}
                 onClick={() => {
                   setSubmitError('');
+                  setLeaveConflicts([]);
                   setShowLeaveModal(true);
                 }}
               >
@@ -922,6 +990,70 @@ export default function DentistSchedule() {
                 disabled={submitLoading}
               >
                 {submitLoading ? 'Submitting...' : 'Submit Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLeaveConflictModal && (
+        <div
+          style={styles.modal}
+          onClick={handleLeaveConflictOverlayClick}
+        >
+          <div style={styles.leaveConflictModalContent}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                background: '#fff8df',
+                color: '#d4af37',
+              }}
+            >
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Appointments Found</h2>
+            <p style={styles.modalText}>
+              These appointments fall within your selected leave dates. Please review them before submitting your request.
+            </p>
+
+            <div style={styles.leaveConflictList}>
+              {leaveConflicts.map((appointment) => (
+                <div key={appointment.id} style={styles.leaveConflictItem}>
+                  <div>
+                    <strong style={styles.leaveConflictDate}>
+                      {appointment.date} at {appointment.time}
+                    </strong>
+                    <p style={styles.leaveConflictMeta}>
+                      {appointment.patientName} • {appointment.serviceName}
+                      {appointment.branchName ? ` • ${appointment.branchName}` : ''}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {submitError ? (
+              <p style={styles.submitErrorText}>{submitError}</p>
+            ) : null}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeLeaveConflictModal}
+                disabled={submitLoading}
+              >
+                Review Dates
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.confirmGoldBtn }}
+                onClick={confirmLeaveWithConflicts}
+                disabled={submitLoading}
+              >
+                {submitLoading ? 'Submitting...' : 'Proceed'}
               </button>
             </div>
           </div>
