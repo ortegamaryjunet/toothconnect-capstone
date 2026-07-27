@@ -595,6 +595,23 @@
       flexDirection: isVerySmall ? 'column' : 'row',
     },
 
+    manualPaymentBtn: {
+      marginLeft: isVerySmall ? 0 : 'auto',
+      minHeight: 40,
+      border: 'none',
+      borderRadius: 12,
+      background: '#b8860b',
+      color: '#ffffff',
+      padding: '0 16px',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 13,
+      fontWeight: 800,
+      cursor: 'pointer',
+      whiteSpace: 'nowrap',
+      width: isVerySmall ? '100%' : 'auto',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+    },
+
     receiptPreview: {
       width: 72,
       height: 72,
@@ -608,6 +625,11 @@
       fontSize: 30,
     },
 
+    receiptPreviewLink: {
+      textDecoration: 'none',
+      cursor: 'pointer',
+    },
+
     receiptInfo: {
       minWidth: 0,
     },
@@ -618,6 +640,17 @@
       marginBottom: 5,
       marginTop: 0,
       wordBreak: 'break-word',
+    },
+
+    receiptFileNameLink: {
+      color: '#172033',
+      fontSize: 15,
+      marginBottom: 5,
+      marginTop: 0,
+      wordBreak: 'break-word',
+      textDecoration: 'none',
+      display: 'inline-block',
+      fontWeight: 700,
     },
 
     receiptUploadedAt: {
@@ -758,6 +791,146 @@
       padding: 20,
       zIndex: 9999,
       boxSizing: 'border-box',
+    },
+
+    manualPaymentModal: {
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(15, 23, 42, 0.58)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 20,
+      zIndex: 9999,
+      boxSizing: 'border-box',
+    },
+
+    manualPaymentBox: {
+      width: '100%',
+      maxWidth: 420,
+      background: '#ffffff',
+      borderRadius: 22,
+      padding: isVerySmall ? '24px 20px' : 28,
+      boxShadow: '0 24px 60px rgba(15, 23, 42, 0.22)',
+      boxSizing: 'border-box',
+    },
+
+    manualPaymentHeader: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 14,
+      marginBottom: 16,
+    },
+
+    manualPaymentTitle: {
+      margin: '0 0 7px',
+      color: '#0f172a',
+      fontSize: 20,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+    },
+
+    manualPaymentText: {
+      margin: 0,
+      color: '#475569',
+      fontSize: 14,
+      lineHeight: 1.45,
+    },
+
+    manualPaymentClose: {
+      width: 34,
+      height: 34,
+      border: 'none',
+      borderRadius: 10,
+      background: '#fff8e1',
+      color: '#8b6508',
+      cursor: 'pointer',
+      fontSize: 18,
+      lineHeight: 1,
+      flexShrink: 0,
+    },
+
+    manualPaymentLabel: {
+      display: 'block',
+      margin: '13px 0 7px',
+      color: '#334155',
+      fontSize: 14,
+      fontWeight: 700,
+    },
+
+    manualPaymentInput: {
+      width: '100%',
+      height: 44,
+      border: '1px solid #dbe3ef',
+      borderRadius: 12,
+      padding: '0 13px',
+      color: '#172033',
+      background: '#ffffff',
+      fontSize: 14,
+      outline: 'none',
+      boxSizing: 'border-box',
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    manualPaymentUpload: {
+      minHeight: 72,
+      border: '1px dashed #cbd5e1',
+      borderRadius: 14,
+      background: '#fffdf7',
+      color: '#64748b',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      cursor: 'pointer',
+      textAlign: 'center',
+      padding: 14,
+      boxSizing: 'border-box',
+      fontSize: 13,
+    },
+
+    manualPaymentFileInput: {
+      display: 'none',
+    },
+
+    recordedByRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 13,
+      color: '#64748b',
+      fontSize: 13,
+    },
+
+    manualPaymentActions: {
+      display: 'grid',
+      gridTemplateColumns: isVerySmall ? '1fr' : '1fr 1fr',
+      gap: 10,
+      marginTop: 18,
+    },
+
+    manualPaymentCancel: {
+      height: 44,
+      border: 'none',
+      borderRadius: 12,
+      background: '#f1f5f9',
+      color: '#0f172a',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      cursor: 'pointer',
+    },
+
+    manualPaymentSubmit: {
+      height: 44,
+      border: 'none',
+      borderRadius: 12,
+      background: '#b8860b',
+      color: '#ffffff',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      cursor: 'pointer',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     messageBox: {

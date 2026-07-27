@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -592,6 +592,12 @@ function transformAuditLogsToReport(data) {
 
 export default function AdminReports() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const initialReportType = reportOptions.some(
+    (option) => option.value === searchParams.get('reportType')
+  )
+    ? searchParams.get('reportType')
+    : 'clinicDentist';
   const adminName = user?.name || 'Admin';
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -602,8 +608,8 @@ export default function AdminReports() {
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
 
-  const [reportType, setReportType] = useState('clinicDentist');
-  const [appliedReportType, setAppliedReportType] = useState('clinicDentist');
+  const [reportType, setReportType] = useState(initialReportType);
+  const [appliedReportType, setAppliedReportType] = useState(initialReportType);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
@@ -1416,6 +1422,11 @@ export default function AdminReports() {
             <span style={styles.menuItemText}>Inventory</span>
           </Link>
 
+          <Link to="/adminTransactions" style={styles.menuItem}>
+            <i className="fi fi-rr-file-invoice-dollar" style={styles.menuItemIcon}></i>
+            <span style={styles.menuItemText}>Transactions</span>
+          </Link>
+
           <Link to="/adminLogs" style={styles.menuItem}>
             <i
               className="fi fi-rr-clipboard-list"
@@ -1968,7 +1979,7 @@ function RevenueReportSection({
             </div>
 
             <div style={styles.reportCard}>
-              <h3 style={styles.cardTitle}>
+              <h3 style={styles.revenueFormulaTitle}>
                 How Revenue is Calculated
               </h3>
 

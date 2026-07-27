@@ -1,9 +1,20 @@
 ﻿const createDentistViewProfileStyles = ({
   isMobile = false,
   isSmallScreen = false,
+  isAdminView = false,
 } = {}) => {
   const topHeaderHeight = isMobile ? 68 : 72;
   const sidebarWidth = isMobile ? 74 : 230;
+  const primaryGradient = isAdminView
+    ? 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)'
+    : 'linear-gradient(135deg, #2563eb, #60a5fa)';
+  const primary = isAdminView ? '#d4af37' : '#2563eb';
+  const primaryDark = isAdminView ? '#8b6508' : '#172554';
+  const primarySoft = isAdminView ? '#fff3c4' : '#eff6ff';
+  const primaryBorder = isAdminView ? '#f3d879' : '#dbeafe';
+  const primaryShadow = isAdminView
+    ? '0 18px 40px rgba(139, 101, 8, 0.18)'
+    : '0 18px 40px rgba(37, 99, 235, 0.18)';
 
   return {
     page: {
@@ -33,19 +44,24 @@
     },
 
     backLink: {
+      minWidth: 72,
       height: 42,
-      padding: isMobile ? '0 12px' : '0 14px',
-      borderRadius: 14,
-      background: '#eff6ff',
-      color: '#2563eb',
+      padding: '0 16px',
+      border: '1px solid #d4af37',
+      borderRadius: 12,
+      background: '#d4af37',
+      color: '#ffffff',
       textDecoration: 'none',
       display: 'inline-flex',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 8,
       fontSize: 14,
       fontWeight: 700,
       whiteSpace: 'nowrap',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+      cursor: 'pointer',
     },
 
     headerTitle: {
@@ -137,12 +153,12 @@
     },
 
     sectionBanner: {
-      background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
+      background: primaryGradient,
       color: '#ffffff',
       padding: isMobile ? 24 : '28px 30px',
       borderRadius: isMobile ? 22 : 24,
       marginBottom: 22,
-      boxShadow: '0 18px 40px rgba(37, 99, 235, 0.18)',
+      boxShadow: primaryShadow,
     },
 
     sectionBannerTitle: {
@@ -177,8 +193,8 @@
       width: 78,
       height: 78,
       borderRadius: 18,
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: primarySoft,
+      color: primary,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -220,7 +236,7 @@
     subHeading: {
       margin: '18px 0 12px',
       fontSize: 13,
-      color: '#2563eb',
+      color: primary,
       textTransform: 'uppercase',
       fontFamily: 'Arial, sans-serif',
     },
@@ -283,8 +299,8 @@
       gap: 8,
       padding: '10px 14px',
       borderRadius: 999,
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: primarySoft,
+      color: primaryDark,
       fontSize: 13,
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
@@ -419,8 +435,8 @@
     },
 
     statusOngoing: {
-      background: '#dbeafe',
-      color: '#2563eb',
+      background: primarySoft,
+      color: primaryDark,
     },
 
     statusPending: {
@@ -446,9 +462,9 @@
       width: 38,
       height: 38,
       borderRadius: 12,
-      border: '1px solid #dbe3ef',
+      border: `1px solid ${primaryBorder}`,
       background: '#ffffff',
-      color: '#2563eb',
+      color: primary,
       cursor: 'pointer',
       display: 'inline-flex',
       alignItems: 'center',
@@ -465,6 +481,89 @@
       fontSize: 13,
       color: '#64748b',
       fontFamily: 'Arial, sans-serif',
+    },
+
+    modal: {
+      display: 'flex',
+      position: 'fixed',
+      zIndex: 9999,
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.45)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 18,
+      boxSizing: 'border-box',
+    },
+
+    backModalContent: {
+      width: '100%',
+      maxWidth: 410,
+      background: '#ffffff',
+      padding: isMobile ? '26px 20px' : '30px 25px',
+      borderRadius: 22,
+      textAlign: 'center',
+      boxShadow: '0 20px 50px rgba(15, 23, 42, 0.2)',
+      boxSizing: 'border-box',
+    },
+
+    backModalIcon: {
+      width: 82,
+      height: 82,
+      margin: '0 auto 16px',
+      background: '#fee2e2',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#dc2626',
+    },
+
+    modalIconText: {
+      fontSize: 34,
+    },
+
+    backModalTitle: {
+      margin: '0 0 10px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 21,
+      color: '#0f172a',
+      fontWeight: 600,
+    },
+
+    backModalText: {
+      margin: '0 0 24px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 15,
+      color: '#64748b',
+      lineHeight: 1.5,
+    },
+
+    backModalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    backModalButton: {
+      minWidth: isMobile ? '100%' : 100,
+      border: 'none',
+      borderRadius: 12,
+      padding: '12px 18px',
+      cursor: 'pointer',
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
+      fontSize: 14,
+    },
+
+    backCancelBtn: {
+      background: '#e5e7eb',
+      color: '#0f172a',
+    },
+
+    backConfirmBtn: {
+      background: '#dc2626',
+      color: '#ffffff',
     },
   };
 };

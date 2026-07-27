@@ -75,6 +75,38 @@ const styles = StyleSheet.create({
         flex: 1,
         marginLeft: 14
     },
+    contextDivider: {
+        height: 1,
+        backgroundColor: '#efe3c8',
+        marginVertical: 10
+    },
+    dentistPickerGroup: {
+        gap: 8,
+        paddingTop: 2
+    },
+    dentistPickerButton: {
+        minHeight: 44,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#c98904',
+        backgroundColor: '#fff8e8',
+        paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+    },
+    dentistPickerText: {
+        flex: 1,
+        color: '#1f1f1f',
+        fontSize: 14,
+        fontWeight: '800',
+        paddingRight: 10
+    },
+    dentistPickerChevron: {
+        color: '#b47a00',
+        fontSize: 13,
+        fontWeight: '900'
+    },
 
     sectionTitle: {
         fontSize: 14,
@@ -131,41 +163,23 @@ const styles = StyleSheet.create({
         marginTop: 4,
         fontWeight: '600'
     },
-
-    bestBadge: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#f6efe3',
-        paddingVertical: 5,
-        paddingHorizontal: 12,
-        borderRadius: 999,
-        marginBottom: 6
+    dentistList: {
+        backgroundColor: '#fbfaf7',
+        borderWidth: 1,
+        borderColor: '#ead7b2',
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        marginTop: -2,
+        marginBottom: 12
     },
-    bestBadgeText: {
-        color: '#8a650e',
-        fontSize: 10,
-        fontWeight: '900',
-        letterSpacing: 0.5
-    },
-
-    breakdownPanel: {
-        borderTopWidth: 1,
-        borderTopColor: '#eeeeee',
-        paddingTop: 11,
-        marginTop: 3
-    },
-    breakdownRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        paddingVertical: 4
-    },
-    breakdownReason: {
+    dentistListItem: {
+        color: '#333333',
         fontSize: 13,
-        color: '#555555',
-        flex: 1,
-        lineHeight: 18,
-        fontWeight: '500'
+        fontWeight: '700',
+        lineHeight: 20
     },
+
     pickButton: {
         backgroundColor: '#ffffff',
         paddingVertical: 11,
@@ -400,6 +414,28 @@ const styles = StyleSheet.create({
     timePickerDoneText: {
         color: '#ffffff',
         fontSize: 13,
+        fontWeight: '900'
+    },
+    dentistOption: {
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#eeeeee',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        marginBottom: 8
+    },
+    dentistOptionSelected: {
+        backgroundColor: '#fdf3df',
+        borderColor: '#c98904'
+    },
+    dentistOptionText: {
+        color: '#333333',
+        fontSize: 14,
+        fontWeight: '800'
+    },
+    dentistOptionTextSelected: {
+        color: '#8a650e',
         fontWeight: '900'
     },
 

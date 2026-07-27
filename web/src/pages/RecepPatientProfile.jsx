@@ -625,7 +625,7 @@ export default function RecepPatientProfile() {
 
             <h2 style={styles.backModalTitle}>Leave Patient Record</h2>
             <p style={styles.backModalText}>
-              Are you sure you want to go back? Any unsaved changes will be lost.
+              Are you sure you want to go back?
             </p>
 
             <div style={styles.backModalActions}>

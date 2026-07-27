@@ -132,7 +132,7 @@ function isValidNonNegativeNumber(value) {
 }
 
 function isValidTimeValue(value) {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || '').trim());
+  return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(String(value || '').trim());
 }
 
 function getShiftTypeOptions(role) {
@@ -207,6 +207,15 @@ export default function AdminEmployees() {
   const [usePerDayBranchSchedule, setUsePerDayBranchSchedule] =
     useState(false);
   const [scheduleDraft, setScheduleDraft] = useState({});
+  const [scheduleLocks, setScheduleLocks] = useState({
+    hasLocks: false,
+    branchLocked: false,
+    lockedWeekdays: [],
+    locks: [],
+  });
+  const [scheduleLocksLoading, setScheduleLocksLoading] = useState(false);
+  const [showScheduleLockWarningModal, setShowScheduleLockWarningModal] =
+    useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -707,7 +716,7 @@ export default function AdminEmployees() {
       [
         ['Start Date', safeValue(employee.startDate)],
         ['Assigned Branch', branch],
-        ['Department', safeValue(employee.specialization)],
+        ['Department', safeValue(employee.workDepartment)],
         ['Employment Type', safeValue(employee.employmentType)],
         ['Shift Type', safeValue(employee.shiftType)],
         ['Work Schedule Days', parseWorkDays(employee.workDays).join(', ') || 'N/A'],
@@ -783,6 +792,7 @@ export default function AdminEmployees() {
     setShowEmployeeEditConfirmModal(false);
     setShowEmployeeEditCancelConfirmModal(false);
     setEmployeeSaveConfirmModal(null);
+    setShowScheduleLockWarningModal(false);
     setSelectedEmployee(null);
     setEditedEmployee(null);
     setIsEditingEmployee(false);
@@ -790,6 +800,12 @@ export default function AdminEmployees() {
     setLiveEditErrors({});
     setUsePerDayBranchSchedule(false);
     setScheduleDraft({});
+    setScheduleLocks({
+      hasLocks: false,
+      branchLocked: false,
+      lockedWeekdays: [],
+      locks: [],
+    });
   }
 
   function handleEmployeeModalOverlayClick(event) {
@@ -802,9 +818,85 @@ export default function AdminEmployees() {
     }
   }
 
-  function handleEditEmployee() {
-    setShowEmployeeEditConfirmModal(false);
-    setIsEditingEmployee(true);
+  function hasLockedScheduleDays() {
+    return Array.isArray(scheduleLocks.lockedWeekdays) &&
+      scheduleLocks.lockedWeekdays.length > 0;
+  }
+
+  function isScheduleDayLocked(day) {
+    const weekday = DAY_TO_WEEKDAY[day];
+
+    return Array.isArray(scheduleLocks.lockedWeekdays) &&
+      scheduleLocks.lockedWeekdays.includes(weekday);
+  }
+
+  function getScheduleLockForDay(day) {
+    const weekday = DAY_TO_WEEKDAY[day];
+
+    return (scheduleLocks.locks || []).find(
+      (lock) => Number(lock.weekday) === Number(weekday)
+    );
+  }
+
+  function formatScheduleLockSummary() {
+    const locks = scheduleLocks.locks || [];
+
+    if (locks.length === 0) {
+      return 'No active appointment locks found.';
+    }
+
+    return locks
+      .map((lock) => {
+        const branch = lock.branch_address || lock.branch_name || 'assigned branch';
+        const count = Number(lock.appointment_count || 0);
+        const countText = `${count} active ${count === 1 ? 'appointment' : 'appointments'}`;
+
+        return `${lock.day_name}: ${branch} (${countText})`;
+      })
+      .join('\n');
+  }
+
+  async function handleEditEmployee() {
+    if (selectedEmployee?.role !== 'Dentist') {
+      setShowEmployeeEditConfirmModal(false);
+      setIsEditingEmployee(true);
+      return;
+    }
+
+    setScheduleLocksLoading(true);
+    setEditErrorMessage('');
+
+    try {
+      const res = await api.get(
+        `/auth/staff-profiles/${selectedEmployee.profileId}/schedule-locks`
+      );
+      const locks = {
+        hasLocks: Boolean(res.data.hasLocks),
+        branchLocked: Boolean(res.data.branchLocked),
+        lockedWeekdays: Array.isArray(res.data.lockedWeekdays)
+          ? res.data.lockedWeekdays
+          : [],
+        locks: Array.isArray(res.data.locks) ? res.data.locks : [],
+      };
+
+      setScheduleLocks(locks);
+      setShowEmployeeEditConfirmModal(false);
+      setIsEditingEmployee(true);
+
+      if (locks.hasLocks) {
+        setShowScheduleLockWarningModal(true);
+      }
+    } catch (err) {
+      console.error('Failed to check dentist schedule locks', err);
+      setEditErrorMessage(
+        err.response?.data?.message ||
+          'Failed to check this dentist appointment locks.'
+      );
+      setShowEmployeeEditConfirmModal(false);
+      setShowEditErrorModal(true);
+    } finally {
+      setScheduleLocksLoading(false);
+    }
   }
 
   function handleCancelEmployeeEditModal() {
@@ -818,6 +910,7 @@ export default function AdminEmployees() {
   function confirmCancelEmployeeEditModal() {
     setShowEmployeeEditCancelConfirmModal(false);
     setEmployeeSaveConfirmModal(null);
+    setShowScheduleLockWarningModal(false);
     setEditedEmployee({ ...selectedEmployee });
     setIsEditingEmployee(false);
     setEditErrors(new Set());
@@ -1043,7 +1136,8 @@ export default function AdminEmployees() {
       ['position', 'Position'],
       ['medicalDegree', 'Medical Degree'],
       ['licenseNumber', 'Medical License Number'],
-      ['specialization', 'Specialization / Department'],
+      ['specialization', 'Specialization'],
+      ['workDepartment', 'Specialization / Department'],
       ['yearsExperience', 'Years of Experience'],
       ['skills', 'Skills'],
       ['assignedDentist', 'Assigned Dentist'],
@@ -1159,6 +1253,11 @@ export default function AdminEmployees() {
       : '';
     const fieldErrorMessage = liveEditErrors[name] || liveErrorMessage;
     const hasError = editErrors.has(name) || Boolean(fieldErrorMessage);
+    const isLockedTimeField =
+      editedEmployee?.role === 'Dentist' &&
+      ['workStartTime', 'workEndTime'].includes(name) &&
+      hasLockedScheduleDays();
+    const isFieldDisabled = !isEditingEmployee || isLockedTimeField;
 
     return (
       <div style={styles.employeeModalField}>
@@ -1186,10 +1285,10 @@ export default function AdminEmployees() {
 
             validateLiveEmployeeField(name, val);
           }}
-          readOnly={!isEditingEmployee}
+          readOnly={isFieldDisabled}
           style={{
             ...styles.employeeModalInput,
-            ...(!isEditingEmployee ? styles.employeeModalInputReadOnly : {}),
+            ...(isFieldDisabled ? styles.employeeModalInputReadOnly : {}),
             ...(hasError
               ? {
                   borderColor: '#dc2626',
@@ -1209,6 +1308,12 @@ export default function AdminEmployees() {
             }}
           >
             {fieldErrorMessage}
+          </span>
+        )}
+
+        {isLockedTimeField && (
+          <span style={{ color: '#8b6508', fontSize: 12, fontWeight: 700, marginTop: 4 }}>
+            Work hours are locked while this dentist has active appointments on scheduled days.
           </span>
         )}
       </div>
@@ -1257,6 +1362,10 @@ export default function AdminEmployees() {
 
   function modalBranchSelect() {
     const hasError = editErrors.has('branchId');
+    const isBranchLocked =
+      editedEmployee?.role === 'Dentist' &&
+      isEditingEmployee &&
+      scheduleLocks.branchLocked;
 
     if (!isEditingEmployee) {
       return (
@@ -1316,8 +1425,10 @@ export default function AdminEmployees() {
               });
             }
           }}
+          disabled={isBranchLocked}
           style={{
             ...styles.employeeModalInput,
+            ...(isBranchLocked ? styles.employeeModalInputReadOnly : {}),
             ...(hasError
               ? {
                   borderColor: '#dc2626',
@@ -1336,6 +1447,12 @@ export default function AdminEmployees() {
             </option>
           ))}
         </select>
+
+        {isBranchLocked && (
+          <span style={{ color: '#8b6508', fontSize: 12, fontWeight: 700, marginTop: 4 }}>
+            Assigned Branch is locked until active appointments in this branch are completed.
+          </span>
+        )}
       </div>
     );
   }
@@ -1355,44 +1472,63 @@ export default function AdminEmployees() {
             marginTop: 4,
           }}
         >
-          {EDIT_DAY_OPTIONS.map((day) => (
-            <label
-              key={day}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: 13,
-                color: '#334155',
-                cursor: isEditingEmployee ? 'pointer' : 'default',
-                fontFamily: 'Arial, sans-serif',
-              }}
-            >
-              <input
-                type="checkbox"
-                value={day}
-                checked={checkedDays.includes(day)}
-                disabled={!isEditingEmployee}
-                onChange={(event) => {
-                  const newDays = event.target.checked
-                    ? [...checkedDays, day]
-                    : checkedDays.filter((d) => d !== day);
+          {EDIT_DAY_OPTIONS.map((day) => {
+            const isLocked = isScheduleDayLocked(day);
+            const lock = getScheduleLockForDay(day);
 
-                  setEditedEmployee((prev) => ({
-                    ...prev,
-                    workDays: newDays,
-                  }));
-                }}
+            return (
+              <label
+                key={day}
+                title={
+                  isLocked
+                    ? `${day} is locked because this dentist has active appointments in ${lock?.branch_address || lock?.branch_name || 'this branch'}.`
+                    : ''
+                }
                 style={{
-                  accentColor: '#2563eb',
-                  cursor: isEditingEmployee ? 'pointer' : 'default',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 13,
+                  color: isLocked ? '#8b6508' : '#334155',
+                  cursor: isEditingEmployee && !isLocked ? 'pointer' : 'default',
+                  fontFamily: 'Arial, sans-serif',
+                  fontWeight: isLocked ? 700 : 400,
                 }}
-              />
+              >
+                <input
+                  type="checkbox"
+                  value={day}
+                  checked={checkedDays.includes(day)}
+                  disabled={!isEditingEmployee || isLocked}
+                  onChange={(event) => {
+                    if (isLocked) return;
 
-              {day}
-            </label>
-          ))}
+                    const newDays = event.target.checked
+                      ? [...checkedDays, day]
+                      : checkedDays.filter((d) => d !== day);
+
+                    setEditedEmployee((prev) => ({
+                      ...prev,
+                      workDays: newDays,
+                    }));
+                  }}
+                  style={{
+                    accentColor: isLocked ? '#d4af37' : '#2563eb',
+                    cursor: isEditingEmployee && !isLocked ? 'pointer' : 'default',
+                  }}
+                />
+
+                {day}
+              </label>
+            );
+          })}
         </div>
+
+        {hasLockedScheduleDays() && (
+          <span style={{ color: '#8b6508', fontSize: 12, fontWeight: 700, marginTop: 8 }}>
+            Gold days are locked until their active appointments are completed.
+          </span>
+        )}
       </div>
     );
   }
@@ -1468,6 +1604,8 @@ export default function AdminEmployees() {
             {EDIT_DAY_OPTIONS.map((day) => {
               const weekday = DAY_TO_WEEKDAY[day];
               const isChecked = checkedDays.includes(day);
+              const isLocked = isScheduleDayLocked(day);
+              const lock = getScheduleLockForDay(day);
               const draft = scheduleDraft?.[weekday] || {};
               const branchValue = draft.branch_id ?? assignedBranchId ?? '';
               const startValue =
@@ -1484,13 +1622,20 @@ export default function AdminEmployees() {
                     gap: 10,
                     alignItems: 'center',
                     opacity: isChecked ? 1 : 0.5,
+                    borderLeft: isLocked ? '3px solid #d4af37' : '3px solid transparent',
+                    paddingLeft: isLocked ? 8 : 0,
                   }}
                 >
                   <div
+                    title={
+                      isLocked
+                        ? `${day} has active appointments in ${lock?.branch_address || lock?.branch_name || 'this branch'}.`
+                        : ''
+                    }
                     style={{
                       fontSize: 13,
                       fontWeight: 700,
-                      color: '#0f172a',
+                      color: isLocked ? '#8b6508' : '#0f172a',
                     }}
                   >
                     {day}
@@ -1498,7 +1643,7 @@ export default function AdminEmployees() {
 
                   <select
                     value={branchValue}
-                    disabled={!isChecked}
+                    disabled={!isChecked || isLocked}
                     onChange={(event) => {
                       const value = event.target.value;
 
@@ -1510,7 +1655,10 @@ export default function AdminEmployees() {
                         },
                       }));
                     }}
-                    style={styles.employeeModalInput}
+                    style={{
+                      ...styles.employeeModalInput,
+                      ...(!isChecked || isLocked ? styles.employeeModalInputReadOnly : {}),
+                    }}
                   >
                     <option value="">Select branch</option>
 
@@ -1526,7 +1674,7 @@ export default function AdminEmployees() {
                   <input
                     type="time"
                     value={startValue}
-                    disabled={!isChecked}
+                    disabled={!isChecked || isLocked}
                     onChange={(event) => {
                       setScheduleDraft((prev) => ({
                         ...prev,
@@ -1536,13 +1684,16 @@ export default function AdminEmployees() {
                         },
                       }));
                     }}
-                    style={styles.employeeModalInput}
+                    style={{
+                      ...styles.employeeModalInput,
+                      ...(!isChecked || isLocked ? styles.employeeModalInputReadOnly : {}),
+                    }}
                   />
 
                   <input
                     type="time"
                     value={endValue}
-                    disabled={!isChecked}
+                    disabled={!isChecked || isLocked}
                     onChange={(event) => {
                       setScheduleDraft((prev) => ({
                         ...prev,
@@ -1552,7 +1703,10 @@ export default function AdminEmployees() {
                         },
                       }));
                     }}
-                    style={styles.employeeModalInput}
+                    style={{
+                      ...styles.employeeModalInput,
+                      ...(!isChecked || isLocked ? styles.employeeModalInputReadOnly : {}),
+                    }}
                   />
                 </div>
               );
@@ -1605,6 +1759,11 @@ export default function AdminEmployees() {
           <Link to="/adminInventory" style={styles.menuItem}>
             <i className="fi fi-rr-boxes" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Inventory</span>
+          </Link>
+
+          <Link to="/adminTransactions" style={styles.menuItem}>
+            <i className="fi fi-rr-file-invoice-dollar" style={styles.menuItemIcon}></i>
+            <span style={styles.menuItemText}>Transactions</span>
           </Link>
 
           <Link to="/adminLogs" style={styles.menuItem}>
@@ -2051,7 +2210,7 @@ export default function AdminEmployees() {
                       editedEmployee?.role === 'Dentist'
                         ? 'Specialization / Department'
                         : 'Department',
-                      'specialization',
+                      'workDepartment',
                       'text',
                       filterProfTextVal
                     )}
@@ -2146,7 +2305,7 @@ export default function AdminEmployees() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Close Employee Details?</h2>
+            <h2 style={styles.modalTitle}>Close Employee Details</h2>
             <p style={styles.modalText}>
               Do you want to close this employee information window?
             </p>
@@ -2204,8 +2363,72 @@ export default function AdminEmployees() {
                 type="button"
                 style={{ ...styles.modalButton, ...styles.confirmBtn }}
                 onClick={handleEditEmployee}
+                disabled={scheduleLocksLoading}
               >
-                Yes, Edit
+                {scheduleLocksLoading ? 'Checking...' : 'Yes, Edit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showScheduleLockWarningModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowScheduleLockWarningModal(false);
+            }
+          }}
+        >
+          <div style={{ ...styles.modalContent, width: isMobile ? '100%' : 520, maxWidth: 520 }}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                background: '#fff7db',
+                color: '#8b6508',
+              }}
+            >
+              <i className="fi fi-rr-calendar-clock" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Schedule Days Locked</h2>
+            <p style={styles.modalText}>
+              This dentist has active appointments. Assigned Branch and affected schedule days cannot be changed until those appointments are completed or marked no-show.
+            </p>
+
+            <div
+              style={{
+                width: '100%',
+                background: '#fffaf0',
+                border: '1px solid #f1d47b',
+                borderRadius: 12,
+                padding: '12px 14px',
+                marginBottom: 18,
+                color: '#475569',
+                fontSize: 13,
+                lineHeight: 1.6,
+                textAlign: 'left',
+                whiteSpace: 'pre-line',
+                boxSizing: 'border-box',
+              }}
+            >
+              {formatScheduleLockSummary()}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{
+                  ...styles.modalButton,
+                  background: '#d4af37',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+                }}
+                onClick={() => setShowScheduleLockWarningModal(false)}
+              >
+                OK
               </button>
             </div>
           </div>
@@ -2455,6 +2678,7 @@ function employeeToStaffPayload(employee) {
     email: employee.email,
     position: employee.position,
     specialization: employee.specialization,
+    workDepartment: employee.workDepartment,
     medicalDegree: employee.medicalDegree,
     licenseNumber: employee.licenseNumber,
     yearsExperience: employee.yearsExperience,

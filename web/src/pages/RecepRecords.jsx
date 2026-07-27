@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+﻿import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getCountryCallingCode,
@@ -602,6 +602,62 @@ export default function RecepRecords() {
     }
 
     return true;
+  }
+
+  function formatPatientSaveValue(value) {
+    return String(value ?? '').trim() || 'Not entered';
+  }
+
+  function getPatientSaveDetails() {
+    if (!editPatient) {
+      return [];
+    }
+
+    const fullName = [
+      editPatient.firstName,
+      editPatient.middleName,
+      editPatient.lastName,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    return [
+      ['Full Name', fullName],
+      ['First Name', editPatient.firstName],
+      ['Middle Name', editPatient.middleName],
+      ['Last Name', editPatient.lastName],
+      ['Date of Birth', editPatient.dateOfBirth],
+      ['Age', calculateAge(editPatient.dateOfBirth) || editPatient.age],
+      ['Gender', editPatient.gender],
+      ['Email', editPatient.email],
+      [
+        'Contact Number',
+        normalizePhoneNumber(editPatient.contactNumber, editPatient.contactCountry || 'PH'),
+      ],
+      ['Address', editPatient.address],
+      ['Nationality', editPatient.nationality],
+      ['Occupation', editPatient.occupation],
+      ['Civil Status', editPatient.civilStatus],
+      ['Emergency Contact Name', editPatient.emergencyContactName],
+      [
+        'Emergency Contact Number',
+        editPatient.emergencyContactNumber
+          ? normalizePhoneNumber(
+              editPatient.emergencyContactNumber,
+              editPatient.emergencyContactCountry || 'PH'
+            )
+          : '',
+      ],
+      ['Dental History', editPatient.dentalHistory],
+      ['Medical Conditions', editPatient.medicalConditions],
+      ['Allergies', editPatient.allergies],
+      ['Medications', editPatient.medications],
+    ].map(([label, value]) => ({
+      key: label,
+      label,
+      value: formatPatientSaveValue(value),
+    }));
   }
 
   function handleEditSubmit(event) {
@@ -1244,7 +1300,7 @@ export default function RecepRecords() {
                               onClick={() => openPatientDetails(patient)}
                               title="View Patient"
                             >
-                              <i className="fi fi-rr-eye"></i>
+                              View
                             </button>
 
                             <button
@@ -1258,7 +1314,7 @@ export default function RecepRecords() {
                               }
                               title="Edit Patient"
                             >
-                              <i className="fi fi-rr-edit"></i>
+                              Edit
                             </button>
 
                             <button
@@ -1270,7 +1326,11 @@ export default function RecepRecords() {
                               onClick={() => exportPatientToPDF(patient)}
                               title="Export PDF"
                             >
-                              <i className="fi fi-rr-file-pdf"></i>
+                              <i
+                                className="fi fi-rr-file-pdf"
+                                style={styles.pdfBtnIcon}
+                              ></i>
+                              PDF
                             </button>
                           </div>
                         </td>
@@ -1322,20 +1382,21 @@ export default function RecepRecords() {
               </button>
             </div>
 
-            {editProfileLoading && (
-              <p
-                style={{
-                  ...styles.modalHeaderText,
-                  marginTop: 0,
-                  marginBottom: 16,
-                }}
-              >
-                Loading patient profile...
-              </p>
-            )}
+            <div style={styles.editModalBody}>
+              {editProfileLoading && (
+                <p
+                  style={{
+                    ...styles.modalHeaderText,
+                    marginTop: 0,
+                    marginBottom: 16,
+                  }}
+                >
+                  Loading patient profile...
+                </p>
+              )}
 
-            <div style={styles.formGrid}>
-              <div style={styles.formSectionTitle}>Personal Information</div>
+              <div style={styles.formGrid}>
+                <div style={styles.formSectionTitle}>Personal Information</div>
 
               <FieldInput
                 styles={styles}
@@ -1559,22 +1620,23 @@ export default function RecepRecords() {
                 onChange={(value) => handleEditChange('allergies', value)}
               />
 
-              <TextAreaField
-                styles={styles}
-                label="Medications"
-                value={editPatient.medications || ''}
-                readOnly={editModalReadOnly}
-                onChange={(value) => handleEditChange('medications', value)}
-              />
+                <TextAreaField
+                  styles={styles}
+                  label="Medications"
+                  value={editPatient.medications || ''}
+                  readOnly={editModalReadOnly}
+                  onChange={(value) => handleEditChange('medications', value)}
+                />
+              </div>
             </div>
 
-            <div style={styles.modalActions}>
+            <div style={styles.editModalActions}>
               <button
                 type="button"
                 style={styles.cancelModalBtn}
                 onClick={openEditCloseModal}
               >
-                Cancel
+                Close
               </button>
 
               <button type="submit" style={styles.saveBtn}>
@@ -1626,7 +1688,13 @@ export default function RecepRecords() {
           style={styles.modal}
           onClick={(event) => handleModalOverlayClick(event, closeEditConfirmModal)}
         >
-          <div style={{ ...styles.modalContent, ...styles.smallModal }}>
+          <div
+            style={
+              editModalReadOnly
+                ? { ...styles.modalContent, ...styles.smallModal }
+                : { ...styles.modalContent, ...styles.saveConfirmModal }
+            }
+          >
             <div style={{ ...styles.modalIcon, ...styles.editConfirmIcon }}>
               <i
                 className={editModalReadOnly ? 'fi fi-rr-edit' : 'fi fi-rr-disk'}
@@ -1640,8 +1708,21 @@ export default function RecepRecords() {
             <p style={styles.modalText}>
               {editModalReadOnly
                 ? 'Are you sure you want to edit the details for this patient?'
-                : 'Are you sure the updated details for this patient are correct?'}
+                : 'Please review the patient information before saving.'}
             </p>
+
+            {!editModalReadOnly && (
+              <div style={styles.saveDetailsList}>
+                {getPatientSaveDetails().map((detail) => (
+                  <div key={detail.key} style={styles.saveDetailRow}>
+                    <span style={styles.saveDetailLabel}>{detail.label}</span>
+                    <strong style={styles.saveDetailValue}>
+                      {detail.value}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div style={{ ...styles.modalActions, ...styles.centerActions }}>
               <button
@@ -1657,7 +1738,7 @@ export default function RecepRecords() {
                 style={styles.saveBtn}
                 onClick={editModalReadOnly ? confirmEnableEditMode : savePatientChanges}
               >
-                {editModalReadOnly ? 'Edit' : 'Update'}
+                {editModalReadOnly ? 'Edit' : 'Save Changes'}
               </button>
             </div>
           </div>

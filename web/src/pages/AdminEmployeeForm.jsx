@@ -1,11 +1,10 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PhoneInput from 'react-phone-input-2';
 import {
+  getCountries,
   getCountryCallingCode,
   parsePhoneNumberFromString,
 } from 'libphonenumber-js';
-import 'react-phone-input-2/lib/style.css';
 
 import api from '../api/axios';
 import createAdminEmployeeFormStyles from '../styles/AdminEmployeeForm';
@@ -75,6 +74,11 @@ const DENTIST_SPECIALIZATIONS = [
   'Implant Dentistry', 'Radiology',
 ];
 
+const phoneCountryOptions = getCountries().map((country) => ({
+  country,
+  callingCode: getCountryCallingCode(country),
+}));
+
 // ─── Input filter helpers ────────────────────────────────────────────────────
 
 
@@ -131,6 +135,8 @@ function FieldRaw({ label, name, type = 'text', readOnly = false, value, onChang
 function PhoneFieldRaw({
   label,
   name,
+  country = 'PH',
+  onCountryChange,
   value,
   onChange,
   onBlur,
@@ -144,27 +150,40 @@ function PhoneFieldRaw({
         {label}
         {hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
       </label>
-      <PhoneInput
-        country="ph"
-        preferredCountries={['ph']}
-        value={value}
-        onChange={(phone, countryData) => onChange?.(phone, countryData)}
-        onBlur={onBlur}
-        enableSearch
-        countryCodeEditable={false}
-        inputProps={{ name, required: true }}
-        containerStyle={styles.phoneInputContainer}
-        inputStyle={{
-          ...styles.phoneInput,
-          ...(hasError ? styles.phoneInputError : {}),
-        }}
-        buttonStyle={{
-          ...styles.phoneButton,
-          ...(hasError ? styles.phoneInputError : {}),
-        }}
-        dropdownStyle={styles.phoneDropdown}
-        searchStyle={styles.phoneSearch}
-      />
+      <div style={styles.phoneInputContainer}>
+        <select
+          value={country}
+          onChange={(event) => onCountryChange?.(event.target.value)}
+          style={{
+            ...styles.phoneCountrySelect,
+            ...(hasError ? styles.phoneInputError : {}),
+          }}
+          aria-label="Country code"
+        >
+          {phoneCountryOptions.map((option) => (
+            <option key={option.country} value={option.country}>
+              {option.country} +{option.callingCode}
+            </option>
+          ))}
+        </select>
+        <input
+          type="tel"
+          name={name}
+          value={value}
+          onChange={(event) => onChange?.(event.target.value, { countryCode: country.toLowerCase() })}
+          onBlur={onBlur}
+          placeholder="9123456789"
+          required
+          autoComplete="tel"
+          inputMode="tel"
+          maxLength={15}
+          style={{
+            ...styles.phoneInput,
+            ...(hasError ? styles.phoneInputError : {}),
+          }}
+        />
+      </div>
+      <input type="hidden" name={`${name}Country`} value={country} readOnly />
       {errorMessage && (
         <span style={{ color: '#dc2626', fontSize: '11px', marginTop: '3px', display: 'block' }}>
           {errorMessage}
@@ -289,6 +308,22 @@ function normalizePhoneNumber(value, country = 'PH') {
   return phoneNumber?.number || `+${digits}`;
 }
 
+function getPhoneFormValue(value, fallbackCountry = 'PH') {
+  const phoneNumber = parseContactNumber(value, fallbackCountry);
+
+  if (!phoneNumber) {
+    return {
+      country: fallbackCountry,
+      number: String(value || '').replace(/\D/g, ''),
+    };
+  }
+
+  return {
+    country: phoneNumber.country || fallbackCountry,
+    number: phoneNumber.nationalNumber || String(value || '').replace(/\D/g, ''),
+  };
+}
+
 function validatePhoneNumber(value, country = 'PH') {
   const digits = String(value || '').replace(/\D/g, '');
 
@@ -299,7 +334,7 @@ function validatePhoneNumber(value, country = 'PH') {
   const phoneNumber = parseContactNumber(value, country);
 
   if (!phoneNumber?.isValid()) {
-    return 'Contact number is invalid.';
+    return 'Contact number does not match the selected country code.';
   }
 
   return null;
@@ -624,7 +659,7 @@ export default function AdminEmployeeForm() {
   function validateEmailValue(value) {
     if (!value || !value.trim()) return 'Email is required';
     return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(value.trim())
-      ? null : 'Invalid email address';
+      ? null : 'Email format is invalid';
   }
 
   function validatePositiveNumber(value) {
@@ -634,13 +669,26 @@ export default function AdminEmployeeForm() {
   }
 
   function handlePhoneChange(name, phone, countryData) {
-    const nextValue = phone ? `+${String(phone).replace(/\D/g, '')}` : '';
     const countryCode = String(countryData?.countryCode || 'ph').toUpperCase();
+    const rawValue = String(phone || '').trim();
+    const phoneFormValue = rawValue.startsWith('+')
+      ? getPhoneFormValue(rawValue, countryCode)
+      : {
+          country: countryCode,
+          number: rawValue.replace(/\D/g, '').slice(0, 15),
+        };
 
-    setPhoneValues((prev) => ({ ...prev, [name]: nextValue }));
+    setPhoneValues((prev) => ({ ...prev, [name]: phoneFormValue.number }));
+    setPhoneCountries((prev) => ({ ...prev, [name]: phoneFormValue.country }));
+
+    const err = validatePhoneNumber(phoneFormValue.number, phoneFormValue.country);
+    setFieldError(name, err);
+    if (!err) clearSubmitError(name);
+  }
+
+  function handlePhoneCountryChange(name, countryCode) {
     setPhoneCountries((prev) => ({ ...prev, [name]: countryCode }));
-
-    const err = validatePhoneNumber(nextValue, countryCode);
+    const err = validatePhoneNumber(phoneValues[name] || '', countryCode);
     setFieldError(name, err);
     if (!err) clearSubmitError(name);
   }
@@ -966,6 +1014,10 @@ export default function AdminEmployeeForm() {
           <PhoneFieldRaw
             label="Contact Number:"
             name={`${prefix}Contact`}
+            country={phoneCountries[`${prefix}Contact`] || 'PH'}
+            onCountryChange={(countryCode) =>
+              handlePhoneCountryChange(`${prefix}Contact`, countryCode)
+            }
             value={phoneValues[`${prefix}Contact`] || ''}
             onChange={(phone, countryData) =>
               handlePhoneChange(`${prefix}Contact`, phone, countryData)

@@ -38,6 +38,40 @@ function optionalDbValue(value) {
   return value === undefined ? null : value;
 }
 
+function hasRequestValue(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function normalizeNonnegativeInt(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function getInventoryStockLimitError({
+  currentQuantity,
+  nextQuantity,
+  currentMaximumStock,
+  nextMaximumStock,
+}) {
+  const effectiveQuantity = normalizeNonnegativeInt(
+    hasRequestValue(nextQuantity) ? nextQuantity : currentQuantity
+  );
+  const effectiveMaximumStock = normalizeNonnegativeInt(
+    hasRequestValue(nextMaximumStock) ? nextMaximumStock : currentMaximumStock
+  );
+
+  if (effectiveMaximumStock > 0 && effectiveQuantity > effectiveMaximumStock) {
+    return {
+      message: 'Quantity exceeds the maximum stock level for this item.',
+      currentQuantity: normalizeNonnegativeInt(currentQuantity),
+      requestedQuantity: effectiveQuantity,
+      maximumStock: effectiveMaximumStock,
+    };
+  }
+
+  return null;
+}
+
 function computeInventoryAlertStatus({ quantity, threshold, rawStatus }) {
   const normalizedStatus = String(rawStatus || '').toLowerCase();
   const numericQuantity = Number(quantity || 0);
@@ -105,7 +139,7 @@ async function fetchInventoryAlertRow(executor, category, id) {
   const [rows] = await executor.query(
     `SELECT i.id, i.branch_id, b.name AS branch_name,
             i.${config.nameColumn} AS item_name,
-            i.quantity, i.low_stock_threshold,
+            i.quantity, i.maximum_stock, i.low_stock_threshold,
             ${config.statusExpression} AS raw_status
      FROM ${config.table} i
      JOIN branches b ON b.id = i.branch_id
@@ -304,7 +338,7 @@ router.get('/supplies', async (req, res) => {
 });
 
 router.post('/supplies', requireRole('receptionist', 'admin'), async (req, res) => {
-  const { branch_id, supply_name, brand, supplier, category, unit, quantity, price_per_item } = req.body;
+  const { branch_id, supply_name, brand, supplier, category, unit, quantity, price_per_item, maximum_stock, maxStock } = req.body;
 
   if (!branch_id || !supply_name || !unit) {
     return res.status(400).json({ message: 'branch_id, supply_name, and unit are required' });
@@ -314,10 +348,22 @@ router.post('/supplies', requireRole('receptionist', 'admin'), async (req, res) 
   }
 
   try {
+    const initialQuantity = normalizeNonnegativeInt(quantity || 0);
+    const maximumStockValue = normalizeNonnegativeInt(maximum_stock ?? maxStock ?? 0);
+    const stockLimitError = getInventoryStockLimitError({
+      currentQuantity: 0,
+      nextQuantity: initialQuantity,
+      currentMaximumStock: 0,
+      nextMaximumStock: maximumStockValue,
+    });
+    if (stockLimitError) {
+      return res.status(400).json(stockLimitError);
+    }
+
     const [result] = await pool.query(
-      `INSERT INTO supplies (branch_id, supply_name, brand, supplier, category, unit, quantity, price_per_item, low_stock_threshold)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 10)`,
-      [branch_id, supply_name, brand || null, supplier || null, category || null, unit, quantity || 0, normalizePrice(price_per_item)]
+      `INSERT INTO supplies (branch_id, supply_name, brand, supplier, category, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 10)`,
+      [branch_id, supply_name, brand || null, supplier || null, category || null, unit, initialQuantity, maximumStockValue, normalizePrice(price_per_item)]
     );
     res.status(201).json({ id: result.insertId, message: 'Supply added' });
   } catch (err) {
@@ -338,6 +384,16 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
     if (!existing) return res.status(404).json({ message: 'Supply not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
+    }
+
+    const stockLimitError = getInventoryStockLimitError({
+      currentQuantity: existing.quantity,
+      nextQuantity: quantity,
+      currentMaximumStock: existing.maximum_stock,
+      nextMaximumStock: maximum_stock,
+    });
+    if (stockLimitError) {
+      return res.status(400).json(stockLimitError);
     }
 
     await pool.query(
@@ -387,6 +443,16 @@ router.post('/supplies/:id/restock', requireRole('receptionist', 'admin'), async
     if (!existing) return res.status(404).json({ message: 'Supply not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
+    }
+
+    const nextQuantity = Number(existing.quantity || 0) + Number(amount || 0);
+    const stockLimitError = getInventoryStockLimitError({
+      currentQuantity: existing.quantity,
+      nextQuantity,
+      currentMaximumStock: existing.maximum_stock,
+    });
+    if (stockLimitError) {
+      return res.status(400).json(stockLimitError);
     }
 
     await pool.query('UPDATE supplies SET quantity = quantity + ? WHERE id = ?', [amount, id]);
@@ -444,7 +510,7 @@ router.get('/medicines', async (req, res) => {
 });
 
 router.post('/medicines', requireRole('receptionist', 'admin'), async (req, res) => {
-  const { branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item } = req.body;
+  const { branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item, maximum_stock, maxStock } = req.body;
 
   if (!branch_id || !medicine_name || !unit) {
     return res.status(400).json({ message: 'branch_id, medicine_name, and unit are required' });
@@ -454,10 +520,22 @@ router.post('/medicines', requireRole('receptionist', 'admin'), async (req, res)
   }
 
   try {
+    const initialQuantity = normalizeNonnegativeInt(quantity || 0);
+    const maximumStockValue = normalizeNonnegativeInt(maximum_stock ?? maxStock ?? 0);
+    const stockLimitError = getInventoryStockLimitError({
+      currentQuantity: 0,
+      nextQuantity: initialQuantity,
+      currentMaximumStock: 0,
+      nextMaximumStock: maximumStockValue,
+    });
+    if (stockLimitError) {
+      return res.status(400).json(stockLimitError);
+    }
+
     const [result] = await pool.query(
-      `INSERT INTO medicines (branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, price_per_item, low_stock_threshold)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 10)`,
-      [branch_id, medicine_name, generic_name || null, category || null, form || null, dosage || null, brand || null, supplier || null, unit, quantity || 0, normalizePrice(price_per_item)]
+      `INSERT INTO medicines (branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 10)`,
+      [branch_id, medicine_name, generic_name || null, category || null, form || null, dosage || null, brand || null, supplier || null, unit, initialQuantity, maximumStockValue, normalizePrice(price_per_item)]
     );
     res.status(201).json({ id: result.insertId, message: 'Medicine added' });
   } catch (err) {
@@ -478,6 +556,16 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
     if (!existing) return res.status(404).json({ message: 'Medicine not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
+    }
+
+    const stockLimitError = getInventoryStockLimitError({
+      currentQuantity: existing.quantity,
+      nextQuantity: quantity,
+      currentMaximumStock: existing.maximum_stock,
+      nextMaximumStock: maximum_stock,
+    });
+    if (stockLimitError) {
+      return res.status(400).json(stockLimitError);
     }
 
     await pool.query(
@@ -533,6 +621,16 @@ router.post('/medicines/:id/restock', requireRole('receptionist', 'admin'), asyn
     if (!existing) return res.status(404).json({ message: 'Medicine not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
+    }
+
+    const nextQuantity = Number(existing.quantity || 0) + Number(amount || 0);
+    const stockLimitError = getInventoryStockLimitError({
+      currentQuantity: existing.quantity,
+      nextQuantity,
+      currentMaximumStock: existing.maximum_stock,
+    });
+    if (stockLimitError) {
+      return res.status(400).json(stockLimitError);
     }
 
     await pool.query('UPDATE medicines SET quantity = quantity + ? WHERE id = ?', [amount, id]);
@@ -601,7 +699,7 @@ router.post('/equipment', requireRole('receptionist', 'admin'), async (req, res)
   const {
     branch_id, equipment_name, brand, supplier, category, model_number, serial_number,
     location, purchase_date, warranty_date, last_maintenance, next_maintenance,
-    maintenance_status, assigned_to, quantity, price_per_item,
+    maintenance_status, assigned_to, quantity, price_per_item, maximum_stock, maxStock,
   } = req.body;
 
   if (!branch_id || !equipment_name) {
@@ -612,17 +710,29 @@ router.post('/equipment', requireRole('receptionist', 'admin'), async (req, res)
   }
 
   try {
+    const initialQuantity = normalizeNonnegativeInt(quantity || 1);
+    const maximumStockValue = normalizeNonnegativeInt(maximum_stock ?? maxStock ?? 0);
+    const stockLimitError = getInventoryStockLimitError({
+      currentQuantity: 0,
+      nextQuantity: initialQuantity,
+      currentMaximumStock: 0,
+      nextMaximumStock: maximumStockValue,
+    });
+    if (stockLimitError) {
+      return res.status(400).json(stockLimitError);
+    }
+
     const [result] = await pool.query(
       `INSERT INTO equipment (branch_id, equipment_name, brand, supplier, category, model_number,
-                              serial_number, location, purchase_date, warranty_date,
-                              last_maintenance, next_maintenance, maintenance_status,
-                              assigned_to, quantity, price_per_item, low_stock_threshold)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                               serial_number, location, purchase_date, warranty_date,
+                               last_maintenance, next_maintenance, maintenance_status,
+                               assigned_to, quantity, maximum_stock, price_per_item, low_stock_threshold)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         branch_id, equipment_name, brand || null, supplier || null, category || null, model_number || null,
         serial_number || null, location || null, purchase_date || null, warranty_date || null,
         last_maintenance || null, next_maintenance || null, maintenance_status || 'Available',
-        assigned_to || null, quantity || 1, normalizePrice(price_per_item), 1,
+        assigned_to || null, initialQuantity, maximumStockValue, normalizePrice(price_per_item), 1,
       ]
     );
     res.status(201).json({ id: result.insertId, message: 'Equipment added' });
@@ -646,6 +756,16 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
     if (!existing) return res.status(404).json({ message: 'Equipment not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
       return res.status(403).json({ message: 'No access to this branch' });
+    }
+
+    const stockLimitError = getInventoryStockLimitError({
+      currentQuantity: existing.quantity,
+      nextQuantity: quantity,
+      currentMaximumStock: existing.maximum_stock,
+      nextMaximumStock: maximum_stock,
+    });
+    if (stockLimitError) {
+      return res.status(400).json(stockLimitError);
     }
 
     await pool.query(
@@ -782,7 +902,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
     await connection.beginTransaction();
 
     const [existingRows] = await connection.query(
-      `SELECT id, quantity FROM ${config.table}
+      `SELECT id, quantity, maximum_stock FROM ${config.table}
        WHERE branch_id = ? AND LOWER(${config.nameColumn}) = LOWER(?)
        LIMIT 1
        FOR UPDATE`,
@@ -796,6 +916,21 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       const previousRow = await fetchInventoryAlertRow(connection, category, existingRows[0].id);
       inventoryId = existingRows[0].id;
       newQuantity = Number(existingRows[0].quantity || 0) + quantity;
+      const effectiveMaximumStock =
+        maximumStockValue > 0
+          ? maximumStockValue
+          : Number(existingRows[0].maximum_stock || 0);
+
+      const stockLimitError = getInventoryStockLimitError({
+        currentQuantity: existingRows[0].quantity,
+        nextQuantity: newQuantity,
+        currentMaximumStock: existingRows[0].maximum_stock,
+        nextMaximumStock: effectiveMaximumStock,
+      });
+      if (stockLimitError) {
+        await connection.rollback();
+        return res.status(400).json(stockLimitError);
+      }
 
       await connection.query(
         `UPDATE ${config.table}
@@ -810,6 +945,17 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       const updatedRow = await fetchInventoryAlertRow(connection, category, inventoryId);
       await createInventoryStatusNotifications(connection, previousRow, updatedRow);
     } else {
+      const stockLimitError = getInventoryStockLimitError({
+        currentQuantity: 0,
+        nextQuantity: quantity,
+        currentMaximumStock: 0,
+        nextMaximumStock: maximumStockValue,
+      });
+      if (stockLimitError) {
+        await connection.rollback();
+        return res.status(400).json(stockLimitError);
+      }
+
       const [insertResult] = await connection.query(config.insertSql, [
         branchId,
         itemNameValue,

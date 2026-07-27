@@ -94,6 +94,31 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: '#eeeeee'
     },
+    dentistChoiceList: {
+        flex: 1,
+        gap: 8
+    },
+    dentistChoice: {
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#ead7b2',
+        borderRadius: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 12
+    },
+    dentistChoiceSelected: {
+        backgroundColor: '#fdf3df',
+        borderColor: '#c98904'
+    },
+    dentistChoiceText: {
+        color: '#333333',
+        fontSize: 14,
+        fontWeight: '700'
+    },
+    dentistChoiceTextSelected: {
+        color: '#8a650e',
+        fontWeight: '900'
+    },
 
     actionRow: {
         flexDirection: 'row',

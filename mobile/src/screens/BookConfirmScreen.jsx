@@ -5,22 +5,57 @@ import { formatRelativeDate, formatTimeOnly } from '../utils/datetime';
 import styles from '../styles/BookConfirmScreen';
 import { createAppointment } from '../api/appointments';
 
+function formatDentistName(name) {
+  if (!name) return '';
+  const cleaned = String(name).trim().replace(/^(Dr\.\s*)+/i, '');
+  return `Dr. ${cleaned}`;
+}
+
+function getSuggestionDentists(suggestion) {
+  if (Array.isArray(suggestion?.dentists) && suggestion.dentists.length > 0) {
+    return suggestion.dentists;
+  }
+
+  if (suggestion?.dentist_id) {
+    return [{
+      dentist_id: suggestion.dentist_id,
+      dentist_name: suggestion.dentist_name,
+    }];
+  }
+
+  return [];
+}
+
 export default function BookConfirmScreen({ navigation, route }) {
   const { service, branchId, branchName, suggestion, rescheduleAppointmentId } = route.params;
+  const availableDentists = getSuggestionDentists(suggestion);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [newAppointmentId, setNewAppointmentId] = useState(null);
+  const [selectedDentistId, setSelectedDentistId] = useState(
+    String(availableDentists[0]?.dentist_id || '')
+  );
+
+  const selectedDentist = availableDentists.find(
+    (dentist) => String(dentist.dentist_id) === String(selectedDentistId)
+  ) || availableDentists[0];
 
   async function handleConfirm() {
     setSubmitting(true);
     setError('');
     try {
+      if (!selectedDentist?.dentist_id) {
+        setError('Please select a dentist for this appointment.');
+        setSubmitting(false);
+        return;
+      }
+
       const startISO = suggestion.start_time.replace(' ', 'T') + 'Z';
       const result = await createAppointment({
         branch_id: branchId,
-        dentist_id: suggestion.dentist_id,
+        dentist_id: Number(selectedDentist?.dentist_id),
         service_id: service.id,
         start_time: startISO,
         ...(rescheduleAppointmentId ? { reschedule_appointment_id: rescheduleAppointmentId } : {}),
@@ -78,7 +113,39 @@ export default function BookConfirmScreen({ navigation, route }) {
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Dentist</Text>
-            <Text style={styles.summaryValue}>{suggestion.dentist_name}</Text>
+            <View style={styles.summaryValueArea}>
+              {availableDentists.length > 1 ? (
+                <View style={styles.dentistChoiceList}>
+                  {availableDentists.map((dentist) => {
+                    const isSelected = String(dentist.dentist_id) === String(selectedDentistId);
+
+                    return (
+                      <TouchableOpacity
+                        key={dentist.dentist_id}
+                        onPress={() => setSelectedDentistId(String(dentist.dentist_id))}
+                        style={[
+                          styles.dentistChoice,
+                          isSelected && styles.dentistChoiceSelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.dentistChoiceText,
+                            isSelected && styles.dentistChoiceTextSelected,
+                          ]}
+                        >
+                          {formatDentistName(dentist.dentist_name)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <Text style={styles.summaryValue}>
+                  {formatDentistName(selectedDentist?.dentist_name)}
+                </Text>
+              )}
+            </View>
           </View>
 
           <View style={styles.summaryDivider} />

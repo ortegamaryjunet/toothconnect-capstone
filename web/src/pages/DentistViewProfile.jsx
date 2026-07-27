@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAuth } from '../auth/AuthContext';
@@ -11,6 +11,7 @@ const rowsPerPage = 10;
 
 export default function DentistViewProfile() {
   const { patientId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [screenWidth, setScreenWidth] = useState(
@@ -21,6 +22,7 @@ export default function DentistViewProfile() {
   const [patientProfile, setPatientProfile] = useState(null);
   const [loadingPatient, setLoadingPatient] = useState(true);
   const [patientError, setPatientError] = useState('');
+  const [showBackModal, setShowBackModal] = useState(false);
 
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
   const [historySearch, setHistorySearch] = useState('');
@@ -33,6 +35,7 @@ export default function DentistViewProfile() {
   const styles = createDentistViewProfileStyles({
     isMobile,
     isSmallScreen,
+    isAdminView: user?.role === 'admin',
   });
 
   const backPath = user?.role === 'admin' ? '/adminPatients' : '/dentistRecords';
@@ -194,13 +197,30 @@ export default function DentistViewProfile() {
     }
   }
 
+  function openBackModal() {
+    setShowBackModal(true);
+  }
+
+  function closeBackModal() {
+    setShowBackModal(false);
+  }
+
+  function confirmBack() {
+    navigate(backPath);
+  }
+
+  function handleBackModalOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeBackModal();
+    }
+  }
+
   return (
     <div style={styles.page}>
       <header style={styles.topHeader}>
-        <Link to={backPath} style={styles.backLink}>
-          <i className="fi fi-rr-arrow-small-left"></i>
-          <span>Back to Patients</span>
-        </Link>
+        <button type="button" style={styles.backLink} onClick={openBackModal}>
+          Back
+        </button>
 
         <h2 style={styles.headerTitle}>Patient Information Record</h2>
       </header>
@@ -425,6 +445,41 @@ export default function DentistViewProfile() {
           </section>
         )}
       </main>
+
+      {showBackModal && (
+        <div style={styles.modal} onClick={handleBackModalOverlayClick}>
+          <div style={styles.backModalContent}>
+            <div style={styles.backModalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.backModalTitle}>Leave Patient Record</h2>
+            <p style={styles.backModalText}>
+              {user?.role === 'admin'
+                ? 'Are you sure you want to go back?'
+                : 'Are you sure you want to go back? Any unsaved changes will be lost.'}
+            </p>
+
+            <div style={styles.backModalActions}>
+              <button
+                type="button"
+                style={{ ...styles.backModalButton, ...styles.backCancelBtn }}
+                onClick={closeBackModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.backModalButton, ...styles.backConfirmBtn }}
+                onClick={confirmBack}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

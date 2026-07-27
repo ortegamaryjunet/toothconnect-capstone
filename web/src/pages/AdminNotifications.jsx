@@ -283,6 +283,11 @@ export default function AdminNotifications() {
             <span style={styles.menuItemText}>Inventory</span>
           </Link>
 
+          <Link to="/adminTransactions" style={styles.menuItem}>
+            <i className="fi fi-rr-file-invoice-dollar" style={styles.menuItemIcon}></i>
+            <span style={styles.menuItemText}>Transactions</span>
+          </Link>
+
           <Link to="/adminLogs" style={styles.menuItem}>
             <i
               className="fi fi-rr-clipboard-list"

@@ -127,6 +127,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     marginBottom: 14,
+    alignItems: 'center',
   },
   filterChip: {
     backgroundColor: '#ffffff',
@@ -148,6 +149,24 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: '#ffffff',
     fontWeight: '700',
+  },
+  policyIconButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#fff7df',
+    borderWidth: 1,
+    borderColor: '#d9aa25',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+  policyIconText: {
+    color: '#b47a00',
+    fontSize: 16,
+    fontWeight: '900',
+    lineHeight: 18,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
 
   // ── Appointment tab navigation ──────────────────────────
@@ -466,10 +485,17 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     alignItems: 'center',
   },
+  btnCancelDisabled: {
+    backgroundColor: '#f1f1f1',
+    borderColor: '#dddddd',
+  },
   btnCancelText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#993c1d',
+  },
+  btnCancelTextDisabled: {
+    color: '#a8a8a8',
   },
   btnReceipt: {
     flex: 1,
@@ -632,6 +658,70 @@ const styles = StyleSheet.create({
   },
 
   // ── Cancel modal ────────────────────────────────────────
+  policyModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  policyModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e4cf88',
+    padding: 18,
+    alignItems: 'center',
+  },
+  policyModalIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#fff7df',
+    borderWidth: 1,
+    borderColor: '#d9aa25',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  policyModalIconText: {
+    color: '#b47a00',
+    fontSize: 22,
+    fontWeight: '900',
+    lineHeight: 24,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  policyModalTitle: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#1f1f1f',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  policyModalBody: {
+    fontSize: 12,
+    color: '#4f5f76',
+    lineHeight: 18,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  policyModalButton: {
+    backgroundColor: '#c98904',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    minWidth: 112,
+    alignItems: 'center',
+  },
+  policyModalButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const multer = require('multer');
+const { v2: cloudinary } = require('cloudinary');
 const express = require('express');
 const pool = require('../config/db');
 const { authenticate, requireRole } = require('../middleware/auth');
@@ -65,6 +67,73 @@ const ALLOWED_RECEIPT_MIME_TYPES = new Set([
   'image/heif',
 ]);
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_RECEIPT_MIME_TYPES.has(String(file.mimetype || '').toLowerCase())) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error('Proof of payment must be an image file.'));
+  },
+});
+
+function configureCloudinary() {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    return false;
+  }
+
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+  });
+
+  return true;
+}
+
+async function uploadProofImage(file) {
+  if (!file) {
+    return null;
+  }
+
+  if (!configureCloudinary()) {
+    const err = new Error('Cloudinary is not configured for proof uploads.');
+    err.statusCode = 500;
+    throw err;
+  }
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'toothconnect/staff-payment-proofs',
+        resource_type: 'image',
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+          fileName: file.originalname,
+          mimeType: file.mimetype,
+        });
+      }
+    );
+
+    stream.end(file.buffer);
+  });
+}
+
 function userBranchFilter(req, requestedBranchId) {
   const userBranches = req.user.branches || [];
 
@@ -129,17 +198,22 @@ function formatMysqlDateTime(value) {
 function paymentSelect() {
   return `SELECT
             p.id, p.appointment_id, p.branch_id, p.patient_id, p.amount,
-            p.payment_method, p.ewallet_provider, p.reference_number,
+            p.amount_received, p.payment_method, p.payment_source,
+            p.ewallet_provider, p.reference_number,
             p.receipt_url, p.receipt_public_id, p.receipt_file_name,
             p.receipt_mime_type, p.receipt_uploaded_at, p.paid_at,
+            p.proof_image_url, p.proof_image_public_id,
+            p.proof_image_file_name, p.proof_image_mime_type,
             p.status, p.verified_by, p.verified_at, p.rejection_reason,
-            p.created_at, p.updated_at,
+            p.recorded_by, p.recorded_at, p.created_at, p.updated_at,
             b.name AS branch_name,
+            b.address AS branch_address,
             COALESCE(pp.full_name, patient.name) AS patient_name,
             patient.email AS patient_email,
             dentist.name AS dentist_name,
             s.name AS service_name,
-            verifier.name AS verified_by_name
+            verifier.name AS verified_by_name,
+            recorder.name AS recorded_by_name
           FROM payments p
           JOIN appointments a ON a.id = p.appointment_id
           JOIN branches b ON b.id = p.branch_id
@@ -147,7 +221,8 @@ function paymentSelect() {
           JOIN users dentist ON dentist.id = a.dentist_id
           JOIN services s ON s.id = a.service_id
           LEFT JOIN patient_profile pp ON pp.user_id = patient.id
-          LEFT JOIN users verifier ON verifier.id = p.verified_by`;
+          LEFT JOIN users verifier ON verifier.id = p.verified_by
+          LEFT JOIN users recorder ON recorder.id = p.recorded_by`;
 }
 
 router.post('/cloudinary-signature', requireRole('patient'), async (req, res) => {
@@ -238,6 +313,7 @@ router.post('/receipts', requireRole('patient'), async (req, res) => {
       await pool.query(
         `UPDATE payments
          SET amount = ?, payment_method = ?, ewallet_provider = ?,
+             amount_received = ?, payment_source = 'patient_upload',
              reference_number = ?, receipt_url = ?, receipt_public_id = ?,
              receipt_file_name = ?, receipt_mime_type = ?,
              receipt_uploaded_at = NOW(), paid_at = ?
@@ -246,6 +322,7 @@ router.post('/receipts', requireRole('patient'), async (req, res) => {
           amount,
           payment_method,
           ewallet_provider || null,
+          amount,
           reference_number || null,
           receipt_url,
           receipt_public_id,
@@ -272,15 +349,17 @@ router.post('/receipts', requireRole('patient'), async (req, res) => {
 
     const [result] = await pool.query(
       `INSERT INTO payments (
-         appointment_id, branch_id, patient_id, amount, payment_method,
+         appointment_id, branch_id, patient_id, amount, amount_received, payment_method,
+         payment_source,
          ewallet_provider, reference_number, receipt_url, receipt_public_id,
          receipt_file_name, receipt_mime_type, receipt_uploaded_at, paid_at, status
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, 'pending')`,
+       VALUES (?, ?, ?, ?, ?, ?, 'patient_upload', ?, ?, ?, ?, ?, ?, NOW(), ?, 'pending')`,
       [
         appointment.id,
         appointment.branch_id,
         appointment.patient_id,
+        amount,
         amount,
         payment_method,
         ewallet_provider || null,
@@ -309,22 +388,33 @@ router.post('/receipts', requireRole('patient'), async (req, res) => {
   }
 });
 
-router.post('/staff', requireRole('receptionist', 'admin'), async (req, res) => {
+router.post('/staff', requireRole('receptionist', 'admin'), upload.single('proof_image'), async (req, res) => {
   const {
     appointment_id,
     amount,
     payment_method,
     ewallet_provider,
     reference_number,
+    staff_recorded,
   } = req.body;
 
-  if (!appointment_id || !amount || !['cash', 'ewallet', 'bank_transfer'].includes(payment_method)) {
+  const normalizedMethod = String(payment_method || '').trim();
+  const amountValue = Number(amount);
+  const isStaffRecorded = staff_recorded === true || staff_recorded === 'true';
+
+  if (
+    !appointment_id ||
+    !Number.isFinite(amountValue) ||
+    amountValue <= 0 ||
+    !['cash', 'ewallet', 'bank_transfer', 'card'].includes(normalizedMethod)
+  ) {
     return res.status(400).json({
       message: 'appointment_id, amount, and payment_method are required',
     });
   }
 
   try {
+    const proof = await uploadProofImage(req.file);
     const [appointments] = await pool.query(
       `SELECT id, branch_id, patient_id, status FROM appointments WHERE id = ?`,
       [appointment_id]
@@ -341,40 +431,137 @@ router.post('/staff', requireRole('receptionist', 'admin'), async (req, res) => 
       return res.status(400).json({ message: 'Appointment must be completed before recording payment' });
     }
 
-    const isCash = payment_method === 'cash';
-    const [result] = await pool.query(
-      `INSERT INTO payments (
-         appointment_id, branch_id, patient_id, amount, payment_method,
-         ewallet_provider, reference_number, paid_at, status, verified_by, verified_at
-       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        appointment.id,
-        appointment.branch_id,
-        appointment.patient_id,
-        amount,
-        payment_method,
-        ewallet_provider || null,
-        reference_number || null,
-        isCash ? new Date() : null,
-        isCash ? 'verified' : 'pending',
-        isCash ? req.user.user_id : null,
-        isCash ? new Date() : null,
-      ]
-    );
+    let paymentId;
+    let paymentStatus;
+
+    if (isStaffRecorded) {
+      const [pendingPayments] = await pool.query(
+        `SELECT id
+         FROM payments
+         WHERE appointment_id = ?
+           AND patient_id = ?
+           AND status = 'pending'
+           AND receipt_url IS NULL
+         ORDER BY id DESC
+         LIMIT 1`,
+        [appointment.id, appointment.patient_id]
+      );
+
+      if (pendingPayments.length > 0) {
+        paymentId = pendingPayments[0].id;
+
+        await pool.query(
+          `UPDATE payments
+           SET amount = ?,
+               amount_received = ?,
+               payment_method = ?,
+               payment_source = 'staff_recorded',
+               ewallet_provider = ?,
+               reference_number = ?,
+               proof_image_url = ?,
+               proof_image_public_id = ?,
+               proof_image_file_name = ?,
+               proof_image_mime_type = ?,
+               paid_at = NOW(),
+               status = 'verified',
+               verified_by = ?,
+               verified_at = NOW(),
+               recorded_by = ?,
+               recorded_at = NOW(),
+               rejection_reason = NULL
+           WHERE id = ?`,
+          [
+            amountValue,
+            amountValue,
+            normalizedMethod,
+            ewallet_provider || null,
+            reference_number || null,
+            proof?.url || null,
+            proof?.publicId || null,
+            proof?.fileName || null,
+            proof?.mimeType || null,
+            req.user.user_id,
+            req.user.user_id,
+            paymentId,
+          ]
+        );
+      } else {
+        const [result] = await pool.query(
+          `INSERT INTO payments (
+             appointment_id, branch_id, patient_id, amount, amount_received,
+             payment_method, payment_source, ewallet_provider, reference_number,
+             proof_image_url, proof_image_public_id, proof_image_file_name,
+             proof_image_mime_type, paid_at, status, verified_by, verified_at,
+             recorded_by, recorded_at
+           )
+           VALUES (?, ?, ?, ?, ?, ?, 'staff_recorded', ?, ?, ?, ?, ?, ?, NOW(), 'verified', ?, NOW(), ?, NOW())`,
+          [
+            appointment.id,
+            appointment.branch_id,
+            appointment.patient_id,
+            amountValue,
+            amountValue,
+            normalizedMethod,
+            ewallet_provider || null,
+            reference_number || null,
+            proof?.url || null,
+            proof?.publicId || null,
+            proof?.fileName || null,
+            proof?.mimeType || null,
+            req.user.user_id,
+            req.user.user_id,
+          ]
+        );
+
+        paymentId = result.insertId;
+      }
+
+      paymentStatus = 'verified';
+    } else {
+      const isCash = normalizedMethod === 'cash';
+      const [result] = await pool.query(
+        `INSERT INTO payments (
+           appointment_id, branch_id, patient_id, amount, amount_received,
+           payment_method, payment_source, ewallet_provider, reference_number,
+           paid_at, status, verified_by, verified_at, recorded_by, recorded_at
+         )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          appointment.id,
+          appointment.branch_id,
+          appointment.patient_id,
+          amountValue,
+          amountValue,
+          normalizedMethod,
+          isCash ? 'staff_recorded' : 'patient_upload',
+          ewallet_provider || null,
+          reference_number || null,
+          isCash ? new Date() : null,
+          isCash ? 'verified' : 'pending',
+          isCash ? req.user.user_id : null,
+          isCash ? new Date() : null,
+          isCash ? req.user.user_id : null,
+          isCash ? new Date() : null,
+        ]
+      );
+
+      paymentId = result.insertId;
+      paymentStatus = isCash ? 'verified' : 'pending';
+    }
 
     await pool.query(
       `INSERT INTO audit_logs (user_id, action, branch_id, details)
        VALUES (?, 'payment_recorded_by_staff', ?, ?)`,
       [req.user.user_id, appointment.branch_id, JSON.stringify({
-        payment_id: result.insertId,
+        payment_id: paymentId,
         appointment_id: appointment.id,
-        payment_method,
-        amount,
+        payment_method: normalizedMethod,
+        amount: amountValue,
+        payment_source: isStaffRecorded ? 'staff_recorded' : undefined,
       })]
     );
 
-    if (!isCash) {
+    if (!isStaffRecorded && paymentStatus === 'pending') {
       try {
         await pool.query(
           `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
@@ -391,18 +578,22 @@ router.post('/staff', requireRole('receptionist', 'admin'), async (req, res) => 
     }
 
     res.status(201).json({
-      id: result.insertId,
-      status: isCash ? 'verified' : 'pending',
-      message: isCash ? 'Cash payment recorded.' : 'Payment method recorded. Awaiting patient receipt upload.',
+      id: paymentId,
+      status: paymentStatus,
+      payment_source: isStaffRecorded ? 'staff_recorded' : (normalizedMethod === 'cash' ? 'staff_recorded' : 'patient_upload'),
+      proof_image_url: proof?.url || null,
+      message: paymentStatus === 'verified'
+        ? 'Payment recorded and marked as paid.'
+        : 'Payment method recorded. Awaiting patient receipt upload.',
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(err.statusCode || 500).json({ message: err.statusCode ? err.message : 'Server error' });
   }
 });
 
 router.get('/', requireRole('admin', 'receptionist'), async (req, res) => {
-  const { status, branch_id, from, to, patient_id } = req.query;
+  const { status, branch_id, from, to, patient_id, payment_source } = req.query;
 
   try {
     const branch = userBranchFilter(req, branch_id);
@@ -413,6 +604,11 @@ router.get('/', requireRole('admin', 'receptionist'), async (req, res) => {
     if (status) {
       conditions.push('p.status = ?');
       params.push(status);
+    }
+
+    if (payment_source) {
+      conditions.push('p.payment_source = ?');
+      params.push(payment_source);
     }
 
     if (patient_id) {
@@ -447,13 +643,17 @@ router.patch('/:id/status', requireRole('admin', 'receptionist'), async (req, re
 
   try {
     const [existing] = await pool.query(
-      'SELECT id, branch_id, patient_id, appointment_id, status, receipt_url FROM payments WHERE id = ?',
+      'SELECT id, branch_id, patient_id, appointment_id, status, receipt_url, payment_source FROM payments WHERE id = ?',
       [paymentId]
     );
     if (existing.length === 0) return res.status(404).json({ message: 'Payment not found' });
 
     if (existing[0].status !== 'pending') {
       return res.status(400).json({ message: 'Only pending receipts can be acknowledged or rejected.' });
+    }
+
+    if (existing[0].payment_source !== 'patient_upload') {
+      return res.status(400).json({ message: 'Only patient-uploaded receipts can be acknowledged or rejected.' });
     }
 
     if (!existing[0].receipt_url) {

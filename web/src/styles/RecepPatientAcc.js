@@ -522,16 +522,22 @@
     },
 
     editBtn: {
-      width: 38,
-      height: 38,
+      minWidth: 78,
+      height: 40,
+      padding: '0 14px',
       borderRadius: 12,
-      border: '1px solid #bfdbfe',
-      background: '#d4af37',
-      color: '#ffffff',
+      border: 'none',
+      background: '#fff8e1',
+      color: '#b8860b',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
       cursor: 'pointer',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
     },
 
     emptyCell: {

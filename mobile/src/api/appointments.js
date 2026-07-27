@@ -10,6 +10,16 @@ export async function getAppointment(id) {
   return res.data.appointment;
 }
 
+export async function getAppointmentMeta() {
+  const res = await api.get('/appointments/_meta/services-and-branches');
+  return res.data;
+}
+
+export async function getCancellationPolicy() {
+  const res = await api.get('/appointments/settings/cancellation-policy');
+  return res.data.policy;
+}
+
 export async function createAppointment(payload) {
   const res = await api.post('/appointments', payload);
   return res.data;

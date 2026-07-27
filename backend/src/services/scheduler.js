@@ -5,7 +5,6 @@ const {
   parseISOToDate,
   addMinutes,
   rangesOverlap,
-  generateCandidateSlots,
   startOfUTCDay,
   eachUTCDayInRange,
   toMySQLDateTime,
@@ -20,33 +19,12 @@ const SCORE_WEIGHTS = {
   EARLIER_IN_DAY: 1,
 };
 
-const TIME_BUCKETS = {
-  morning: { startHour: 10, endHour: 12 },
-  afternoon: { startHour: 13, endHour: 16 },
-  evening: { startHour: 16, endHour: 19 },
-};
-
 const CLINIC_START_HOUR = 10;
 const CLINIC_END_HOUR = 19;
 const CLINIC_TIMEZONE_OFFSET_MINUTES = 8 * 60;
 const LUNCH_START_MINUTES = 12 * 60;
 const LUNCH_END_MINUTES = 13 * 60 + 30; // next start is 1:30 PM
-
-function hash32FNV1a(input) {
-  const str = String(input ?? '');
-  let hash = 2166136261;
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function pickRoundRobinCandidate(candidates, key) {
-  if (!Array.isArray(candidates) || candidates.length <= 1) return candidates?.[0] || null;
-  const idx = hash32FNV1a(key) % candidates.length;
-  return candidates[idx] || candidates[0] || null;
-}
+const SLOT_STEP_MINUTES = 30;
 
 function bucketForHour(hour) {
   if (hour < 12) return 'morning';
@@ -63,10 +41,9 @@ function getClinicMinutes(date) {
   return localHour * 60 + date.getUTCMinutes();
 }
 
-function isInsideLunchLocal(slotStart, slotEnd) {
+function isLunchStartLocal(slotStart) {
   const startMin = getClinicMinutes(slotStart);
-  const endMin = getClinicMinutes(slotEnd);
-  return startMin < LUNCH_END_MINUTES && endMin > LUNCH_START_MINUTES;
+  return startMin >= LUNCH_START_MINUTES && startMin < LUNCH_END_MINUTES;
 }
 
 function clinicBoundsForDay(day) {
@@ -93,6 +70,29 @@ function clinicBoundsForDay(day) {
   ));
 
   return { start, end };
+}
+
+function generateReceptionistAlignedSlots({ day, notBefore, workStart, workEnd, durationMin }) {
+  const slots = [];
+  const clinic = clinicBoundsForDay(day);
+
+  for (
+    let cursor = new Date(clinic.start);
+    cursor < clinic.end;
+    cursor = addMinutes(cursor, SLOT_STEP_MINUTES)
+  ) {
+    if (isLunchStartLocal(cursor)) continue;
+
+    const slotEnd = addMinutes(cursor, durationMin);
+
+    if (cursor < workStart) continue;
+    if (cursor < notBefore) continue;
+    if (slotEnd > workEnd) continue;
+
+    slots.push({ start: new Date(cursor), end: new Date(slotEnd) });
+  }
+
+  return slots;
 }
 
 function combineDateAndClinicTime(dateOnly, timeStr) {
@@ -131,7 +131,11 @@ function latestBusyEndAfter(intervals, floorDate) {
   return latest;
 }
 
-async function getEligibleDentists(serviceId, branchId) {
+async function getEligibleDentists(serviceId, branchId, dentistId = null) {
+  const params = [serviceId, branchId];
+  const dentistFilter = dentistId ? 'AND u.id = ?' : '';
+  if (dentistId) params.push(dentistId);
+
   const [rows] = await pool.query(
     `SELECT DISTINCT u.id, u.name
      FROM users u
@@ -140,8 +144,10 @@ async function getEligibleDentists(serviceId, branchId) {
      WHERE u.role = 'dentist'
        AND u.status = 'Active'
        AND dsv.service_id = ?
-       AND dsch.branch_id = ?`,
-    [serviceId, branchId]
+       AND dsch.branch_id = ?
+       ${dentistFilter}
+     ORDER BY u.name ASC`,
+    params
   );
   return rows;
 }
@@ -282,6 +288,7 @@ async function suggestSlots({
   fromDate,
   toDate,
   preferredStartDate,
+  dentistId = null,
   limit = 8,
 }) {
   const [services] = await pool.query(
@@ -297,12 +304,20 @@ async function suggestSlots({
     ? Number(service.time_buffer_min)
     : APPOINTMENT_BUFFER_MINUTES;
 
-  const dentists = await getEligibleDentists(serviceId, branchId);
+  const dentists = await getEligibleDentists(serviceId, branchId, dentistId);
+  const eligibleDentists = await getEligibleDentists(serviceId, branchId);
   if (dentists.length === 0) {
     return {
       service: { id: service.id, name: service.name, duration_min: service.duration_min, time_buffer_min: serviceBufferMin },
+      branch_id: branchId,
+      eligible_dentists: eligibleDentists.map((dentist) => ({
+        dentist_id: dentist.id,
+        dentist_name: dentist.name,
+      })),
       suggestions: [],
-      reason: 'No dentists at this branch offer this service',
+      reason: dentistId
+        ? 'Selected dentist does not offer this service at this branch'
+        : 'No dentists at this branch offer this service',
     };
   }
 
@@ -381,30 +396,18 @@ async function suggestSlots({
       if (workStart >= workEnd) continue;
 
       const existing = await getDentistAppointmentsOnDay(dentist.id, dayStart, dayEnd);
-      const candidates = [];
       const candidateWorkStart = maxDate(workStart, dayCandidateFloor);
 
-      if (
-        preferredStart &&
-        preferredStart >= candidateWorkStart &&
-        addMinutes(preferredStart, service.duration_min + serviceBufferMin) <= workEnd
-      ) {
-        candidates.push({
-          start: new Date(preferredStart),
-          end: addMinutes(preferredStart, service.duration_min + serviceBufferMin),
-        });
-      }
-
-      candidates.push(...generateCandidateSlots({
-        workStart: candidateWorkStart,
+      const candidates = generateReceptionistAlignedSlots({
+        day,
+        notBefore: candidateWorkStart,
+        workStart,
         workEnd,
         durationMin: service.duration_min + serviceBufferMin,
-        stepMin: 15,
-      }));
+      });
 
       for (const slot of candidates) {
         if (slot.start <= new Date()) continue;
-        if (isInsideLunchLocal(slot.start, slot.end)) continue;
         const branchConflict = branchBusyIntervals.some((b) =>
           rangesOverlap(slot.start, slot.end, b.start, b.end)
         );
@@ -459,10 +462,7 @@ async function suggestSlots({
     return a.start_time.localeCompare(b.start_time);
   });
 
-  const suggestions = pickTopSuggestions(allCandidates, limit, {
-    branchId,
-    serviceId: service.id,
-  });
+  const suggestions = pickTopSuggestions(allCandidates, limit);
 
   return {
     service: { id: service.id, name: service.name, duration_min: service.duration_min, time_buffer_min: serviceBufferMin },
@@ -472,6 +472,11 @@ async function suggestSlots({
       last_dentist_id: preferences.lastDentistId,
     },
     total_eligible_dentists: dentists.length,
+    eligible_dentists: eligibleDentists.map((dentist) => ({
+      dentist_id: dentist.id,
+      dentist_name: dentist.name,
+    })),
+    selected_dentist_id: dentistId || null,
     total_candidates_considered: allCandidates.length,
     preferred_start_time: preferredStart ? toMySQLDateTime(preferredStart) : null,
     selected_slot_booked: selectedSlotBooked,
@@ -479,7 +484,7 @@ async function suggestSlots({
   };
 }
 
-function pickTopSuggestions(sortedCandidates, limit, { branchId, serviceId } = {}) {
+function pickTopSuggestions(sortedCandidates, limit) {
   const picked = [];
   const seenKeys = new Set();
   const byStartTime = new Map();
@@ -497,33 +502,32 @@ function pickTopSuggestions(sortedCandidates, limit, { branchId, serviceId } = {
     const key = candidate.start_time;
     if (seenKeys.has(key)) continue;
 
-    // Tie-breaker: if multiple dentists share the same start_time and are otherwise
-    // equally ranked, pick one deterministically using a round-robin-like rotation.
-    const sameTime = byStartTime.get(key) || [];
-    if (sameTime.length === 1) {
-      picked.push(candidate);
-      seenKeys.add(key);
-      continue;
-    }
-
-    const top = sameTime[0];
-    const tied = sameTime.filter((c) => {
-      return (
-        c.start_time === top.start_time &&
-        (c.distance_to_preferred_minutes ?? null) === (top.distance_to_preferred_minutes ?? null) &&
-        Number(c.score ?? 0) === Number(top.score ?? 0)
-      );
-    });
-
-    const chosen = pickRoundRobinCandidate(
-      tied.sort((a, b) => Number(a.dentist_id) - Number(b.dentist_id)),
-      `${branchId || ''}:${serviceId || ''}:${key}`
-    );
-
-    picked.push(chosen || candidate);
+    picked.push(buildGroupedSuggestion(byStartTime.get(key) || [candidate]));
     seenKeys.add(key);
   }
   return picked;
+}
+
+function buildGroupedSuggestion(candidates) {
+  const sortedDentists = [...candidates].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return String(a.dentist_name || '').localeCompare(String(b.dentist_name || ''));
+  });
+
+  const primary = sortedDentists[0];
+
+  return {
+    ...primary,
+    dentists: sortedDentists.map((candidate) => ({
+      dentist_id: candidate.dentist_id,
+      dentist_name: candidate.dentist_name,
+      score: candidate.score,
+      breakdown: candidate.breakdown,
+      distance_to_preferred_minutes: candidate.distance_to_preferred_minutes,
+      is_before_preferred: candidate.is_before_preferred,
+    })),
+    available_dentist_count: sortedDentists.length,
+  };
 }
 
 module.exports = { suggestSlots };

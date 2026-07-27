@@ -998,7 +998,7 @@ export default function RecepPatientAcc() {
                             style={styles.editBtn}
                             onClick={() => openUpdateOverlay(account)}
                           >
-                            <i className="fi fi-rr-user-pen"></i>
+                            Edit
                           </button>
                         </td>
                       </tr>

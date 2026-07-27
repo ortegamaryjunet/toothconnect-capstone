@@ -2,6 +2,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  createStaffPayment,
   listPayments,
   reopenReceiptUpload,
   updatePaymentAmount,
@@ -25,28 +26,120 @@ function getReceiptStatusLabel(status) {
 
 function mapPaymentToReceipt(payment) {
   const paidOrCreated = payment.paid_at || payment.receipt_uploaded_at || payment.created_at;
+  const isStaffRecorded = payment.payment_source === 'staff_recorded';
+  const staffProofUrl = payment.proof_image_url || '';
+  const staffProofFileName =
+    payment.proof_image_file_name ||
+    getFileNameFromUrl(staffProofUrl) ||
+    'Recorded manually by staff';
 
   return {
     id: `APT-${payment.appointment_id}`,
+    appointmentId: payment.appointment_id,
     paymentId: payment.id,
     patientName: payment.patient_name || 'Unnamed Patient',
     service: payment.service_name || 'Treatment not set',
     dentist: payment.dentist_name || 'Dentist not set',
     appointmentDate: formatDate(paidOrCreated),
     appointmentTime: formatTime(paidOrCreated),
-    amountValue: Number(payment.amount || 0),
-    amount: formatPeso(payment.amount),
+    amountValue: Number(payment.amount_received || payment.amount || 0),
+    amount: formatPeso(payment.amount_received || payment.amount),
     paymentMethod: formatPaymentMethod(payment.payment_method, payment.ewallet_provider),
-    fileType: payment.receipt_mime_type ? payment.receipt_mime_type.split('/').pop().toUpperCase() : 'Pending',
-    fileName: payment.receipt_file_name || 'Awaiting patient upload',
+    rawPaymentMethod: payment.payment_method || '',
+    paymentSource: payment.payment_source || 'patient_upload',
+    referenceNumber: payment.reference_number || '',
+    proofImageUrl: payment.proof_image_url || '',
+    recordedByName: payment.recorded_by_name || '',
+    recordedAt: payment.recorded_at ? formatDateTime(payment.recorded_at) : '',
+    fileType: isStaffRecorded
+      ? staffProofUrl
+        ? 'Staff Proof'
+        : 'Staff Recorded'
+      : payment.receipt_mime_type
+        ? payment.receipt_mime_type.split('/').pop().toUpperCase()
+        : 'Pending',
+    fileName: isStaffRecorded
+      ? staffProofFileName
+      : payment.receipt_file_name || 'Awaiting patient upload',
     receiptUrl: payment.receipt_url || '',
-    uploadedAt: payment.receipt_uploaded_at ? formatDateTime(payment.receipt_uploaded_at) : 'Not uploaded yet',
+    uploadedAt: isStaffRecorded
+      ? payment.recorded_at
+        ? formatDateTime(payment.recorded_at)
+        : 'Recorded manually'
+      : payment.receipt_uploaded_at
+        ? formatDateTime(payment.receipt_uploaded_at)
+        : 'Not uploaded yet',
     status: payment.status === 'verified'
       ? 'Validated'
       : payment.status === 'rejected'
         ? 'Rejected'
         : 'Pending Validation',
   };
+}
+
+function getFileNameFromUrl(url) {
+  if (!url) return '';
+
+  const cleanPath = String(url).split('?')[0];
+  const fileName = cleanPath.split('/').pop();
+
+  return fileName ? decodeURIComponent(fileName) : '';
+}
+
+function getPaymentDisplayPriority(payment) {
+  let priority = 0;
+
+  if (payment.status === 'rejected') priority += 10;
+  if (payment.status === 'pending') priority += 20;
+  if (payment.payment_source === 'staff_recorded') priority += 30;
+  if (payment.status === 'verified') priority += 40;
+
+  return priority;
+}
+
+function getPaymentActivityTime(payment) {
+  const value =
+    payment.paid_at ||
+    payment.verified_at ||
+    payment.recorded_at ||
+    payment.receipt_uploaded_at ||
+    payment.updated_at ||
+    payment.created_at;
+  const time = value ? new Date(value).getTime() : 0;
+
+  return Number.isFinite(time) ? time : 0;
+}
+
+function preferPaymentForReceipt(currentPayment, nextPayment) {
+  if (!currentPayment) return nextPayment;
+
+  const currentPriority = getPaymentDisplayPriority(currentPayment);
+  const nextPriority = getPaymentDisplayPriority(nextPayment);
+
+  if (nextPriority !== currentPriority) {
+    return nextPriority > currentPriority ? nextPayment : currentPayment;
+  }
+
+  return getPaymentActivityTime(nextPayment) > getPaymentActivityTime(currentPayment)
+    ? nextPayment
+    : currentPayment;
+}
+
+function prepareReceiptPayments(payments) {
+  const paymentsByAppointment = new Map();
+
+  payments
+    .filter((payment) => payment.payment_method !== 'cash' || payment.payment_source === 'staff_recorded')
+    .forEach((payment) => {
+      paymentsByAppointment.set(
+        payment.appointment_id,
+        preferPaymentForReceipt(paymentsByAppointment.get(payment.appointment_id), payment)
+      );
+    });
+
+  return Array.from(paymentsByAppointment.values()).sort(
+    (a, b) => getPaymentActivityTime(b) - getPaymentActivityTime(a)
+  );
 }
 
 function receiptStatusLabel(status) {
@@ -123,6 +216,15 @@ export default function RecepReceipts() {
     title: '',
     text: '',
     type: 'success',
+  });
+  const [manualPaymentModal, setManualPaymentModal] = useState({
+    show: false,
+    receipt: null,
+    method: 'cash',
+    amount: '',
+    reference: '',
+    proofFile: null,
+    saving: false,
   });
 
   const [screenWidth, setScreenWidth] = useState(
@@ -229,7 +331,7 @@ export default function RecepReceipts() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || messageModal.show) {
+    if (showLogoutModal || messageModal.show || manualPaymentModal.show) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -238,13 +340,14 @@ export default function RecepReceipts() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, messageModal.show]);
+  }, [showLogoutModal, messageModal.show, manualPaymentModal.show]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
         closeMessageModal();
+        closeManualPaymentModal();
       }
     }
 
@@ -401,13 +504,113 @@ export default function RecepReceipts() {
     }
   }
 
+  function openManualPaymentModal(receipt) {
+    setManualPaymentModal({
+      show: true,
+      receipt,
+      method: 'cash',
+      amount: String(receipt.amountValue || ''),
+      reference: '',
+      proofFile: null,
+      saving: false,
+    });
+  }
+
+  function closeManualPaymentModal() {
+    setManualPaymentModal({
+      show: false,
+      receipt: null,
+      method: 'cash',
+      amount: '',
+      reference: '',
+      proofFile: null,
+      saving: false,
+    });
+  }
+
+  async function submitManualPayment(event) {
+    event.preventDefault();
+
+    const receipt = manualPaymentModal.receipt;
+    const amount = Number(manualPaymentModal.amount);
+
+    if (!receipt || !Number.isFinite(amount) || amount <= 0) {
+      showMessage('Invalid Amount', 'Please enter an amount greater than zero.', 'error');
+      return;
+    }
+
+    const methodMap = {
+      cash: { payment_method: 'cash', ewallet_provider: '' },
+      gcash_qr: { payment_method: 'ewallet', ewallet_provider: 'GCash (QR, in person)' },
+      card: { payment_method: 'card', ewallet_provider: '' },
+      bank_transfer: { payment_method: 'bank_transfer', ewallet_provider: '' },
+    };
+    const mappedMethod = methodMap[manualPaymentModal.method] || methodMap.cash;
+    const formData = new FormData();
+
+    formData.append('appointment_id', receipt.appointmentId);
+    formData.append('amount', String(amount));
+    formData.append('payment_method', mappedMethod.payment_method);
+    formData.append('ewallet_provider', mappedMethod.ewallet_provider);
+    formData.append('reference_number', manualPaymentModal.reference.trim());
+    formData.append('staff_recorded', 'true');
+
+    if (manualPaymentModal.proofFile) {
+      formData.append('proof_image', manualPaymentModal.proofFile);
+    }
+
+    setManualPaymentModal((current) => ({ ...current, saving: true }));
+
+    try {
+      const saved = await createStaffPayment(formData);
+      const nextPaymentMethod = formatPaymentMethod(
+        mappedMethod.payment_method,
+        mappedMethod.ewallet_provider
+      );
+
+      setReceipts((currentReceipts) =>
+        currentReceipts.map((currentReceipt) =>
+          currentReceipt.paymentId === receipt.paymentId
+            ? {
+                ...currentReceipt,
+                paymentId: saved.id || currentReceipt.paymentId,
+                amountValue: amount,
+                amount: formatPeso(amount),
+                paymentMethod: nextPaymentMethod,
+                rawPaymentMethod: mappedMethod.payment_method,
+                paymentSource: 'staff_recorded',
+                referenceNumber: manualPaymentModal.reference.trim(),
+                proofImageUrl: saved.proof_image_url || '',
+                status: 'Validated',
+                fileType: saved.proof_image_url ? 'Staff Proof' : 'Staff Recorded',
+                fileName: saved.proof_image_url
+                  ? manualPaymentModal.proofFile?.name || 'Staff proof uploaded'
+                  : 'Recorded manually by staff',
+                uploadedAt: 'Recorded manually',
+                recordedByName: receptionistName,
+                recordedAt: formatDateTime(new Date()),
+              }
+            : currentReceipt
+        )
+      );
+
+      closeManualPaymentModal();
+      showMessage('Payment Recorded', 'The appointment has been marked as paid.', 'success');
+    } catch (err) {
+      setManualPaymentModal((current) => ({ ...current, saving: false }));
+      showMessage(
+        'Payment Not Recorded',
+        err.response?.data?.message || 'Failed to record manual payment.',
+        'error'
+      );
+    }
+  }
+
   async function fetchReceipts() {
     try {
       const data = await listPayments();
       setReceipts(
-        data
-          .filter((payment) => payment.payment_method !== 'cash')
-          .map(mapPaymentToReceipt)
+        prepareReceiptPayments(data).map(mapPaymentToReceipt)
       );
     } catch (err) {
       setReceipts([]);
@@ -608,7 +811,7 @@ export default function RecepReceipts() {
           <section style={styles.receiptList}>
             {filteredReceipts.map((receipt) => (
               <ReceiptCard
-                key={receipt.id}
+                key={receipt.paymentId}
                 styles={styles}
                 receipt={receipt}
                 isExpanded={expandedReceiptIds.includes(receipt.id)}
@@ -617,6 +820,7 @@ export default function RecepReceipts() {
                 onReject={() => updateReceiptStatus(receipt, 'Rejected')}
                 onReopenUpload={() => handleReopenReceiptUpload(receipt)}
                 onSaveAmount={(amount) => handleUpdateAmount(receipt, amount)}
+                onRecordManualPayment={() => openManualPaymentModal(receipt)}
                 isHighlighted={highlightedReceiptId === receipt.id}
                 cardRef={(element) => {
                   if (element) {
@@ -641,6 +845,124 @@ export default function RecepReceipts() {
           )}
         </main>
       </div>
+
+      {manualPaymentModal.show && (
+        <div
+          style={styles.manualPaymentModal}
+          onClick={(event) => handleModalOverlayClick(event, closeManualPaymentModal)}
+        >
+          <form style={styles.manualPaymentBox} onSubmit={submitManualPayment}>
+            <div style={styles.manualPaymentHeader}>
+              <div>
+                <h3 style={styles.manualPaymentTitle}>Record payment manually</h3>
+                <p style={styles.manualPaymentText}>
+                  For cash or in-person QR payments. This marks the appointment as paid immediately.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                style={styles.manualPaymentClose}
+                onClick={closeManualPaymentModal}
+                aria-label="Close"
+              >
+                x
+              </button>
+            </div>
+
+            <label style={styles.manualPaymentLabel}>Payment method</label>
+            <select
+              value={manualPaymentModal.method}
+              onChange={(event) =>
+                setManualPaymentModal((current) => ({
+                  ...current,
+                  method: event.target.value,
+                }))
+              }
+              style={styles.manualPaymentInput}
+            >
+              <option value="cash">Cash</option>
+              <option value="gcash_qr">GCash (QR, in person)</option>
+              <option value="card">Card</option>
+              <option value="bank_transfer">Bank transfer</option>
+            </select>
+
+            <label style={styles.manualPaymentLabel}>Amount received</label>
+            <input
+              type="number"
+              min="1"
+              step="0.01"
+              value={manualPaymentModal.amount}
+              onChange={(event) =>
+                setManualPaymentModal((current) => ({
+                  ...current,
+                  amount: event.target.value,
+                }))
+              }
+              style={styles.manualPaymentInput}
+            />
+
+            <label style={styles.manualPaymentLabel}>Reference / OR number (optional)</label>
+            <input
+              type="text"
+              value={manualPaymentModal.reference}
+              onChange={(event) =>
+                setManualPaymentModal((current) => ({
+                  ...current,
+                  reference: event.target.value,
+                }))
+              }
+              placeholder="e.g. OR-10231"
+              style={styles.manualPaymentInput}
+            />
+
+            <label style={styles.manualPaymentLabel}>Proof of payment (optional)</label>
+            <label style={styles.manualPaymentUpload}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) =>
+                  setManualPaymentModal((current) => ({
+                    ...current,
+                    proofFile: event.target.files?.[0] || null,
+                  }))
+                }
+                style={styles.manualPaymentFileInput}
+              />
+              <i className="fi fi-rr-upload"></i>
+              <span>
+                {manualPaymentModal.proofFile
+                  ? manualPaymentModal.proofFile.name
+                  : 'Attach screenshot or photo'}
+              </span>
+            </label>
+
+            <div style={styles.recordedByRow}>
+              <i className="fi fi-rr-user"></i>
+              <span>Recorded by: {receptionistName}</span>
+            </div>
+
+            <div style={styles.manualPaymentActions}>
+              <button
+                type="button"
+                style={styles.manualPaymentCancel}
+                onClick={closeManualPaymentModal}
+                disabled={manualPaymentModal.saving}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                style={styles.manualPaymentSubmit}
+                disabled={manualPaymentModal.saving}
+              >
+                {manualPaymentModal.saving ? 'Recording...' : 'Mark as paid'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {messageModal.show && (
         <div
@@ -730,10 +1052,20 @@ function ReceiptCard({
   onReject,
   onReopenUpload,
   onSaveAmount,
+  onRecordManualPayment,
 }) {
-  const hasUploadedReceipt = Boolean(receipt.receiptUrl);
+  const isStaffRecorded = receipt.paymentSource === 'staff_recorded';
+  const isStaffProof = isStaffRecorded && Boolean(receipt.proofImageUrl);
+  const viewableReceiptUrl = isStaffProof ? receipt.proofImageUrl : receipt.receiptUrl;
+  const hasUploadedReceipt = Boolean(viewableReceiptUrl);
+  const receiptSectionTitle = isStaffRecorded
+    ? 'Receptionist Upload Receipt'
+    : 'Patient Uploaded Receipt';
+  const receiptSectionSubtitle = isStaffRecorded
+    ? `This receipt was submitted by ${receipt.recordedByName || 'the receptionist'}.`
+    : 'This receipt was submitted by the patient and is ready for acknowledgement.';
   const canReviewReceipt = hasUploadedReceipt && receipt.status === 'Pending Validation';
-  const canEditAmount = receipt.status === 'Pending Validation';
+  const canEditAmount = receipt.status === 'Pending Validation' && !isStaffRecorded;
   const [isEditingAmount, setIsEditingAmount] = useState(false);
   const [amountInput, setAmountInput] = useState(String(receipt.amountValue || ''));
   const [isSavingAmount, setIsSavingAmount] = useState(false);
@@ -925,11 +1257,10 @@ function ReceiptCard({
             <div style={styles.uploadedReceiptHeader}>
               <div>
                 <h3 style={styles.uploadedReceiptTitle}>
-                  Patient Uploaded Receipt
+                  {receiptSectionTitle}
                 </h3>
                 <p style={styles.uploadedReceiptSubtitle}>
-                  This receipt was submitted by the patient and is ready for
-                  acknowledgement.
+                  {receiptSectionSubtitle}
                 </p>
               </div>
 
@@ -937,26 +1268,63 @@ function ReceiptCard({
             </div>
 
             <div style={styles.uploadedReceiptBox}>
-              <div style={styles.receiptPreview}>
-                <i className="fi fi-rr-receipt"></i>
-              </div>
-
-              <div style={styles.receiptInfo}>
-                <h4 style={styles.receiptFileName}>{receipt.fileName}</h4>
-                <p style={styles.receiptUploadedAt}>
-                  Uploaded on {receipt.uploadedAt}
-                </p>
-
+              {hasUploadedReceipt ? (
                 <a
-                  href={receipt.receiptUrl || '#'}
+                  href={viewableReceiptUrl}
                   target="_blank"
                   rel="noreferrer"
-                  style={styles.viewReceiptLink}
+                  style={{ ...styles.receiptPreview, ...styles.receiptPreviewLink }}
+                  aria-label={`View ${receipt.fileName}`}
                 >
-                  <i className="fi fi-rr-eye"></i>
-                  View receipt
+                  <i className="fi fi-rr-receipt"></i>
                 </a>
+              ) : (
+                <div style={styles.receiptPreview}>
+                  <i className="fi fi-rr-clock"></i>
+                </div>
+              )}
+
+              <div style={styles.receiptInfo}>
+                {hasUploadedReceipt ? (
+                  <a
+                    href={viewableReceiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={styles.receiptFileNameLink}
+                  >
+                    {receipt.fileName}
+                  </a>
+                ) : (
+                  <h4 style={styles.receiptFileName}>{receipt.fileName}</h4>
+                )}
+                <p style={styles.receiptUploadedAt}>
+                  {hasUploadedReceipt && !isStaffRecorded
+                    ? `Uploaded on ${receipt.uploadedAt}`
+                    : receipt.uploadedAt}
+                </p>
+
+                {hasUploadedReceipt && (
+                  <a
+                    href={viewableReceiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={styles.viewReceiptLink}
+                  >
+                    <i className="fi fi-rr-eye"></i>
+                    View receipt
+                  </a>
+                )}
               </div>
+
+              {!hasUploadedReceipt && receipt.status === 'Pending Validation' && (
+                <button
+                  type="button"
+                  style={styles.manualPaymentBtn}
+                  onClick={onRecordManualPayment}
+                >
+                  Record payment manually
+                </button>
+              )}
             </div>
           </div>
 

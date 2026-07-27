@@ -23,6 +23,53 @@ function normalizeBufferMinutes(value) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : APPOINTMENT_BUFFER_MINUTES;
 }
 
+const CANCELLATION_POLICY_SETTING_KEY = 'cancellation_policy_message';
+const DEFAULT_CANCELLATION_POLICY_MESSAGE =
+  'Please contact the clinic as soon as possible if you need to cancel or reschedule your appointment.';
+const PATIENT_CANCELLATION_LOCK_HOURS = 24;
+let appointmentSettingsTableReady = false;
+
+async function ensureAppointmentSettingsTable() {
+  if (appointmentSettingsTableReady) {
+    return;
+  }
+
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS appointment_settings (
+      setting_key VARCHAR(100) PRIMARY KEY,
+      setting_value TEXT NOT NULL,
+      updated_by INT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+    )`
+  );
+
+  appointmentSettingsTableReady = true;
+}
+
+async function getAppointmentCancellationPolicyMessage() {
+  await ensureAppointmentSettingsTable();
+
+  const [rows] = await pool.query(
+    `SELECT setting_value
+     FROM appointment_settings
+     WHERE setting_key = ?`,
+    [CANCELLATION_POLICY_SETTING_KEY]
+  );
+
+  if (rows.length > 0) {
+    return rows[0].setting_value;
+  }
+
+  await pool.query(
+    `INSERT IGNORE INTO appointment_settings (setting_key, setting_value)
+     VALUES (?, ?)`,
+    [CANCELLATION_POLICY_SETTING_KEY, DEFAULT_CANCELLATION_POLICY_MESSAGE]
+  );
+
+  return DEFAULT_CANCELLATION_POLICY_MESSAGE;
+}
+
 async function notifyDentist(dentistId, notification) {
   await pool.query(
     `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
@@ -587,6 +634,44 @@ router.get('/_meta/dentist-busy-slots', async (req, res) => {
   }
 });
 
+router.get('/settings/cancellation-policy', async (req, res) => {
+  try {
+    const message = await getAppointmentCancellationPolicyMessage();
+    res.json({ policy: { message } });
+  } catch (err) {
+    console.error('Appointment cancellation policy load error:', err);
+    res.status(500).json({ message: 'Server error while loading appointment cancellation policy' });
+  }
+});
+
+router.put('/settings/cancellation-policy', requireRole('admin'), async (req, res) => {
+  const message = String(req.body.message || '').trim();
+
+  if (!message) {
+    return res.status(400).json({ message: 'Appointment cancellation policy message is required.' });
+  }
+
+  try {
+    await ensureAppointmentSettingsTable();
+    await pool.query(
+      `INSERT INTO appointment_settings (setting_key, setting_value, updated_by)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         setting_value = VALUES(setting_value),
+         updated_by = VALUES(updated_by)`,
+      [CANCELLATION_POLICY_SETTING_KEY, message, req.user.user_id]
+    );
+
+    res.json({
+      message: 'Appointment cancellation policy updated successfully.',
+      policy: { message },
+    });
+  } catch (err) {
+    console.error('Appointment cancellation policy save error:', err);
+    res.status(500).json({ message: 'Server error while saving appointment cancellation policy' });
+  }
+});
+
 router.get('/', async (req, res) => {
   const { branch_id, from, to, dentist_id, patient_id, status } = req.query;
   const role = req.user.role;
@@ -653,9 +738,11 @@ router.get('/', async (req, res) => {
          d.name AS dentist_name,
          s.name AS service_name, s.price AS service_price, s.time_buffer_min AS service_buffer_min,
          pay.id AS payment_id, pay.status AS payment_status,
-         pay.amount AS payment_amount, pay.payment_method,
+         pay.amount AS payment_amount, pay.amount_received AS payment_amount_received,
+         pay.payment_method, pay.payment_source,
          pay.ewallet_provider, pay.reference_number, pay.receipt_url,
-         pay.receipt_uploaded_at, pay.paid_at, pay.verified_at,
+         pay.receipt_uploaded_at, pay.proof_image_url,
+         pay.recorded_by, pay.recorded_at, pay.paid_at, pay.verified_at,
          pay.rejection_reason
        FROM appointments a
        JOIN branches b ON b.id = a.branch_id
@@ -707,6 +794,15 @@ router.get('/:id', async (req, res) => {
 
     if (role === 'patient' && appt.patient_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
+    }
+    if (role === 'patient') {
+      const hoursUntilAppointment =
+        (new Date(appt.start_time).getTime() - Date.now()) / (60 * 60 * 1000);
+      if (hoursUntilAppointment <= PATIENT_CANCELLATION_LOCK_HOURS) {
+        return res.status(400).json({
+          message: 'Appointments can no longer be cancelled within 24 hours of the scheduled time.',
+        });
+      }
     }
     if (role === 'dentist' && appt.dentist_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
@@ -1277,7 +1373,7 @@ router.post('/conflict-check', requireRole('patient'), async (req, res) => {
 });
 
 router.post('/suggest', async (req, res) => {
-  const { branch_id, service_id, from, to, patient_id, preferred_start, limit } = req.body;
+  const { branch_id, service_id, from, to, patient_id, preferred_start, dentist_id, limit } = req.body;
   const role = req.user.role;
   const userId = req.user.user_id;
   const userBranches = req.user.branches || [];
@@ -1306,6 +1402,7 @@ router.post('/suggest', async (req, res) => {
       fromDate: from,
       toDate: to,
       preferredStartDate: preferred_start,
+      dentistId: dentist_id ? Number(dentist_id) : null,
       limit: suggestionLimit,
     });
 

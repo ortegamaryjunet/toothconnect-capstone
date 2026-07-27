@@ -254,6 +254,14 @@ CREATE TABLE appointments (
   FOREIGN KEY (service_id) REFERENCES services(id)
 );
 
+CREATE TABLE appointment_settings (
+  setting_key VARCHAR(100) PRIMARY KEY,
+  setting_value TEXT NOT NULL,
+  updated_by INT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
 CREATE TABLE treatments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   appointment_id INT NOT NULL,
@@ -312,7 +320,9 @@ CREATE TABLE payments (
   branch_id INT NOT NULL,
   patient_id INT NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
+  amount_received DECIMAL(10,2) NULL,
   payment_method ENUM('cash','ewallet','bank_transfer','card') NOT NULL DEFAULT 'ewallet',
+  payment_source ENUM('patient_upload','staff_recorded') NOT NULL DEFAULT 'patient_upload',
   ewallet_provider VARCHAR(50) NULL,
   reference_number VARCHAR(100) NULL,
   receipt_url VARCHAR(500) NULL,
@@ -320,10 +330,16 @@ CREATE TABLE payments (
   receipt_file_name VARCHAR(255) NULL,
   receipt_mime_type VARCHAR(100) NULL,
   receipt_uploaded_at TIMESTAMP NULL DEFAULT NULL,
+  proof_image_url VARCHAR(500) NULL,
+  proof_image_public_id VARCHAR(255) NULL,
+  proof_image_file_name VARCHAR(255) NULL,
+  proof_image_mime_type VARCHAR(100) NULL,
   paid_at DATETIME NULL,
   status ENUM('pending','verified','rejected') DEFAULT 'pending',
   verified_by INT NULL,
   verified_at DATETIME NULL,
+  recorded_by INT NULL,
+  recorded_at DATETIME NULL,
   rejection_reason VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -331,6 +347,7 @@ CREATE TABLE payments (
   FOREIGN KEY (branch_id) REFERENCES branches(id),
   FOREIGN KEY (patient_id) REFERENCES users(id),
   FOREIGN KEY (verified_by) REFERENCES users(id),
+  FOREIGN KEY (recorded_by) REFERENCES users(id),
   INDEX idx_payments_appointment (appointment_id),
   INDEX idx_payments_branch_status (branch_id, status),
   INDEX idx_payments_patient (patient_id),

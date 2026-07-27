@@ -60,6 +60,10 @@ const sectionConfig = {
       'Action',
     ],
   },
+  cancellationPolicy: {
+    label: 'Manage Cancellation Policy',
+    icon: 'fi fi-rr-calendar-xmark',
+  },
   website: {
     label: 'Manage Website',
     icon: 'fi fi-rr-globe',
@@ -223,6 +227,18 @@ export default function AdminSettings() {
   const [websiteFaqOverlay, setWebsiteFaqOverlay] = useState(null);
   const [websiteServiceOverlay, setWebsiteServiceOverlay] = useState(null);
   const [websiteAnnouncementOverlay, setWebsiteAnnouncementOverlay] = useState(null);
+  const [cancellationPolicyEditing, setCancellationPolicyEditing] =
+    useState(false);
+  const [cancellationPolicyMessage, setCancellationPolicyMessage] =
+    useState('');
+  const [cancellationPolicyDraft, setCancellationPolicyDraft] =
+    useState('');
+  const [cancellationPolicySaving, setCancellationPolicySaving] =
+    useState(false);
+  const [showCancellationPolicyCancelConfirmModal, setShowCancellationPolicyCancelConfirmModal] =
+    useState(false);
+  const [cancellationPolicySaveConfirmModal, setCancellationPolicySaveConfirmModal] =
+    useState(null);
   const [deleteAnnouncementModal, setDeleteAnnouncementModal] = useState(false);
   const [deleteAnnouncementId, setDeleteAnnouncementId] = useState(null);
   const [showBranchCancelConfirmModal, setShowBranchCancelConfirmModal] =
@@ -302,6 +318,7 @@ export default function AdminSettings() {
     leaveRequests: 1,
     branch: 1,
     services: 1,
+    cancellationPolicy: 1,
     website: 1,
     users: 1,
   });
@@ -365,6 +382,8 @@ export default function AdminSettings() {
       websiteFaqOverlay ||
       websiteServiceOverlay ||
       websiteAnnouncementOverlay ||
+      showCancellationPolicyCancelConfirmModal ||
+      cancellationPolicySaveConfirmModal ||
       websiteValidationModal ||
       showWebsiteContentCancelConfirmModal ||
       websiteContentSaveConfirmModal ||
@@ -393,6 +412,8 @@ export default function AdminSettings() {
     websiteFaqOverlay,
     websiteServiceOverlay,
     websiteAnnouncementOverlay,
+    showCancellationPolicyCancelConfirmModal,
+    cancellationPolicySaveConfirmModal,
     websiteValidationModal,
     showWebsiteContentCancelConfirmModal,
     websiteContentSaveConfirmModal,
@@ -416,15 +437,17 @@ export default function AdminSettings() {
         setWebsiteFaqOverlay(null);
         setWebsiteServiceOverlay(null);
         setWebsiteAnnouncementOverlay(null);
-      setWebsiteValidationModal(null);
-      setShowWebsiteContentCancelConfirmModal(false);
-      setShowAdminAccountCancelConfirmModal(false);
-      setAdminAccountSaveConfirmModal(null);
-      setShowServiceKitCancelConfirmModal(false);
-      setShowServiceKitSaveConfirmModal(false);
-      setShowUserCancelConfirmModal(false);
-      setShowUserSaveConfirmModal(false);
-      setServiceKitOverlay(false);
+        setCancellationPolicyDraft(cancellationPolicyMessage);
+        setCancellationPolicyEditing(false);
+        setWebsiteValidationModal(null);
+        setShowWebsiteContentCancelConfirmModal(false);
+        setShowAdminAccountCancelConfirmModal(false);
+        setAdminAccountSaveConfirmModal(null);
+        setShowServiceKitCancelConfirmModal(false);
+        setShowServiceKitSaveConfirmModal(false);
+        setShowUserCancelConfirmModal(false);
+        setShowUserSaveConfirmModal(false);
+        setServiceKitOverlay(false);
       }
     }
 
@@ -444,6 +467,7 @@ export default function AdminSettings() {
     loadWebsiteFaqs();
     loadWebsiteServices();
     loadWebsiteAnnouncements();
+    loadCancellationPolicy();
   }, []);
 
 
@@ -575,6 +599,19 @@ export default function AdminSettings() {
       );
     } finally {
       setWebsiteContentSaving(false);
+    }
+  }
+
+  async function loadCancellationPolicy() {
+    try {
+      const res = await api.get('/appointments/settings/cancellation-policy');
+      const message = res.data.policy?.message || '';
+      setCancellationPolicyMessage(message);
+      setCancellationPolicyDraft(message);
+    } catch (err) {
+      console.error('Failed to load appointment cancellation policy', err);
+      setCancellationPolicyMessage('');
+      setCancellationPolicyDraft('');
     }
   }
 
@@ -827,6 +864,7 @@ export default function AdminSettings() {
     leaveRequests: [],
     branch: filteredBranches,
     services: filteredServices,
+    cancellationPolicy: [],
     website: [],
     users: filteredUsers,
     adminAccount: [],
@@ -910,6 +948,77 @@ export default function AdminSettings() {
     setWebsiteContentForm(websiteContent);
     setWebsiteContentEditing(false);
     setShowWebsiteContentCancelConfirmModal(false);
+  }
+
+  function startCancellationPolicyEdit() {
+    setCancellationPolicyDraft(cancellationPolicyMessage);
+    setWebsiteContentEditing(false);
+    setCancellationPolicyEditing(true);
+    setShowCancellationPolicyCancelConfirmModal(false);
+    setCancellationPolicySaveConfirmModal(null);
+  }
+
+  function handleCancellationPolicySaveRequest() {
+    const value = String(cancellationPolicyDraft || '').trim();
+    const previousValue = String(cancellationPolicyMessage || '').trim();
+
+    if (!value) {
+      showWebsiteValidationModal(
+        'Required Fields Missing',
+        'Please enter an appointment cancellation policy message.'
+      );
+      return;
+    }
+
+    setCancellationPolicySaveConfirmModal({
+      details: [
+        {
+          key: 'appointment_cancellation_policy',
+          label: 'Policy Message',
+          value,
+          previousValue: previousValue || 'Not set',
+          changed: value !== previousValue,
+        },
+      ],
+    });
+  }
+
+  async function confirmCancellationPolicySave() {
+    if (!cancellationPolicySaveConfirmModal) {
+      return;
+    }
+
+    setCancellationPolicySaving(true);
+    setCancellationPolicySaveConfirmModal(null);
+
+    try {
+      const res = await api.put('/appointments/settings/cancellation-policy', {
+        message: String(cancellationPolicyDraft || '').trim(),
+      });
+      const message = res.data.policy?.message || '';
+
+      setCancellationPolicyMessage(message);
+      setCancellationPolicyDraft(message);
+      setCancellationPolicyEditing(false);
+      showWebsiteValidationModal(
+        'Policy Saved',
+        'Appointment cancellation policy has been updated successfully.',
+        'success'
+      );
+    } catch (err) {
+      showWebsiteValidationModal(
+        'Save Failed',
+        err.response?.data?.message || 'Failed to save appointment cancellation policy.'
+      );
+    } finally {
+      setCancellationPolicySaving(false);
+    }
+  }
+
+  function confirmCancelCancellationPolicyEdit() {
+    setCancellationPolicyDraft(cancellationPolicyMessage);
+    setCancellationPolicyEditing(false);
+    setShowCancellationPolicyCancelConfirmModal(false);
   }
 
   function handleOverlayClick(event) {
@@ -3067,6 +3176,11 @@ export default function AdminSettings() {
             <span style={styles.menuItemText}>Inventory</span>
           </Link>
 
+          <Link to="/adminTransactions" style={styles.menuItem}>
+            <i className="fi fi-rr-file-invoice-dollar" style={styles.menuItemIcon}></i>
+            <span style={styles.menuItemText}>Transactions</span>
+          </Link>
+
           <Link to="/adminLogs" style={styles.menuItem}>
             <i
               className="fi fi-rr-clipboard-list"
@@ -3173,6 +3287,81 @@ export default function AdminSettings() {
             />
           ) : activeSection === 'website' ? (
             renderWebsitePanel()
+          ) : activeSection === 'cancellationPolicy' ? (
+            <section style={styles.tableCard}>
+              <div style={styles.websiteAnnouncementHeader}>
+                <div>
+                  <h3 style={styles.websiteAnnouncementTitle}>
+                    Cancellation Policy
+                  </h3>
+                  <p style={styles.websiteAnnouncementSubtitle}>
+                    Edit the clinic cancellation-policy message shown to patients.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  style={styles.primaryBtn}
+                  disabled={cancellationPolicySaving}
+                  onClick={startCancellationPolicyEdit}
+                >
+                  <i className="fi fi-rr-edit"></i>
+                  <span>Edit Content</span>
+                </button>
+              </div>
+
+              <div style={{ width: '100%', textAlign: 'left', marginTop: 22 }}>
+                <label style={styles.websiteFieldLabel}>
+                  Cancellation Policy Message
+                </label>
+
+                {cancellationPolicyEditing ? (
+                  <textarea
+                    value={cancellationPolicyDraft}
+                    onChange={(event) => setCancellationPolicyDraft(event.target.value)}
+                    rows={5}
+                    style={{ ...styles.formInput, ...styles.websiteTextarea }}
+                    placeholder="Enter cancellation policy message"
+                  />
+                ) : (
+                  <div
+                    style={{
+                      ...styles.formInput,
+                      ...styles.readOnlyInput,
+                      minHeight: 110,
+                      whiteSpace: 'pre-wrap',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {cancellationPolicyMessage || (
+                      <span style={{ color: '#94a3b8' }}>No cancellation policy message set.</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {cancellationPolicyEditing && (
+                <div style={{ ...styles.modalActions, justifyContent: 'flex-end', marginTop: 18 }}>
+                  <button
+                    type="button"
+                    style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                    disabled={cancellationPolicySaving}
+                    onClick={() => setShowCancellationPolicyCancelConfirmModal(true)}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    style={{ ...styles.modalButton, ...styles.saveBtn }}
+                    disabled={cancellationPolicySaving}
+                    onClick={handleCancellationPolicySaveRequest}
+                  >
+                    {cancellationPolicySaving ? 'Saving...' : 'Save Content'}
+                  </button>
+                </div>
+              )}
+            </section>
           ) : (
             <>
               {renderToolbar()}
@@ -4556,6 +4745,122 @@ export default function AdminSettings() {
                 onClick={saveUser}
               >
                 Save User Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancellationPolicySaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setCancellationPolicySaveConfirmModal(null);
+            }
+          }}
+        >
+          <div style={{ ...styles.modalContent, width: isMobile ? '100%' : 520, maxWidth: 520 }}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Policy Changes</h2>
+            <p style={styles.modalText}>
+              Please review the appointment cancellation policy before saving.
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {cancellationPolicySaveConfirmModal.details.filter((detail) => detail.changed).length === 0 ? (
+                <div style={{ color: '#64748b', fontSize: 13, padding: '8px 0' }}>
+                  No policy changes detected.
+                </div>
+              ) : (
+                cancellationPolicySaveConfirmModal.details
+                  .filter((detail) => detail.changed)
+                  .map((detail) => (
+                    <div
+                      key={detail.key}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '7px 0',
+                        borderBottom: '1px solid #f1f5f9',
+                        fontSize: 13,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ color: '#64748b' }}>
+                        {detail.label}
+                        <small style={{ display: 'block', color: '#94a3b8', marginTop: 2 }}>
+                          {detail.previousValue === 'Not set' ? 'Added' : 'Changed'}
+                        </small>
+                      </span>
+                      <strong style={{ color: '#0f172a', textAlign: 'right', maxWidth: 260, overflowWrap: 'anywhere' }}>
+                        {detail.value}
+                      </strong>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setCancellationPolicySaveConfirmModal(null)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                disabled={cancellationPolicySaving}
+                onClick={confirmCancellationPolicySave}
+              >
+                {cancellationPolicySaving ? 'Saving...' : 'Save Content'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancellationPolicyCancelConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowCancellationPolicyCancelConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Policy Editing?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved appointment cancellation policy changes will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowCancellationPolicyCancelConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCancelCancellationPolicyEdit}
+              >
+                Yes, Cancel
               </button>
             </div>
           </div>

@@ -633,7 +633,7 @@ export default function DentistAppointment() {
                   onClick={goToPreviousMonth}
                   style={styles.calendarNav}
                 >
-                  <i className="fi fi-rr-angle-left"></i>
+                  Prev
                 </button>
 
                 <div style={styles.calendarSelects}>
@@ -669,7 +669,7 @@ export default function DentistAppointment() {
                   onClick={goToNextMonth}
                   style={styles.calendarNav}
                 >
-                  <i className="fi fi-rr-angle-right"></i>
+                  Next
                 </button>
               </div>
 
@@ -888,7 +888,7 @@ export default function DentistAppointment() {
                       ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
                     }}
                   >
-                    <i className="fi fi-rr-angle-left"></i>
+                    Prev
                   </button>
 
                   <span style={styles.pageInfo}>
@@ -908,7 +908,7 @@ export default function DentistAppointment() {
                         : {}),
                     }}
                   >
-                    <i className="fi fi-rr-angle-right"></i>
+                    Next
                   </button>
                 </div>
               </section>

@@ -1012,10 +1012,17 @@
       borderBottom: '1px solid #e5e7eb',
     },
 
+    revenueFormulaTitle: {
+      margin: 0,
+      color: '#0f172a',
+      fontSize: 23,
+      fontFamily: 'Arial, sans-serif',
+    },
+
     revenueFormulaText: {
       margin: 0,
       color: '#334155',
-      fontSize: 14,
+      fontSize: 19,
       lineHeight: 1.55,
       fontFamily: 'Arial, sans-serif',
     },

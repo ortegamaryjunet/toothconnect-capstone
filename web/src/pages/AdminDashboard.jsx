@@ -467,6 +467,11 @@ export default function AdminDashboard() {
             <span style={styles.menuItemText}>Inventory</span>
           </Link>
 
+          <Link to="/adminTransactions" style={styles.menuItem}>
+            <i className="fi fi-rr-file-invoice-dollar" style={styles.menuItemIcon}></i>
+            <span style={styles.menuItemText}>Transactions</span>
+          </Link>
+
           <Link to="/adminLogs" style={styles.menuItem}>
             <i
               className="fi fi-rr-clipboard-list"
@@ -793,7 +798,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
 
-                <Link to="/adminReport" style={styles.cardLink}>
+                <Link to="/adminReports?reportType=satisfaction" style={styles.cardLink}>
                   View Reports
                 </Link>
               </div>
@@ -836,23 +841,25 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={styles.ratingBox}>
-                <h2 style={styles.ratingValue}>
-                  {Number(patientSatisfaction.averageRating || 0).toFixed(1)}
-                </h2>
-                <p style={styles.ratingLabel}>Average Rating</p>
-                <small style={styles.activitySmall}>
-                  {Number(patientSatisfaction.totalFeedback || 0)} feedback record
-                  {Number(patientSatisfaction.totalFeedback || 0) === 1 ? '' : 's'}
-                </small>
-              </div>
+              <div style={styles.ratingContent}>
+                <div style={styles.ratingBox}>
+                  <h2 style={styles.ratingValue}>
+                    {Number(patientSatisfaction.averageRating || 0).toFixed(1)}
+                  </h2>
+                  <p style={styles.ratingLabel}>Average Rating</p>
+                  <small style={styles.activitySmall}>
+                    {Number(patientSatisfaction.totalFeedback || 0)} feedback record
+                    {Number(patientSatisfaction.totalFeedback || 0) === 1 ? '' : 's'}
+                  </small>
+                </div>
 
-              <div style={styles.ratingBars}>
-                <RatingRow styles={styles} number="5" width={getRatingPercent(0)} />
-                <RatingRow styles={styles} number="4" width={getRatingPercent(1)} />
-                <RatingRow styles={styles} number="3" width={getRatingPercent(2)} />
-                <RatingRow styles={styles} number="2" width={getRatingPercent(3)} />
-                <RatingRow styles={styles} number="1" width={getRatingPercent(4)} />
+                <div style={styles.ratingBars}>
+                  <RatingRow styles={styles} number="5" width={getRatingPercent(0)} />
+                  <RatingRow styles={styles} number="4" width={getRatingPercent(1)} />
+                  <RatingRow styles={styles} number="3" width={getRatingPercent(2)} />
+                  <RatingRow styles={styles} number="2" width={getRatingPercent(3)} />
+                  <RatingRow styles={styles} number="1" width={getRatingPercent(4)} />
+                </div>
               </div>
             </div>
           </section>

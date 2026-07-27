@@ -170,8 +170,6 @@ function getSummaryStatus(item) {
   const normalizedStatus = String(item?.status || '').toLowerCase();
   const quantity = Number(item?.quantity || 0);
   const threshold = Number(item?.threshold || 0);
-  const maxStock = Number(item?.maxStock || item?.max_stock_threshold || 0);
-  const stockPercentage = getStockPercentageValue(quantity, maxStock);
 
   if (
     normalizedStatus === 'out of stock' ||
@@ -187,7 +185,6 @@ function getSummaryStatus(item) {
     normalizedStatus === 'low stock' ||
     normalizedStatus === 'maintenance' ||
     normalizedStatus === 'under maintenance' ||
-    (maxStock > 0 && stockPercentage <= 20) ||
     (threshold > 0 && quantity <= threshold)
   ) {
     return 'Low Stock';
@@ -399,6 +396,7 @@ export default function InventoryPage() {
       { label: 'Patient Records', path: '/adminPatients', icon: 'fi fi-rr-clipboard-user' },
       { label: 'Clinic Employee', path: '/adminEmployees', icon: 'fi fi-rr-stethoscope' },
       { label: 'Inventory', path: '/adminInventory', icon: 'fi fi-rr-boxes' },
+      { label: 'Transactions', path: '/adminTransactions', icon: 'fi fi-rr-file-invoice-dollar' },
       { label: 'Audit Logs', path: '/adminLogs', icon: 'fi fi-rr-clipboard-list' },
       { label: 'Notifications', path: '/adminNotif', icon: 'fi fi-rr-bell', badge: notificationCount },
       { label: 'Reports', path: '/adminReports', icon: 'fi fi-rr-chart-line-up' },

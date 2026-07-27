@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  getCountries,
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+} from 'libphonenumber-js';
 
 import {
   createAppointment,
@@ -38,6 +43,10 @@ const appointmentBufferMinutes = 30;
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 11 }, (_, index) => currentYear + index);
 
+const phoneCountries = getCountries().map((country) => ({
+  country,
+  callingCode: getCountryCallingCode(country),
+}));
 
 export default function RecepAppointmentForm() {
   const navigate = useNavigate();
@@ -79,6 +88,7 @@ export default function RecepAppointmentForm() {
   const [formData, setFormData] = useState({
     branchId: '',
     patientName: '',
+    contactCountry: 'PH',
     contactNumber: '',
     email: '',
     dentistId: '',
@@ -128,7 +138,11 @@ export default function RecepAppointmentForm() {
   const appointmentSummaryRows = useMemo(
     () => [
       ['Patient Name', formData.patientName.trim() || 'Not entered'],
-      ['Contact Number', formData.contactNumber.trim() || 'Not entered'],
+      [
+        'Contact Number',
+        normalizeContactNumber(formData.contactNumber, formData.contactCountry) ||
+          'Not entered',
+      ],
       ['Email', formData.email.trim() || 'Not entered'],
       ['Branch', getBranchLabel(selectedBranch)],
       ['Purpose of Visit', selectedService?.name || 'Not selected'],
@@ -407,9 +421,34 @@ export default function RecepAppointmentForm() {
 
     if (field === 'contactNumber') {
       const digitsOnly = value.replace(/[^0-9]/g, '');
-      sanitized = value.startsWith('+') ? '+' + digitsOnly : digitsOnly;
-      const maxLen = sanitized.startsWith('+') ? 13 : 11;
-      sanitized = sanitized.slice(0, maxLen);
+      if (value.trim().startsWith('+')) {
+        const contactFormValue = getContactFormValue(value);
+        sanitized = contactFormValue.number.slice(0, 15);
+        if (contactFormValue.country !== formData.contactCountry) {
+          const nextFormData = {
+            ...formData,
+            contactCountry: contactFormValue.country,
+            contactNumber: sanitized,
+          };
+
+          setFormError('');
+          setFormData((current) => ({
+            ...current,
+            contactCountry: contactFormValue.country,
+            contactNumber: sanitized,
+          }));
+          setFieldErrors((current) => ({
+            ...current,
+            contactNumber: validateContactNumber(
+              nextFormData.contactNumber,
+              nextFormData.contactCountry
+            ),
+          }));
+          return;
+        }
+      } else {
+        sanitized = digitsOnly.slice(0, 15);
+      }
     }
 
     if (field === 'email') {
@@ -436,7 +475,7 @@ export default function RecepAppointmentForm() {
 
       setFieldErrors((current) => ({
         ...current,
-        [field]: shouldValidate ? validatePatientField(field, sanitized) : '',
+        [field]: shouldValidate ? validatePatientField(field, sanitized, formData) : '',
       }));
     } else if (fieldErrors[field]) {
       setFieldErrors((current) => ({
@@ -451,13 +490,27 @@ export default function RecepAppointmentForm() {
     }));
   }
 
+  function handleContactCountryChange(country) {
+    const nextFormData = {
+      ...formData,
+      contactCountry: country,
+    };
+
+    setFormData(nextFormData);
+    setTouchedFields((current) => ({ ...current, contactNumber: true }));
+    setFieldErrors((current) => ({
+      ...current,
+      contactNumber: validateContactNumber(nextFormData.contactNumber, country),
+    }));
+  }
+
   function handleFieldBlur(field) {
     if (!isPatientRequiredField(field)) return;
 
     setTouchedFields((current) => ({ ...current, [field]: true }));
     setFieldErrors((current) => ({
       ...current,
-      [field]: validatePatientField(field, formData[field]),
+      [field]: validatePatientField(field, formData[field], formData),
     }));
   }
 
@@ -531,13 +584,16 @@ export default function RecepAppointmentForm() {
   }
 
   function handleSelectPatient(patient) {
+    const contactFormValue = getContactFormValue(patient.contact_number || '');
+
     setSelectedPatient(patient);
     setShowPatientOptions(false);
     setPatientOptions([]);
     setFormData((current) => ({
       ...current,
       patientName: patient.name || '',
-      contactNumber: patient.contact_number || '',
+      contactCountry: contactFormValue.country,
+      contactNumber: contactFormValue.number,
       email: patient.email || '',
     }));
     setTouchedFields((current) => ({
@@ -549,7 +605,7 @@ export default function RecepAppointmentForm() {
     setFieldErrors((current) => ({
       ...current,
       patientName: validatePatientName(patient.name || ''),
-      contactNumber: validateContactNumber(patient.contact_number || ''),
+      contactNumber: validateContactNumber(contactFormValue.number, contactFormValue.country),
       email: validateEmail(patient.email || ''),
     }));
   }
@@ -605,6 +661,7 @@ export default function RecepAppointmentForm() {
     setFormData({
       branchId: branches[0]?.id ? String(branches[0].id) : '',
       patientName: '',
+      contactCountry: 'PH',
       contactNumber: '',
       email: '',
       dentistId: '',
@@ -663,22 +720,26 @@ export default function RecepAppointmentForm() {
 
     try {
       let patient = selectedPatient;
+      const normalizedContactNumber = normalizeContactNumber(
+        formData.contactNumber,
+        formData.contactCountry
+      );
 
       if (!patient) {
         patient = await createStaffPatient({
           full_name: formData.patientName,
-          contact_number: formData.contactNumber,
+          contact_number: normalizedContactNumber,
           email: formData.email,
         });
       } else if (
-        String(patient.contact_number || '').trim() !==
-          String(formData.contactNumber || '').trim() ||
+        normalizeContactNumber(patient.contact_number || '', formData.contactCountry) !==
+          normalizedContactNumber ||
         String(patient.email || '').trim().toLowerCase() !==
           String(formData.email || '').trim().toLowerCase()
       ) {
         patient = await updatePatientContact(patient.id, {
           full_name: formData.patientName,
-          contact_number: formData.contactNumber,
+          contact_number: normalizedContactNumber,
           email: formData.email,
         });
       }
@@ -807,23 +868,41 @@ export default function RecepAppointmentForm() {
                   Contact Number <span style={styles.required}>*</span>
                 </label>
 
-                <input
-                  type="tel"
-                  name="contactNumber"
-                  placeholder="e.g. 09XXXXXXXXX or +639XXXXXXXXX"
-                  value={formData.contactNumber}
-                  onChange={(event) =>
-                    handleInputChange('contactNumber', event.target.value)
-                  }
-                  onKeyDown={(event) => handleRequiredKeyDown('contactNumber', event)}
-                  onBlur={() => handleFieldBlur('contactNumber')}
-                  required
-                  maxLength={13}
-                  style={{
-                    ...styles.input,
-                    ...(fieldErrors.contactNumber ? styles.inputError : {}),
-                  }}
-                />
+                <div style={styles.phoneInputContainer}>
+                  <select
+                    value={formData.contactCountry}
+                    onChange={(event) => handleContactCountryChange(event.target.value)}
+                    style={{
+                      ...styles.phoneCountrySelect,
+                      ...(fieldErrors.contactNumber ? styles.inputError : {}),
+                    }}
+                    aria-label="Country code"
+                  >
+                    {phoneCountries.map((option) => (
+                      <option key={option.country} value={option.country}>
+                        {option.country} +{option.callingCode}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="tel"
+                    name="contactNumber"
+                    placeholder="9123456789"
+                    value={formData.contactNumber}
+                    onChange={(event) =>
+                      handleInputChange('contactNumber', event.target.value)
+                    }
+                    onKeyDown={(event) => handleRequiredKeyDown('contactNumber', event)}
+                    onBlur={() => handleFieldBlur('contactNumber')}
+                    required
+                    maxLength={15}
+                    style={{
+                      ...styles.phoneInput,
+                      ...(fieldErrors.contactNumber ? styles.inputError : {}),
+                    }}
+                  />
+                </div>
 
                 {fieldErrors.contactNumber && (
                   <p style={styles.fieldError}>{fieldErrors.contactNumber}</p>
@@ -1444,27 +1523,89 @@ function validatePatientName(value) {
   return '';
 }
 
-function validateContactNumber(value) {
+function normalizeContactNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isDialCodeOnly(digits, country)) {
+    return '';
+  }
+
+  const phoneNumber = parseContactNumber(value, country);
+  return phoneNumber?.number || `+${digits}`;
+}
+
+function getContactFormValue(value) {
+  const phoneNumber = parseContactNumber(value);
+
+  if (!phoneNumber) {
+    return {
+      country: 'PH',
+      number: String(value || '').replace(/\D/g, ''),
+    };
+  }
+
+  return {
+    country: phoneNumber.country || 'PH',
+    number: phoneNumber.nationalNumber || String(value || '').replace(/\D/g, ''),
+  };
+}
+
+function validateContactNumber(value, country = 'PH') {
   const contact = String(value || '').trim();
 
   if (!contact) {
     return 'This field is required';
   }
 
-  if (!/^(09\d{9}|\+639\d{9})$/.test(contact)) {
-    return 'Contact number format is invalid. Use 09XXXXXXXXX or +639XXXXXXXXX.';
+  const phoneNumber = parseContactNumber(contact, country);
+
+  if (!phoneNumber?.isValid()) {
+    return 'Contact number does not match the selected country code.';
   }
 
   return '';
+}
+
+function parseContactNumber(value, country = 'PH') {
+  const rawValue = String(value || '').trim();
+  const digits = rawValue.replace(/\D/g, '');
+
+  if (!digits) {
+    return null;
+  }
+
+  if (rawValue.startsWith('+')) {
+    return parsePhoneNumberFromString(rawValue);
+  }
+
+  if (digits.startsWith('00')) {
+    return parsePhoneNumberFromString(`+${digits.slice(2)}`);
+  }
+
+  if (digits.startsWith('0')) {
+    return parsePhoneNumberFromString(digits, country);
+  }
+
+  return parsePhoneNumberFromString(digits, country);
+}
+
+function isDialCodeOnly(digits, country = 'PH') {
+  try {
+    return digits === getCountryCallingCode(country);
+  } catch {
+    return false;
+  }
 }
 
 function isPatientRequiredField(field) {
   return ['patientName', 'contactNumber', 'email'].includes(field);
 }
 
-function validatePatientField(field, value) {
+function validatePatientField(field, value, formData = {}) {
   if (field === 'patientName') return validatePatientName(value);
-  if (field === 'contactNumber') return validateContactNumber(value);
+  if (field === 'contactNumber') {
+    return validateContactNumber(value, formData.contactCountry || 'PH');
+  }
   if (field === 'email') return validateEmail(value);
   return '';
 }
@@ -1472,7 +1613,10 @@ function validatePatientField(field, value) {
 function validateRequiredPatientFields(formData) {
   return {
     patientName: validatePatientName(formData.patientName),
-    contactNumber: validateContactNumber(formData.contactNumber),
+    contactNumber: validateContactNumber(
+      formData.contactNumber,
+      formData.contactCountry || 'PH'
+    ),
     email: validateEmail(formData.email),
   };
 }

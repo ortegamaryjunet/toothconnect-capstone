@@ -204,6 +204,44 @@ const createRecepAppointmentFormStyles = ({
       background: '#fff7f7',
     },
 
+    phoneInputContainer: {
+      width: '100%',
+      display: 'grid',
+      gridTemplateColumns: isVerySmall ? '1fr' : '132px minmax(0, 1fr)',
+      gap: 10,
+      boxSizing: 'border-box',
+    },
+
+    phoneCountrySelect: {
+      width: '100%',
+      minWidth: 0,
+      border: '1px solid #cbd5e1',
+      borderRadius: 10,
+      padding: '12px 10px',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      color: '#0f172a',
+      background: '#f8fafc',
+      outline: 'none',
+      transition: '0.2s ease',
+      boxSizing: 'border-box',
+    },
+
+    phoneInput: {
+      width: '100%',
+      minWidth: 0,
+      border: '1px solid #cbd5e1',
+      borderRadius: 10,
+      padding: '12px 14px',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      color: '#0f172a',
+      background: '#ffffff',
+      outline: 'none',
+      transition: '0.2s ease',
+      boxSizing: 'border-box',
+    },
+
     fieldError: {
       margin: '7px 0 0',
       color: '#dc2626',

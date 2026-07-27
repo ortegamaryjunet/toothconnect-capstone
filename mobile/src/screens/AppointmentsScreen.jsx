@@ -17,7 +17,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthContext';
-import { listAppointments, cancelAppointment, getAppointmentFeedback, submitAppointmentFeedback } from '../api/appointments';
+import {
+  listAppointments,
+  cancelAppointment,
+  getAppointmentFeedback,
+  submitAppointmentFeedback,
+  getCancellationPolicy,
+} from '../api/appointments';
 import { getUnreadCount } from '../api/notifications';
 import { getCloudinarySignature, uploadPaymentReceipt } from '../api/payments';
 import { getBranchCity } from '../utils/branch';
@@ -46,6 +52,9 @@ const HISTORY_FILTERS = [
 
 const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024;
 const RECEIPT_PICKER_QUALITY = 0.72;
+const CANCELLATION_LOCK_HOURS = 24;
+const DEFAULT_CANCELLATION_POLICY =
+  'Please contact the clinic as soon as possible if you need to cancel or reschedule your appointment.';
 
 export default function AppointmentsScreen({ navigation, route }) {
   const { user } = useAuth();
@@ -68,12 +77,15 @@ export default function AppointmentsScreen({ navigation, route }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [highlightedId, setHighlightedId] = useState(null);
   const [historyFilter, setHistoryFilter] = useState('all');
+  const [policyModalVisible, setPolicyModalVisible] = useState(false);
+  const [cancellationPolicyMessage, setCancellationPolicyMessage] = useState(DEFAULT_CANCELLATION_POLICY);
   const highlightTimerRef = useRef(null);
 
   useFocusEffect(
     useCallback(() => {
       fetchAppointments();
       fetchUnreadCount();
+      fetchCancellationPolicy();
     }, [])
   );
 
@@ -136,6 +148,15 @@ export default function AppointmentsScreen({ navigation, route }) {
     } catch {}
   }
 
+  async function fetchCancellationPolicy() {
+    try {
+      const policy = await getCancellationPolicy();
+      setCancellationPolicyMessage(policy?.message || DEFAULT_CANCELLATION_POLICY);
+    } catch {
+      setCancellationPolicyMessage(DEFAULT_CANCELLATION_POLICY);
+    }
+  }
+
   function getFilteredAppointments() {
     const now = new Date();
     if (filter === 'week') {
@@ -169,6 +190,7 @@ export default function AppointmentsScreen({ navigation, route }) {
   }
 
   function openCancelModal(appointment) {
+    if (isCancellationLocked(appointment)) return;
     setSelectedReason(null);
     setCancelModal({ visible: true, appointment });
   }
@@ -307,12 +329,21 @@ export default function AppointmentsScreen({ navigation, route }) {
     return true;
   }
 
+  function isCancellationLocked(appointment) {
+    if (!appointment?.start_time) return false;
+    const scheduledAt = new Date(appointment.start_time).getTime();
+    if (Number.isNaN(scheduledAt)) return false;
+    const hoursUntilAppointment = (scheduledAt - Date.now()) / (60 * 60 * 1000);
+    return hoursUntilAppointment <= CANCELLATION_LOCK_HOURS;
+  }
+
   function renderAppointmentCard(appt) {
     const isNext =
       appt.status === 'scheduled' && appointments.indexOf(appt) === 0;
     const isExpanded = expandedId === appt.id;
     const isHighlighted = highlightedId === appt.id;
     const paymentTracker = getPaymentTracker(appt);
+    const cancellationLocked = isCancellationLocked(appt);
 
     return (
       <View
@@ -436,10 +467,13 @@ export default function AppointmentsScreen({ navigation, route }) {
                 <Text style={styles.btnRescheduleText}>Reschedule</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.btnCancel}
+                style={[styles.btnCancel, cancellationLocked && styles.btnCancelDisabled]}
                 onPress={() => openCancelModal(appt)}
+                disabled={cancellationLocked}
               >
-                <Text style={styles.btnCancelText}>Cancel</Text>
+                <Text style={[styles.btnCancelText, cancellationLocked && styles.btnCancelTextDisabled]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
             </>
           )}
@@ -594,6 +628,14 @@ export default function AppointmentsScreen({ navigation, route }) {
                   </Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                style={styles.policyIconButton}
+                onPress={() => setPolicyModalVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel="View cancellation policy"
+              >
+                <Text style={styles.policyIconText}>!</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Appointment navigation */}
@@ -701,6 +743,30 @@ export default function AppointmentsScreen({ navigation, route }) {
 
         <AppSidebar ref={sidebarRef} navigation={navigation} activeScreen="Appointments" />
       </View>
+
+      {/* Cancel Modal */}
+      <Modal
+        visible={policyModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPolicyModalVisible(false)}
+      >
+        <Pressable style={styles.policyModalOverlay} onPress={() => setPolicyModalVisible(false)}>
+          <Pressable style={styles.policyModalCard} onPress={() => {}}>
+            <View style={styles.policyModalIcon}>
+              <Text style={styles.policyModalIconText}>!</Text>
+            </View>
+            <Text style={styles.policyModalTitle}>Cancellation Policy</Text>
+            <Text style={styles.policyModalBody}>{cancellationPolicyMessage}</Text>
+            <TouchableOpacity
+              style={styles.policyModalButton}
+              onPress={() => setPolicyModalVisible(false)}
+            >
+              <Text style={styles.policyModalButtonText}>Okay</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Cancel Modal */}
       <Modal

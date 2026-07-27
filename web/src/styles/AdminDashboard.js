@@ -555,6 +555,12 @@
       padding: '10px 0 18px',
     },
 
+    ratingContent: {
+      maxHeight: isMobile ? 260 : 300,
+      overflowY: 'auto',
+      paddingRight: 4,
+    },
+
     ratingValue: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 48,

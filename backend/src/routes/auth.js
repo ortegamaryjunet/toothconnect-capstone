@@ -203,6 +203,122 @@ async function replaceDentistSchedules(dentistId, scheduleEntries = []) {
   }
 }
 
+function normalizeScheduleEntry(entry) {
+  const branchId = Number(entry?.branch_id ?? entry?.branchId);
+  const weekday = Number(entry?.weekday);
+  const startTime = entry?.start_time || entry?.startTime;
+  const endTime = entry?.end_time || entry?.endTime;
+
+  if (!Number.isInteger(branchId) || branchId <= 0) return null;
+  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) return null;
+  if (!startTime || !endTime) return null;
+
+  return {
+    branch_id: branchId,
+    weekday,
+    start_time: String(startTime).slice(0, 8),
+    end_time: String(endTime).slice(0, 8),
+  };
+}
+
+function formatScheduleLockDay(lock) {
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return dayNames[Number(lock.weekday)] || `weekday ${lock.weekday}`;
+}
+
+function schedulesForWeekday(entries, weekday) {
+  return entries
+    .map(normalizeScheduleEntry)
+    .filter((entry) => entry && Number(entry.weekday) === Number(weekday))
+    .map((entry) => `${entry.branch_id}|${entry.start_time}|${entry.end_time}`)
+    .sort();
+}
+
+function sameScheduleList(a, b) {
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+}
+
+async function getDentistScheduleLocks(dentistId) {
+  const [rows] = await pool.query(
+    `SELECT
+       a.branch_id,
+       b.name AS branch_name,
+       b.address AS branch_address,
+       DAYOFWEEK(a.start_time) - 1 AS weekday,
+       COUNT(*) AS appointment_count,
+       MIN(a.start_time) AS next_appointment_at
+     FROM appointments a
+     JOIN branches b ON b.id = a.branch_id
+     WHERE a.dentist_id = ?
+       AND a.status IN ('scheduled', 'arrived')
+     GROUP BY a.branch_id, b.name, b.address, DAYOFWEEK(a.start_time) - 1
+     ORDER BY weekday ASC, b.name ASC`,
+    [dentistId]
+  );
+
+  return rows.map((row) => ({
+    branch_id: Number(row.branch_id),
+    branch_name: row.branch_name || '',
+    branch_address: row.branch_address || '',
+    weekday: Number(row.weekday),
+    day_name: formatScheduleLockDay(row),
+    appointment_count: Number(row.appointment_count || 0),
+    next_appointment_at: row.next_appointment_at || null,
+  }));
+}
+
+async function assertDentistScheduleChangeAllowed(dentistId, nextScheduleEntries, nextBranchId, currentBranchId) {
+  const locks = await getDentistScheduleLocks(dentistId);
+  if (locks.length === 0) return;
+
+  const normalizedNextBranchId = Number(nextBranchId || 0);
+  const normalizedCurrentBranchId = Number(currentBranchId || 0);
+  const hasCurrentBranchAppointments = locks.some(
+    (lock) => Number(lock.branch_id) === normalizedCurrentBranchId
+  );
+
+  if (
+    normalizedNextBranchId > 0 &&
+    normalizedCurrentBranchId > 0 &&
+    normalizedNextBranchId !== normalizedCurrentBranchId &&
+    hasCurrentBranchAppointments
+  ) {
+    const branchLock = locks.find((lock) => Number(lock.branch_id) === normalizedCurrentBranchId);
+    const branchName = branchLock?.branch_address || branchLock?.branch_name || 'the assigned branch';
+    const err = new Error(
+      `Assigned Branch cannot be changed because this dentist still has active appointments in ${branchName}. Complete or mark those appointments first.`
+    );
+    err.statusCode = 409;
+    throw err;
+  }
+
+  if (!Array.isArray(nextScheduleEntries)) return;
+
+  const [currentRows] = await pool.query(
+    `SELECT branch_id, weekday, start_time, end_time
+     FROM dentist_schedules
+     WHERE dentist_id = ?`,
+    [dentistId]
+  );
+
+  const lockedWeekdays = [...new Set(locks.map((lock) => Number(lock.weekday)))];
+  const changedDays = lockedWeekdays.filter((weekday) => {
+    const currentForDay = schedulesForWeekday(currentRows, weekday);
+    const nextForDay = schedulesForWeekday(nextScheduleEntries, weekday);
+    return !sameScheduleList(currentForDay, nextForDay);
+  });
+
+  if (changedDays.length > 0) {
+    const labels = changedDays.map((weekday) => formatScheduleLockDay({ weekday })).join(', ');
+    const err = new Error(
+      `${labels} cannot be edited because this dentist has active appointments on ${changedDays.length === 1 ? 'that day' : 'those days'}. Complete or mark those appointments first.`
+    );
+    err.statusCode = 409;
+    throw err;
+  }
+}
+
 function extractCity(address) {
   if (!address) return null;
   const parts = String(address).split(',').map((p) => p.trim()).filter(Boolean);
@@ -1549,6 +1665,54 @@ router.get('/staff-profile/me', authenticate, requireRole('dentist', 'receptioni
   }
 });
 
+router.get('/staff-profiles/:id/schedule-locks', authenticate, requireRole('admin'), async (req, res) => {
+  const profileId = Number.parseInt(req.params.id, 10);
+
+  if (Number.isNaN(profileId)) {
+    return res.status(400).json({ message: 'Invalid staff profile id' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT sp.user_id, sp.branch_id, u.role
+       FROM staff_profile sp
+       LEFT JOIN users u ON u.id = sp.user_id
+       WHERE sp.id = ?
+       LIMIT 1`,
+      [profileId]
+    );
+
+    const profile = rows[0] || null;
+    if (!profile) {
+      return res.status(404).json({ message: 'Staff profile not found' });
+    }
+
+    if (profile.role !== 'dentist' || !profile.user_id) {
+      return res.json({
+        hasLocks: false,
+        branchLocked: false,
+        lockedWeekdays: [],
+        locks: [],
+      });
+    }
+
+    const locks = await getDentistScheduleLocks(profile.user_id);
+    const branchLocked = locks.some(
+      (lock) => Number(lock.branch_id) === Number(profile.branch_id)
+    );
+
+    return res.json({
+      hasLocks: locks.length > 0,
+      branchLocked,
+      lockedWeekdays: [...new Set(locks.map((lock) => Number(lock.weekday)))],
+      locks,
+    });
+  } catch (err) {
+    console.error('[staff schedule locks]', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.patch('/staff-profile/me', authenticate, requireRole('dentist', 'receptionist'), async (req, res) => {
   try {
     const current = await fetchStaffProfileBy('sp.user_id = ?', [req.user.user_id]);
@@ -1576,13 +1740,16 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
 
   try {
     const wantsScheduleUpdate = Array.isArray(req.body?.schedule_entries);
+    const wantsBranchUpdate =
+      req.body?.branchId !== undefined || req.body?.branch_id !== undefined;
     let linkedUserIdForSchedule = null;
+    let currentBranchIdForSchedule = null;
 
-    if (wantsScheduleUpdate) {
+    if (wantsScheduleUpdate || wantsBranchUpdate) {
       const [urows] = await pool.query(
-        `SELECT u.id, u.role
+        `SELECT u.id, u.role, sp.branch_id
          FROM staff_profile sp
-         JOIN users u ON u.id = sp.user_id
+         LEFT JOIN users u ON u.id = sp.user_id
          WHERE sp.id = ?
          LIMIT 1`,
         [profileId]
@@ -1591,10 +1758,23 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
       if (!u) {
         return res.status(404).json({ message: 'Staff profile not found' });
       }
-      if (u.role !== 'dentist') {
+      if (wantsScheduleUpdate && u.role !== 'dentist') {
         return res.status(400).json({ message: 'Only dentists have schedules' });
       }
-      linkedUserIdForSchedule = u.id;
+
+      if (u.role === 'dentist' && u.id) {
+        linkedUserIdForSchedule = u.id;
+        currentBranchIdForSchedule = u.branch_id;
+      }
+    }
+
+    if (linkedUserIdForSchedule && (wantsScheduleUpdate || wantsBranchUpdate)) {
+      await assertDentistScheduleChangeAllowed(
+        linkedUserIdForSchedule,
+        req.body.schedule_entries,
+        req.body.branchId ?? req.body.branch_id,
+        currentBranchIdForSchedule
+      );
     }
 
     await updateStaffProfile(profileId, req.body, {

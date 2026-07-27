@@ -12,24 +12,81 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatTimeOnly, formatRelativeDate } from '../utils/datetime';
 import styles from '../styles/BookSuggestionsScreen';
-import { suggestSlots } from '../api/appointments';
-
-const BREAKDOWN_LABELS = {
-  matches_preferred_time_of_day: 'Matches your preferred time of day',
-  same_dentist_as_last_visit: 'Same dentist as your last visit',
-  soonest_available_day: 'Soonest available day',
-  next_day_bonus: 'Next-day option',
-  earlier_in_day: 'Earlier in the day',
-  close_to_requested_time: 'Close to your requested date and time',
-};
+import { getAppointmentMeta, suggestSlots } from '../api/appointments';
 
 const HOUR_OPTIONS = Array.from({ length: 10 }, (_, index) => 10 + index);
-const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => index);
+const MINUTE_OPTIONS = [0, 30];
 
 function formatDentistName(name) {
   if (!name) return '';
   const cleaned = String(name).trim().replace(/^(Dr\.\s*)+/i, '');
   return `Dr. ${cleaned}`;
+}
+
+function getSuggestionDentists(suggestion) {
+  if (Array.isArray(suggestion?.dentists) && suggestion.dentists.length > 0) {
+    return suggestion.dentists;
+  }
+
+  if (suggestion?.dentist_id) {
+    return [{
+      dentist_id: suggestion.dentist_id,
+      dentist_name: suggestion.dentist_name,
+    }];
+  }
+
+  return [];
+}
+
+function normalizeSuggestionTime(value) {
+  if (!value) return null;
+  if (typeof value === 'string' && !value.includes('T')) {
+    return value.replace(' ', 'T') + 'Z';
+  }
+  return value;
+}
+
+function isReceptionistSlotStart(value) {
+  const normalized = normalizeSuggestionTime(value);
+  if (!normalized) return false;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return false;
+  const minutes = date.getMinutes();
+  return minutes === 0 || minutes === 30;
+}
+
+function suggestionIncludesDentist(suggestion, dentistId) {
+  if (!dentistId) return true;
+
+  return getSuggestionDentists(suggestion).some(
+    (dentist) => String(dentist.dentist_id) === String(dentistId)
+  );
+}
+
+function getDisplaySuggestions(suggestions = [], selectedDentistId = '') {
+  return suggestions
+    .filter((suggestion) => isReceptionistSlotStart(suggestion.start_time))
+    .filter((suggestion) => suggestionIncludesDentist(suggestion, selectedDentistId))
+    .slice(0, 3);
+}
+
+function mergeDentists(primary = [], fallback = []) {
+  const map = new Map();
+
+  for (const dentist of [...primary, ...fallback]) {
+    const id = dentist?.dentist_id ?? dentist?.id;
+    const name = dentist?.dentist_name ?? dentist?.name;
+    if (!id || map.has(String(id))) continue;
+
+    map.set(String(id), {
+      dentist_id: id,
+      dentist_name: name,
+    });
+  }
+
+  return Array.from(map.values()).sort((a, b) =>
+    String(a.dentist_name || '').localeCompare(String(b.dentist_name || ''))
+  );
 }
 
 export default function BookSuggestionsScreen({ navigation, route }) {
@@ -44,14 +101,54 @@ export default function BookSuggestionsScreen({ navigation, route }) {
   const [suggestionMode, setSuggestionMode] = useState('earliest');
   const [pickerMode, setPickerMode] = useState(null);
   const [selectedSlotBooked, setSelectedSlotBooked] = useState(false);
+  const [selectedDentistId, setSelectedDentistId] = useState('');
+  const [dentistPickerOpen, setDentistPickerOpen] = useState(false);
+  const [metaDentists, setMetaDentists] = useState([]);
+
+  const dentistOptions = mergeDentists(
+    Array.isArray(data?.eligible_dentists)
+    ? data.eligible_dentists
+      : [],
+    metaDentists
+  );
+  const displaySuggestions = getDisplaySuggestions(data?.suggestions || [], selectedDentistId);
+
+  const selectedDentist = dentistOptions.find(
+    (dentist) => String(dentist.dentist_id) === String(selectedDentistId)
+  );
 
   useEffect(() => {
+    loadDentistOptions();
+
     if (aiDate || aiTime) {
       loadInitialSlotsWithPreference();
     } else {
       loadSuggestions();
     }
   }, []);
+
+  async function loadDentistOptions() {
+    try {
+      const meta = await getAppointmentMeta();
+      const dentists = Array.isArray(meta?.dentists) ? meta.dentists : [];
+      const filtered = dentists
+        .filter((dentist) => {
+          const serviceIds = Array.isArray(dentist.service_ids) ? dentist.service_ids : [];
+          const branchIds = Array.isArray(dentist.branch_ids) ? dentist.branch_ids : [];
+
+          return serviceIds.some((id) => Number(id) === Number(service.id)) &&
+            branchIds.some((id) => Number(id) === Number(branchId));
+        })
+        .map((dentist) => ({
+          dentist_id: dentist.id,
+          dentist_name: dentist.name,
+        }));
+
+      setMetaDentists(filtered);
+    } catch (_) {
+      setMetaDentists([]);
+    }
+  }
 
   async function loadInitialSlotsWithPreference() {
     const date = aiDate || getDefaultPreferredDate();
@@ -80,7 +177,8 @@ export default function BookSuggestionsScreen({ navigation, route }) {
             from: from.toISOString(),
             to: to.toISOString(),
             preferred_start: preferredStart,
-            limit: 3,
+            ...(selectedDentistId ? { dentist_id: Number(selectedDentistId) } : {}),
+            limit: 8,
           });
           setData(result);
           setSuggestionMode('preferred');
@@ -97,7 +195,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
     loadSuggestions();
   }
 
-  async function loadSuggestions() {
+  async function loadSuggestions(dentistId = selectedDentistId) {
     setLoading(true);
     setError('');
     try {
@@ -110,7 +208,8 @@ export default function BookSuggestionsScreen({ navigation, route }) {
         service_id: service.id,
         from: now.toISOString(),
         to: future.toISOString(),
-        limit: 3,
+        ...(dentistId ? { dentist_id: Number(dentistId) } : {}),
+        limit: 8,
       });
       setData(result);
       setSuggestionMode('earliest');
@@ -172,7 +271,8 @@ export default function BookSuggestionsScreen({ navigation, route }) {
         from: from.toISOString(),
         to: to.toISOString(),
         preferred_start: preferredStart,
-        limit: 3,
+        ...(selectedDentistId ? { dentist_id: Number(selectedDentistId) } : {}),
+        limit: 8,
       });
 
       setData(result);
@@ -183,6 +283,13 @@ export default function BookSuggestionsScreen({ navigation, route }) {
     } finally {
       setPreferredLoading(false);
     }
+  }
+
+  function handleSelectDentist(dentistId) {
+    const nextDentistId = dentistId ? String(dentistId) : '';
+    setSelectedDentistId(nextDentistId);
+    setDentistPickerOpen(false);
+    loadSuggestions(nextDentistId);
   }
 
   return (
@@ -221,11 +328,29 @@ export default function BookSuggestionsScreen({ navigation, route }) {
             <Text style={styles.contextLabel}>Duration</Text>
             <Text style={styles.contextValue}>{service.duration_min} min</Text>
           </View>
+
+          <View style={styles.contextDivider} />
+
+          <View style={styles.dentistPickerGroup}>
+            <Text style={styles.contextLabel}>Preferred Dentist</Text>
+            <TouchableOpacity
+              style={styles.dentistPickerButton}
+              onPress={() => setDentistPickerOpen(true)}
+              disabled={loading && dentistOptions.length === 0}
+            >
+              <Text style={styles.dentistPickerText}>
+                {selectedDentist
+                  ? formatDentistName(selectedDentist.dentist_name)
+                  : 'Any available dentist'}
+              </Text>
+              <Text style={styles.dentistPickerChevron}>v</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {loading ? (
           <Text style={styles.loading}>Finding your best slots...</Text>
-        ) : !data || data.suggestions.length === 0 ? (
+        ) : !data || displaySuggestions.length === 0 ? (
           <>
             <Text style={styles.empty}>
               No available slots found in this range.{'\n'}Try a preferred date and time.
@@ -262,21 +387,15 @@ export default function BookSuggestionsScreen({ navigation, route }) {
                 : 'Within clinic hours, 10:00 AM to 7:00 PM.'}
             </Text>
 
-            {data.suggestions.map((s, idx) => {
-              const isBest = idx === 0;
+            {displaySuggestions.map((s) => {
+              const availableDentists = getSuggestionDentists(s);
               return (
                 <View
-                  key={`${s.dentist_id}-${s.start_time}`}
-                  style={[styles.suggestionCard, isBest && styles.suggestionCardBest]}
+                  key={s.start_time}
+                  style={styles.suggestionCard}
                 >
                   <View style={styles.suggestionTopRow}>
                     <View style={styles.suggestionMainInfo}>
-                      {isBest && (
-                        <View style={styles.bestBadge}>
-                          <Text style={styles.bestBadgeText}>BEST MATCH</Text>
-                        </View>
-                      )}
-
                       <Text style={styles.suggestionDate}>
                         {formatRelativeDate(s.start_time)}
                       </Text>
@@ -285,26 +404,30 @@ export default function BookSuggestionsScreen({ navigation, route }) {
                         {formatTimeOnly(s.start_time)}
                       </Text>
 
-                      <Text style={styles.suggestionDentist}>{formatDentistName(s.dentist_name)}</Text>
+                      <Text style={styles.suggestionDentist}>
+                        {availableDentists.length === 1
+                          ? formatDentistName(availableDentists[0].dentist_name)
+                          : `${availableDentists.length} dentists available`}
+                      </Text>
                     </View>
 
                   </View>
 
-                  <View style={styles.breakdownPanel}>
-                    {Object.entries(s.breakdown).map(([reason]) => (
-                      <View key={reason} style={styles.breakdownRow}>
-                        <Text style={styles.breakdownReason}>
-                          {BREAKDOWN_LABELS[reason] || reason}
+                  {availableDentists.length > 1 && (
+                    <View style={styles.dentistList}>
+                      {availableDentists.map((dentist) => (
+                        <Text key={dentist.dentist_id} style={styles.dentistListItem}>
+                          {formatDentistName(dentist.dentist_name)}
                         </Text>
-                      </View>
-                    ))}
-                  </View>
+                      ))}
+                    </View>
+                  )}
 
                   <TouchableOpacity
                     onPress={() => handlePick(s)}
-                    style={[styles.pickButton, isBest && styles.pickButtonBest]}
+                    style={[styles.pickButton, styles.pickButtonBest]}
                   >
-                    <Text style={[styles.pickButtonText, isBest && styles.pickButtonTextBest]}>
+                    <Text style={[styles.pickButtonText, styles.pickButtonTextBest]}>
                       Pick this slot
                     </Text>
                   </TouchableOpacity>
@@ -352,7 +475,75 @@ export default function BookSuggestionsScreen({ navigation, route }) {
           setPickerMode(null);
         }}
       />
+
+      <DentistPickerModal
+        visible={dentistPickerOpen}
+        dentists={dentistOptions}
+        selectedDentistId={selectedDentistId}
+        onClose={() => setDentistPickerOpen(false)}
+        onSelect={handleSelectDentist}
+      />
     </SafeAreaView>
+  );
+}
+
+function DentistPickerModal({
+  visible,
+  dentists,
+  selectedDentistId,
+  onClose,
+  onSelect,
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.pickerOverlay} onPress={onClose}>
+        <Pressable style={styles.pickerSheet} onPress={() => {}}>
+          <View style={styles.pickerHandle} />
+          <Text style={styles.pickerTitle}>Choose dentist</Text>
+
+          <TouchableOpacity
+            style={[
+              styles.dentistOption,
+              !selectedDentistId && styles.dentistOptionSelected,
+            ]}
+            onPress={() => onSelect('')}
+          >
+            <Text
+              style={[
+                styles.dentistOptionText,
+                !selectedDentistId && styles.dentistOptionTextSelected,
+              ]}
+            >
+              Any available dentist
+            </Text>
+          </TouchableOpacity>
+
+          {dentists.map((dentist) => {
+            const isSelected = String(dentist.dentist_id) === String(selectedDentistId);
+
+            return (
+              <TouchableOpacity
+                key={dentist.dentist_id}
+                style={[
+                  styles.dentistOption,
+                  isSelected && styles.dentistOptionSelected,
+                ]}
+                onPress={() => onSelect(dentist.dentist_id)}
+              >
+                <Text
+                  style={[
+                    styles.dentistOptionText,
+                    isSelected && styles.dentistOptionTextSelected,
+                  ]}
+                >
+                  {formatDentistName(dentist.dentist_name)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
