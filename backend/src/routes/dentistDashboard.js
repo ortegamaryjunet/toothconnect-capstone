@@ -6,6 +6,8 @@ const router = express.Router();
 
 router.use(authenticate);
 
+let scheduleRequestCancelledStatusReady = false;
+
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function getUserId(req) {
@@ -51,6 +53,19 @@ function formatAppointmentDateTime(value) {
       minute: '2-digit',
     }),
   };
+}
+
+async function ensureScheduleRequestCancelledStatus() {
+  if (scheduleRequestCancelledStatusReady) {
+    return;
+  }
+
+  await pool.query(
+    `ALTER TABLE schedule_requests
+     MODIFY status ENUM('pending', 'approved', 'rejected', 'cancelled') NOT NULL DEFAULT 'pending'`
+  );
+
+  scheduleRequestCancelledStatusReady = true;
 }
 
 async function notifyDentistAboutRequestDecision(dentistId, status, requestType) {
@@ -519,6 +534,8 @@ router.patch('/schedule-requests/:id/cancel', requireRole('dentist'), async (req
   }
 
   try {
+    await ensureScheduleRequestCancelledStatus();
+
     const [existingRows] = await pool.query(
       `SELECT id, dentist_id, request_type, status
        FROM schedule_requests

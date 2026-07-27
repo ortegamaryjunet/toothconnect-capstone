@@ -976,7 +976,7 @@ export default function DentistSchedule() {
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                style={styles.leaveCancelButton}
                 onClick={requestCloseLeaveModal}
                 disabled={submitLoading}
               >
@@ -1203,7 +1203,7 @@ export default function DentistSchedule() {
 
               <button
                 type="button"
-                style={styles.validationModalButton}
+                style={styles.validationModalDangerButton}
                 onClick={confirmCloseLeaveModal}
               >
                 Yes, Cancel
@@ -1239,7 +1239,7 @@ export default function DentistSchedule() {
 
               <button
                 type="button"
-                style={styles.validationModalButton}
+                style={styles.validationModalDangerButton}
                 onClick={handleCancelRequest}
                 disabled={cancelLoading}
               >

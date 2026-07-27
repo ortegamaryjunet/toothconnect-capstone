@@ -714,6 +714,22 @@ export default function createDentistScheduleStyles({
       fontWeight: 'bold',
     },
 
+    leaveCancelButton: {
+      flex: 1,
+      height: 42,
+      border: 'none',
+      borderRadius: 10,
+      fontSize: 14,
+      fontWeight: 700,
+      padding: '0 24px',
+      cursor: 'pointer',
+      background: '#dc2626',
+      color: '#ffffff',
+      width: isMobile ? '100%' : 'auto',
+      boxShadow: '0 8px 18px rgba(220, 38, 38, 0.24)',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+    },
+
     submitLeaveButton: {
       flex: 1,
       height: 42,
@@ -1040,6 +1056,21 @@ export default function createDentistScheduleStyles({
       fontWeight: 700,
       cursor: 'pointer',
       padding: '0 24px',
+    },
+
+    validationModalDangerButton: {
+      minWidth: 120,
+      height: 38,
+      border: 'none',
+      borderRadius: 8,
+      background: '#dc2626',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      padding: '0 24px',
+      boxShadow: '0 8px 18px rgba(220, 38, 38, 0.24)',
     },
   };
 }

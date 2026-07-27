@@ -567,7 +567,7 @@ CREATE TABLE schedule_requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   dentist_id INT NOT NULL,
   request_type ENUM('leave', 'transfer') NOT NULL,
-  status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+  status ENUM('pending', 'approved', 'rejected', 'cancelled') NOT NULL DEFAULT 'pending',
   date_from DATE NULL,
   date_to DATE NULL,
   reason TEXT NULL,
