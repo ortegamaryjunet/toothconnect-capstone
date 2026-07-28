@@ -99,6 +99,11 @@ app.use('/api/auth/forgot-password', passwordResetLimiter);
 app.use('/api/auth/reset-password', passwordResetLimiter);
 app.use('/api/auth', authRoutes);
 
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
+
 const appointmentRoutes = require('./src/routes/appointments');
 app.use('/api/appointments', appointmentRoutes);
 
