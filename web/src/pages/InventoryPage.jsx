@@ -2834,7 +2834,7 @@ export default function InventoryPage() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Expense Input?</h2>
+            <h2 style={styles.modalTitle}>Cancel Expense Input</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? Any unsaved expense details will be discarded.
             </p>

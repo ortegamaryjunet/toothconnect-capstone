@@ -2345,7 +2345,7 @@ export default function AdminEmployees() {
               <i className="fi fi-rr-edit" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Edit Employee Information?</h2>
+            <h2 style={styles.modalTitle}>Edit Employee Information</h2>
             <p style={styles.modalText}>
               Do you want to edit this employee information?
             </p>
@@ -2449,7 +2449,7 @@ export default function AdminEmployees() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Employee Editing?</h2>
+            <h2 style={styles.modalTitle}>Cancel Employee Editing</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? Any unsaved employee changes will be discarded.
             </p>
