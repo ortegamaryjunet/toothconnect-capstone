@@ -33,22 +33,12 @@ function loadWebsiteContent() {
         .then(function(data) {
             var c = data.content || {};
 
-            var websiteLogo = document.getElementById("website-logo");
+            const websiteLogo = document.getElementById("website-logo");
 
-            if (websiteLogo) {
-                if (c.website_logo_path) {
-                    websiteLogo.src = c.website_logo_path;
-                }
-
-                if (c.website_logo_width) {
-                    websiteLogo.style.width = c.website_logo_width + "px";
-                }
-
-                if (c.website_logo_height) {
-                    websiteLogo.style.height = c.website_logo_height + "px";
-                }
-
-                websiteLogo.style.objectFit = c.website_logo_fit || "contain";
+            if (websiteLogo && c.website_logo_path) {
+                websiteLogo.src = c.website_logo_path.startsWith("http")
+                    ? c.website_logo_path
+                    : API_BASE_URL + c.website_logo_path;
             }
 
             setText("hero-eyebrow",      c.hero_eyebrow);
@@ -146,97 +136,76 @@ function loadWebsiteFaqs() {
 }
 
 function loadWebsiteServices() {
-    // Use Website CMS services (admin-editable via website_services table)
     fetch(API_BASE_URL + "/api/website/services")
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (data) {
             var services = data.services || [];
-            if (!services.length) return;
 
             var grid = document.getElementById("serviceGrid");
             if (!grid) return;
 
-            var imageByName = {
-                "Deep Scaling (Dental Cleaning)": "./images/deep-scaling.webp",
-                "Deep Scaling": "./images/deep-scaling.webp",
-                "Smile Makeovers": "./images/smile-makeover.jpg",
-                "Smile Make-Overs": "./images/smile-makeover.jpg",
-                "Teeth Whitening": "./images/teeth-whitening.jpg",
-                "Veneers (Emax / Zirconia)": "./images/veneers.jpg",
-                "Veneers": "./images/veneers.jpg",
-                "Porcelain Jacket Crowns (PFM or Zirconia)": "./images/crowns.jpeg",
-                "Porcelain Jacket Crowns": "./images/crowns.jpeg",
-                "Porcelain Crowns": "./images/crowns.jpeg",
-                "Complete and Removable Partial Dentures": "./images/dentures.jpg",
-                "Dentures": "./images/dentures.jpg",
-                "Root Canal Treatment": "./images/root-canal.jpg",
-                "Braces": "./images/braces.jpg",
-                "Clear Aligners": "./images/clear-aligner.webp",
-                "Dental Implants": "./images/dental-implant.jpg"
-            };
+            document.querySelectorAll(".service-modal").forEach(function (m) {
+                m.remove();
+            });
 
-            var slugByName = {
-                "Deep Scaling (Dental Cleaning)": "scaling",
-                "Deep Scaling": "scaling",
-                "Smile Makeovers": "smilemakeovers",
-                "Smile Make-Overs": "smilemakeovers",
-                "Teeth Whitening": "whitening",
-                "Veneers (Emax / Zirconia)": "veneers",
-                "Veneers": "veneers",
-                "Porcelain Jacket Crowns (PFM or Zirconia)": "crowns",
-                "Porcelain Jacket Crowns": "crowns",
-                "Porcelain Crowns": "crowns",
-                "Complete and Removable Partial Dentures": "dentures",
-                "Dentures": "dentures",
-                "Root Canal Treatment": "rootcanal",
-                "Braces": "braces",
-                "Clear Aligners": "aligners",
-                "Dental Implants": "implants"
-            };
-
-            // Remove existing static modals for services
-            document.querySelectorAll(".service-modal").forEach(function(m) { m.remove(); });
-
-            grid.innerHTML = services.map(function(svc, i) {
+            grid.innerHTML = services.map(function (svc, i) {
                 var modalId = "modal-svc-" + svc.id;
-                var fallbackImage = imageByName[String(svc.name || '').trim()] || "./images/clinic-logo.jpg";
-                var imageSrc = String(svc.image_path || '').trim() || fallbackImage;
-                return '<div class="service-card' + (i < 3 ? ' show' : '') + (i === 2 ? ' active' : '') + '" data-modal="' + modalId + '">' +
-                    '<img src="' + escapeHtml(imageSrc) + '" alt="' + escapeHtml(svc.name) + '">' +
-                    '<span>' + escapeHtml(svc.name) + '</span>' +
-                    '</div>';
-            }).join('');
 
-            var modalsHtml = services.map(function(svc) {
+                return `
+                    <div class="service-card${i < 3 ? " show" : ""}${i === 2 ? " active" : ""}" data-modal="${modalId}">
+                        <img src="${escapeHtml(svc.image_path || "")}" alt="${escapeHtml(svc.name)}">
+                        <span>${escapeHtml(svc.name)}</span>
+                    </div>
+                `;
+            }).join("");
+
+            var modals = services.map(function (svc) {
                 var modalId = "modal-svc-" + svc.id;
-                var normalizedName = String(svc.name || '').trim();
-                var fallbackSlug = slugByName[normalizedName] || "";
-                var finalSlug = svc.slug || fallbackSlug;
-                var fallbackImage = imageByName[normalizedName] || "./images/clinic-logo.jpg";
-                var imageSrc = String(svc.image_path || '').trim() || fallbackImage;
-                var readMoreHref = finalSlug ? './Services.html?service=' + encodeURIComponent(finalSlug) : './Services.html';
-                return '<div class="service-modal" id="' + modalId + '">' +
-                    '<div class="service-modal-card">' +
-                    '<button type="button" class="modal-close" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>' +
-                    '<h2>' + escapeHtml(svc.name) + '</h2>' +
-                    '<div class="modal-img-box"><img src="' + escapeHtml(imageSrc) + '" alt="' + escapeHtml(svc.name) + '"></div>' +
-                    '<p>' + escapeHtml(svc.description || '') + '</p>' +
-                    '<a href="' + readMoreHref + '" class="quote-btn">Read More</a>' +
-                    '</div></div>';
-            }).join('');
-            document.body.insertAdjacentHTML('beforeend', modalsHtml);
 
-            // Update service strip
+                return `
+                    <div class="service-modal" id="${modalId}">
+                        <div class="service-modal-card">
+                            <button type="button" class="modal-close" aria-label="Close modal">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+
+                            <h2>${escapeHtml(svc.name)}</h2>
+
+                            <div class="modal-img-box">
+                                <img src="${escapeHtml(svc.image_path || "")}" alt="${escapeHtml(svc.name)}">
+                            </div>
+
+                            <p>${escapeHtml(svc.description || "")}</p>
+
+                            <a href="./Services.html?service=${encodeURIComponent(svc.slug || "")}" class="quote-btn">
+                                Read More
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            document.body.insertAdjacentHTML("beforeend", modals);
+
             var strip = document.getElementById("strip-track");
+
             if (strip) {
-                var names = services.map(function(s) { return '<span>' + escapeHtml(s.name) + '</span>'; }).join('');
-                strip.innerHTML = names + names; // duplicate for seamless scroll
+                var names = services
+                    .map(function (svc) {
+                        return "<span>" + escapeHtml(svc.name) + "</span>";
+                    })
+                    .join("");
+
+                strip.innerHTML = names + names;
             }
 
-            // Re-wire carousel and modal behaviour
             rewireServiceCarousel();
         })
-        .catch(function() {});
+        .catch(function (err) {
+            console.error("Failed to load website services:", err);
+        });
 }
 
 function rewireServiceCarousel() {
