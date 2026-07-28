@@ -638,10 +638,6 @@ export default function AdminSettings() {
         String(websiteContent[key] || '').trim(),
     }));
 
-console.log("sectionFields", sectionFields);
-console.log("websiteContent", websiteContent);
-console.log("websiteContentForm", websiteContentForm);
-
 setWebsiteContentSaveConfirmModal({
   sectionFields,
   requiredKeys,
