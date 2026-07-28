@@ -1255,6 +1255,132 @@
       display: isMobile ? 'none' : 'inline-flex',
     },
 
+    logoCard: {
+      display: 'grid',
+      gridTemplateColumns: '340px 1fr',
+      gap: 32,
+      alignItems: 'flex-start',
+      padding: 0,
+      background: 'transparent',
+    },
+
+    logoPreviewPanel: {
+      background: '#ffffff',
+      borderRadius: 18,
+      border: '1px solid #edf2f7',
+      padding: '28px 22px',
+      textAlign: 'center',
+      boxShadow: '0 8px 24px rgba(15,23,42,.05)',
+    },
+
+    logoPreview: {
+      width: 200,
+      height: 200,
+      margin: '0 auto 20px',
+      borderRadius: 20,
+      background: 'linear-gradient(180deg,#fafbfc,#f1f5f9)',
+      border: '2px dashed #d7dee8',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      overflow: 'hidden',
+    },
+
+    logoRight: {
+      background: '#ffffff',
+      borderRadius: 18,
+      border: '1px solid #edf2f7',
+      padding: 28,
+      boxShadow: '0 8px 24px rgba(15,23,42,.05)',
+    },
+
+    logoHeading: {
+      margin: 0,
+      fontSize: 24,
+      fontWeight: 700,
+      color: '#0f172a',
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    logoText: {
+      margin: '10px 0 24px',
+      color: '#64748b',
+      fontSize: 14,
+      lineHeight: 1.7,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+  logoUploadBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: '12px 20px',
+    borderRadius: 12,
+    border: '1px solid #e7b93e',
+    background: '#fff',
+    color: '#b8860b',
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: 'pointer',
+    transition: '.25s ease',
+    boxShadow: '0 4px 12px rgba(212,175,55,.15)',
+    marginLeft: 'auto',
+  },
+
+    logoUploadBtnDisabled: {
+      opacity: 0.55,
+      cursor: 'not-allowed',
+      pointerEvents: 'none',
+      background: '#f8fafc',
+      border: '1px solid #dbe4ee',
+      color: '#94a3b8',
+      boxShadow: 'none',
+    },
+
+    logoInfo: {
+      marginTop: 12,
+      marginBottom: 24,
+      color: '#94a3b8',
+      fontSize: 13,
+      lineHeight: 1.6,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    logoOption: {
+      width: 260,
+    },
+
+    logoSelectWrapper: {
+      position: 'relative',
+    },
+
+    logoSelect: {
+      width: '100%',
+      height: 48,
+      padding: '0 42px 0 14px',
+      border: '1px solid #dbe4ee',
+      borderRadius: 12,
+      background: '#fff',
+      color: '#334155',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      appearance: 'none',
+      outline: 'none',
+      cursor: 'pointer',
+      transition: '.2s ease',
+    },
+
+    logoSelectIcon: {
+      position: 'absolute',
+      top: '50%',
+      right: 14,
+      transform: 'translateY(-50%)',
+      color: '#94a3b8',
+      fontSize: 16,
+      pointerEvents: 'none',
+    },
+
     websiteAnnouncementHeader: {
       display: 'flex',
       justifyContent: 'space-between',
