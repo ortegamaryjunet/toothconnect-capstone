@@ -3021,7 +3021,7 @@ setWebsiteContentSaveConfirmModal({
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Admin Account Editing?</h2>
+            <h2 style={styles.modalTitle}>Cancel Admin Account Editing</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? Any unsaved admin account changes will be discarded.
             </p>
@@ -3785,7 +3785,7 @@ setWebsiteContentSaveConfirmModal({
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Branch Form?</h2>
+            <h2 style={styles.modalTitle}>Cancel Branch Form</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? Any unsaved branch details will be discarded.
             </p>
@@ -4028,7 +4028,7 @@ setWebsiteContentSaveConfirmModal({
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Service Form?</h2>
+            <h2 style={styles.modalTitle}>Cancel Service Form</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? Any unsaved service details will be discarded.
             </p>
@@ -4444,7 +4444,7 @@ setWebsiteContentSaveConfirmModal({
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Service Kit?</h2>
+            <h2 style={styles.modalTitle}>Cancel Service Kit</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? Any unsaved service kit changes will be discarded.
             </p>
@@ -4849,7 +4849,7 @@ setWebsiteContentSaveConfirmModal({
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel User Account Form?</h2>
+            <h2 style={styles.modalTitle}>Cancel User Account Form</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? Any unsaved user account details will be discarded.
             </p>
@@ -5041,7 +5041,7 @@ setWebsiteContentSaveConfirmModal({
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Policy Editing?</h2>
+            <h2 style={styles.modalTitle}>Cancel Policy Editing</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? Any unsaved appointment cancellation policy changes will be discarded.
             </p>
@@ -5188,7 +5188,7 @@ setWebsiteContentSaveConfirmModal({
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Content Editing?</h2>
+            <h2 style={styles.modalTitle}>Cancel Content Editing</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? Any unsaved website content changes will be discarded.
             </p>
