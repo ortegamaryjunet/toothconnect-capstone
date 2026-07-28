@@ -214,7 +214,7 @@ export default function AdminSettings() {
   const [websiteFaqs, setWebsiteFaqs] = useState([]);
   const [websiteServices, setWebsiteServices] = useState([]);
   const [websiteAnnouncements, setWebsiteAnnouncements] = useState([]);
-  const [websiteContentSection, setWebsiteContentSection] = useState('hero');
+  const [websiteContentSection, setWebsiteContentSection] = useState('logo');
   const [websiteContentForm, setWebsiteContentForm] = useState({});
   const [websiteContentSaving, setWebsiteContentSaving] = useState(false);
   const [websiteContentEditing, setWebsiteContentEditing] = useState(false);
@@ -241,6 +241,8 @@ export default function AdminSettings() {
     useState(null);
   const [deleteAnnouncementModal, setDeleteAnnouncementModal] = useState(false);
   const [deleteAnnouncementId, setDeleteAnnouncementId] = useState(null);
+  const [deleteWebsiteServiceModal, setDeleteWebsiteServiceModal] = useState(false);
+  const [deleteWebsiteServiceId, setDeleteWebsiteServiceId] = useState(null);
   const [showBranchCancelConfirmModal, setShowBranchCancelConfirmModal] =
     useState(false);
   const [showBranchSaveConfirmModal, setShowBranchSaveConfirmModal] =
@@ -636,11 +638,15 @@ export default function AdminSettings() {
         String(websiteContent[key] || '').trim(),
     }));
 
-    setWebsiteContentSaveConfirmModal({
-      sectionFields,
-      requiredKeys,
-      details,
-    });
+console.log("sectionFields", sectionFields);
+console.log("websiteContent", websiteContent);
+console.log("websiteContentForm", websiteContentForm);
+
+setWebsiteContentSaveConfirmModal({
+  sectionFields,
+  requiredKeys,
+  details,
+});
   }
 
   async function confirmWebsiteContentSave() {
@@ -694,13 +700,26 @@ export default function AdminSettings() {
     }
   }
 
-  async function deleteWebsiteService(id) {
-    if (!window.confirm('Delete this service card?')) return;
+  async function deleteWebsiteService() {
     try {
-      const res = await api.delete(`/website/website-services/${id}`);
+      const res = await api.delete(
+        `/website/website-services/${deleteWebsiteServiceId}`
+      );
+
       setWebsiteServices(res.data.services || []);
+      setDeleteWebsiteServiceModal(false);
+      setDeleteWebsiteServiceId(null);
+
+      showWebsiteValidationModal(
+        "Service Deleted",
+        "The service card has been deleted successfully.",
+        "success"
+      );
     } catch (err) {
-      showWebsiteValidationModal('Delete Failed', err.response?.data?.message || 'Failed to delete service.');
+      showWebsiteValidationModal(
+        "Delete Failed",
+        err.response?.data?.message || "Failed to delete service."
+      );
     }
   }
 
@@ -2136,6 +2155,150 @@ export default function AdminSettings() {
     );
 
     function getContentSectionFields() {
+      if (websiteContentSection === 'logo') {
+        const logoPath = websiteContentEditing
+          ? websiteContentForm.website_logo_path
+          : websiteContent.website_logo_path;
+
+        const logoSrc = logoPath
+          ? logoPath.startsWith('http') || logoPath.startsWith('blob:')
+            ? logoPath
+            : `${api.defaults.baseURL.replace('/api', '')}${logoPath}`
+          : '/images/clinic-logo.jpg';
+
+        return (
+          <div style={styles.logoCard}>
+            <div style={styles.logoPreviewPanel}>
+              <div style={styles.logoPreview}>
+                <img
+                  src={logoSrc}
+                  alt="Website Logo"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit:
+                      (websiteContentEditing
+                        ? websiteContentForm.website_logo_fit
+                        : websiteContent.website_logo_fit) || 'contain',
+                  }}
+                />
+              </div>
+
+              <h3 style={styles.logoHeading}>
+                Website Logo
+              </h3>
+
+              <p style={styles.logoText}>
+                Upload a logo from your computer or mobile device. Changes will appear throughout the website after saving.
+              </p>
+            </div>
+
+            <div style={styles.logoRight}>
+                <label
+                  style={{
+                    ...styles.logoUploadBtn,
+                    ...(websiteContentEditing
+                      ? {}
+                      : styles.logoUploadBtnDisabled),
+                  }}
+                >
+                <i className="fi fi-rr-picture"></i>
+                <span>Choose Logo</span>
+
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  hidden
+                  disabled={!websiteContentEditing}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    try {
+                      const token = localStorage.getItem('token');
+
+                      const formData = new FormData();
+                      formData.append('logo', file);
+
+                      const res = await api.post(
+                        '/website/upload-logo',
+                        formData,
+                        {
+                          headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'multipart/form-data',
+                          },
+                        }
+                      );
+
+                      console.log('Upload Response:', res.data);
+
+                      const uploadedPath = res.data.path;
+
+                      setWebsiteContent((prev) => ({
+                        ...prev,
+                        website_logo_path: uploadedPath,
+                      }));
+
+                      setWebsiteContentForm((prev) => ({
+                        ...prev,
+                        website_logo_path: uploadedPath,
+                      }));
+                    } catch (err) {
+                      console.error(err);
+                      alert('Failed to upload logo.');
+                    }
+                  }}
+                />
+              </label>
+
+              <div style={styles.logoInfo}>
+                Supported formats: PNG, JPG, WEBP and SVG
+              </div>
+
+              <div style={styles.logoOption}>
+                <label style={styles.websiteFieldLabel}>
+                  Logo Display
+                </label>
+
+                <div style={styles.logoSelectWrapper}>
+                  <select
+                    value={websiteContentForm.website_logo_fit || 'contain'}
+                    disabled={!websiteContentEditing}
+                    onChange={(e) =>
+                      setWebsiteContentForm((prev) => ({
+                        ...prev,
+                        website_logo_fit: e.target.value,
+                      }))
+                    }
+                    style={styles.logoSelect}
+                  >
+                    <option value="contain">Contain</option>
+                    <option value="cover">Cover</option>
+                    <option value="fill">Fill</option>
+                    <option value="scale-down">Scale Down</option>
+                    <option value="none">Original Size</option>
+                  </select>
+
+                  <i
+                    className="fi fi-rr-angle-small-down"
+                    style={styles.logoSelectIcon}
+                  ></i>
+                </div>
+              </div>
+            </div>
+
+            {websiteContentEditing &&
+              contentEditActions(
+                {
+                  website_logo_path: websiteContentForm.website_logo_path,
+                  website_logo_fit: websiteContentForm.website_logo_fit,
+                },
+                ['website_logo_path']
+              )}
+          </div>
+        );
+      }
       if (websiteContentSection === 'hero') {
         return (
           <div>
@@ -2320,7 +2483,11 @@ export default function AdminSettings() {
                         <button type="button" style={styles.editBtn} onClick={() => setWebsiteServiceOverlay({ ...svc })}>
                           <i className="fi fi-rr-file-edit"></i>
                         </button>
-                        <button type="button" style={{ ...styles.editBtn, color: '#dc2626', marginLeft: 6 }} onClick={() => deleteWebsiteService(svc.id)}>
+                        <button type="button" style={{ ...styles.editBtn, color: '#dc2626', marginLeft: 6 }} 
+                            onClick={() => {
+                              setDeleteWebsiteServiceId(svc.id);
+                              setDeleteWebsiteServiceModal(true);
+                            }}>
                           <i className="fi fi-rr-trash"></i>
                         </button>
                       </td>
@@ -2435,9 +2602,10 @@ export default function AdminSettings() {
     }
 
     const contentSections = [
+      { key: 'logo', label: 'Logo' },
       { key: 'hero', label: 'Hero' },
       { key: 'services', label: 'Services' },
-      { key: 'about', label: 'About' },
+      { key: 'about', label: 'About Us' },
       { key: 'faqs', label: 'FAQs' },
       { key: 'contact', label: 'Contact & Hours' },
       { key: 'footer', label: 'Footer' },
@@ -2448,17 +2616,53 @@ export default function AdminSettings() {
       <>
         <section style={styles.tableCard}>
           <div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-                {contentSections.map((sec) => (
-                  <button
-                    key={sec.key}
-                    type="button"
-                    style={contentSectionBtnStyle(websiteContentSection === sec.key)}
-                    onClick={() => { setWebsiteContentSection(sec.key); setWebsiteContentEditing(false); setWebsiteContentMsg({ text: '', type: '' }); }}
-                  >
-                    {sec.label}
-                  </button>
-                ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, padding: "6px", background: "transparent", borderBottom: "1px solid #e2e8f0", borderRadius: 10, overflowX: "auto", scrollbarWidth: "none" }}>
+                {contentSections.map((sec) => {
+                  const active = websiteContentSection === sec.key;
+
+                  return (
+                    <button
+                      key={sec.key}
+                      type="button"
+                      onClick={() => {
+                        setWebsiteContentSection(sec.key);
+                        setWebsiteContentEditing(false);
+                        setWebsiteContentMsg({ text: "", type: "" });
+                      }}
+                      style={{
+                        position: "relative",
+                        padding: "8px 14px",
+                        border: "none",
+                        borderRadius: 8,
+                        background: active ? "#fef7e6" : "transparent",
+                        color: active ? "#b88900" : "#64748b",
+                        fontSize: 13,
+                        fontWeight: active ? 700 : 600,
+                        fontFamily: "Arial, sans-serif",
+                        cursor: "pointer",
+                        transition: "all .2s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!active) {
+                          e.currentTarget.style.background = "#f8fafc";
+                          e.currentTarget.style.color = "#334155";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!active) {
+                          e.currentTarget.style.background = "transparent";
+                          e.currentTarget.style.color = "#64748b";
+                        }
+                      }}
+                    >
+                      {sec.label}
+
+                      {active && (
+                        <span style={{ position: "absolute", left: "20%", right: "20%", bottom: -7, height: 2, borderRadius: 999, background: "#d4af37" }} />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               {websiteContentMsg.text && (
@@ -2474,7 +2678,7 @@ export default function AdminSettings() {
                 </p>
               )}
 
-              {['hero', 'about', 'contact', 'footer'].includes(websiteContentSection) && (
+              {['logo', 'hero', 'about', 'contact', 'footer'].includes(websiteContentSection) && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
                   {!websiteContentEditing && (
                     <button
@@ -5083,6 +5287,55 @@ export default function AdminSettings() {
                 onClick={() => {
                   setDeleteAnnouncementModal(false);
                   setDeleteAnnouncementId(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteWebsiteServiceModal && (
+        <div
+          style={styles.modal}
+          onClick={() => {
+            setDeleteWebsiteServiceModal(false);
+            setDeleteWebsiteServiceId(null);
+          }}
+        >
+          <div
+            style={styles.modalContent}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={styles.modalIcon}>
+              <i
+                className="fi fi-rr-trash"
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Delete Service</h2>
+
+            <p style={styles.modalText}>
+              Are you sure you want to permanently delete this service card?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={deleteWebsiteService}
+              >
+                Delete
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => {
+                  setDeleteWebsiteServiceModal(false);
+                  setDeleteWebsiteServiceId(null);
                 }}
               >
                 Cancel
