@@ -157,26 +157,32 @@ function getShiftTypeOptions(role) {
 }
 
 function parseWorkDays(val) {
+  const sortDays = (days) => days
+    .map((day) => String(day || '').trim())
+    .filter(Boolean)
+    .sort((a, b) => {
+      const indexA = EDIT_DAY_OPTIONS.indexOf(a);
+      const indexB = EDIT_DAY_OPTIONS.indexOf(b);
+      return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+    });
+
   if (!val) {
     return [];
   }
 
   if (Array.isArray(val)) {
-    return val;
+    return sortDays(val);
   }
 
   try {
     const parsed = JSON.parse(val);
 
     if (Array.isArray(parsed)) {
-      return parsed;
+      return sortDays(parsed);
     }
   } catch (_) {}
 
-  return String(val)
-    .split(',')
-    .map((d) => d.trim())
-    .filter(Boolean);
+  return sortDays(String(val).split(','));
 }
 
 function parseSpecializations(value) {
@@ -1672,15 +1678,15 @@ export default function AdminEmployees() {
     const checkedDays = parseWorkDays(editedEmployee?.workDays);
 
     return (
-      <div style={styles.employeeModalField}>
+      <div style={{ ...styles.employeeModalField, marginTop: editedEmployee?.role === 'Dentist' && isEditingEmployee ? 8 : 0 }}>
         <label style={styles.employeeModalLabel}>Work Schedule Days</label>
 
         <div
           style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '8px 16px',
-            marginTop: 4,
+            gap: '12px 24px',
+            marginTop: 8,
           }}
         >
           {EDIT_DAY_OPTIONS.map((day) => {
@@ -1821,7 +1827,7 @@ export default function AdminEmployees() {
         </div>
 
         {usePerDayBranchSchedule && (
-          <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+          <div style={{ marginTop: 16, display: 'grid', gap: 18 }}>
             {checkedDays.length === 0 && (
               <span style={{ color: '#8b6508', fontSize: 12, fontWeight: 700 }}>
                 Select work schedule days first.
@@ -1841,9 +1847,10 @@ export default function AdminEmployees() {
                   key={day}
                   style={{
                     display: 'grid',
-                    gap: 8,
+                    gap: 10,
                     borderLeft: isLocked ? '3px solid #d4af37' : '3px solid transparent',
                     paddingLeft: isLocked ? 8 : 0,
+                    paddingBottom: 8,
                   }}
                 >
                   <div
@@ -1967,7 +1974,7 @@ export default function AdminEmployees() {
               );
             })}
 
-            <div style={{ fontSize: 12, color: '#6f675b', marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: '#6f675b', marginTop: 10, marginBottom: 8 }}>
               Only checked days in "Work Schedule Days" will be saved.
             </div>
           </div>
