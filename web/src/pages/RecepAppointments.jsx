@@ -965,7 +965,7 @@ export default function RecepAppointments() {
         title: 'Mark as No-Show',
         message: 'Are you sure you want to mark this appointment as no-show?',
         rows: getActionSummaryRows(appointment),
-        confirmText: 'Mark as No-Show',
+        confirmText: 'Yes, Mark as No-Show',
         confirmStyle: 'gold',
       });
       return;
@@ -2333,7 +2333,7 @@ export default function RecepAppointments() {
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={() => setRescheduleCancelConfirm(false)}
               >
-                Continue Editing
+                No
               </button>
 
               <button
@@ -2341,7 +2341,7 @@ export default function RecepAppointments() {
                 style={{ ...styles.modalButton, ...styles.logoutBtn }}
                 onClick={closeRescheduleModal}
               >
-                Cancel Reschedule
+                Yes, Cancel
               </button>
             </div>
           </div>
