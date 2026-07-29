@@ -12,7 +12,10 @@ const { clinicDateKeyFromUtcDate } = require('../utils/clinic');
 const { getApprovedLeaveForDentistOnDate } = require('../utils/leaves');
 const { sendPushToUser } = require('../services/push');
 const { suggestSlots } = require('../services/scheduler');
-const { getServiceKitAvailability } = require('../utils/serviceKitAvailability');
+const {
+  ensureServiceKitsBranchColumn,
+  getServiceKitAvailability,
+} = require('../utils/serviceKitAvailability');
 
 const router = express.Router();
 
@@ -535,6 +538,11 @@ router.get('/_meta/services-and-branches', async (req, res) => {
       dentistParams
     );
 
+    const branchIdsForMeta = branches.map((branch) => Number(branch.id)).filter(Boolean);
+    const allowedBranchIdSet = new Set(branchIdsForMeta);
+
+    await ensureServiceKitsBranchColumn(pool);
+
     const [serviceAvailability] = await pool.query(
       `SELECT DISTINCT dsv.service_id, dsch.branch_id
        FROM dentist_services dsv
@@ -544,17 +552,39 @@ router.get('/_meta/services-and-branches', async (req, res) => {
 
     const branchIdsByService = {};
     for (const row of serviceAvailability) {
+      if (!allowedBranchIdSet.has(Number(row.branch_id))) continue;
       if (!branchIdsByService[row.service_id]) {
-        branchIdsByService[row.service_id] = [];
+        branchIdsByService[row.service_id] = new Set();
       }
-      branchIdsByService[row.service_id].push(row.branch_id);
+      branchIdsByService[row.service_id].add(Number(row.branch_id));
+    }
+
+    const [serviceKitBranches] = await pool.query(
+      `SELECT DISTINCT service_id, branch_id
+       FROM service_kits`
+    );
+    for (const row of serviceKitBranches) {
+      if (!branchIdsByService[row.service_id]) {
+        branchIdsByService[row.service_id] = new Set();
+      }
+
+      if (row.branch_id) {
+        const branchId = Number(row.branch_id);
+        if (allowedBranchIdSet.has(branchId)) {
+          branchIdsByService[row.service_id].add(branchId);
+        }
+      } else {
+        for (const branchId of branchIdsForMeta) {
+          branchIdsByService[row.service_id].add(branchId);
+        }
+      }
     }
 
     const annotatedServices = [];
     for (const s of services) {
-      const dentistBranches = branchIdsByService[s.id] || [];
+      const serviceBranchIds = Array.from(branchIdsByService[s.id] || []);
       const kitAvailableBranchIds = [];
-      for (const bid of dentistBranches) {
+      for (const bid of serviceBranchIds) {
         const kitAvailability = await getServiceKitAvailability(pool, { serviceId: s.id, branchId: bid });
         if (kitAvailability.available) {
           kitAvailableBranchIds.push(bid);

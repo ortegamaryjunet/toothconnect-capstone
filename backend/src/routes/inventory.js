@@ -1143,8 +1143,14 @@ router.get('/service-kit-history', requireRole('admin'), async (req, res) => {
   const endDate = req.query.end_date ? String(req.query.end_date).slice(0, 10) : '';
   const branchId = req.query.branch_id ? parseInt(req.query.branch_id, 10) : null;
 
+  if (req.query.branch_id && !branchId) {
+    return res.status(400).json({ message: 'Invalid branch_id' });
+  }
   if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
     return res.status(400).json({ message: 'Invalid date format (expected YYYY-MM-DD)' });
+  }
+  if (branchId && !validateBranchAccess(req, branchId)) {
+    return res.status(403).json({ message: 'No access to this branch' });
   }
 
   try {
@@ -1157,22 +1163,17 @@ router.get('/service-kit-history', requireRole('admin'), async (req, res) => {
     } else if (startDate) {
       whereParts.push(`al.created_at >= ? AND al.created_at < DATE_ADD(?, INTERVAL 1 DAY)`);
       params.push(`${startDate} 00:00:00`, startDate);
+    } else if (endDate) {
+      whereParts.push(`al.created_at < DATE_ADD(?, INTERVAL 1 DAY)`);
+      params.push(endDate);
     }
 
     if (branchId) {
-      const [branchServiceRows] = await pool.query(
-        `SELECT DISTINCT dsv.service_id
-         FROM dentist_services dsv
-         JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id
-         WHERE dsch.branch_id = ?`,
-        [branchId]
-      );
-      const serviceIds = branchServiceRows.map((r) => r.service_id);
-      if (serviceIds.length === 0) {
-        return res.json({ records: [] });
-      }
-      whereParts.push(`JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.service_id')) IN (${serviceIds.map(() => '?').join(',')})`);
-      params.push(...serviceIds);
+      whereParts.push(`(
+        al.branch_id = ?
+        OR CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.branch_id')) AS UNSIGNED) = ?
+      )`);
+      params.push(branchId, branchId);
     }
 
     const [rows] = await pool.query(

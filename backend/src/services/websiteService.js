@@ -2,7 +2,10 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../config/db');
 const { APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime } = require('../utils/scheduling');
-const { getServiceKitAvailability } = require('../utils/serviceKitAvailability');
+const {
+  ensureServiceKitsBranchColumn,
+  getServiceKitAvailability,
+} = require('../utils/serviceKitAvailability');
 
 function hash32FNV1a(input) {
   const str = String(input ?? '');
@@ -128,6 +131,8 @@ function canonicalizeBranchText(value) {
 }
 
 async function listClinicServices() {
+  await ensureServiceKitsBranchColumn(db);
+
   const [rows] = await db.query(
     `SELECT
        id,
@@ -141,25 +146,68 @@ async function listClinicServices() {
      WHERE status = 'Active'
      ORDER BY name ASC`
   );
-  const filtered = [];
-  for (const row of rows) {
-    const [branchRows] = await db.query(
-      `SELECT DISTINCT dsch.branch_id
-       FROM dentist_services dsv
-       JOIN users u ON u.id = dsv.dentist_id AND u.role = 'dentist' AND u.status = 'Active'
-       JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id
-       WHERE dsv.service_id = ?`,
-      [row.id]
-    );
-    let available = false;
-    for (const branch of branchRows) {
-      const kit = await getServiceKitAvailability(db, { serviceId: row.id, branchId: branch.branch_id });
-      if (kit.available) {
-        available = true;
-        break;
+
+  const [branches] = await db.query(`SELECT id, name, address FROM branches`);
+  const branchById = new Map(branches.map((branch) => [Number(branch.id), branch]));
+  const branchIdsByService = new Map();
+
+  function addServiceBranch(serviceId, branchId) {
+    const cleanServiceId = Number(serviceId);
+    const cleanBranchId = Number(branchId);
+    if (!cleanServiceId || !cleanBranchId || !branchById.has(cleanBranchId)) return;
+    if (!branchIdsByService.has(cleanServiceId)) {
+      branchIdsByService.set(cleanServiceId, new Set());
+    }
+    branchIdsByService.get(cleanServiceId).add(cleanBranchId);
+  }
+
+  const [dentistBranchRows] = await db.query(
+    `SELECT DISTINCT dsv.service_id, dsch.branch_id
+     FROM dentist_services dsv
+     JOIN users u ON u.id = dsv.dentist_id AND u.role = 'dentist' AND u.status = 'Active'
+     JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id`
+  );
+  for (const row of dentistBranchRows) {
+    addServiceBranch(row.service_id, row.branch_id);
+  }
+
+  const [serviceKitBranchRows] = await db.query(
+    `SELECT DISTINCT service_id, branch_id
+     FROM service_kits`
+  );
+  for (const row of serviceKitBranchRows) {
+    if (row.branch_id) {
+      addServiceBranch(row.service_id, row.branch_id);
+    } else {
+      for (const branch of branches) {
+        addServiceBranch(row.service_id, branch.id);
       }
     }
-    if (available) filtered.push(row);
+  }
+
+  const filtered = [];
+  for (const row of rows) {
+    const availableBranchIds = [];
+    for (const branchId of Array.from(branchIdsByService.get(Number(row.id)) || [])) {
+      const kit = await getServiceKitAvailability(db, { serviceId: row.id, branchId });
+      if (kit.available) {
+        availableBranchIds.push(branchId);
+      }
+    }
+    if (availableBranchIds.length > 0) {
+      filtered.push({
+        ...row,
+        available_branch_ids: availableBranchIds,
+        available_branch_names: availableBranchIds.flatMap((branchId) => {
+          const branch = branchById.get(Number(branchId));
+          if (!branch) return [];
+          const names = [];
+          if (branch.address) names.push(branch.address, `${branch.address} Branch`);
+          if (branch.name) names.push(branch.name);
+          return names;
+        }),
+      });
+    }
   }
   return filtered;
 }

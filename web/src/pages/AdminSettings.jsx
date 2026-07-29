@@ -4900,7 +4900,11 @@ setWebsiteContentSaveConfirmModal({
                 <button
                   type="button"
                   style={{ ...styles.secondaryBtn, height: 48 }}
-                  onClick={() => setServiceKitHistoryFilters({ startDate: '', endDate: '', branchId: '' })}
+                  onClick={() => {
+                    const emptyFilters = { startDate: '', endDate: '', branchId: '' };
+                    setServiceKitHistoryFilters(emptyFilters);
+                    loadServiceKitHistory(emptyFilters);
+                  }}
                 >
                   Clear
                 </button>
