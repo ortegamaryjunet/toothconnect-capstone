@@ -133,6 +133,31 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
       cursor: 'pointer',
     },
 
+    disabledLink: {
+      opacity: 0.45,
+      cursor: 'not-allowed',
+      pointerEvents: 'none',
+    },
+
+    forgotPasswordRow: {
+      margin: '0 0 18px',
+      textAlign: 'right',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-end',
+      alignItems: 'flex-end',
+      gap: 4,
+    },
+
+    cooldownText: {
+      color: '#b42318',
+      fontSize: '12px',
+      fontWeight: 500,
+      lineHeight: 1.35,
+      display: 'block',
+      marginTop: 4,
+    },
+
     success: {
       marginBottom: '16px',
       padding: '12px 14px',
@@ -155,6 +180,92 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
       fontSize: '13px',
       fontWeight: 700,
       textAlign: 'center',
+    },
+
+    modal: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 9999,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    modalContent: {
+      width: isMobile ? '100%' : 390,
+      maxWidth: 390,
+      background: '#ffffff',
+      borderRadius: 22,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)',
+      boxSizing: 'border-box',
+      border: '1px solid rgba(212, 175, 55, 0.22)',
+    },
+
+    modalIcon: {
+      width: 70,
+      height: 70,
+      margin: '0 auto 16px',
+      borderRadius: '50%',
+      background: 'rgba(212, 175, 55, 0.18)',
+      color: '#b8860b',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    modalIconText: {
+      fontSize: 30,
+      lineHeight: 1,
+    },
+
+    modalTitle: {
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
+      color: '#0f172a',
+      marginBottom: 10,
+      marginTop: 0,
+    },
+
+    modalText: {
+      fontSize: 15,
+      color: '#64748b',
+      marginBottom: 24,
+      marginTop: 0,
+      lineHeight: 1.5,
+    },
+
+    modalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    modalButton: {
+      minWidth: 120,
+      height: 44,
+      borderRadius: 12,
+      border: 'none',
+      cursor: 'pointer',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 800,
+    },
+
+    cancelBtn: {
+      background: '#f1f5f9',
+      color: '#334155',
+    },
+
+    saveBtn: {
+      background: '#d4af37',
+      color: '#ffffff',
+      boxShadow: '0 12px 26px rgba(139, 101, 8, 0.18)',
     },
   };
 };

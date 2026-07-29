@@ -1227,7 +1227,20 @@ export default function AdminEmployeeForm() {
               <FieldRaw label="Medical License Number" name="licenseNumber" styles={styles} />
             </div>
             <div style={styles.rowTwo}>
-              <FieldRaw label="Specialization" name="specialization" onInput={filterProfessionalTextInput} styles={styles} />
+              <SelectFieldRaw
+                label="Specialization"
+                name="specialization"
+                placeholder={
+                  specializationsLoading
+                    ? 'Loading...'
+                    : specializationOptions.length === 0
+                      ? 'No categories found'
+                      : 'Select specialization'
+                }
+                options={specializationOptions}
+                disabled={specializationsLoading || specializationOptions.length === 0}
+                styles={styles}
+              />
               <FieldRaw
                 label="Years of Experience"
                 name="experienceYears"
@@ -1595,7 +1608,7 @@ export default function AdminEmployeeForm() {
             <div style={styles.modalIcon}>
               <i className="fi fi-rr-users-alt" style={styles.modalIconText}></i>
             </div>
-            <h2 style={styles.modalTitle}>Leave Employee Form?</h2>
+            <h2 style={styles.modalTitle}>Leave Employee Form</h2>
             <p style={styles.modalText}>
               Are you sure you want to go back? Any unsaved changes to this employee form will be lost.
             </p>

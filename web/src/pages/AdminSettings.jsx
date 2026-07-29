@@ -1,5 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  getCountries,
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+} from 'libphonenumber-js';
 
 import api from '../api/axios';
 import {
@@ -107,10 +112,8 @@ const branchRequiredFields = [
   'phone',
   'contact_person',
   'operating_hours',
-  'years_active',
   'status',
 ];
-const BRANCH_PHONE_REGEX = /^09\d{9}$/;
 
 const initialServiceForm = {
   id: '',
@@ -122,6 +125,13 @@ const initialServiceForm = {
   status: '',
 };
 
+const DEFAULT_SERVICE_CATEGORIES = [
+  'General Dentistry',
+  'Cosmetic Dentistry',
+  'Orthodontics',
+  'Surgery',
+];
+
 const serviceRequiredFields = [
   'name',
   'category',
@@ -130,6 +140,15 @@ const serviceRequiredFields = [
   'time_buffer_min',
   'status',
 ];
+
+const SERVICE_FIELD_LABELS = {
+  name: 'Service name',
+  category: 'Category',
+  price: 'Price',
+  duration: 'Duration',
+  time_buffer_min: 'Time buffer',
+  status: 'Status',
+};
 
 const initialUserForm = {
   id: '',
@@ -143,6 +162,12 @@ const initialUserForm = {
 };
 const USER_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const userRequiredFields = ['fullName', 'email', 'role', 'status'];
+const ADMIN_NAME_REGEX = /^[a-zA-Z\s]+$/;
+const adminAccountRequiredFields = ['name', 'email', 'phone', 'status'];
+const phoneCountryOptions = getCountries().map((country) => ({
+  country,
+  callingCode: getCountryCallingCode(country),
+}));
 
 const initialAdminAccountForm = {
   id: '',
@@ -155,6 +180,90 @@ const initialAdminAccountForm = {
   status: 'Active',
   created_at: '',
 };
+
+function parseContactNumber(value, country = 'PH') {
+  const rawValue = String(value || '').trim();
+  const digits = rawValue.replace(/\D/g, '');
+
+  if (!digits) {
+    return null;
+  }
+
+  if (rawValue.startsWith('+')) {
+    return parsePhoneNumberFromString(rawValue);
+  }
+
+  if (digits.startsWith('00')) {
+    return parsePhoneNumberFromString(`+${digits.slice(2)}`);
+  }
+
+  if (digits.startsWith('0')) {
+    return parsePhoneNumberFromString(digits, country);
+  }
+
+  return parsePhoneNumberFromString(digits, country);
+}
+
+function isDialCodeOnly(digits, country = 'PH') {
+  try {
+    return digits === getCountryCallingCode(country);
+  } catch {
+    return false;
+  }
+}
+
+function getPhoneFormValue(value, fallbackCountry = 'PH') {
+  const phoneNumber = parseContactNumber(value, fallbackCountry);
+
+  if (!phoneNumber) {
+    return {
+      country: fallbackCountry,
+      number: String(value || '').replace(/\D/g, ''),
+    };
+  }
+
+  return {
+    country: phoneNumber.country || fallbackCountry,
+    number: phoneNumber.nationalNumber || String(value || '').replace(/\D/g, ''),
+  };
+}
+
+function normalizePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isDialCodeOnly(digits, country)) {
+    return '';
+  }
+
+  const phoneNumber = parseContactNumber(value, country);
+  return phoneNumber?.number || `+${digits}`;
+}
+
+function validatePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isDialCodeOnly(digits, country)) {
+    return 'This field is required';
+  }
+
+  const phoneNumber = parseContactNumber(value, country);
+
+  if (!phoneNumber?.isValid()) {
+    return 'Contact number does not match the selected country code.';
+  }
+
+  return '';
+}
+
+function calculateYearsActive(dateOpened) {
+  const openedYear = Number(String(dateOpened || '').slice(0, 4));
+
+  if (!openedYear) {
+    return '';
+  }
+
+  return String(Math.max(0, new Date().getFullYear() - openedYear));
+}
 
 const WEBSITE_FONT_OPTIONS = [
   'Arial, sans-serif',
@@ -252,6 +361,9 @@ export default function AdminSettings() {
   const [adminAccountForm, setAdminAccountForm] = useState(initialAdminAccountForm);
   const [adminAccountOriginal, setAdminAccountOriginal] = useState(initialAdminAccountForm);
   const [isEditingAdminAccount, setIsEditingAdminAccount] = useState(false);
+  const [adminAccountPhoneCountry, setAdminAccountPhoneCountry] = useState('PH');
+  const [adminAccountOriginalPhoneCountry, setAdminAccountOriginalPhoneCountry] = useState('PH');
+  const [adminAccountTouchedFields, setAdminAccountTouchedFields] = useState({});
   const [adminAccountMessage, setAdminAccountMessage] = useState('');
   const [adminAccountError, setAdminAccountError] = useState('');
   const [showAdminAccountCancelConfirmModal, setShowAdminAccountCancelConfirmModal] =
@@ -263,9 +375,11 @@ export default function AdminSettings() {
     useState(false);
 
   const [branchForm, setBranchForm] = useState(initialBranchForm);
+  const [branchPhoneCountry, setBranchPhoneCountry] = useState('PH');
   const [branchTouchedFields, setBranchTouchedFields] = useState({});
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
   const [serviceTouchedFields, setServiceTouchedFields] = useState({});
+  const [serviceCategoryMode, setServiceCategoryMode] = useState('select');
   const [showServiceCancelConfirmModal, setShowServiceCancelConfirmModal] =
     useState(false);
   const [showServiceSaveConfirmModal, setShowServiceSaveConfirmModal] =
@@ -335,13 +449,21 @@ export default function AdminSettings() {
     isSmallScreen,
   });
 
+  const branchYearsActive = calculateYearsActive(branchForm.date_opened);
+
   const isBranchFormComplete = branchRequiredFields.every(
     (field) => String(branchForm[field] ?? '').trim() !== ''
-  ) && BRANCH_PHONE_REGEX.test(String(branchForm.phone || '').trim());
+  ) && !validatePhoneNumber(branchForm.phone, branchPhoneCountry);
 
-  const isServiceFormComplete = serviceRequiredFields.every(
-    (field) => String(serviceForm[field] ?? '').trim() !== ''
-  );
+  const serviceCategoryOptions = useMemo(() => {
+    return [
+      ...new Set([
+        ...DEFAULT_SERVICE_CATEGORIES,
+        ...services.map((service) => service.category).filter(Boolean),
+        serviceForm.category,
+      ].filter(Boolean)),
+    ].sort();
+  }, [services, serviceForm.category]);
 
   const isUserFormComplete =
     userRequiredFields.every((field) => String(userForm[field] ?? '').trim() !== '') &&
@@ -778,11 +900,12 @@ setWebsiteContentSaveConfirmModal({
   async function loadAdminAccount() {
     try {
       const res = await api.get('/auth/me');
+      const phoneFormValue = getPhoneFormValue(res.data.phone || '', 'PH');
       const loadedAdminAccount = {
         id: res.data.id || '',
         name: res.data.name || '',
         email: res.data.email || '',
-        phone: res.data.phone || '',
+        phone: phoneFormValue.number,
         password: '',
         confirmPassword: '',
         role: res.data.role || 'admin',
@@ -791,6 +914,9 @@ setWebsiteContentSaveConfirmModal({
       };
       setAdminAccountForm(loadedAdminAccount);
       setAdminAccountOriginal(loadedAdminAccount);
+      setAdminAccountPhoneCountry(phoneFormValue.country);
+      setAdminAccountOriginalPhoneCountry(phoneFormValue.country);
+      setAdminAccountTouchedFields({});
     } catch (err) {
       console.error('Failed to load admin account', err);
       setAdminAccountError('Failed to load admin account.');
@@ -947,6 +1073,7 @@ setWebsiteContentSaveConfirmModal({
     setShowBranchCancelConfirmModal(false);
     setShowBranchSaveConfirmModal(false);
     setBranchTouchedFields({});
+    setBranchPhoneCountry('PH');
     setShowServiceCancelConfirmModal(false);
     setShowServiceSaveConfirmModal(false);
     setServiceTouchedFields({});
@@ -1054,9 +1181,15 @@ setWebsiteContentSaveConfirmModal({
     setBranchTouchedFields({});
 
     if (branch) {
-      setBranchForm(branch);
+      const phoneFormValue = getPhoneFormValue(branch.phone || '', 'PH');
+      setBranchForm({
+        ...branch,
+        phone: phoneFormValue.number,
+      });
+      setBranchPhoneCountry(phoneFormValue.country);
     } else {
       setBranchForm(initialBranchForm);
+      setBranchPhoneCountry('PH');
     }
 
     setActiveOverlay('branch');
@@ -1066,6 +1199,7 @@ setWebsiteContentSaveConfirmModal({
     setShowServiceCancelConfirmModal(false);
     setShowServiceSaveConfirmModal(false);
     setServiceTouchedFields({});
+    setServiceCategoryMode('select');
 
     if (service) {
       setServiceForm(service);
@@ -1104,7 +1238,7 @@ setWebsiteContentSaveConfirmModal({
 
     let newValue = value;
 
-    if (name === 'name') {
+    if (name === 'name' || name === 'category') {
       newValue = allowLettersOnly(value);
     }
 
@@ -1113,7 +1247,7 @@ setWebsiteContentSaveConfirmModal({
     }
 
     if (name === 'phone') {
-      newValue = allowNumbersOnly(value).slice(0, 11);
+      newValue = String(value || '').replace(/\D/g, '').slice(0, 15);
     }
 
     setBranchForm((prev) => ({
@@ -1126,12 +1260,16 @@ setWebsiteContentSaveConfirmModal({
     setBranchTouchedFields((prev) => ({ ...prev, [name]: true }));
   }
 
+  function handleBranchPhoneCountryChange(countryCode) {
+    setBranchPhoneCountry(countryCode);
+    setBranchTouchedFields((prev) => ({ ...prev, phone: true }));
+  }
+
   function isBranchFieldInvalid(name) {
     if (name === 'phone') {
       return (
         branchTouchedFields[name] &&
-        (String(branchForm.phone || '').trim() === '' ||
-          !BRANCH_PHONE_REGEX.test(String(branchForm.phone || '').trim()))
+        !!validatePhoneNumber(branchForm.phone, branchPhoneCountry)
       );
     }
 
@@ -1163,15 +1301,7 @@ setWebsiteContentSaveConfirmModal({
       return '';
     }
 
-    if (!String(branchForm.phone || '').trim()) {
-      return 'Contact number is required.';
-    }
-
-    if (!BRANCH_PHONE_REGEX.test(String(branchForm.phone || '').trim())) {
-      return 'Use 09XXXXXXXXX format.';
-    }
-
-    return '';
+    return validatePhoneNumber(branchForm.phone, branchPhoneCountry);
   }
 
   function handleServiceChange(name, value) {
@@ -1179,13 +1309,14 @@ setWebsiteContentSaveConfirmModal({
 
     let newValue = value;
 
-    if (name === 'name') {
+    if (name === 'name' || name === 'category') {
       newValue = allowLettersOnly(value);
     }
 
     if (name === 'price') {
       newValue = allowPriceOnly(value);
     }
+
     if (['duration', 'time_buffer_min'].includes(name)) {
       newValue = value.replace(/[^0-9]/g, '');
     }
@@ -1200,11 +1331,35 @@ setWebsiteContentSaveConfirmModal({
     setServiceTouchedFields((prev) => ({ ...prev, [name]: true }));
   }
 
+  function getServiceFieldError(name, { force = false } = {}) {
+    if (!force && !serviceTouchedFields[name]) {
+      return '';
+    }
+
+    const value = String(serviceForm[name] ?? '').trim();
+    const label = SERVICE_FIELD_LABELS[name] || 'This field';
+
+    if (!value) {
+      return 'This field is required.';
+    }
+
+    if ((name === 'name' || name === 'category') && !/^[a-zA-Z\s]+$/.test(value)) {
+      return `${label} must contain letters only.`;
+    }
+
+    if (name === 'price' && !/^\d+(\.\d+)?$/.test(value)) {
+      return 'Price must contain numbers only.';
+    }
+
+    if ((name === 'duration' || name === 'time_buffer_min') && !/^\d+$/.test(value)) {
+      return `${label} must be entered in minutes using numbers only.`;
+    }
+
+    return '';
+  }
+
   function isServiceFieldInvalid(name) {
-    return (
-      serviceTouchedFields[name] &&
-      String(serviceForm[name] ?? '').trim() === ''
-    );
+    return Boolean(getServiceFieldError(name));
   }
 
   function getServiceFieldStyle(name) {
@@ -1223,6 +1378,21 @@ setWebsiteContentSaveConfirmModal({
       </>
     );
   }
+
+  function renderServiceFieldError(name) {
+    const message = getServiceFieldError(name);
+    if (!message) return null;
+
+    return (
+      <span style={{ color: '#dc2626', fontSize: 12, fontWeight: 600 }}>
+        {message}
+      </span>
+    );
+  }
+
+  const isServiceFormComplete = serviceRequiredFields.every(
+    (field) => !getServiceFieldError(field, { force: true })
+  );
 
   function handleUserChange(name, value) {
     setUserTouchedFields((prev) => ({ ...prev, [name]: true }));
@@ -1307,20 +1477,54 @@ setWebsiteContentSaveConfirmModal({
   }
 
   function handleAdminAccountChange(name, value) {
+    setAdminAccountTouchedFields((prev) => ({ ...prev, [name]: true }));
+
     let newValue = value;
 
-    if (name === 'name') {
-      newValue = allowLettersOnly(value);
-    }
-
     if (name === 'phone') {
-      newValue = allowNumbersOnly(value);
+      newValue = allowNumbersOnly(value).slice(0, 11);
     }
 
     setAdminAccountForm((prev) => ({
       ...prev,
       [name]: newValue,
     }));
+  }
+
+  function handleAdminAccountBlur(name) {
+    setAdminAccountTouchedFields((prev) => ({ ...prev, [name]: true }));
+  }
+
+  function handleAdminAccountPhoneCountryChange(countryCode) {
+    setAdminAccountPhoneCountry(countryCode);
+    setAdminAccountTouchedFields((prev) => ({ ...prev, phone: true }));
+  }
+
+  function renderAdminRequiredLabel(label) {
+    return (
+      <>
+        {label} <span style={{ color: '#dc2626' }}>*</span>
+      </>
+    );
+  }
+
+  function getAdminAccountNameError() {
+    const name = String(adminAccountForm.name || '');
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      return 'This field is required';
+    }
+
+    if (/[0-9]/.test(name)) {
+      return 'Numbers are not allowed.';
+    }
+
+    if (!ADMIN_NAME_REGEX.test(name)) {
+      return 'Special characters are not allowed.';
+    }
+
+    return '';
   }
 
   function validateAdminPassword() {
@@ -1354,7 +1558,7 @@ setWebsiteContentSaveConfirmModal({
     const email = String(adminAccountForm.email || '').trim();
 
     if (!email) {
-      return 'Email address is required.';
+      return 'This field is required';
     }
 
     if (!USER_EMAIL_REGEX.test(email)) {
@@ -1365,17 +1569,7 @@ setWebsiteContentSaveConfirmModal({
   }
 
   function getAdminAccountPhoneError() {
-    const phone = String(adminAccountForm.phone || '').trim();
-
-    if (!phone) {
-      return '';
-    }
-
-    if (!BRANCH_PHONE_REGEX.test(phone)) {
-      return 'Invalid contact number format. Use 09XXXXXXXXX format.';
-    }
-
-    return '';
+    return validatePhoneNumber(adminAccountForm.phone, adminAccountPhoneCountry);
   }
 
   function getAdminAccountSaveDetails() {
@@ -1399,10 +1593,10 @@ setWebsiteContentSaveConfirmModal({
       {
         key: 'phone',
         label: 'Contact Number',
-        rawValue: String(adminAccountForm.phone || '').trim(),
-        rawPreviousValue: String(adminAccountOriginal.phone || '').trim(),
-        value: String(adminAccountForm.phone || '').trim() || 'Not entered',
-        previousValue: String(adminAccountOriginal.phone || '').trim() || 'Not set',
+        rawValue: normalizePhoneNumber(adminAccountForm.phone, adminAccountPhoneCountry),
+        rawPreviousValue: normalizePhoneNumber(adminAccountOriginal.phone, adminAccountOriginalPhoneCountry),
+        value: normalizePhoneNumber(adminAccountForm.phone, adminAccountPhoneCountry) || 'Not entered',
+        previousValue: normalizePhoneNumber(adminAccountOriginal.phone, adminAccountOriginalPhoneCountry) || 'Not set',
       },
       {
         key: 'status',
@@ -1432,18 +1626,23 @@ setWebsiteContentSaveConfirmModal({
 
     setAdminAccountMessage('');
     setAdminAccountError('');
+    setAdminAccountTouchedFields(
+      adminAccountRequiredFields.reduce((fields, field) => {
+        fields[field] = true;
+        return fields;
+      }, {})
+    );
 
+    const nameError = getAdminAccountNameError();
     const passwordError = validateAdminPassword();
     const emailError = getAdminAccountEmailError();
     const phoneError = getAdminAccountPhoneError();
 
-    if (emailError || phoneError) {
-      setAdminAccountError(emailError || phoneError);
+    if (nameError || emailError || phoneError) {
       return;
     }
 
     if (passwordError) {
-      setAdminAccountError(passwordError);
       return;
     }
 
@@ -1473,11 +1672,10 @@ setWebsiteContentSaveConfirmModal({
       const payload = {
         name: branchForm.name,
         address: branchForm.address,
-        phone: branchForm.phone,
+        phone: normalizePhoneNumber(branchForm.phone, branchPhoneCountry),
         contact_person: branchForm.contact_person,
         date_opened: branchForm.date_opened,
         operating_hours: branchForm.operating_hours,
-        years_active: branchForm.years_active,
         status: branchForm.status,
       };
 
@@ -1899,27 +2097,42 @@ setWebsiteContentSaveConfirmModal({
       setAdminAccountMessage('');
       setAdminAccountError('');
 
+      const nameError = getAdminAccountNameError();
+      const emailError = getAdminAccountEmailError();
+      const phoneError = getAdminAccountPhoneError();
       const passwordError = validateAdminPassword();
 
+      if (nameError || emailError || phoneError) {
+        setAdminAccountTouchedFields(
+          adminAccountRequiredFields.reduce((fields, field) => {
+            fields[field] = true;
+            return fields;
+          }, {})
+        );
+        setAdminAccountSaveConfirmModal(null);
+        return;
+      }
+
       if (passwordError) {
-        setAdminAccountError(passwordError);
+        setAdminAccountSaveConfirmModal(null);
         return;
       }
 
       const res = await api.patch('/auth/me', {
-        name: adminAccountForm.name,
-        email: adminAccountForm.email,
-        phone: adminAccountForm.phone,
+        name: adminAccountForm.name.trim(),
+        email: adminAccountForm.email.trim(),
+        phone: normalizePhoneNumber(adminAccountForm.phone, adminAccountPhoneCountry),
         status: adminAccountForm.status,
         password: adminAccountForm.password || '',
       });
 
       const updated = res.data.user || {};
+      const updatedPhone = getPhoneFormValue(updated.phone || '', adminAccountPhoneCountry);
       setAdminAccountForm({
         id: updated.id || adminAccountForm.id,
         name: updated.name || adminAccountForm.name,
         email: updated.email || adminAccountForm.email,
-        phone: updated.phone || '',
+        phone: updatedPhone.number,
         password: '',
         confirmPassword: '',
         role: updated.role || 'admin',
@@ -1930,14 +2143,17 @@ setWebsiteContentSaveConfirmModal({
         id: updated.id || adminAccountForm.id,
         name: updated.name || adminAccountForm.name,
         email: updated.email || adminAccountForm.email,
-        phone: updated.phone || '',
+        phone: updatedPhone.number,
         password: '',
         confirmPassword: '',
         role: updated.role || 'admin',
         status: updated.status || adminAccountForm.status,
         created_at: updated.created_at || adminAccountForm.created_at,
       });
+      setAdminAccountPhoneCountry(updatedPhone.country);
+      setAdminAccountOriginalPhoneCountry(updatedPhone.country);
       setAdminAccountMessage(res.data.message || 'Admin account updated.');
+      setAdminAccountTouchedFields({});
       setAdminAccountSaveConfirmModal(null);
       setIsEditingAdminAccount(false);
       setShowAdminPassword(false);
@@ -2760,11 +2976,16 @@ setWebsiteContentSaveConfirmModal({
 
   function renderAdminAccountPanel() {
     const displayDate = String(adminAccountForm.created_at || '').slice(0, 10) || 'N/A';
+    const adminNameError = getAdminAccountNameError();
     const adminEmailError = getAdminAccountEmailError();
     const adminPhoneError = getAdminAccountPhoneError();
     const adminPasswordError = validateAdminPassword();
-    const shouldShowAdminEmailError = !!adminEmailError;
-    const shouldShowAdminPhoneError = !!adminPhoneError;
+    const shouldShowAdminNameError =
+      !!adminNameError && !!adminAccountTouchedFields.name;
+    const shouldShowAdminEmailError =
+      !!adminEmailError && !!adminAccountTouchedFields.email;
+    const shouldShowAdminPhoneError =
+      !!adminPhoneError && !!adminAccountTouchedFields.phone;
     const shouldShowAdminPasswordError =
       !!adminPasswordError &&
       (!!adminAccountForm.password || !!adminAccountForm.confirmPassword);
@@ -2810,7 +3031,15 @@ setWebsiteContentSaveConfirmModal({
                 onClick={() => {
                   setAdminAccountMessage('');
                   setAdminAccountError('');
-                  setAdminAccountOriginal(adminAccountForm);
+                  const cleanAdminAccountForm = {
+                    ...adminAccountForm,
+                    password: '',
+                    confirmPassword: '',
+                  };
+                  setAdminAccountForm(cleanAdminAccountForm);
+                  setAdminAccountOriginal(cleanAdminAccountForm);
+                  setAdminAccountOriginalPhoneCountry(adminAccountPhoneCountry);
+                  setAdminAccountTouchedFields({});
                   setShowAdminPassword(false);
                   setShowAdminConfirmPassword(false);
                   setIsEditingAdminAccount(true);
@@ -2821,27 +3050,38 @@ setWebsiteContentSaveConfirmModal({
             </div>
           </>
         ) : (
-          <form onSubmit={handleAdminAccountSubmit}>
+          <form onSubmit={handleAdminAccountSubmit} noValidate>
             <div style={styles.formGrid}>
-              <Field label="Full Name" styles={styles}>
+              <Field label={renderAdminRequiredLabel('Full Name')} styles={styles}>
                 <input
                   type="text"
                   value={adminAccountForm.name}
                   onChange={(event) =>
                     handleAdminAccountChange('name', event.target.value)
                   }
-                  style={styles.formInput}
-                  required
+                  onBlur={() => handleAdminAccountBlur('name')}
+                  style={{
+                    ...styles.formInput,
+                    ...(shouldShowAdminNameError
+                      ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+                      : {}),
+                  }}
                 />
+                {shouldShowAdminNameError && (
+                  <span style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>
+                    {adminNameError}
+                  </span>
+                )}
               </Field>
 
-              <Field label="Email Address" styles={styles}>
+              <Field label={renderAdminRequiredLabel('Email Address')} styles={styles}>
                 <input
                   type="email"
                   value={adminAccountForm.email}
                   onChange={(event) =>
                     handleAdminAccountChange('email', event.target.value)
                   }
+                  onBlur={() => handleAdminAccountBlur('email')}
                   style={{
                     ...styles.formInput,
                     ...(shouldShowAdminEmailError
@@ -2857,22 +3097,44 @@ setWebsiteContentSaveConfirmModal({
                 )}
               </Field>
 
-              <Field label="Contact Number" styles={styles}>
-                <input
-                  type="text"
-                  value={adminAccountForm.phone}
-                  onChange={(event) =>
-                    handleAdminAccountChange('phone', event.target.value)
-                  }
-                  style={{
-                    ...styles.formInput,
-                    ...(shouldShowAdminPhoneError
-                      ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
-                      : {}),
-                  }}
-                  placeholder="Enter contact number"
-                  maxLength={11}
-                />
+              <Field label={renderAdminRequiredLabel('Contact Number')} styles={styles}>
+                <div style={styles.phoneInputContainer}>
+                  <select
+                    value={adminAccountPhoneCountry}
+                    onChange={(event) =>
+                      handleAdminAccountPhoneCountryChange(event.target.value)
+                    }
+                    onBlur={() => handleAdminAccountBlur('phone')}
+                    style={{
+                      ...styles.phoneCountrySelect,
+                      ...(shouldShowAdminPhoneError ? styles.phoneInputError : {}),
+                    }}
+                    aria-label="Country code"
+                  >
+                    {phoneCountryOptions.map((option) => (
+                      <option key={option.country} value={option.country}>
+                        {option.country} +{option.callingCode}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    value={adminAccountForm.phone}
+                    onChange={(event) =>
+                      handleAdminAccountChange('phone', event.target.value)
+                    }
+                    onBlur={() => handleAdminAccountBlur('phone')}
+                    style={{
+                      ...styles.phoneInput,
+                      ...(shouldShowAdminPhoneError ? styles.phoneInputError : {}),
+                    }}
+                    placeholder="9123456789"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    maxLength={15}
+                    required
+                  />
+                </div>
                 {shouldShowAdminPhoneError && (
                   <span style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>
                     {adminPhoneError}
@@ -2880,12 +3142,13 @@ setWebsiteContentSaveConfirmModal({
                 )}
               </Field>
 
-              <Field label="Status" styles={styles}>
+              <Field label={renderAdminRequiredLabel('Status')} styles={styles}>
                 <select
                   value={adminAccountForm.status}
                   onChange={(event) =>
                     handleAdminAccountChange('status', event.target.value)
                   }
+                  onBlur={() => handleAdminAccountBlur('status')}
                   style={styles.formInput}
                   required
                 >
@@ -2905,6 +3168,7 @@ setWebsiteContentSaveConfirmModal({
                     style={{ ...styles.formInput, paddingRight: 76 }}
                     placeholder="Optional new password"
                     minLength={8}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -2939,6 +3203,7 @@ setWebsiteContentSaveConfirmModal({
                     style={{ ...styles.formInput, paddingRight: 76 }}
                     placeholder="Confirm new password"
                     minLength={8}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -2985,7 +3250,7 @@ setWebsiteContentSaveConfirmModal({
               Password is optional. Use at least 8 letters/numbers, with one letter and one number. Special characters are not allowed.
             </p>
             {shouldShowAdminPasswordError && (
-              <p style={{ ...styles.errorText, marginTop: -6 }}>
+              <p style={{ ...styles.errorText, marginTop: 10 }}>
                 {adminPasswordError}
               </p>
             )}
@@ -3046,7 +3311,13 @@ setWebsiteContentSaveConfirmModal({
                   setIsEditingAdminAccount(false);
                   setShowAdminPassword(false);
                   setShowAdminConfirmPassword(false);
-                  setAdminAccountForm(adminAccountOriginal);
+                  setAdminAccountTouchedFields({});
+                  setAdminAccountPhoneCountry(adminAccountOriginalPhoneCountry);
+                  setAdminAccountForm({
+                    ...adminAccountOriginal,
+                    password: '',
+                    confirmPassword: '',
+                  });
                 }}
               >
                 Yes, Cancel
@@ -3189,10 +3460,9 @@ setWebsiteContentSaveConfirmModal({
             style={styles.selectInput}
           >
             <option value="All">All Categories</option>
-            <option value="General Dentistry">General Dentistry</option>
-            <option value="Cosmetic Dentistry">Cosmetic Dentistry</option>
-            <option value="Orthodontics">Orthodontics</option>
-            <option value="Surgery">Surgery</option>
+            {serviceCategoryOptions.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
           </select>
 
           <select
@@ -3628,7 +3898,7 @@ setWebsiteContentSaveConfirmModal({
           onOverlayClick={handleBranchOverlayClick}
           showCloseButton={false}
         >
-          <form onSubmit={handleBranchSubmit}>
+          <form onSubmit={handleBranchSubmit} noValidate>
             <div style={styles.formGrid}>
               <Field label={renderBranchRequiredLabel('Branch Name')} styles={styles}>
                 <input
@@ -3669,17 +3939,42 @@ setWebsiteContentSaveConfirmModal({
               </Field>
 
               <Field label={renderBranchRequiredLabel('Contact Number')} styles={styles}>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={11}
-                  value={branchForm.phone}
-                  onChange={(event) =>
-                    handleBranchChange('phone', event.target.value)
-                  }
-                  onBlur={() => handleBranchFieldBlur('phone')}
-                  style={getBranchFieldStyle('phone')}
-                />
+                <div style={styles.phoneInputContainer}>
+                  <select
+                    value={branchPhoneCountry}
+                    onChange={(event) =>
+                      handleBranchPhoneCountryChange(event.target.value)
+                    }
+                    onBlur={() => handleBranchFieldBlur('phone')}
+                    style={{
+                      ...styles.phoneCountrySelect,
+                      ...(isBranchFieldInvalid('phone') ? styles.phoneInputError : {}),
+                    }}
+                    aria-label="Country code"
+                  >
+                    {phoneCountryOptions.map((option) => (
+                      <option key={option.country} value={option.country}>
+                        {option.country} +{option.callingCode}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    maxLength={15}
+                    value={branchForm.phone}
+                    onChange={(event) =>
+                      handleBranchChange('phone', event.target.value)
+                    }
+                    onBlur={() => handleBranchFieldBlur('phone')}
+                    style={{
+                      ...styles.phoneInput,
+                      ...(isBranchFieldInvalid('phone') ? styles.phoneInputError : {}),
+                    }}
+                    placeholder="9123456789"
+                    autoComplete="tel"
+                  />
+                </div>
                 {getBranchPhoneError() && (
                   <span style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>
                     {getBranchPhoneError()}
@@ -3712,15 +4007,13 @@ setWebsiteContentSaveConfirmModal({
                 />
               </Field>
 
-              <Field label={renderBranchRequiredLabel('Years Active')} styles={styles}>
+              <Field label="Years Active" styles={styles}>
                 <input
                   type="text"
-                  value={branchForm.years_active}
-                  onChange={(event) =>
-                    handleBranchChange('years_active', event.target.value)
-                  }
-                  onBlur={() => handleBranchFieldBlur('years_active')}
-                  style={getBranchFieldStyle('years_active')}
+                  value={branchYearsActive}
+                  style={{ ...styles.formInput, ...styles.readOnlyInput }}
+                  placeholder="Computed from date opened"
+                  readOnly
                 />
               </Field>
 
@@ -3835,10 +4128,10 @@ setWebsiteContentSaveConfirmModal({
                 ['Branch Name', branchForm.name || 'Not entered'],
                 ['Clinic Location', branchForm.address || 'Not entered'],
                 ['Date Opened', branchForm.date_opened || 'Not selected'],
-                ['Contact Number', branchForm.phone || 'Not entered'],
+                ['Contact Number', normalizePhoneNumber(branchForm.phone, branchPhoneCountry) || 'Not entered'],
                 ['Contact Person', branchForm.contact_person || 'Not entered'],
                 ['Operating Hours', branchForm.operating_hours || 'Not entered'],
-                ['Years Active', branchForm.years_active || 'Not entered'],
+                ['Years Active', branchYearsActive || 'Not computed'],
                 ['Status', branchForm.status || 'Not selected'],
               ].map(([label, value]) => (
                 <div
@@ -3894,7 +4187,7 @@ setWebsiteContentSaveConfirmModal({
           }}
           showCloseButton={false}
         >
-          <form onSubmit={handleServiceSubmit}>
+          <form onSubmit={handleServiceSubmit} noValidate>
             <div style={styles.formGrid}>
               <Field label={renderServiceRequiredLabel('Service Name')} styles={styles}>
                 <input
@@ -3905,16 +4198,22 @@ setWebsiteContentSaveConfirmModal({
                   }
                   onBlur={() => handleServiceFieldBlur('name')}
                   style={getServiceFieldStyle('name')}
-                  required
                 />
+                {renderServiceFieldError('name')}
               </Field>
 
               <Field label={renderServiceRequiredLabel('Category')} styles={styles}>
                 <select
-                  value={serviceForm.category}
-                  onChange={(event) =>
-                    handleServiceChange('category', event.target.value)
-                  }
+                  value={serviceCategoryMode === 'custom' ? '__custom__' : serviceForm.category}
+                  onChange={(event) => {
+                    if (event.target.value === '__custom__') {
+                      setServiceCategoryMode('custom');
+                      handleServiceChange('category', '');
+                      return;
+                    }
+                    setServiceCategoryMode('select');
+                    handleServiceChange('category', event.target.value);
+                  }}
                   onBlur={() => handleServiceFieldBlur('category')}
                   style={getServiceFieldStyle('category')}
                   required
@@ -3922,11 +4221,52 @@ setWebsiteContentSaveConfirmModal({
                   <option value="" disabled>
                     Select Category
                   </option>
-                  <option value="General Dentistry">General Dentistry</option>
-                  <option value="Cosmetic Dentistry">Cosmetic Dentistry</option>
-                  <option value="Orthodontics">Orthodontics</option>
-                  <option value="Surgery">Surgery</option>
+                  {serviceCategoryOptions.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                  <option value="__custom__">Add new category...</option>
                 </select>
+                {serviceCategoryMode === 'custom' && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: 0,
+                      borderRadius: 0,
+                      border: 'none',
+                      background: 'transparent',
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : '1fr auto',
+                      gap: 10,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={serviceForm.category}
+                      onChange={(event) =>
+                        handleServiceChange('category', event.target.value)
+                      }
+                      onBlur={() => handleServiceFieldBlur('category')}
+                      placeholder="Enter new category"
+                      style={getServiceFieldStyle('category')}
+                  />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setServiceCategoryMode('select');
+                        handleServiceChange('category', '');
+                      }}
+                      style={{
+                        ...styles.saveBtn,
+                        height: 44,
+                        padding: '0 18px',
+                      }}
+                    >
+                      Use Existing
+                    </button>
+                  </div>
+                )}
+                {renderServiceFieldError('category')}
               </Field>
 
               <Field label={renderServiceRequiredLabel('Price')} styles={styles}>
@@ -3940,9 +4280,10 @@ setWebsiteContentSaveConfirmModal({
                   style={getServiceFieldStyle('price')}
                   required
                 />
+                {renderServiceFieldError('price')}
               </Field>
 
-              <Field label={renderServiceRequiredLabel('Duration')} styles={styles}>
+              <Field label={renderServiceRequiredLabel('Duration (minutes)')} styles={styles}>
                 <input
                   type="text"
                   value={serviceForm.duration}
@@ -3953,6 +4294,7 @@ setWebsiteContentSaveConfirmModal({
                   style={getServiceFieldStyle('duration')}
                   required
                 />
+                {renderServiceFieldError('duration')}
               </Field>
 
               <Field label={renderServiceRequiredLabel('Time Buffer (minutes)')} styles={styles}>
@@ -3966,6 +4308,7 @@ setWebsiteContentSaveConfirmModal({
                   style={getServiceFieldStyle('time_buffer_min')}
                   required
                 />
+                {renderServiceFieldError('time_buffer_min')}
               </Field>
 
               <Field label={renderServiceRequiredLabel('Status')} styles={styles}>
@@ -3976,7 +4319,6 @@ setWebsiteContentSaveConfirmModal({
                   }
                   onBlur={() => handleServiceFieldBlur('status')}
                   style={getServiceFieldStyle('status')}
-                  required
                 >
                   <option value="" disabled>
                     Select Status
@@ -3985,6 +4327,7 @@ setWebsiteContentSaveConfirmModal({
                   <option value="Inactive">Inactive</option>
                   <option value="Discontinued">Discontinued</option>
                 </select>
+                {renderServiceFieldError('status')}
               </Field>
 
             </div>
@@ -4003,9 +4346,8 @@ setWebsiteContentSaveConfirmModal({
                 style={{
                   ...styles.saveBtn,
                   opacity: isServiceFormComplete ? 1 : 0.55,
-                  cursor: isServiceFormComplete ? 'pointer' : 'not-allowed',
+                  cursor: 'pointer',
                 }}
-                disabled={!isServiceFormComplete}
               >
                 Save Service
               </button>

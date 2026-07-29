@@ -58,11 +58,15 @@ const createForgotPasswordStyles = ({ isMobile = false } = {}) => {
       fontWeight: 800,
     },
 
+    requiredMark: {
+      color: '#dc2626',
+    },
+
     input: {
       width: '100%',
       height: '54px',
       padding: '0 16px',
-      marginBottom: '18px',
+      marginBottom: '6px',
       border: '1px solid #ead8a7',
       borderRadius: '16px',
       outline: 'none',
@@ -72,6 +76,20 @@ const createForgotPasswordStyles = ({ isMobile = false } = {}) => {
       fontWeight: 500,
       transition: '0.25s ease',
       boxSizing: 'border-box',
+    },
+
+    inputError: {
+      border: '1px solid #dc2626',
+      background: '#fff7f7',
+    },
+
+    fieldError: {
+      margin: '0 0 18px',
+      minHeight: '17px',
+      color: '#b42318',
+      fontSize: '12px',
+      fontWeight: 700,
+      lineHeight: 1.35,
     },
 
     error: {
@@ -120,6 +138,92 @@ const createForgotPasswordStyles = ({ isMobile = false } = {}) => {
       color: '#8b6508',
       fontWeight: 900,
       cursor: 'pointer',
+    },
+
+    confirmOverlay: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 9999,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    confirmModal: {
+      width: isMobile ? '100%' : 390,
+      maxWidth: 390,
+      background: '#ffffff',
+      borderRadius: 22,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)',
+      boxSizing: 'border-box',
+      border: '1px solid rgba(212, 175, 55, 0.22)',
+    },
+
+    confirmModalIcon: {
+      width: 70,
+      height: 70,
+      margin: '0 auto 16px',
+      borderRadius: '50%',
+      background: 'rgba(212, 175, 55, 0.18)',
+      color: '#b8860b',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    confirmModalIconText: {
+      fontSize: 30,
+      lineHeight: 1,
+    },
+
+    confirmModalTitle: {
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
+      color: '#0f172a',
+      marginBottom: 10,
+      marginTop: 0,
+    },
+
+    confirmModalText: {
+      fontSize: 15,
+      color: '#64748b',
+      marginBottom: 24,
+      marginTop: 0,
+      lineHeight: 1.5,
+    },
+
+    confirmModalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    confirmModalButton: {
+      minWidth: 120,
+      height: 44,
+      borderRadius: 12,
+      border: 'none',
+      cursor: 'pointer',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 800,
+    },
+
+    confirmCancelBtn: {
+      background: '#f1f5f9',
+      color: '#334155',
+    },
+
+    confirmSaveBtn: {
+      background: '#d4af37',
+      color: '#ffffff',
+      boxShadow: '0 12px 26px rgba(139, 101, 8, 0.18)',
     },
 
     overlay: {

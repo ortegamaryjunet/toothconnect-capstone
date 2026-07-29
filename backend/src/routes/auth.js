@@ -16,6 +16,20 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const { parseDeviceBrowser } = require('../utils/deviceParser');
 
 const router = express.Router();
+const RESET_PASSWORD_MAX_OTP_ATTEMPTS = 3;
+const RESET_PASSWORD_MAX_RESENDS = 3;
+const RESET_PASSWORD_COOLDOWN_MINUTES = 10;
+const ADMIN_REGISTER_MAX_OTP_ATTEMPTS = 3;
+const ADMIN_REGISTER_MAX_RESENDS = 3;
+const ADMIN_REGISTER_COOLDOWN_MINUTES = 10;
+
+function resetPasswordCooldownMessage() {
+  return 'Too many failed attempts. Please wait 10 minutes before trying to reset your password again.';
+}
+
+function adminRegisterCooldownMessage() {
+  return 'Too many failed attempts. Please wait 10 minutes before trying to register an admin account again.';
+}
 
 async function loadUserBranches(userId) {
   const [permanent] = await pool.query(
@@ -593,7 +607,10 @@ async function loadBranchesWithStats() {
        b.contact_person,
        DATE_FORMAT(b.date_opened, '%Y-%m-%d') AS date_opened,
        b.operating_hours,
-       b.years_active,
+       CASE
+         WHEN b.date_opened IS NULL THEN b.years_active
+         ELSE GREATEST(YEAR(CURDATE()) - YEAR(b.date_opened), 0)
+       END AS years_active,
        b.status,
        (
          SELECT COUNT(*)
@@ -610,6 +627,16 @@ async function loadBranchesWithStats() {
   );
 
   return rows;
+}
+
+function calculateYearsActive(dateOpened) {
+  const openedYear = Number(String(dateOpened || '').slice(0, 4));
+
+  if (!openedYear) {
+    return null;
+  }
+
+  return String(Math.max(0, new Date().getFullYear() - openedYear));
 }
 
 async function loadServices() {
@@ -781,12 +808,17 @@ router.post('/branches', authenticate, requireRole('admin'), async (req, res) =>
     contact_person,
     date_opened,
     operating_hours,
-    years_active,
     status = 'Active',
   } = req.body;
+  const trimmedPhone = String(phone || '').trim();
+  const yearsActive = calculateYearsActive(date_opened);
 
-  if (!name || !address || !status) {
-    return res.status(400).json({ message: 'Branch name, location, and status are required' });
+  if (!name || !address || !trimmedPhone || !status) {
+    return res.status(400).json({ message: 'This field is required' });
+  }
+
+  if (!/^09\d{9}$/.test(trimmedPhone) && !/^\+[1-9]\d{7,14}$/.test(trimmedPhone)) {
+    return res.status(400).json({ message: 'Contact number does not match the selected country code.' });
   }
 
   try {
@@ -797,11 +829,11 @@ router.post('/branches', authenticate, requireRole('admin'), async (req, res) =>
       [
         name,
         address,
-        phone || null,
+        trimmedPhone,
         contact_person || null,
         date_opened || null,
         operating_hours || null,
-        years_active || null,
+        yearsActive,
         status,
       ]
     );
@@ -829,15 +861,20 @@ router.patch('/branches/:id', authenticate, requireRole('admin'), async (req, re
     contact_person,
     date_opened,
     operating_hours,
-    years_active,
     status,
   } = req.body;
+  const trimmedPhone = String(phone || '').trim();
+  const yearsActive = calculateYearsActive(date_opened);
 
   if (Number.isNaN(id)) {
     return res.status(400).json({ message: 'Invalid branch id' });
   }
-  if (!name || !address || !status) {
-    return res.status(400).json({ message: 'Branch name, location, and status are required' });
+  if (!name || !address || !trimmedPhone || !status) {
+    return res.status(400).json({ message: 'This field is required' });
+  }
+
+  if (!/^09\d{9}$/.test(trimmedPhone) && !/^\+[1-9]\d{7,14}$/.test(trimmedPhone)) {
+    return res.status(400).json({ message: 'Contact number does not match the selected country code.' });
   }
 
   try {
@@ -855,11 +892,11 @@ router.patch('/branches/:id', authenticate, requireRole('admin'), async (req, re
       [
         name,
         address,
-        phone || null,
+        trimmedPhone,
         contact_person || null,
         date_opened || null,
         operating_hours || null,
-        years_active || null,
+        yearsActive,
         status,
         id,
       ]
@@ -948,19 +985,25 @@ router.post('/register/verify', async (req, res) => {
       [email]
     );
     if (otps.length === 0) {
-      return res.status(400).json({ message: 'No valid OTP found. Request a new one.' });
+      return res.status(400).json({ message: 'OTP is invalid' });
     }
 
     const otp = otps[0];
-    const maxAttempts = parseInt(process.env.OTP_MAX_ATTEMPTS, 10) || 5;
+    const maxAttempts = RESET_PASSWORD_MAX_OTP_ATTEMPTS;
     if (otp.attempts >= maxAttempts) {
       await pool.query('UPDATE otp_codes SET consumed_at = NOW() WHERE id = ?', [otp.id]);
-      return res.status(400).json({ message: 'Too many attempts. Request a new code.' });
+      return res.status(429).json({ message: resetPasswordCooldownMessage() });
     }
 
     const ok = await verifyOTPHash(code, otp.code_hash);
     if (!ok) {
-      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE id = ?', [otp.id]);
+      const nextAttempts = Number(otp.attempts || 0) + 1;
+      if (nextAttempts >= maxAttempts) {
+        await pool.query('UPDATE otp_codes SET attempts = ?, consumed_at = NOW() WHERE id = ?', [nextAttempts, otp.id]);
+        return res.status(429).json({ message: resetPasswordCooldownMessage() });
+      }
+
+      await pool.query('UPDATE otp_codes SET attempts = ? WHERE id = ?', [nextAttempts, otp.id]);
       return res.status(400).json({ message: 'Invalid code' });
     }
 
@@ -1238,6 +1281,61 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(404).json({ message: 'Email does not exist' });
     }
 
+    const [cooldowns] = await pool.query(
+      `SELECT
+         TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(consumed_at, INTERVAL ? MINUTE)) AS retry_after_seconds,
+         DATE_ADD(consumed_at, INTERVAL ? MINUTE) AS cooldown_until
+       FROM otp_codes
+       WHERE LOWER(email) = ?
+         AND purpose = 'reset_password'
+         AND attempts >= ?
+         AND consumed_at IS NOT NULL
+         AND consumed_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+         AND (
+           SELECT COUNT(*)
+           FROM otp_codes req
+           WHERE LOWER(req.email) = LOWER(otp_codes.email)
+             AND req.purpose = 'reset_password'
+             AND req.created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+         ) >= ?
+       ORDER BY consumed_at DESC
+       LIMIT 1`,
+      [
+        RESET_PASSWORD_COOLDOWN_MINUTES,
+        RESET_PASSWORD_COOLDOWN_MINUTES,
+        normalizedEmail,
+        RESET_PASSWORD_MAX_OTP_ATTEMPTS,
+        RESET_PASSWORD_COOLDOWN_MINUTES,
+        RESET_PASSWORD_COOLDOWN_MINUTES,
+        RESET_PASSWORD_MAX_RESENDS + 1,
+      ]
+    );
+
+    if (cooldowns.length > 0) {
+      const retryAfterSeconds = Math.max(0, Number(cooldowns[0].retry_after_seconds || 0));
+      return res.status(429).json({
+        message: resetPasswordCooldownMessage(),
+        retry_after_seconds: retryAfterSeconds,
+        cooldown_until: cooldowns[0].cooldown_until,
+      });
+    }
+
+    const [recentRequests] = await pool.query(
+      `SELECT COUNT(*) AS request_count
+       FROM otp_codes
+       WHERE LOWER(email) = ?
+         AND purpose = 'reset_password'
+         AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+      [normalizedEmail, RESET_PASSWORD_COOLDOWN_MINUTES]
+    );
+    const resetOtpRequestLimit = RESET_PASSWORD_MAX_RESENDS + 1;
+    if (Number(recentRequests[0]?.request_count || 0) >= resetOtpRequestLimit) {
+      return res.status(429).json({
+        message: 'OTP resend limit reached. Please wait before requesting another code.',
+        retry_after_seconds: RESET_PASSWORD_COOLDOWN_MINUTES * 60,
+      });
+    }
+
     const code = generateOTP();
     const codeHash = await hashOTP(code);
     const expiresAt = otpExpiryDate();
@@ -1273,13 +1371,104 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
+router.post('/reset-password/verify', async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) {
+    return res.status(400).json({ message: 'Email and code are required' });
+  }
+
+  try {
+    const normalizedEmail = email.trim().toLowerCase();
+    const [otps] = await pool.query(
+      `SELECT * FROM otp_codes
+       WHERE email = ? AND purpose = 'reset_password' AND consumed_at IS NULL AND expires_at > NOW()
+       ORDER BY id DESC LIMIT 1`,
+      [normalizedEmail]
+    );
+
+    if (otps.length === 0) {
+      return res.status(400).json({ message: 'OTP is invalid' });
+    }
+
+    const otp = otps[0];
+    const maxAttempts = RESET_PASSWORD_MAX_OTP_ATTEMPTS;
+    if (otp.attempts >= maxAttempts) {
+      const [recentRequests] = await pool.query(
+        `SELECT COUNT(*) AS request_count
+         FROM otp_codes
+         WHERE LOWER(email) = ?
+           AND purpose = 'reset_password'
+           AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+        [normalizedEmail, RESET_PASSWORD_COOLDOWN_MINUTES]
+      );
+      const usedAllResends = Number(recentRequests[0]?.request_count || 0) >= RESET_PASSWORD_MAX_RESENDS + 1;
+      await pool.query('UPDATE otp_codes SET consumed_at = NOW() WHERE id = ?', [otp.id]);
+      if (!usedAllResends) {
+        return res.status(400).json({
+          message: 'OTP verification failed. Please request a new code.',
+          code_exhausted: true,
+        });
+      }
+
+      return res.status(429).json({
+        message: 'OTP verification failed. Too many incorrect attempts. You will be redirected to the login page in 5 seconds.',
+        retry_after_seconds: RESET_PASSWORD_COOLDOWN_MINUTES * 60,
+        cooldown_until: new Date(Date.now() + RESET_PASSWORD_COOLDOWN_MINUTES * 60 * 1000),
+        locked: true,
+      });
+    }
+
+    const ok = await verifyOTPHash(code, otp.code_hash);
+    if (!ok) {
+      const nextAttempts = Number(otp.attempts || 0) + 1;
+      if (nextAttempts >= maxAttempts) {
+        const [recentRequests] = await pool.query(
+          `SELECT COUNT(*) AS request_count
+           FROM otp_codes
+           WHERE LOWER(email) = ?
+             AND purpose = 'reset_password'
+             AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+          [normalizedEmail, RESET_PASSWORD_COOLDOWN_MINUTES]
+        );
+        const usedAllResends = Number(recentRequests[0]?.request_count || 0) >= RESET_PASSWORD_MAX_RESENDS + 1;
+
+        await pool.query('UPDATE otp_codes SET attempts = ?, consumed_at = NOW() WHERE id = ?', [nextAttempts, otp.id]);
+        if (!usedAllResends) {
+          return res.status(400).json({
+            message: 'OTP verification failed. Please request a new code.',
+            code_exhausted: true,
+          });
+        }
+
+        return res.status(429).json({
+          message: 'OTP verification failed. Too many incorrect attempts. You will be redirected to the login page in 5 seconds.',
+          retry_after_seconds: RESET_PASSWORD_COOLDOWN_MINUTES * 60,
+          cooldown_until: new Date(Date.now() + RESET_PASSWORD_COOLDOWN_MINUTES * 60 * 1000),
+          locked: true,
+        });
+      }
+
+      await pool.query('UPDATE otp_codes SET attempts = ? WHERE id = ?', [nextAttempts, otp.id]);
+      return res.status(400).json({ message: 'Invalid code' });
+    }
+
+    res.json({ message: 'OTP verified.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.post('/reset-password', async (req, res) => {
   const { email, code, newPassword } = req.body;
   if (!email || !code || !newPassword) {
     return res.status(400).json({ message: 'Email, code, and new password are required' });
   }
-  if (newPassword.length < 8) {
-    return res.status(400).json({ message: 'Password must be at least 8 characters' });
+  if (!/^[a-zA-Z0-9]+$/.test(newPassword)) {
+    return res.status(400).json({ message: 'Password must not contain special characters' });
+  }
+  if (newPassword.length < 8 || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters and contain a letter and number' });
   }
 
   try {
@@ -1290,13 +1479,24 @@ router.post('/reset-password', async (req, res) => {
       [email]
     );
     if (otps.length === 0) {
-      return res.status(400).json({ message: 'No valid OTP found' });
+      return res.status(400).json({ message: 'OTP is invalid' });
     }
     const otp = otps[0];
+    const maxAttempts = RESET_PASSWORD_MAX_OTP_ATTEMPTS;
+    if (otp.attempts >= maxAttempts) {
+      await pool.query('UPDATE otp_codes SET consumed_at = NOW() WHERE id = ?', [otp.id]);
+      return res.status(429).json({ message: resetPasswordCooldownMessage() });
+    }
 
     const ok = await verifyOTPHash(code, otp.code_hash);
     if (!ok) {
-      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE id = ?', [otp.id]);
+      const nextAttempts = Number(otp.attempts || 0) + 1;
+      if (nextAttempts >= maxAttempts) {
+        await pool.query('UPDATE otp_codes SET attempts = ?, consumed_at = NOW() WHERE id = ?', [nextAttempts, otp.id]);
+        return res.status(429).json({ message: resetPasswordCooldownMessage() });
+      }
+
+      await pool.query('UPDATE otp_codes SET attempts = ? WHERE id = ?', [nextAttempts, otp.id]);
       return res.status(400).json({ message: 'Invalid code' });
     }
 
@@ -1343,14 +1543,70 @@ router.post('/admin-register/start', async (req, res) => {
   }
 
   try {
+    const normalizedEmail = email.trim().toLowerCase();
     const [admins] = await pool.query(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`);
     if (admins.length > 0) {
       return res.status(403).json({ message: 'An admin already exists. Contact your existing admin.' });
     }
 
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    const [existing] = await pool.query('SELECT id FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
     if (existing.length > 0) {
       return res.status(409).json({ message: 'Email already registered' });
+    }
+
+    const [cooldowns] = await pool.query(
+      `SELECT
+         TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(consumed_at, INTERVAL ? MINUTE)) AS retry_after_seconds,
+         DATE_ADD(consumed_at, INTERVAL ? MINUTE) AS cooldown_until
+       FROM otp_codes
+       WHERE LOWER(email) = ?
+         AND purpose = 'register'
+         AND attempts >= ?
+         AND consumed_at IS NOT NULL
+         AND consumed_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+         AND (
+           SELECT COUNT(*)
+           FROM otp_codes req
+           WHERE LOWER(req.email) = LOWER(otp_codes.email)
+             AND req.purpose = 'register'
+             AND req.created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+         ) >= ?
+       ORDER BY consumed_at DESC
+       LIMIT 1`,
+      [
+        ADMIN_REGISTER_COOLDOWN_MINUTES,
+        ADMIN_REGISTER_COOLDOWN_MINUTES,
+        normalizedEmail,
+        ADMIN_REGISTER_MAX_OTP_ATTEMPTS,
+        ADMIN_REGISTER_COOLDOWN_MINUTES,
+        ADMIN_REGISTER_COOLDOWN_MINUTES,
+        ADMIN_REGISTER_MAX_RESENDS + 1,
+      ]
+    );
+
+    if (cooldowns.length > 0) {
+      const retryAfterSeconds = Math.max(0, Number(cooldowns[0].retry_after_seconds || 0));
+      return res.status(429).json({
+        message: adminRegisterCooldownMessage(),
+        retry_after_seconds: retryAfterSeconds,
+        cooldown_until: cooldowns[0].cooldown_until,
+      });
+    }
+
+    const [recentRequests] = await pool.query(
+      `SELECT COUNT(*) AS request_count
+       FROM otp_codes
+       WHERE LOWER(email) = ?
+         AND purpose = 'register'
+         AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+      [normalizedEmail, ADMIN_REGISTER_COOLDOWN_MINUTES]
+    );
+    const adminOtpRequestLimit = ADMIN_REGISTER_MAX_RESENDS + 1;
+    if (Number(recentRequests[0]?.request_count || 0) >= adminOtpRequestLimit) {
+      return res.status(429).json({
+        message: 'OTP resend limit reached. Please wait before requesting another code.',
+        retry_after_seconds: ADMIN_REGISTER_COOLDOWN_MINUTES * 60,
+      });
     }
 
     const code = generateOTP();
@@ -1360,24 +1616,24 @@ router.post('/admin-register/start', async (req, res) => {
     await pool.query(
       `UPDATE otp_codes SET consumed_at = NOW()
        WHERE email = ? AND purpose = 'register' AND consumed_at IS NULL`,
-      [email]
+      [normalizedEmail]
     );
     await pool.query(
       `INSERT INTO otp_codes (email, code_hash, purpose, expires_at) VALUES (?, ?, 'register', ?)`,
-      [email, codeHash, expiresAt]
+      [normalizedEmail, codeHash, expiresAt]
     );
 
     const passwordHash = await bcrypt.hash(password, 10);
     const pendingExpires = toMySQLDateTime(new Date(Date.now() + 30 * 60 * 1000));
 
-    await pool.query(`DELETE FROM pending_registrations WHERE email = ? AND intended_role = 'admin'`, [email]);
+    await pool.query(`DELETE FROM pending_registrations WHERE email = ? AND intended_role = 'admin'`, [normalizedEmail]);
     await pool.query(
       `INSERT INTO pending_registrations (email, name, password_hash, intended_role, expires_at)
        VALUES (?, ?, ?, 'admin', ?)`,
-      [email, name, passwordHash, pendingExpires]
+      [normalizedEmail, name, passwordHash, pendingExpires]
     );
 
-    await sendOTPEmail({ to: email, code, purpose: 'register' });
+    await sendOTPEmail({ to: normalizedEmail, code, purpose: 'register' });
     res.json({ message: 'OTP sent. Check your email.' });
   } catch (err) {
     console.error(err);
@@ -1390,18 +1646,73 @@ router.post('/admin-register/verify', async (req, res) => {
   if (!email || !code) return res.status(400).json({ message: 'Email and code are required' });
 
   try {
+    const normalizedEmail = email.trim().toLowerCase();
     const [otps] = await pool.query(
       `SELECT * FROM otp_codes
        WHERE email = ? AND purpose = 'register' AND consumed_at IS NULL AND expires_at > NOW()
        ORDER BY id DESC LIMIT 1`,
-      [email]
+      [normalizedEmail]
     );
-    if (otps.length === 0) return res.status(400).json({ message: 'No valid OTP found' });
+    if (otps.length === 0) return res.status(400).json({ message: 'OTP is invalid' });
     const otp = otps[0];
+    const maxAttempts = ADMIN_REGISTER_MAX_OTP_ATTEMPTS;
+    if (otp.attempts >= maxAttempts) {
+      const [recentRequests] = await pool.query(
+        `SELECT COUNT(*) AS request_count
+         FROM otp_codes
+         WHERE LOWER(email) = ?
+           AND purpose = 'register'
+           AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+        [normalizedEmail, ADMIN_REGISTER_COOLDOWN_MINUTES]
+      );
+      const usedAllResends = Number(recentRequests[0]?.request_count || 0) >= ADMIN_REGISTER_MAX_RESENDS + 1;
+      await pool.query('UPDATE otp_codes SET consumed_at = NOW() WHERE id = ?', [otp.id]);
+      if (!usedAllResends) {
+        return res.status(400).json({
+          message: 'OTP verification failed. Please request a new code.',
+          code_exhausted: true,
+        });
+      }
+
+      return res.status(429).json({
+        message: 'OTP verification failed. Too many incorrect attempts. You will be redirected to the login page in 5 seconds.',
+        retry_after_seconds: ADMIN_REGISTER_COOLDOWN_MINUTES * 60,
+        cooldown_until: new Date(Date.now() + ADMIN_REGISTER_COOLDOWN_MINUTES * 60 * 1000),
+        locked: true,
+      });
+    }
 
     const ok = await verifyOTPHash(code, otp.code_hash);
     if (!ok) {
-      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE id = ?', [otp.id]);
+      const nextAttempts = Number(otp.attempts || 0) + 1;
+      if (nextAttempts >= maxAttempts) {
+        const [recentRequests] = await pool.query(
+          `SELECT COUNT(*) AS request_count
+           FROM otp_codes
+           WHERE LOWER(email) = ?
+             AND purpose = 'register'
+             AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+          [normalizedEmail, ADMIN_REGISTER_COOLDOWN_MINUTES]
+        );
+        const usedAllResends = Number(recentRequests[0]?.request_count || 0) >= ADMIN_REGISTER_MAX_RESENDS + 1;
+
+        await pool.query('UPDATE otp_codes SET attempts = ?, consumed_at = NOW() WHERE id = ?', [nextAttempts, otp.id]);
+        if (!usedAllResends) {
+          return res.status(400).json({
+            message: 'OTP verification failed. Please request a new code.',
+            code_exhausted: true,
+          });
+        }
+
+        return res.status(429).json({
+          message: 'OTP verification failed. Too many incorrect attempts. You will be redirected to the login page in 5 seconds.',
+          retry_after_seconds: ADMIN_REGISTER_COOLDOWN_MINUTES * 60,
+          cooldown_until: new Date(Date.now() + ADMIN_REGISTER_COOLDOWN_MINUTES * 60 * 1000),
+          locked: true,
+        });
+      }
+
+      await pool.query('UPDATE otp_codes SET attempts = ? WHERE id = ?', [nextAttempts, otp.id]);
       return res.status(400).json({ message: 'Invalid code' });
     }
 
@@ -1409,7 +1720,7 @@ router.post('/admin-register/verify', async (req, res) => {
       `SELECT * FROM pending_registrations
        WHERE email = ? AND intended_role = 'admin' AND expires_at > NOW()
        ORDER BY id DESC LIMIT 1`,
-      [email]
+      [normalizedEmail]
     );
     if (pendings.length === 0) return res.status(400).json({ message: 'No pending registration. Start over.' });
     const pending = pendings[0];
@@ -1417,11 +1728,11 @@ router.post('/admin-register/verify', async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO users (role, name, email, password_hash, email_verified)
        VALUES ('admin', ?, ?, ?, TRUE)`,
-      [pending.name, email, pending.password_hash]
+      [pending.name, normalizedEmail, pending.password_hash]
     );
     const userId = result.insertId;
 
-    await pool.query(`DELETE FROM pending_registrations WHERE email = ?`, [email]);
+    await pool.query(`DELETE FROM pending_registrations WHERE email = ?`, [normalizedEmail]);
 
     const [branches] = await pool.query('SELECT id FROM branches');
     for (const b of branches) {
@@ -1439,7 +1750,7 @@ router.post('/admin-register/verify', async (req, res) => {
 
     res.json({
       accessToken,
-      user: { id: userId, role: 'admin', name: pending.name, email, branches: userBranches },
+      user: { id: userId, role: 'admin', name: pending.name, email: normalizedEmail, branches: userBranches },
     });
   } catch (err) {
     console.error(err);
@@ -2053,9 +2364,24 @@ router.get('/me', authenticate, async (req, res) => {
 
 router.patch('/me', authenticate, requireRole('admin'), async (req, res) => {
   const { name, email, phone, status = 'Active', password = '' } = req.body;
+  const trimmedName = String(name || '').trim();
+  const trimmedEmail = String(email || '').trim();
+  const trimmedPhone = String(phone || '').trim();
 
-  if (!name || !email || !status) {
-    return res.status(400).json({ message: 'Name, email, and status are required' });
+  if (!trimmedName || !trimmedEmail || !trimmedPhone || !status) {
+    return res.status(400).json({ message: 'This field is required' });
+  }
+
+  if (/[0-9]/.test(trimmedName)) {
+    return res.status(400).json({ message: 'Numbers are not allowed.' });
+  }
+
+  if (!/^[a-zA-Z\s]+$/.test(trimmedName)) {
+    return res.status(400).json({ message: 'Special characters are not allowed.' });
+  }
+
+  if (!/^09\d{9}$/.test(trimmedPhone) && !/^\+[1-9]\d{7,14}$/.test(trimmedPhone)) {
+    return res.status(400).json({ message: 'Contact number does not match the selected country code.' });
   }
 
   if (!['Active', 'Inactive'].includes(status)) {
@@ -2077,7 +2403,7 @@ router.patch('/me', authenticate, requireRole('admin'), async (req, res) => {
   try {
     const [existing] = await pool.query(
       'SELECT id FROM users WHERE email = ? AND id <> ?',
-      [email, req.user.user_id]
+      [trimmedEmail, req.user.user_id]
     );
 
     if (existing.length > 0) {
@@ -2090,7 +2416,7 @@ router.patch('/me', authenticate, requireRole('admin'), async (req, res) => {
       'phone = ?',
       'status = ?',
     ];
-    const updateParams = [name, email, phone || null, status];
+    const updateParams = [trimmedName, trimmedEmail, trimmedPhone, status];
 
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10);

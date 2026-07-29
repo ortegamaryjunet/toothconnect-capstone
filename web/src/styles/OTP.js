@@ -113,6 +113,32 @@ const createOTPStyles = ({ isMobile = false } = {}) => {
       textAlign: 'center',
     },
 
+    attemptsNotice: {
+      margin: '0 0 16px',
+      padding: '12px 14px',
+      borderRadius: '14px',
+      background: 'rgba(212, 175, 55, 0.12)',
+      border: '1px solid rgba(212, 175, 55, 0.36)',
+      color: '#8b6508',
+      fontSize: '13px',
+      fontWeight: 800,
+      textAlign: 'center',
+      lineHeight: 1.4,
+    },
+
+    attemptsWarning: {
+      margin: '0 0 16px',
+      padding: '12px 14px',
+      borderRadius: '14px',
+      background: '#fff7ed',
+      border: '1px solid #fed7aa',
+      color: '#9a3412',
+      fontSize: '13px',
+      fontWeight: 800,
+      textAlign: 'center',
+      lineHeight: 1.4,
+    },
+
     button: {
       width: '100%',
       height: '50px',
@@ -141,6 +167,47 @@ const createOTPStyles = ({ isMobile = false } = {}) => {
       maxWidth: '360px',
     },
 
+    modal: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 9999,
+      background: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 20,
+      boxSizing: 'border-box',
+    },
+
+    modalContent: {
+      width: isMobile ? '100%' : 390,
+      maxWidth: 390,
+      background: '#ffffff',
+      borderRadius: 22,
+      padding: isMobile ? 24 : 30,
+      textAlign: 'center',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)',
+      boxSizing: 'border-box',
+      border: '1px solid rgba(212, 175, 55, 0.22)',
+    },
+
+    modalIcon: {
+      width: 70,
+      height: 70,
+      margin: '0 auto 16px',
+      borderRadius: '50%',
+      background: 'rgba(212, 175, 55, 0.18)',
+      color: '#b8860b',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    modalIconText: {
+      fontSize: 30,
+      lineHeight: 1,
+    },
+
     modalBox: {
       position: 'relative',
       width: '100%',
@@ -165,17 +232,18 @@ const createOTPStyles = ({ isMobile = false } = {}) => {
     },
 
     modalTitle: {
-      margin: '10px 0 12px',
-      color: '#1f1a12',
-      fontSize: '24px',
-      fontWeight: 900,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
+      color: '#0f172a',
+      marginBottom: 10,
+      marginTop: 0,
     },
 
     modalText: {
-      margin: '0 0 24px',
-      color: '#5f5442',
-      fontSize: '15px',
-      fontWeight: 600,
+      fontSize: 15,
+      color: '#64748b',
+      marginBottom: 24,
+      marginTop: 0,
       lineHeight: 1.5,
     },
 
@@ -190,6 +258,35 @@ const createOTPStyles = ({ isMobile = false } = {}) => {
       fontWeight: 900,
       cursor: 'pointer',
       boxShadow: '0 12px 24px rgba(139, 101, 8, 0.18)',
+    },
+
+    modalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    modalActionButton: {
+      minWidth: 120,
+      height: 44,
+      borderRadius: 12,
+      border: 'none',
+      cursor: 'pointer',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 800,
+    },
+
+    cancelBtn: {
+      background: '#f1f5f9',
+      color: '#334155',
+    },
+
+    saveBtn: {
+      background: '#d4af37',
+      color: '#ffffff',
+      boxShadow: '0 12px 26px rgba(139, 101, 8, 0.18)',
     },
 
     backButton: {

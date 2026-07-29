@@ -30,6 +30,8 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showCreateAdminPrompt, setShowCreateAdminPrompt] = useState(false);
+  const [showCancelRegistrationPrompt, setShowCancelRegistrationPrompt] = useState(false);
   const nameRef = useRef(null);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
@@ -217,7 +219,7 @@ export default function Register() {
     }
   }
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     setError('');
     setSubmittedOnce(true);
@@ -236,6 +238,15 @@ export default function Register() {
       return;
     }
 
+    setShowCreateAdminPrompt(true);
+  }
+
+  function closeCreateAdminPrompt() {
+    setShowCreateAdminPrompt(false);
+  }
+
+  async function confirmCreateAdminAccount() {
+    setShowCreateAdminPrompt(false);
     setSubmitting(true);
     try {
       await api.post('/auth/admin-register/start', { name: name.trim(), email: email.trim(), password });
@@ -243,10 +254,45 @@ export default function Register() {
         state: { email: email.trim(), name: name.trim(), password, purpose: 'admin-register' },
       });
     } catch (err) {
+      if (err.response?.status === 429 && err.response?.data?.retry_after_seconds) {
+        const cooldownUntil = Date.now() + Number(err.response.data.retry_after_seconds || 0) * 1000;
+        try {
+          window.localStorage.setItem('adminRegisterCooldown', JSON.stringify({
+            email: email.trim(),
+            until: cooldownUntil,
+          }));
+        } catch {
+          // Ignore storage errors; backend still enforces cooldown.
+        }
+        navigate('/login', {
+          replace: true,
+          state: {
+            message: err.response.data.message || 'Too many failed attempts. Please wait 10 minutes before trying to register an admin account again.',
+            messageType: 'error',
+            email: email.trim(),
+            adminRegisterCooldownEmail: email.trim(),
+            adminRegisterCooldownUntil: cooldownUntil,
+          },
+        });
+        return;
+      }
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function openCancelRegistrationPrompt() {
+    setShowCancelRegistrationPrompt(true);
+  }
+
+  function closeCancelRegistrationPrompt() {
+    setShowCancelRegistrationPrompt(false);
+  }
+
+  function confirmCancelRegistration() {
+    setShowCancelRegistrationPrompt(false);
+    navigate('/login');
   }
 
   return (
@@ -392,11 +438,87 @@ export default function Register() {
 
         <p style={styles.note}>
           Already have an account?{' '}
-          <span style={styles.link} onClick={() => navigate('/login')}>
+          <span style={styles.link} onClick={openCancelRegistrationPrompt}>
             Login
           </span>
         </p>
       </form>
+
+      {showCreateAdminPrompt && (
+        <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeCreateAdminPrompt(); }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-user-add" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Create Admin Account</h2>
+            <p style={styles.modalText}>Please review the details before creating this admin account.</p>
+            <div style={styles.modalDetailList}>
+              {[
+                ['Full Name', name.trim() || 'Not entered'],
+                ['Email Address', email.trim() || 'Not entered'],
+                ['Account Type', 'Admin'],
+                ['Admin Limit', 'Only 1 admin account can be registered'],
+              ].map(([label, value]) => (
+                <div key={label} style={styles.modalDetailRow}>
+                  <span style={styles.modalDetailLabel}>{label}</span>
+                  <strong style={styles.modalDetailValue}>{value}</strong>
+                </div>
+              ))}
+            </div>
+            {error && (
+              <p style={{ ...styles.modalText, color: '#dc2626', marginTop: 14 }}>{error}</p>
+            )}
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                disabled={submitting}
+                onClick={closeCreateAdminPrompt}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                disabled={submitting}
+                onClick={confirmCreateAdminAccount}
+              >
+                {submitting ? 'Sending OTP...' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelRegistrationPrompt && (
+        <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeCancelRegistrationPrompt(); }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Cancel Registration</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel the admin registration and go back to login?
+            </p>
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeCancelRegistrationPrompt}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={confirmCancelRegistration}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

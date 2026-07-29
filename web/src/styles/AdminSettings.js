@@ -1034,6 +1034,50 @@
       boxSizing: 'border-box',
     },
 
+    phoneInputContainer: {
+      width: '100%',
+      fontFamily: 'Arial, sans-serif',
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : '132px minmax(0, 1fr)',
+      gap: 10,
+      boxSizing: 'border-box',
+    },
+
+    phoneCountrySelect: {
+      width: '100%',
+      minWidth: 0,
+      height: 48,
+      border: '1px solid #dbe3ef',
+      borderRadius: 15,
+      padding: '0 10px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      color: '#334155',
+      background: '#f8fafc',
+      outline: 'none',
+      boxSizing: 'border-box',
+    },
+
+    phoneInput: {
+      width: '100%',
+      minWidth: 0,
+      height: 48,
+      border: '1px solid #dbe3ef',
+      borderRadius: 15,
+      padding: '0 14px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      color: '#334155',
+      background: '#ffffff',
+      outline: 'none',
+      boxSizing: 'border-box',
+    },
+
+    phoneInputError: {
+      borderColor: '#dc2626',
+      borderWidth: 2,
+    },
+
     readOnlyInput: {
       background: '#f8fafc',
       color: '#64748b',

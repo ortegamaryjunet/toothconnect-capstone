@@ -18,20 +18,9 @@ const API_BASE_URL = (() => {
     return PROD_API;
 })();
 
-// Fallback used when the services API is unavailable
-const fallbackServices = [
-    "General Dental Check-Up",
-    "Teeth Cleaning",
-    "Orthodontic Consultation",
-    "Dental Filling",
-    "Tooth Extraction",
-    "Braces Adjustment",
-    "Dental Pain or Discomfort",
-    "Cosmetic Dental Consultation",
-    "Other Dental Concern"
-];
-
 let cachedServices = null;
+let servicesLoading = true;
+let servicesLoadFailed = false;
 
 document.addEventListener("DOMContentLoaded", function () {
     // Layout tweak:
@@ -297,18 +286,26 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---- Services from DB ----
 
     async function loadServices() {
+        servicesLoading = true;
+        servicesLoadFailed = false;
         try {
             // Use centralized clinic services table (not website CMS services)
             // Avoid conditional-cache 304 responses (no body) which break res.json()
             const res = await fetch(API_BASE_URL + "/api/website/clinic-services", { cache: "no-store" });
-            if (!res.ok) return;
+            if (!res.ok) throw new Error("Unable to load services.");
             const data = await res.json();
             const list = data.services || [];
             if (list.length > 0) {
                 cachedServices = list.map(function (s) { return s.name; });
+            } else {
+                cachedServices = [];
+                servicesLoadFailed = true;
             }
         } catch (e) {
-            // keep cachedServices null → fallback used in renderReasonOptions
+            cachedServices = [];
+            servicesLoadFailed = true;
+        } finally {
+            servicesLoading = false;
         }
     }
 
@@ -318,7 +315,27 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!reasonOptions) return;
         reasonOptions.innerHTML = "";
 
-        const services = cachedServices || fallbackServices;
+        if (servicesLoading) {
+            const p = document.createElement("p");
+            p.textContent = "Loading services...";
+            p.classList.add("disabled-option");
+            reasonOptions.appendChild(p);
+            return;
+        }
+
+        const services = Array.isArray(cachedServices) ? cachedServices : [];
+        if (servicesLoadFailed || services.length === 0) {
+            const p = document.createElement("p");
+            p.textContent = "Services are temporarily unavailable.";
+            p.classList.add("disabled-option");
+            reasonOptions.appendChild(p);
+            if (reasonText) reasonText.textContent = "Services unavailable";
+            if (selectedReason) selectedReason.value = "";
+            if (reasonBtn) reasonBtn.classList.add("input-error");
+            showFieldError("reasonError", "Services are temporarily unavailable. Please try again later or contact the clinic.");
+            return;
+        }
+
         services.forEach(function (service) {
             const p = document.createElement("p");
             p.dataset.value = service;
@@ -784,7 +801,15 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             // Validate Reason
-            if (!selectedReason.value || reasonText.textContent === "Select reason") {
+            if (servicesLoading) {
+                showFieldError("reasonError", "Services are still loading. Please wait a moment.");
+                if (reasonBtn) reasonBtn.classList.add("input-error");
+                hasError = true;
+            } else if (servicesLoadFailed || !Array.isArray(cachedServices) || cachedServices.length === 0) {
+                showFieldError("reasonError", "Services are temporarily unavailable. Please try again later or contact the clinic.");
+                if (reasonBtn) reasonBtn.classList.add("input-error");
+                hasError = true;
+            } else if (!selectedReason.value || reasonText.textContent === "Select reason") {
                 showFieldError("reasonError", "Please select a reason for booking.");
                 if (reasonBtn) reasonBtn.classList.add("input-error");
                 hasError = true;

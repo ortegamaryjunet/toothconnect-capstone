@@ -518,6 +518,13 @@ body {
     color: var(--gold-dark);
 }
 
+.reason-options p.disabled-option,
+.reason-options p.disabled-option:hover {
+    cursor: default;
+    background: #f8fafc;
+    color: var(--muted);
+}
+
 .booking-note {
     margin: 22px 0;
     padding: 18px;

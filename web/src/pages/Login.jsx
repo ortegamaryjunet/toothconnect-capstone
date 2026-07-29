@@ -20,6 +20,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
+  const [showForgotPasswordPrompt, setShowForgotPasswordPrompt] = useState(false);
+  const [forgotPasswordCooldownUntil, setForgotPasswordCooldownUntil] = useState(null);
+  const [forgotPasswordCooldownRemaining, setForgotPasswordCooldownRemaining] = useState(0);
+  const [adminRegisterCooldownUntil, setAdminRegisterCooldownUntil] = useState(null);
+  const [adminRegisterCooldownRemaining, setAdminRegisterCooldownRemaining] = useState(0);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
 
@@ -39,6 +45,114 @@ export default function Login() {
     const t = setTimeout(() => setBanner(''), 5000);
     return () => clearTimeout(t);
   }, [banner]);
+
+  useEffect(() => {
+    const stateCooldownUntil = Number(location.state?.forgotPasswordCooldownUntil || 0);
+    const stateCooldownEmail = String(location.state?.forgotPasswordCooldownEmail || '').trim();
+
+    if (stateCooldownUntil && stateCooldownUntil > Date.now()) {
+      setForgotPasswordCooldownUntil(stateCooldownUntil);
+      try {
+        window.localStorage.setItem('forgotPasswordCooldown', JSON.stringify({
+          email: stateCooldownEmail || prefillEmail,
+          until: stateCooldownUntil,
+        }));
+      } catch {
+        // Ignore storage errors; backend still enforces cooldown.
+      }
+      return;
+    }
+
+    try {
+      const stored = JSON.parse(window.localStorage.getItem('forgotPasswordCooldown') || 'null');
+      const storedUntil = Number(stored?.until || 0);
+      if (storedUntil > Date.now()) {
+        setForgotPasswordCooldownUntil(storedUntil);
+      } else {
+        window.localStorage.removeItem('forgotPasswordCooldown');
+      }
+    } catch {
+      window.localStorage.removeItem('forgotPasswordCooldown');
+    }
+  }, [location.state, prefillEmail]);
+
+  useEffect(() => {
+    const stateCooldownUntil = Number(location.state?.adminRegisterCooldownUntil || 0);
+    const stateCooldownEmail = String(location.state?.adminRegisterCooldownEmail || '').trim();
+
+    if (stateCooldownUntil && stateCooldownUntil > Date.now()) {
+      setAdminRegisterCooldownUntil(stateCooldownUntil);
+      try {
+        window.localStorage.setItem('adminRegisterCooldown', JSON.stringify({
+          email: stateCooldownEmail || prefillEmail,
+          until: stateCooldownUntil,
+        }));
+      } catch {
+        // Ignore storage errors; backend still enforces cooldown.
+      }
+      return;
+    }
+
+    try {
+      const stored = JSON.parse(window.localStorage.getItem('adminRegisterCooldown') || 'null');
+      const storedUntil = Number(stored?.until || 0);
+      if (storedUntil > Date.now()) {
+        setAdminRegisterCooldownUntil(storedUntil);
+      } else {
+        window.localStorage.removeItem('adminRegisterCooldown');
+      }
+    } catch {
+      window.localStorage.removeItem('adminRegisterCooldown');
+    }
+  }, [location.state, prefillEmail]);
+
+  useEffect(() => {
+    if (!forgotPasswordCooldownUntil) {
+      setForgotPasswordCooldownRemaining(0);
+      return undefined;
+    }
+
+    function syncCooldown() {
+      const remaining = Math.max(0, Math.ceil((forgotPasswordCooldownUntil - Date.now()) / 1000));
+      setForgotPasswordCooldownRemaining(remaining);
+      if (remaining <= 0) {
+        setForgotPasswordCooldownUntil(null);
+        try {
+          window.localStorage.removeItem('forgotPasswordCooldown');
+        } catch {
+          // Ignore storage errors.
+        }
+      }
+    }
+
+    syncCooldown();
+    const interval = setInterval(syncCooldown, 1000);
+    return () => clearInterval(interval);
+  }, [forgotPasswordCooldownUntil]);
+
+  useEffect(() => {
+    if (!adminRegisterCooldownUntil) {
+      setAdminRegisterCooldownRemaining(0);
+      return undefined;
+    }
+
+    function syncCooldown() {
+      const remaining = Math.max(0, Math.ceil((adminRegisterCooldownUntil - Date.now()) / 1000));
+      setAdminRegisterCooldownRemaining(remaining);
+      if (remaining <= 0) {
+        setAdminRegisterCooldownUntil(null);
+        try {
+          window.localStorage.removeItem('adminRegisterCooldown');
+        } catch {
+          // Ignore storage errors.
+        }
+      }
+    }
+
+    syncCooldown();
+    const interval = setInterval(syncCooldown, 1000);
+    return () => clearInterval(interval);
+  }, [adminRegisterCooldownUntil]);
 
   const visibleEmailError = (touched.email || submittedOnce) ? fieldErrors.email : '';
   const visiblePasswordError = (touched.password || submittedOnce) ? fieldErrors.password : '';
@@ -179,6 +293,41 @@ export default function Login() {
     }
   }
 
+  function openRegisterPrompt() {
+    if (adminRegisterCooldownRemaining > 0) return;
+    setShowRegisterPrompt(true);
+  }
+
+  function closeRegisterPrompt() {
+    setShowRegisterPrompt(false);
+  }
+
+  function confirmRegisterPrompt() {
+    setShowRegisterPrompt(false);
+    navigate('/register');
+  }
+
+  function openForgotPasswordPrompt() {
+    if (forgotPasswordCooldownRemaining > 0) return;
+    setShowForgotPasswordPrompt(true);
+  }
+
+  function closeForgotPasswordPrompt() {
+    setShowForgotPasswordPrompt(false);
+  }
+
+  function confirmForgotPasswordPrompt() {
+    setShowForgotPasswordPrompt(false);
+    navigate('/forgotpassword');
+  }
+
+  function formatCooldown(seconds) {
+    const safeSeconds = Math.max(0, Number(seconds || 0));
+    const minutes = Math.floor(safeSeconds / 60);
+    const remainingSeconds = safeSeconds % 60;
+    return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+  }
+
   return (
     <div style={styles.page}>
       <form onSubmit={handleSubmit} noValidate style={styles.card}>
@@ -252,10 +401,21 @@ export default function Login() {
             {visiblePasswordError}
         </p>
 
-        <p style={{ margin: '0 0 18px', textAlign: 'right' }}>
-          <span style={styles.link} onClick={() => navigate('/forgotpassword')}>
+        <p style={styles.forgotPasswordRow}>
+          <span
+            style={{
+              ...styles.link,
+              ...(forgotPasswordCooldownRemaining > 0 ? styles.disabledLink : {}),
+            }}
+            onClick={openForgotPasswordPrompt}
+          >
             Forgot Password?
           </span>
+          {forgotPasswordCooldownRemaining > 0 && (
+            <span style={styles.cooldownText}>
+              Try again in {formatCooldown(forgotPasswordCooldownRemaining)}
+            </span>
+          )}
         </p>
 
         <button
@@ -267,12 +427,85 @@ export default function Login() {
         </button>
 
         <p style={styles.note}>
-          No account yet?{' '}
-          <span style={styles.link} onClick={() => navigate('/register')}>
-            Register
+          <span>
+            No account yet?{' '}
+            <span
+              style={{
+                ...styles.link,
+                ...(adminRegisterCooldownRemaining > 0 ? styles.disabledLink : {}),
+              }}
+              onClick={openRegisterPrompt}
+            >
+              Register
+            </span>
           </span>
+          {adminRegisterCooldownRemaining > 0 && (
+            <span style={styles.cooldownText}>
+              Try again in {formatCooldown(adminRegisterCooldownRemaining)}
+            </span>
+          )}
         </p>
       </form>
+
+      {showRegisterPrompt && (
+        <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeRegisterPrompt(); }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-user-add" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Register Admin Account</h2>
+            <p style={styles.modalText}>
+              This registration is for an admin account. You can only register 1 admin account.
+            </p>
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeRegisterPrompt}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={confirmRegisterPrompt}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showForgotPasswordPrompt && (
+        <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeForgotPasswordPrompt(); }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-key" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Forgot Password</h2>
+            <p style={styles.modalText}>
+              Can't remember your password? Create a new one.
+            </p>
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeForgotPasswordPrompt}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={confirmForgotPasswordPrompt}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
