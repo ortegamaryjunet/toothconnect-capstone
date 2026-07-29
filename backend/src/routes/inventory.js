@@ -1,7 +1,12 @@
 const express = require('express');
 const pool = require('../config/db');
 const { authenticate, requireRole, requireBranchAccess } = require('../middleware/auth');
-const { getServiceKitAvailability, getServiceKitRows } = require('../utils/serviceKitAvailability');
+const {
+  ensureServiceKitsBranchColumn,
+  getServiceKitAvailability,
+  getServiceKitRecord,
+  getServiceKitRows,
+} = require('../utils/serviceKitAvailability');
 
 const router = express.Router();
 
@@ -1217,23 +1222,24 @@ router.get('/service-kits/:serviceId', async (req, res) => {
   }
 
   try {
-    const [kitRows] = await pool.query(`SELECT id, service_id, notes FROM service_kits WHERE service_id = ?`, [serviceId]);
-    if (!kitRows.length) {
+    const kit = await getServiceKitRecord(pool, serviceId, branchId);
+    if (!kit) {
       return res.json({
         service_id: serviceId,
+        branch_id: branchId,
         kit_exists: false,
         items: [],
         message: 'No kit defined for this service. Dentist will enter items manually.',
       });
     }
 
-    const kit = kitRows[0];
-
     const availability = await getServiceKitAvailability(pool, { serviceId, branchId });
 
     res.json({
       service_id: serviceId,
+      branch_id: branchId,
       kit_id: kit.id,
+      kit_branch_id: kit.branch_id,
       kit_exists: true,
       notes: kit.notes,
       items: availability.items.map((item) => ({
@@ -1258,7 +1264,13 @@ router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) =>
   const auditBranchId = branch_id ? parseInt(branch_id, 10) : null;
 
   if (!serviceId) return res.status(400).json({ message: 'Invalid service id' });
+  if (!auditBranchId) return res.status(400).json({ message: 'branch_id is required' });
+  if (!validateBranchAccess(req, auditBranchId)) {
+    return res.status(403).json({ message: 'No access to this branch' });
+  }
   if (!Array.isArray(items)) return res.status(400).json({ message: 'items must be an array' });
+
+  await ensureServiceKitsBranchColumn(pool);
 
   const conn = await pool.getConnection();
   try {
@@ -1271,12 +1283,12 @@ router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) =>
     }
     const serviceName = serviceRows[0].name;
 
-    const [kitRows] = await conn.query('SELECT id FROM service_kits WHERE service_id = ? LIMIT 1', [serviceId]);
+    const [kitRows] = await conn.query('SELECT id FROM service_kits WHERE service_id = ? AND branch_id <=> ? LIMIT 1', [serviceId, auditBranchId]);
     let kitId = kitRows[0]?.id || null;
     const wasNew = !kitId;
 
     if (!kitId) {
-      const [insertKit] = await conn.query('INSERT INTO service_kits (service_id, notes) VALUES (?, ?)', [serviceId, notes]);
+      const [insertKit] = await conn.query('INSERT INTO service_kits (service_id, branch_id, notes) VALUES (?, ?, ?)', [serviceId, auditBranchId, notes]);
       kitId = insertKit.insertId;
     } else {
       await conn.query('UPDATE service_kits SET notes = ? WHERE id = ?', [notes, kitId]);
@@ -1299,20 +1311,17 @@ router.put('/service-kits/:serviceId', requireRole('admin'), async (req, res) =>
       );
     }
 
-    let branchAddress = null;
-    if (auditBranchId) {
-      const [branchRows] = await conn.query('SELECT address, name FROM branches WHERE id = ? LIMIT 1', [auditBranchId]);
-      branchAddress = branchRows[0]?.address || branchRows[0]?.name || null;
-    }
+    const [branchRows] = await conn.query('SELECT address, name FROM branches WHERE id = ? LIMIT 1', [auditBranchId]);
+    const branchAddress = branchRows[0]?.address || branchRows[0]?.name || null;
 
     await conn.query(
       `INSERT INTO audit_logs (user_id, action, branch_id, details) VALUES (?, 'service_kit_managed', ?, ?)`,
-      [req.user.user_id, auditBranchId, JSON.stringify({ service_id: serviceId, service_name: serviceName, items: cleanItems, was_new: wasNew, branch_address: branchAddress })]
+      [req.user.user_id, auditBranchId, JSON.stringify({ service_id: serviceId, service_name: serviceName, branch_id: auditBranchId, items: cleanItems, was_new: wasNew, branch_address: branchAddress })]
     );
 
     await conn.commit();
-    const savedItems = await getServiceKitRows(pool, serviceId);
-    res.json({ service_id: serviceId, kit_id: kitId, notes, items: savedItems });
+    const savedItems = await getServiceKitRows(pool, serviceId, auditBranchId);
+    res.json({ service_id: serviceId, branch_id: auditBranchId, kit_id: kitId, notes, items: savedItems });
   } catch (err) {
     await conn.rollback();
     console.error(err);

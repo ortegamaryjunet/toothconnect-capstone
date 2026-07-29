@@ -1738,8 +1738,8 @@ setWebsiteContentSaveConfirmModal({
   }
 
   async function openServiceKitManager(service = null) {
-    const resolvedServiceId = service?.id ? String(service.id) : String(services?.[0]?.id || '');
-    if (!resolvedServiceId) return alert('No service available.');
+    const resolvedServiceId = service?.id ? String(service.id) : '';
+    if (!services.length) return alert('No service available.');
 
     const branchId = Number(branches?.[0]?.id || 0);
     if (!branchId) return alert('No branch available.');
@@ -1747,15 +1747,15 @@ setWebsiteContentSaveConfirmModal({
     setServiceKitOverlay(true);
     setServiceKitBranchId(String(branchId));
     setServiceKitServiceId(resolvedServiceId);
+    setServiceKitItems([]);
     setServiceKitItemErrors([]);
-    setServiceKitServicesForBranch([]);
+    setServiceKitServicesForBranch(services);
 
     try {
-      const [supplies, medicines, equipment, data] = await Promise.all([
+      const [supplies, medicines, equipment] = await Promise.all([
         listSupplies(branchId),
         listMedicines(branchId),
         listEquipment(branchId),
-        getManageServiceKit(Number(resolvedServiceId), branchId),
       ]);
 
       setServiceKitInventory({
@@ -1764,34 +1764,20 @@ setWebsiteContentSaveConfirmModal({
         equipment: Array.isArray(equipment) ? equipment : [],
       });
 
-      // Load services for this branch (best-effort); fallback to all services.
-      try {
-        const meta = await api.get('/appointments/_meta/services-and-branches');
-        const metaServices = Array.isArray(meta.data?.services) ? meta.data.services : [];
-        const filtered = metaServices.filter((s) =>
-          Array.isArray(s.available_branch_ids)
-            ? s.available_branch_ids.includes(Number(branchId))
-            : true
-        );
-        const serviceOptions = filtered.length ? filtered : services;
-        setServiceKitServicesForBranch(serviceOptions);
-        if (!serviceOptions.some((s) => String(s.id) === String(resolvedServiceId))) {
-          const nextId = String(serviceOptions[0]?.id || '');
-          if (nextId) setServiceKitServiceId(nextId);
-        }
-      } catch {
-        setServiceKitServicesForBranch(services);
-      }
+      setServiceKitServicesForBranch(services);
 
-      setServiceKitItems((data.items || []).map((item) => ({
-        category: item.category,
-        item_name: item.item_name,
-        default_quantity: String(item.default_quantity || ''),
-        current_stock: item.current_stock,
-      })));
-      setServiceKitItemErrors(
-        (data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' }))
-      );
+      if (resolvedServiceId) {
+        const data = await getManageServiceKit(Number(resolvedServiceId), branchId);
+        setServiceKitItems((data.items || []).map((item) => ({
+          category: item.category,
+          item_name: item.item_name,
+          default_quantity: String(item.default_quantity || ''),
+          current_stock: item.current_stock,
+        })));
+        setServiceKitItemErrors(
+          (data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' }))
+        );
+      }
     } catch (err) {
       setServiceKitItems([]);
       alert(err.response?.data?.message || 'Failed to load service kit.');
@@ -1813,42 +1799,10 @@ setWebsiteContentSaveConfirmModal({
         equipment: Array.isArray(equipment) ? equipment : [],
       });
 
-      // Load services "available" for this branch (based on appointment meta).
-      // Fallback: if meta fails or yields empty, show all services.
-      let serviceOptions = services;
-      try {
-        const meta = await api.get('/appointments/_meta/services-and-branches');
-        const metaServices = Array.isArray(meta.data?.services) ? meta.data.services : [];
-        const filtered = metaServices.filter((s) =>
-          Array.isArray(s.available_branch_ids)
-            ? s.available_branch_ids.includes(Number(branchId))
-            : true
-        );
-        serviceOptions = filtered.length ? filtered : services;
-      } catch {
-        serviceOptions = services;
-      }
-      setServiceKitServicesForBranch(serviceOptions);
-
-      // If the currently selected service is not in this branch's list, reset to first.
-      const branchServiceIds = new Set(serviceOptions.map((s) => String(s.id)));
-      const nextServiceId = branchServiceIds.has(String(serviceKitServiceId))
-        ? String(serviceKitServiceId)
-        : String(serviceOptions[0]?.id || '');
-      if (nextServiceId && nextServiceId !== String(serviceKitServiceId)) {
-        setServiceKitServiceId(nextServiceId);
-      }
-
-      const data = nextServiceId
-        ? await getManageServiceKit(Number(nextServiceId), branchId)
-        : { items: [] };
-      setServiceKitItems((data.items || []).map((item) => ({
-        category: item.category,
-        item_name: item.item_name,
-        default_quantity: String(item.default_quantity || ''),
-        current_stock: item.current_stock,
-      })));
-      setServiceKitItemErrors((data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' })));
+      setServiceKitServicesForBranch(services);
+      setServiceKitServiceId('');
+      setServiceKitItems([]);
+      setServiceKitItemErrors([]);
     } catch {
       setServiceKitItems([]);
     }
@@ -1976,7 +1930,9 @@ setWebsiteContentSaveConfirmModal({
     try {
       await saveManageServiceKit(Number(serviceKitServiceId), payload);
       setShowServiceKitSaveConfirmModal(false);
-      setServiceKitOverlay(false);
+      setServiceKitServiceId('');
+      setServiceKitItems([]);
+      setServiceKitItemErrors([]);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service kit.');
     }
@@ -3452,7 +3408,7 @@ setWebsiteContentSaveConfirmModal({
           addIcon={sectionConfig.services.addIcon}
           onAdd={() => openServiceForm()}
         >
-          <button type="button" style={styles.secondaryBtn} onClick={() => openServiceKitManager(filteredServices[0])} disabled={!filteredServices.length}>
+          <button type="button" style={styles.secondaryBtn} onClick={() => openServiceKitManager()} disabled={!filteredServices.length}>
             Manage Service Kit
           </button>
           <button type="button" style={styles.secondaryBtn} onClick={openServiceKitHistory}>
@@ -4504,6 +4460,9 @@ setWebsiteContentSaveConfirmModal({
                 style={styles.formInput}
                 disabled={!serviceKitBranchSelected}
               >
+                <option value="" disabled>
+                  Choose a Service
+                </option>
                 {(serviceKitServicesForBranch.length ? serviceKitServicesForBranch : services).map((svc) => (
                   <option key={svc.id} value={svc.id}>
                     {svc.name}
