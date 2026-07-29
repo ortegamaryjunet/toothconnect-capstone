@@ -479,6 +479,11 @@ export default function AdminEmployeeForm() {
   const additionalBranchOptions = branchOptions.filter(
     (option) => String(option.value) !== String(selectedBranchId)
   );
+  const canUsePerDayBranchSchedule = additionalDentistBranchIds.length > 0;
+  const allowedScheduleBranchOptions = branchOptions.filter((option) =>
+    String(option.value) === String(selectedBranchId) ||
+    additionalDentistBranchIds.map(String).includes(String(option.value))
+  );
 
   function createDentistScheduleBlock(day, overrides = {}) {
     return {
@@ -681,6 +686,13 @@ export default function AdminEmployeeForm() {
       return next;
     });
   }, [enablePerDayBranch, dentistWorkDays, selectedBranchId]);
+
+  useEffect(() => {
+    if (canUsePerDayBranchSchedule) return;
+
+    setEnablePerDayBranch(false);
+    setDentistScheduleBlocks({});
+  }, [canUsePerDayBranchSchedule]);
 
   function calculateAge(birthdayStr) {
     if (!birthdayStr) return '';
@@ -1394,7 +1406,7 @@ export default function AdminEmployeeForm() {
           )}
         </div>
         <p style={{ margin: '6px 0 0', color: '#6f675b', fontSize: 12 }}>
-          These branches show the dentist as part of the branch, but do not create appointment availability.
+          These branches show the dentist as part of the branch, but does not create appointment availability.
         </p>
       </div>
     );
@@ -1594,7 +1606,9 @@ export default function AdminEmployeeForm() {
                   <input
                     type="checkbox"
                     checked={enablePerDayBranch}
+                    disabled={!canUsePerDayBranchSchedule}
                     onChange={(e) => {
+                      if (!canUsePerDayBranchSchedule) return;
                       setEnablePerDayBranch(e.target.checked);
                       if (e.target.checked) {
                         dentistWorkDays.forEach((day) => ensureDentistScheduleBlock(day));
@@ -1604,6 +1618,11 @@ export default function AdminEmployeeForm() {
                   />
                   Allow branch time blocks per selected day
                 </label>
+                {!canUsePerDayBranchSchedule && (
+                  <p style={{ margin: '6px 0 0', color: '#8b6508', fontSize: 12, fontWeight: 700 }}>
+                    Select another branch in "Also Dentist In Branches" to enable this.
+                  </p>
+                )}
               </div>
               <div />
             </div>
@@ -1635,7 +1654,12 @@ export default function AdminEmployeeForm() {
                           <span style={{ fontWeight: 700, color: '#8b6508' }}>{day}</span>
                           <button
                             type="button"
-                            style={styles.addWorkBtn}
+                            style={{
+                              ...styles.addWorkBtn,
+                              width: 86,
+                              height: 42,
+                              padding: '10px 12px',
+                            }}
                             onClick={() => addDentistScheduleBlock(day)}
                           >
                             Add Branch
@@ -1662,7 +1686,7 @@ export default function AdminEmployeeForm() {
                               <option value="" disabled>
                                 Select branch
                               </option>
-                              {branchOptions.map((opt) => (
+                              {allowedScheduleBranchOptions.map((opt) => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                               ))}
                             </select>

@@ -335,6 +335,14 @@ export default function AdminEmployees() {
   }, []);
 
   useEffect(() => {
+    if (editedEmployee?.role !== 'Dentist') return;
+    if (normalizeBranchIdArray(editedEmployee?.additionalBranchIds).length > 0) return;
+
+    setUsePerDayBranchSchedule(false);
+    setScheduleDraft({});
+  }, [editedEmployee?.role, editedEmployee?.additionalBranchIds]);
+
+  useEffect(() => {
     async function loadEmployees() {
       try {
         const res = await api.get('/auth/staff-profiles');
@@ -1915,6 +1923,12 @@ export default function AdminEmployees() {
 
     const checkedDays = parseWorkDays(editedEmployee?.workDays);
     const assignedBranchId = Number(editedEmployee?.branchId);
+    const selectedAdditionalBranchIds = normalizeBranchIdArray(editedEmployee?.additionalBranchIds);
+    const canUsePerDayBranchSchedule = selectedAdditionalBranchIds.length > 0;
+    const allowedScheduleBranchIds = new Set([
+      String(assignedBranchId || ''),
+      ...selectedAdditionalBranchIds.map(String),
+    ].filter(Boolean));
 
     return (
       <div style={styles.employeeModalField}>
@@ -1933,19 +1947,30 @@ export default function AdminEmployees() {
           <input
             type="checkbox"
             checked={usePerDayBranchSchedule}
+            disabled={!canUsePerDayBranchSchedule}
             onChange={(event) => {
+              if (!canUsePerDayBranchSchedule) return;
               setUsePerDayBranchSchedule(event.target.checked);
               if (event.target.checked) {
                 checkedDays.forEach((day) => ensureModalScheduleDay(DAY_TO_WEEKDAY[day]));
               }
             }}
-            style={{ accentColor: '#2563eb' }}
+            style={{
+              accentColor: '#2563eb',
+              cursor: canUsePerDayBranchSchedule ? 'pointer' : 'not-allowed',
+            }}
           />
 
           <span style={{ fontSize: 13, color: '#334155' }}>
             Enable branch time blocks per selected day
           </span>
         </div>
+
+        {!canUsePerDayBranchSchedule && (
+          <p style={{ margin: '6px 0 0', color: '#8b6508', fontSize: 12, fontWeight: 700 }}>
+            Select another branch in "Also Dentist In Branches" to enable this.
+          </p>
+        )}
 
         {usePerDayBranchSchedule && (
           <div style={{ marginTop: 16, display: 'grid', gap: 18 }}>
@@ -2003,9 +2028,9 @@ export default function AdminEmployees() {
                       onClick={() => addModalScheduleBlock(weekday)}
                       style={{
                         ...styles.modalButton,
-                        padding: '8px 12px',
-                        minWidth: 110,
-                        height: 38,
+                        padding: '10px 12px',
+                        minWidth: 86,
+                        height: 42,
                         background: isLocked ? '#eef2f7' : '#d4af37',
                         color: isLocked ? '#0f172a' : '#ffffff',
                         opacity: isLocked ? 0.55 : 1,
@@ -2039,7 +2064,12 @@ export default function AdminEmployees() {
                       >
                         <option value="">Select branch</option>
 
-                        {branches.map((branch) => (
+                        {branches
+                          .filter((branch) =>
+                            allowedScheduleBranchIds.has(String(branch.id)) ||
+                            String(branch.id) === String(block.branch_id || '')
+                          )
+                          .map((branch) => (
                           <option key={branch.id} value={String(branch.id)}>
                             {branch.address
                               ? `${branch.name} - ${branch.address}`
