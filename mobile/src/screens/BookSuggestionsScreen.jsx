@@ -90,7 +90,15 @@ function mergeDentists(primary = [], fallback = []) {
 }
 
 export default function BookSuggestionsScreen({ navigation, route }) {
-  const { service, branchId, branchName, rescheduleAppointmentId, preferredDate: aiDate, preferredTime: aiTime } = route.params;
+  const {
+    service,
+    branchId,
+    branchName,
+    rescheduleAppointmentId,
+    rescheduleReason,
+    preferredDate: aiDate,
+    preferredTime: aiTime,
+  } = route.params;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -228,6 +236,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
       branchName,
       suggestion,
       rescheduleAppointmentId: rescheduleAppointmentId || null,
+      rescheduleReason: rescheduleReason || '',
     });
   }
 

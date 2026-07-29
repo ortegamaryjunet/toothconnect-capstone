@@ -27,7 +27,7 @@ function getSuggestionDentists(suggestion) {
 }
 
 export default function BookConfirmScreen({ navigation, route }) {
-  const { service, branchId, branchName, suggestion, rescheduleAppointmentId } = route.params;
+  const { service, branchId, branchName, suggestion, rescheduleAppointmentId, rescheduleReason } = route.params;
   const availableDentists = getSuggestionDentists(suggestion);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -59,6 +59,7 @@ export default function BookConfirmScreen({ navigation, route }) {
         service_id: service.id,
         start_time: startISO,
         ...(rescheduleAppointmentId ? { reschedule_appointment_id: rescheduleAppointmentId } : {}),
+        ...(rescheduleAppointmentId && rescheduleReason ? { reschedule_reason: rescheduleReason } : {}),
       });
       setNewAppointmentId(result?.id ?? null);
       setSuccessModalVisible(true);

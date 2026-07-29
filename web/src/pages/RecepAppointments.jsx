@@ -785,6 +785,7 @@ export default function RecepAppointments() {
         dentist_id: Number(rescheduleModal.appointment.dentistId),
         service_id: Number(rescheduleModal.appointment.serviceId),
         reschedule_appointment_id: Number(rescheduleModal.appointment.id),
+        reschedule_reason: rescheduleReasonText.trim(),
         start_time: buildAppointmentStartISO(
           rescheduleModal.selectedDate,
           formatTimePickerValue(rescheduleModal.selectedTime)
@@ -2388,8 +2389,13 @@ function PendingAppointmentCard({
                 <strong>Original Schedule:</strong> {appointment.originalSchedule || 'Not recorded'}
               </div>
               <div>
-                <strong>Rescheduled:</strong> {appointment.rescheduledSchedule}
+                <strong>Rescheduled:</strong> {appointment.rescheduledSchedule || 'Not recorded'}
               </div>
+              {appointment.rescheduleReason && (
+                <div style={{ marginTop: 3 }}>
+                  <strong>Reason:</strong> {appointment.rescheduleReason}
+                </div>
+              )}
             </div>
           )}
 
@@ -2680,6 +2686,7 @@ function normalizeAppointments(items) {
         scheduleMeta.originalSchedule ||
         `${displayDate.fullDate || '-'} ${displayDate.time || '-'}`,
       rescheduledSchedule: scheduleMeta.rescheduledSchedule || '',
+      rescheduleReason: scheduleMeta.rescheduleReason || '',
       notes: unifiedNote,
       note: unifiedNote,
     };
@@ -3064,10 +3071,12 @@ function extractRescheduleScheduleMeta(noteText) {
   const originalMatch = note.match(/^\s*Original\s*Schedule\s*:\s*(.+)$/im);
   const rescheduledMatch = note.match(/^\s*Rescheduled\s*:\s*(.+)$/im);
   const legacyMatch = note.match(/^\s*Rescheduled\s+to\s+(.+)$/im);
+  const reasonMatch = note.match(/^\s*Reschedule\s*reason\s*:\s*(.+)$/im);
 
   return {
     originalSchedule: originalMatch?.[1]?.trim() || '',
     rescheduledSchedule: rescheduledMatch?.[1]?.trim() || legacyMatch?.[1]?.trim() || '',
+    rescheduleReason: reasonMatch?.[1]?.trim() || '',
   };
 }
 

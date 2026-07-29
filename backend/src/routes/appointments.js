@@ -32,6 +32,29 @@ const DEFAULT_CANCELLATION_POLICY_MESSAGE =
 const PATIENT_CANCELLATION_LOCK_HOURS = 24;
 let appointmentSettingsTableReady = false;
 
+function formatScheduleStampForNote(dateValue) {
+  const stamp = toMySQLDateTime(new Date(dateValue));
+  const [datePart, timePart = '00:00:00'] = stamp.split(' ');
+  const [hourText = '0', minuteText = '00'] = timePart.split(':');
+  const hour24 = Number(hourText);
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 || 12;
+
+  return `${datePart} ${hour12}:${minuteText} ${period}`;
+}
+
+function buildRescheduleNoteForNewAppointment({ existing, reason, originalStart, newStart }) {
+  const prefix = String(existing || '').trim();
+  const cleanReason = String(reason || '').trim();
+  const originalLine = `Original Schedule: ${formatScheduleStampForNote(originalStart)}`;
+  const rescheduledLine = `Rescheduled: ${formatScheduleStampForNote(newStart)}`;
+  const reasonLine = cleanReason ? `Reschedule reason: ${cleanReason}` : 'Reschedule reason: (none)';
+
+  return prefix
+    ? `${prefix}\n\n${originalLine}\n${rescheduledLine}\n${reasonLine}`
+    : `${originalLine}\n${rescheduledLine}\n${reasonLine}`;
+}
+
 async function ensureAppointmentSettingsTable() {
   if (appointmentSettingsTableReady) {
     return;
@@ -869,7 +892,17 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, res) => {
-  const { branch_id, patient_id, dentist_id, service_id, start_time, reschedule_appointment_id, initial_status, note } = req.body;
+  const {
+    branch_id,
+    patient_id,
+    dentist_id,
+    service_id,
+    start_time,
+    reschedule_appointment_id,
+    reschedule_reason,
+    initial_status,
+    note,
+  } = req.body;
   const role = req.user.role;
   const userId = req.user.user_id;
   const userBranches = req.user.branches || [];
@@ -999,7 +1032,10 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
 
     // Validate and cancel old appointment when rescheduling
     let oldAppt = null;
+    let generatedRescheduleNote = '';
     if (reschedule_appointment_id) {
+      const normalizedRescheduleReason =
+        typeof reschedule_reason === 'string' ? reschedule_reason.trim() : '';
       const rescheduleId = parseInt(reschedule_appointment_id, 10);
       const [oldRows] = await conn.query(
         'SELECT * FROM appointments WHERE id = ? AND status = ?',
@@ -1012,7 +1048,28 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
       if (role === 'patient' && oldAppt.patient_id !== effectivePatientId) {
         throw httpError(403, 'Forbidden');
       }
-      await conn.query(`UPDATE appointments SET status = 'cancelled' WHERE id = ?`, [rescheduleId]);
+      if (role === 'patient' && !normalizedRescheduleReason) {
+        throw httpError(400, 'Reschedule reason is required');
+      }
+      await conn.query(
+        `UPDATE appointments
+         SET status = 'cancelled',
+             cancellation_reason = ?,
+             cancelled_by = ?
+         WHERE id = ?`,
+        [
+          normalizedRescheduleReason ||
+            (role === 'patient' ? 'Rescheduled by patient' : 'Rescheduled by staff'),
+          role,
+          rescheduleId,
+        ]
+      );
+      generatedRescheduleNote = buildRescheduleNoteForNewAppointment({
+        existing: oldAppt.dentist_note || '',
+        reason: normalizedRescheduleReason,
+        originalStart: oldAppt.start_time,
+        newStart: start,
+      });
       isReschedule = true;
     }
 
@@ -1024,9 +1081,10 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     const insertColumns = ['branch_id', 'patient_id', 'dentist_id', 'service_id', 'start_time', 'duration_min', 'status'];
     const insertValues = [effectiveBranchId, effectivePatientId, assignedDentistId, service_id, toMySQLDateTime(start), service.duration_min, effectiveStatus];
     const normalizedNote = typeof note === 'string' ? note.trim() : '';
-    if (normalizedNote) {
+    const noteForInsert = normalizedNote || generatedRescheduleNote;
+    if (noteForInsert) {
       insertColumns.push('dentist_note');
-      insertValues.push(normalizedNote);
+      insertValues.push(noteForInsert);
     }
 
     [result] = await conn.query(
@@ -1047,6 +1105,10 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
         created_by_role: role,
         assignment_mode: !dentist_id ? 'round_robin' : 'explicit',
         reschedule_of: reschedule_appointment_id || null,
+        reschedule_reason:
+          typeof reschedule_reason === 'string' && reschedule_reason.trim()
+            ? reschedule_reason.trim()
+            : null,
       })]
     );
 
@@ -1129,6 +1191,15 @@ router.patch('/:id/cancel', async (req, res) => {
 
     if (role === 'patient' && appt.patient_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
+    }
+    if (role === 'patient') {
+      const hoursUntilAppointment =
+        (new Date(appt.start_time).getTime() - Date.now()) / (60 * 60 * 1000);
+      if (hoursUntilAppointment <= PATIENT_CANCELLATION_LOCK_HOURS) {
+        return res.status(400).json({
+          message: 'Appointments can no longer be cancelled within 24 hours of the scheduled time.',
+        });
+      }
     }
     if (role === 'dentist' && appt.dentist_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });

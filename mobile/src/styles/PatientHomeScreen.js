@@ -137,10 +137,16 @@ const styles = StyleSheet.create({
         marginTop: 10,
         alignSelf: 'flex-start'
     },
+    apptCancelLinkDisabled: {
+        opacity: 0.45
+    },
     apptCancelLinkText: {
         color: '#9b2c2c',
         fontSize: 12,
         fontWeight: '500'
+    },
+    apptCancelLinkTextDisabled: {
+        color: '#a0aec0'
     },
 
     emptyAppts: {
