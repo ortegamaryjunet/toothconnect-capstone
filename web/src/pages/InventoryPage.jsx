@@ -1024,11 +1024,10 @@ export default function InventoryPage() {
     }
 
     if (selectedInventoryItem.type === 'supplies') {
-      return ['supplyName', 'brand', 'category', 'threshold', 'unit'];
+      return ['brand', 'category', 'threshold', 'unit'];
     }
 
     return [
-      'equipmentName',
       'brand',
       'category',
       'modelNumber',
@@ -1133,7 +1132,6 @@ export default function InventoryPage() {
         }
       : type === 'supplies'
       ? {
-          supply_name: editForm.supplyName.trim(),
           brand: editForm.brand.trim(),
           category: editForm.category.trim(),
           unit: editForm.unit.trim(),
@@ -1141,7 +1139,6 @@ export default function InventoryPage() {
           ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
         }
       : {
-          equipment_name: editForm.equipmentName.trim(),
           brand: editForm.brand.trim(),
           category: editForm.category.trim(),
           model_number: editForm.modelNumber.trim(),
@@ -1171,7 +1168,6 @@ export default function InventoryPage() {
           ]
         : selectedInventoryItem.type === 'supplies'
         ? [
-            ['Supply Name', selectedInventoryItem.supplyName, editForm.supplyName],
             ['Brand', selectedInventoryItem.brand, editForm.brand],
             ['Category', selectedInventoryItem.category, editForm.category],
             ['Critical Stock Level', selectedInventoryItem.threshold, editForm.threshold],
@@ -1179,7 +1175,6 @@ export default function InventoryPage() {
             ['Unit', selectedInventoryItem.unit, editForm.unit],
           ]
         : [
-            ['Equipment Name', selectedInventoryItem.equipmentName, editForm.equipmentName],
             ['Brand', selectedInventoryItem.brand, editForm.brand],
             ['Category', selectedInventoryItem.category, editForm.category],
             ['Model Number', selectedInventoryItem.modelNumber, editForm.modelNumber],
@@ -2019,24 +2014,76 @@ export default function InventoryPage() {
       cursor: 'not-allowed',
     };
     const editLabelStyle = { ...styles.formLabel, color: expenseGoldDark };
+    const renderExpenseManagedFields = () => (
+      <>
+        <label style={styles.formGroup}>
+          <span style={editLabelStyle}>Item Name</span>
+          <input
+            type="text"
+            value={getInventoryItemName(selectedInventoryItem)}
+            readOnly
+            style={readOnlyFieldStyle}
+            aria-readonly="true"
+          />
+        </label>
+
+        <label style={styles.formGroup}>
+          <span style={editLabelStyle}>Branch</span>
+          <input
+            type="text"
+            value={selectedInventoryItem.branchName || 'N/A'}
+            readOnly
+            style={readOnlyFieldStyle}
+            aria-readonly="true"
+          />
+        </label>
+
+        <label style={styles.formGroup}>
+          <span style={editLabelStyle}>Supplier</span>
+          <input
+            type="text"
+            value={selectedInventoryItem.supplier || 'N/A'}
+            readOnly
+            style={readOnlyFieldStyle}
+            aria-readonly="true"
+          />
+        </label>
+
+        <label style={styles.formGroup}>
+          <span style={editLabelStyle}>Quantity</span>
+          <input
+            type="text"
+            value={String(selectedInventoryItem.quantity ?? 0)}
+            readOnly
+            style={readOnlyFieldStyle}
+            aria-readonly="true"
+          />
+        </label>
+
+        <label style={styles.formGroup}>
+          <span style={editLabelStyle}>Price per Item</span>
+          <input
+            type="text"
+            value={formatPeso(selectedInventoryItem.pricePerItem || 0)}
+            readOnly
+            style={readOnlyFieldStyle}
+            aria-readonly="true"
+          />
+        </label>
+      </>
+    );
+    const renderExpenseManagedNote = () => (
+      <p style={{ ...styles.helperText, border: `1px solid ${expenseGoldBorder}`, background: '#ffffff', color: expenseGoldDark, fontWeight: 700 }}>
+        Item name, branch, supplier, quantity, and price are managed through
+        expense input.
+      </p>
+    );
 
     if (selectedInventoryItem.type === 'equipment') {
       return (
         <>
           <div style={styles.formGrid}>
-            <label style={styles.formGroup}>
-              {renderEditRequiredLabel('Equipment Name')}
-              <input
-                type="text"
-                value={editForm.equipmentName}
-                onChange={(event) =>
-                  handleEditFormChange('equipmentName', event.target.value)
-                }
-                onBlur={() => handleEditFieldBlur('equipmentName')}
-                style={getEditFieldStyle('equipmentName')}
-              />
-              {renderEditFieldError('equipmentName')}
-            </label>
+            {renderExpenseManagedFields()}
 
             <label style={styles.formGroup}>
               {renderEditRequiredLabel('Brand')}
@@ -2189,6 +2236,8 @@ export default function InventoryPage() {
             </label>
           </div>
 
+          {renderExpenseManagedNote()}
+
           {editError && (
             <p
               style={{
@@ -2208,19 +2257,7 @@ export default function InventoryPage() {
       return (
         <>
           <div style={styles.formGrid}>
-            <label style={styles.formGroup}>
-              {renderEditRequiredLabel('Supply Name')}
-              <input
-                type="text"
-                value={editForm.supplyName}
-                onChange={(event) =>
-                  handleEditFormChange('supplyName', event.target.value)
-                }
-                onBlur={() => handleEditFieldBlur('supplyName')}
-                style={getEditFieldStyle('supplyName')}
-              />
-              {renderEditFieldError('supplyName')}
-            </label>
+            {renderExpenseManagedFields()}
 
             <label style={styles.formGroup}>
               {renderEditRequiredLabel('Brand')}
@@ -2299,10 +2336,7 @@ export default function InventoryPage() {
             </label>
           </div>
 
-          <p style={{ ...styles.helperText, border: `1px solid ${expenseGoldBorder}`, background: '#ffffff', color: expenseGoldDark, fontWeight: 700 }}>
-            Branch, supplier, quantity, and price are managed through expense
-            input.
-          </p>
+          {renderExpenseManagedNote()}
 
           {editError && (
             <p
@@ -2322,60 +2356,7 @@ export default function InventoryPage() {
     return (
       <>
         <div style={styles.formGrid}>
-          <label style={styles.formGroup}>
-            <span style={editLabelStyle}>Item Name</span>
-            <input
-              type="text"
-              value={getInventoryItemName(selectedInventoryItem)}
-              readOnly
-              style={readOnlyFieldStyle}
-              aria-readonly="true"
-            />
-          </label>
-
-          <label style={styles.formGroup}>
-            <span style={editLabelStyle}>Branch</span>
-            <input
-              type="text"
-              value={selectedInventoryItem.branchName || 'N/A'}
-              readOnly
-              style={readOnlyFieldStyle}
-              aria-readonly="true"
-            />
-          </label>
-
-          <label style={styles.formGroup}>
-            <span style={editLabelStyle}>Supplier</span>
-            <input
-              type="text"
-              value={selectedInventoryItem.supplier || 'N/A'}
-              readOnly
-              style={readOnlyFieldStyle}
-              aria-readonly="true"
-            />
-          </label>
-
-          <label style={styles.formGroup}>
-            <span style={editLabelStyle}>Quantity</span>
-            <input
-              type="text"
-              value={String(selectedInventoryItem.quantity ?? 0)}
-              readOnly
-              style={readOnlyFieldStyle}
-              aria-readonly="true"
-            />
-          </label>
-
-          <label style={styles.formGroup}>
-            <span style={editLabelStyle}>Price per Item</span>
-            <input
-              type="text"
-              value={formatPeso(selectedInventoryItem.pricePerItem || 0)}
-              readOnly
-              style={readOnlyFieldStyle}
-              aria-readonly="true"
-            />
-          </label>
+          {renderExpenseManagedFields()}
 
           {selectedInventoryItem.type === 'medicine' && (
             <>
@@ -2502,10 +2483,7 @@ export default function InventoryPage() {
 
         </div>
 
-        <p style={{ ...styles.helperText, border: `1px solid ${expenseGoldBorder}`, background: '#ffffff', color: expenseGoldDark, fontWeight: 700 }}>
-          Item name, branch, supplier, quantity, and price are managed through
-          expense input.
-        </p>
+        {renderExpenseManagedNote()}
 
         {editError && (
           <p
