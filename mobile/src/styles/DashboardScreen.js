@@ -85,16 +85,24 @@ const styles = StyleSheet.create({
   branchBadge: {
     alignSelf: "flex-start",
     backgroundColor: "#334155",
-    borderRadius: 20,
-    paddingHorizontal: 13,
-    paddingVertical: 5,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     marginTop: 8,
   },
 
+  branchBadgeLabel: {
+    fontSize: 9,
+    color: "#cbd5e1",
+    fontWeight: "800",
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+
   branchBadgeText: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#ffffff",
-    fontWeight: "600",
+    fontWeight: "800",
   },
 
   appointmentCard: {

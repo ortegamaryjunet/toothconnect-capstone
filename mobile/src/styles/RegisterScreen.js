@@ -18,7 +18,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 16,
-    paddingVertical: 24,
+    paddingTop: 24,
+    paddingBottom: 140,
   },
 
   logoSection: {
@@ -211,6 +212,18 @@ const styles = StyleSheet.create({
   branchChipAddressActive: {
     color: "#ffffff",
     opacity: 0.9,
+  },
+
+  branchStatusText: {
+    backgroundColor: "#ffffff",
+    borderRadius: 6,
+    color: "#8a650e",
+    fontSize: 13,
+    fontWeight: "800",
+    lineHeight: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    width: "100%",
   },
 
   error: {

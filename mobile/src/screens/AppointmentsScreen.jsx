@@ -10,7 +10,6 @@ import {
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import AppSidebar from '../components/AppSidebar';
 import * as ImagePicker from 'expo-image-picker';
@@ -826,7 +825,7 @@ export default function AppointmentsScreen({ navigation, route }) {
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior="padding"
         >
           <Pressable style={styles.modalOverlay} onPress={closeRatingModal}>
           <Pressable style={styles.modalSheet} onPress={() => {}}>

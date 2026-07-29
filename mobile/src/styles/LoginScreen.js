@@ -18,7 +18,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 22,
-    paddingVertical: 28,
+    paddingTop: 28,
+    paddingBottom: 96,
   },
 
   logoSection: {

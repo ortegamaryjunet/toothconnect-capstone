@@ -193,6 +193,17 @@ const styles = StyleSheet.create({
     color: '#8a650e',
     fontWeight: '900',
   },
+  quickPickEmptyText: {
+    backgroundColor: '#fffaf0',
+    borderRadius: 8,
+    color: '#8a650e',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    width: '100%',
+  },
 
   mainMessages: {
     paddingTop: 12,

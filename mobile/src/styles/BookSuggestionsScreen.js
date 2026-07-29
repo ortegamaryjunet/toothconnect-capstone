@@ -468,6 +468,17 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#f0c6b8',
         fontWeight: '600'
+    },
+    notice: {
+        backgroundColor: '#fff8e8',
+        color: '#8a650e',
+        padding: 12,
+        borderRadius: 8,
+        fontSize: 13,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#ead7b2',
+        fontWeight: '700'
     }
 });
 

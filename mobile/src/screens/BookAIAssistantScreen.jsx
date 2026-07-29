@@ -7,7 +7,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Keyboard,
-  Platform,
   ActivityIndicator,
   Modal,
   Pressable,
@@ -39,6 +38,85 @@ const DENTAL_KEYWORDS = [
 function isDentalRelated(text) {
   const lower = text.toLowerCase();
   return DENTAL_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+function normalizeMatchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const SERVICE_KEYWORDS = [
+  {
+    service: ['deep scaling', 'dental cleaning'],
+    terms: ['cleaning', 'clean my teeth', 'teeth cleaning', 'dental cleaning', 'deep scaling', 'scaling', 'prophylaxis', 'plaque', 'tartar', 'linis'],
+  },
+  {
+    service: ['teeth whitening'],
+    terms: ['whitening', 'teeth whitening', 'tooth whitening', 'whiten', 'yellow teeth', 'stained teeth', 'discolored teeth', 'brighten'],
+  },
+  {
+    service: ['orthodontics', 'braces'],
+    terms: ['braces', 'brace', 'bracket', 'orthodontic', 'orthodontics', 'crooked teeth', 'misaligned', 'sungki'],
+  },
+  {
+    service: ['clear aligners'],
+    terms: ['clear aligner', 'clear aligners', 'aligner', 'aligners', 'invisalign'],
+  },
+  {
+    service: ['veneer'],
+    terms: ['veneer', 'veneers', 'emax'],
+  },
+  {
+    service: ['crown', 'jacket'],
+    terms: ['crown', 'crowns', 'jacket crown', 'porcelain crown', 'zirconia crown', 'pfm'],
+  },
+  {
+    service: ['denture'],
+    terms: ['denture', 'dentures', 'partial denture', 'removable denture', 'pustiso'],
+  },
+  {
+    service: ['root canal'],
+    terms: ['root canal', 'root canal treatment', 'pulp treatment'],
+  },
+  {
+    service: ['implant'],
+    terms: ['implant', 'implants', 'dental implant'],
+  },
+  {
+    service: ['smile make'],
+    terms: ['smile makeover', 'smile make over', 'smile design', 'cosmetic smile'],
+  },
+];
+
+function findMatchingQuickService(text, services) {
+  const concernText = normalizeMatchText(text);
+  if (!concernText) return null;
+
+  const normalizedServices = services.map((service) => ({
+    service,
+    name: normalizeMatchText(service.name),
+  }));
+
+  for (const candidate of normalizedServices) {
+    if (candidate.name && concernText.includes(candidate.name)) {
+      return candidate.service;
+    }
+  }
+
+  for (const rule of SERVICE_KEYWORDS) {
+    const hasTerm = rule.terms.some((term) => concernText.includes(normalizeMatchText(term)));
+    if (!hasTerm) continue;
+
+    const matched = normalizedServices.find((candidate) =>
+      rule.service.some((serviceTerm) => candidate.name.includes(normalizeMatchText(serviceTerm)))
+    );
+    if (matched) return matched.service;
+  }
+
+  return null;
 }
 
 const DAYS_OF_WEEK = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -196,9 +274,17 @@ export default function BookAIAssistantScreen({ navigation }) {
 
   function getFilteredServices() {
     if (!selectedBranch) return services;
-    return services.filter(
-      s => !s.available_branch_ids || s.available_branch_ids.includes(selectedBranch)
-    );
+    const branchFiltered = services.filter((service) => {
+      const branchIds = Array.isArray(service.available_branch_ids)
+        ? service.available_branch_ids
+        : [];
+
+      if (branchIds.length === 0) return true;
+
+      return branchIds.some((id) => String(id) === String(selectedBranch));
+    });
+
+    return branchFiltered.length > 0 ? branchFiltered : services;
   }
 
   function scrollChatToEnd(delay = 80) {
@@ -264,6 +350,27 @@ export default function BookAIAssistantScreen({ navigation }) {
     navigation.navigate('AIAnalysis', params);
   }
 
+  function proceedWithQuickService(service, parsedPreference = null) {
+    const branch = branches.find(b => b.id === selectedBranch);
+    const params = {
+      service: {
+        id: service.id,
+        name: service.name,
+        duration_min: service.duration_min || 30,
+        price: service.price ?? 0,
+      },
+      branchId: selectedBranch,
+      branchName: getBranchCity(branch),
+    };
+
+    if (parsedPreference) {
+      params.preferredDate = parsedPreference.date;
+      params.preferredTime = parsedPreference.time;
+    }
+
+    navigation.navigate('BookSuggestions', params);
+  }
+
   async function handleContinue() {
     setInputError('');
 
@@ -275,6 +382,13 @@ export default function BookAIAssistantScreen({ navigation }) {
     const finalConcern = selectedQuick ? selectedQuick.name : concern.trim();
     if (!finalConcern) {
       setInputError('Please describe your concern or pick a service.');
+      return;
+    }
+
+    const matchedQuick = selectedQuick || findMatchingQuickService(finalConcern, getFilteredServices());
+    if (matchedQuick) {
+      const parsed = parseConcernDateTime(concern);
+      proceedWithQuickService(matchedQuick, parsed);
       return;
     }
 
@@ -363,6 +477,15 @@ export default function BookAIAssistantScreen({ navigation }) {
       return;
     }
 
+    const matchedQuick = selectedQuick || findMatchingQuickService(messageText, getFilteredServices());
+    if (matchedQuick) {
+      setSelectedQuick(matchedQuick);
+      appendUserMessage(messageText);
+      appendAssistantMessage(`I matched that to ${matchedQuick.name}. I will look for available slots now.`);
+      proceedWithQuickService(matchedQuick, parseConcernDateTime(concern));
+      return;
+    }
+
     if (!selectedQuick && !isDentalRelated(messageText)) {
       setNonDentalModal(true);
       return;
@@ -406,6 +529,14 @@ export default function BookAIAssistantScreen({ navigation }) {
     if (!messageText) {
       setInputError('Please describe your concern or pick a service.');
       appendAssistantMessage('Please type your dental concern or choose one of the quick picks first.');
+      return;
+    }
+
+    const matchedQuick = selectedQuick || findMatchingQuickService(messageText, getFilteredServices());
+    if (matchedQuick) {
+      setSelectedQuick(matchedQuick);
+      appendAssistantMessage(`I matched that to ${matchedQuick.name}. I will look for available slots now.`);
+      proceedWithQuickService(matchedQuick, parseConcernDateTime(concern));
       return;
     }
 
@@ -477,7 +608,7 @@ export default function BookAIAssistantScreen({ navigation }) {
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
       >
         <ScrollView
           ref={chatScrollRef}
@@ -485,6 +616,7 @@ export default function BookAIAssistantScreen({ navigation }) {
           contentContainerStyle={styles.chatContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {/* Bot greeting bubble */}
           <View style={styles.botRow}>
@@ -538,7 +670,7 @@ export default function BookAIAssistantScreen({ navigation }) {
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionLabel}>Quick Picks</Text>
                 <View style={styles.chipGrid}>
-                  {getFilteredServices().map(s => (
+                  {getFilteredServices().length > 0 ? getFilteredServices().map(s => (
                     <TouchableOpacity
                       key={s.id}
                       style={[
@@ -556,7 +688,11 @@ export default function BookAIAssistantScreen({ navigation }) {
                         {s.name}
                       </Text>
                     </TouchableOpacity>
-                  ))}
+                  )) : (
+                    <Text style={styles.quickPickEmptyText}>
+                      Services are loading. You can still type your dental concern below.
+                    </Text>
+                  )}
                 </View>
               </View>
 
@@ -668,6 +804,7 @@ export default function BookAIAssistantScreen({ navigation }) {
                 ]}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
               >
                 {assistantMessages.map(message => (
                   <View

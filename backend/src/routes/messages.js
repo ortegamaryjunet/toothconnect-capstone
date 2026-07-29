@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { authenticate } = require('../middleware/auth');
+const { sendPushToUser } = require('../services/push');
 
 const router = express.Router();
 
@@ -235,6 +236,18 @@ router.post('/', async (req, res) => {
         result.insertId,
       ]
     );
+
+    sendPushToUser(receiver_id, {
+      title: `New message from ${req.user.name || userRole}`,
+      body: content.trim().slice(0, 100),
+      data: {
+        type: 'message',
+        message_id: result.insertId,
+        sender_id: userId,
+      },
+    }).catch((pushErr) => {
+      console.error('Failed to send message push notification:', pushErr);
+    });
 
     res.status(201).json({
       id: result.insertId,

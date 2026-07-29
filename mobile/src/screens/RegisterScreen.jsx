@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Image,
   Alert,
@@ -29,6 +28,8 @@ export default function RegisterScreen({ navigation }) {
   const [code, setCode] = useState('');
   const [branchId, setBranchId] = useState(null);
   const [branches, setBranches] = useState([]);
+  const [branchesLoading, setBranchesLoading] = useState(true);
+  const [branchesError, setBranchesError] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,11 +63,20 @@ export default function RegisterScreen({ navigation }) {
   }, [step, resendTimer]);
 
   async function loadBranches() {
+    setBranchesLoading(true);
+    setBranchesError('');
+
     try {
       const res = await api.get('/auth/branches');
-      setBranches(res.data.branches);
+      const nextBranches = res.data.branches || [];
+      setBranches(nextBranches);
+      setBranchId(currentId => currentId || nextBranches[0]?.id || null);
     } catch (err) {
-      // silent — handled when user tries to submit
+      setBranches([]);
+      setBranchId(null);
+      setBranchesError('Branches could not load. Check that the backend is running.');
+    } finally {
+      setBranchesLoading(false);
     }
   }
 
@@ -241,7 +251,7 @@ export default function RegisterScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardWrapper}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         keyboardVerticalOffset={0}
       >
         <ScrollView
@@ -249,6 +259,7 @@ export default function RegisterScreen({ navigation }) {
           contentContainerStyle={styles.inner}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <View style={styles.logoSection}>
             <Image
@@ -310,7 +321,13 @@ export default function RegisterScreen({ navigation }) {
 
                 <Text style={styles.label}>Home Branch</Text>
                 <View style={styles.branchPicker}>
-                  {branches.map(b => {
+                  {branchesLoading ? (
+                    <Text style={styles.branchStatusText}>Loading branches...</Text>
+                  ) : branchesError ? (
+                    <Text style={styles.branchStatusText}>{branchesError}</Text>
+                  ) : branches.length === 0 ? (
+                    <Text style={styles.branchStatusText}>No branches available.</Text>
+                  ) : branches.map(b => {
                     const isActive = branchId === b.id;
 
                     return (

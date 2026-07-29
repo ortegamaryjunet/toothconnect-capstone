@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatTimeOnly, formatRelativeDate } from '../utils/datetime';
 import styles from '../styles/BookSuggestionsScreen';
 import { getAppointmentMeta, suggestSlots } from '../api/appointments';
+import { listPatientDentists } from '../api/patients';
 
 const HOUR_OPTIONS = Array.from({ length: 10 }, (_, index) => 10 + index);
 const MINUTE_OPTIONS = [0, 30];
@@ -89,11 +90,77 @@ function mergeDentists(primary = [], fallback = []) {
   );
 }
 
+function dentistMatchesService(dentist, service) {
+  const serviceIds = Array.isArray(dentist.service_ids) ? dentist.service_ids : [];
+  if (serviceIds.some((id) => String(id) === String(service?.id))) return true;
+
+  const serviceText = String(dentist.services || '').toLowerCase();
+  return !serviceText || serviceText.includes(String(service?.name || '').toLowerCase());
+}
+
+function dentistMatchesBranch(dentist, branchId, branchName) {
+  const branchIds = Array.isArray(dentist.branch_ids) ? dentist.branch_ids : [];
+  if (branchIds.some((id) => String(id) === String(branchId))) return true;
+
+  if (dentist.home_branch_id && String(dentist.home_branch_id) === String(branchId)) return true;
+
+  const dentistBranchText = `${dentist.branch_name || ''} ${dentist.branch_address || ''}`.toLowerCase();
+  return dentistBranchText.includes(String(branchName || '').toLowerCase());
+}
+
+function mapDentistOptions(dentists) {
+  return dentists.map((dentist) => ({
+    dentist_id: dentist.id,
+    dentist_name: dentist.name,
+  }));
+}
+
+function buildFallbackDentistOptions(dentists, service, branchId, branchName) {
+  const serviceMatches = dentists.filter((dentist) => dentistMatchesService(dentist, service));
+  const branchMatches = serviceMatches.filter((dentist) =>
+    dentistMatchesBranch(dentist, branchId, branchName)
+  );
+
+  if (branchMatches.length > 0) return mapDentistOptions(branchMatches);
+  if (serviceMatches.length > 0) return mapDentistOptions(serviceMatches);
+  return mapDentistOptions(dentists);
+}
+
+function normalizeText(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function findServiceByName(services, serviceName) {
+  const target = normalizeText(serviceName);
+  if (!target) return null;
+
+  return services.find((candidate) => normalizeText(candidate.name) === target) ||
+    services.find((candidate) => normalizeText(candidate.name).includes(target)) ||
+    services.find((candidate) => target.includes(normalizeText(candidate.name)));
+}
+
+function filterSlotResultFrom(result, minStartISO) {
+  if (!Array.isArray(result?.suggestions) || !minStartISO) return result;
+
+  const minTime = new Date(minStartISO).getTime();
+  if (Number.isNaN(minTime)) return result;
+
+  return {
+    ...result,
+    suggestions: result.suggestions.filter((suggestion) => {
+      const suggestionTime = new Date(normalizeSuggestionTime(suggestion.start_time)).getTime();
+      return !Number.isNaN(suggestionTime) && suggestionTime >= minTime;
+    }),
+  };
+}
+
 export default function BookSuggestionsScreen({ navigation, route }) {
   const { service, branchId, branchName, rescheduleAppointmentId, preferredDate: aiDate, preferredTime: aiTime } = route.params;
+  const [resolvedService, setResolvedService] = useState(service);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [showPreferredSearch, setShowPreferredSearch] = useState(false);
   const [preferredDate, setPreferredDate] = useState(aiDate || getDefaultPreferredDate());
   const [preferredTime, setPreferredTime] = useState(aiTime || '10:00');
@@ -116,6 +183,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
   const selectedDentist = dentistOptions.find(
     (dentist) => String(dentist.dentist_id) === String(selectedDentistId)
   );
+  const displayService = resolvedService || service;
 
   useEffect(() => {
     loadDentistOptions();
@@ -127,26 +195,82 @@ export default function BookSuggestionsScreen({ navigation, route }) {
     }
   }, []);
 
+  async function resolveServiceForSlots() {
+    if (resolvedService?.id) return resolvedService;
+    if (service?.id) return service;
+
+    const meta = await getAppointmentMeta();
+    const services = Array.isArray(meta?.services) ? meta.services : [];
+    const matched = findServiceByName(services, service?.name);
+
+    if (matched?.id) {
+      const nextService = {
+        ...service,
+        ...matched,
+        duration_min: matched.duration_min || service?.duration_min || 30,
+      };
+      setResolvedService(nextService);
+      return nextService;
+    }
+
+    return service;
+  }
+
+  async function requestSlotSuggestions(payload, { allowDentistFallback = true } = {}) {
+    const result = await suggestSlots(payload);
+    const hasSuggestions = Array.isArray(result?.suggestions) && result.suggestions.length > 0;
+
+    if (!hasSuggestions && allowDentistFallback && payload.dentist_id) {
+      const fallbackPayload = { ...payload };
+      delete fallbackPayload.dentist_id;
+      const fallbackResult = await suggestSlots(fallbackPayload);
+      const fallbackHasSuggestions =
+        Array.isArray(fallbackResult?.suggestions) && fallbackResult.suggestions.length > 0;
+
+      if (fallbackHasSuggestions) {
+        setSelectedDentistId('');
+        setNotice('The selected dentist has no close slots, so we showed all available dentists instead.');
+        return fallbackResult;
+      }
+    }
+
+    return result;
+  }
+
   async function loadDentistOptions() {
     try {
       const meta = await getAppointmentMeta();
       const dentists = Array.isArray(meta?.dentists) ? meta.dentists : [];
+      const services = Array.isArray(meta?.services) ? meta.services : [];
+      const serviceForFilter = service?.id ? service : findServiceByName(services, service?.name) || service;
+      if (!service?.id && serviceForFilter?.id) setResolvedService(serviceForFilter);
       const filtered = dentists
         .filter((dentist) => {
           const serviceIds = Array.isArray(dentist.service_ids) ? dentist.service_ids : [];
           const branchIds = Array.isArray(dentist.branch_ids) ? dentist.branch_ids : [];
 
-          return serviceIds.some((id) => Number(id) === Number(service.id)) &&
-            branchIds.some((id) => Number(id) === Number(branchId));
+          return serviceIds.some((id) => String(id) === String(serviceForFilter.id)) &&
+            branchIds.some((id) => String(id) === String(branchId));
         })
         .map((dentist) => ({
           dentist_id: dentist.id,
           dentist_name: dentist.name,
         }));
 
-      setMetaDentists(filtered);
+      if (filtered.length > 0) {
+        setMetaDentists(filtered);
+        return;
+      }
+
+      const patientDentists = await listPatientDentists();
+      setMetaDentists(buildFallbackDentistOptions(patientDentists, serviceForFilter, branchId, branchName));
     } catch (_) {
-      setMetaDentists([]);
+      try {
+        const patientDentists = await listPatientDentists();
+        setMetaDentists(buildFallbackDentistOptions(patientDentists, resolvedService || service, branchId, branchName));
+      } catch {
+        setMetaDentists([]);
+      }
     }
   }
 
@@ -163,24 +287,43 @@ export default function BookSuggestionsScreen({ navigation, route }) {
       if (inRange) {
         setLoading(true);
         setError('');
+        setNotice('');
         try {
+          const serviceForRequest = await resolveServiceForSlots();
+          if (!serviceForRequest?.id) {
+            setError('Please choose the service again so we can find available slots.');
+            setLoading(false);
+            return;
+          }
+
           const preferredStart = buildClinicISO(date, time);
           const preferred = new Date(preferredStart);
           const from = new Date(preferred);
-          from.setDate(preferred.getDate() - 3);
           const to = new Date(preferred);
           to.setDate(preferred.getDate() + 14);
 
-          const result = await suggestSlots({
+          const payload = {
             branch_id: branchId,
-            service_id: service.id,
+            service_id: serviceForRequest.id,
             from: from.toISOString(),
             to: to.toISOString(),
             preferred_start: preferredStart,
             ...(selectedDentistId ? { dentist_id: Number(selectedDentistId) } : {}),
             limit: 8,
-          });
-          setData(result);
+          };
+
+          let result;
+          try {
+            result = await requestSlotSuggestions(payload);
+          } catch (err) {
+            if (!payload.dentist_id) throw err;
+            const retryPayload = { ...payload };
+            delete retryPayload.dentist_id;
+            result = await suggestSlots(retryPayload);
+            setSelectedDentistId('');
+            setNotice('The selected dentist could not be checked, so we showed all available dentists instead.');
+          }
+          setData(filterSlotResultFrom(result, preferredStart));
           setSuggestionMode('preferred');
           setSelectedSlotBooked(Boolean(result.selected_slot_booked));
         } catch (err) {
@@ -198,20 +341,39 @@ export default function BookSuggestionsScreen({ navigation, route }) {
   async function loadSuggestions(dentistId = selectedDentistId) {
     setLoading(true);
     setError('');
+    setNotice('');
     try {
-      const now = new Date();
-      const future = new Date();
-      future.setDate(now.getDate() + 14);
+      const serviceForRequest = await resolveServiceForSlots();
+      if (!serviceForRequest?.id) {
+        setError('Please choose the service again so we can find available slots.');
+        return;
+      }
 
-      const result = await suggestSlots({
+      const searchStart = getEarliestSearchStart();
+      const future = new Date();
+      future.setDate(searchStart.getDate() + 14);
+
+      const payload = {
         branch_id: branchId,
-        service_id: service.id,
-        from: now.toISOString(),
+        service_id: serviceForRequest.id,
+        from: searchStart.toISOString(),
         to: future.toISOString(),
         ...(dentistId ? { dentist_id: Number(dentistId) } : {}),
         limit: 8,
-      });
-      setData(result);
+      };
+
+      let result;
+      try {
+        result = await requestSlotSuggestions(payload);
+      } catch (err) {
+        if (!payload.dentist_id) throw err;
+        const retryPayload = { ...payload };
+        delete retryPayload.dentist_id;
+        result = await suggestSlots(retryPayload);
+        setSelectedDentistId('');
+        setNotice('The selected dentist could not be checked, so we showed all available dentists instead.');
+      }
+      setData(filterSlotResultFrom(result, searchStart.toISOString()));
       setSuggestionMode('earliest');
       setSelectedSlotBooked(false);
     } catch (err) {
@@ -223,7 +385,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
 
   function handlePick(suggestion) {
     navigation.navigate('BookConfirm', {
-      service,
+      service: resolvedService || service,
       branchId,
       branchName,
       suggestion,
@@ -234,6 +396,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
   async function handlePreferredSearch() {
     setPreferredLoading(true);
     setError('');
+    setNotice('');
 
     try {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(preferredDate)) {
@@ -259,23 +422,40 @@ export default function BookSuggestionsScreen({ navigation, route }) {
       }
 
       const preferredStart = buildClinicISO(preferredDate, preferredTime);
+      const serviceForRequest = await resolveServiceForSlots();
+      if (!serviceForRequest?.id) {
+        setError('Please choose the service again so we can find available slots.');
+        return;
+      }
+
       const preferred = new Date(preferredStart);
       const from = new Date(preferred);
-      from.setDate(preferred.getDate() - 3);
       const to = new Date(preferred);
       to.setDate(preferred.getDate() + 14);
 
-      const result = await suggestSlots({
+      const payload = {
         branch_id: branchId,
-        service_id: service.id,
+        service_id: serviceForRequest.id,
         from: from.toISOString(),
         to: to.toISOString(),
         preferred_start: preferredStart,
         ...(selectedDentistId ? { dentist_id: Number(selectedDentistId) } : {}),
         limit: 8,
-      });
+      };
 
-      setData(result);
+      let result;
+      try {
+        result = await requestSlotSuggestions(payload);
+      } catch (err) {
+        if (!payload.dentist_id) throw err;
+        const retryPayload = { ...payload };
+        delete retryPayload.dentist_id;
+        result = await suggestSlots(retryPayload);
+        setSelectedDentistId('');
+        setNotice('The selected dentist could not be checked, so we showed all available dentists instead.');
+      }
+
+      setData(filterSlotResultFrom(result, preferredStart));
       setSuggestionMode('preferred');
       setSelectedSlotBooked(Boolean(result.selected_slot_booked));
     } catch (err) {
@@ -312,6 +492,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
           showsVerticalScrollIndicator={false}
         >
           {error ? <Text style={styles.error}>{error}</Text> : null}
+          {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
         <View style={styles.contextCard}>
           <View style={styles.contextRow}>
@@ -321,12 +502,12 @@ export default function BookSuggestionsScreen({ navigation, route }) {
 
           <View style={styles.contextRow}>
             <Text style={styles.contextLabel}>Service</Text>
-            <Text style={styles.contextValue}>{service.name}</Text>
+            <Text style={styles.contextValue}>{displayService.name}</Text>
           </View>
 
           <View style={styles.contextRow}>
             <Text style={styles.contextLabel}>Duration</Text>
-            <Text style={styles.contextValue}>{service.duration_min} min</Text>
+            <Text style={styles.contextValue}>{displayService.duration_min || 30} min</Text>
           </View>
 
           <View style={styles.contextDivider} />
@@ -551,6 +732,49 @@ function getDefaultPreferredDate() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   return toDateKey(tomorrow);
+}
+
+function getEarliestSearchStart() {
+  const now = new Date();
+  const clinicParts = getClinicDateParts(now);
+
+  if (clinicParts.hour < 10) {
+    return new Date(buildClinicISO(clinicParts.dateKey, '10:00'));
+  }
+
+  if (clinicParts.hour >= 19) {
+    return new Date(buildClinicISO(addDaysToDateKey(clinicParts.dateKey, 1), '10:00'));
+  }
+
+  return now;
+}
+
+function getClinicDateParts(date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const value = (type) => parts.find((part) => part.type === type)?.value || '';
+  const hourText = value('hour');
+  const hour = hourText === '24' ? 0 : Number(hourText);
+
+  return {
+    dateKey: `${value('year')}-${value('month')}-${value('day')}`,
+    hour,
+    minute: Number(value('minute')),
+  };
+}
+
+function addDaysToDateKey(dateKey, days) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days, 0, 0, 0, 0));
+  return toDateKey(date);
 }
 
 function PreferredSlotCard({

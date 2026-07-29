@@ -22,6 +22,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
 
+  pageKeyboard: {
+    flex: 1,
+  },
+
   header: {
     height: 58,
     flexDirection: 'row',

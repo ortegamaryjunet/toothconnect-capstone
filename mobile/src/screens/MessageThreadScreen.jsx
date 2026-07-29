@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -163,7 +162,7 @@ export default function MessageThreadScreen({ navigation, route }) {
 
       <KeyboardAvoidingView
         style={styles.keyboardArea}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         keyboardVerticalOffset={0}
       >
         <ScrollView
@@ -172,6 +171,7 @@ export default function MessageThreadScreen({ navigation, route }) {
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

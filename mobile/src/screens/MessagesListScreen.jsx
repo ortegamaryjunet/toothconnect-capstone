@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
+  KeyboardAvoidingView,
   FlatList,
   Animated,
   Alert,
@@ -258,6 +259,11 @@ export default function MessagesListScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
+          <KeyboardAvoidingView
+            style={styles.pageKeyboard}
+            behavior="padding"
+            keyboardVerticalOffset={0}
+          >
           <View style={styles.page}>
 
             <ScrollView
@@ -410,6 +416,7 @@ export default function MessagesListScreen({ navigation }) {
               </ScrollView>
             )}
           </View>
+          </KeyboardAvoidingView>
         </View>
 
         {sidebarOpen ? (

@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Image
 } from 'react-native';
@@ -56,7 +55,7 @@ export default function LoginScreen({ navigation, route }) {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardWrapper}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         keyboardVerticalOffset={0}
       >
         <ScrollView
@@ -64,6 +63,7 @@ export default function LoginScreen({ navigation, route }) {
           contentContainerStyle={styles.inner}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <View style={styles.logoSection}>
             <Image

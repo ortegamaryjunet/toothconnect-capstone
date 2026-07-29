@@ -9,3 +9,8 @@ export async function saveMyPatientProfile(profile) {
   const res = await api.put('/patients/me', profile);
   return res.data.profile;
 }
+
+export async function listPatientDentists() {
+  const res = await api.get('/patients/dentists');
+  return res.data.dentists || [];
+}

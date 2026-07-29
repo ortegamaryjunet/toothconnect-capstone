@@ -261,7 +261,9 @@ export default function DashboardScreen({ navigation }) {
 
   const profileBranchText =
     user?.home_branch_city ||
-    getBranchCity(patientBranch?.address, patientBranch?.name || "Dental Clinic");
+    (patientBranch
+      ? getBranchCity(patientBranch.address, patientBranch.name || "Dental Clinic")
+      : "Home branch not assigned");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -323,6 +325,7 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.greetingText}>{getGreeting()}, {greetingName}</Text>
 
               <View style={styles.branchBadge}>
+                <Text style={styles.branchBadgeLabel}>Home Branch</Text>
                 <Text style={styles.branchBadgeText}>
                   {profileBranchText}
                 </Text>

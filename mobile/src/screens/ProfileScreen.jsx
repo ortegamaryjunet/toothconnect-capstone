@@ -481,7 +481,7 @@ export default function ProfileScreen({ navigation }) {
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior="padding"
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <View style={styles.mainWrapper}>
