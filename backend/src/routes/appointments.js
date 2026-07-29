@@ -817,7 +817,16 @@ router.get('/', async (req, res) => {
          pay.ewallet_provider, pay.reference_number, pay.receipt_url,
          pay.receipt_uploaded_at, pay.proof_image_url,
          pay.recorded_by, pay.recorded_at, pay.paid_at, pay.verified_at,
-         pay.rejection_reason
+         pay.rejection_reason,
+         (
+           SELECT JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.created_by_role'))
+           FROM audit_logs al
+           WHERE al.action = 'appointment_created'
+             AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.appointment_id')) AS UNSIGNED) = a.id
+             AND JSON_EXTRACT(al.details, '$.reschedule_of') IS NOT NULL
+           ORDER BY al.created_at DESC, al.id DESC
+           LIMIT 1
+         ) AS rescheduled_by_role
        FROM appointments a
        JOIN branches b ON b.id = a.branch_id
        JOIN users p ON p.id = a.patient_id

@@ -514,7 +514,7 @@ export default function RecepAppointments() {
       ? new Date(`${appointment.fullDate}T00:00:00`)
       : new Date();
 
-    setRescheduleReasonText('');
+    setRescheduleReasonText(appointment.rescheduleReason || '');
     setOpenDropdownId(null);
     setRescheduleModal({
       show: true,
@@ -2631,6 +2631,12 @@ function normalizeAppointments(items) {
     const isRescheduledPending =
       String(item.status || '').toLowerCase() === 'scheduled' &&
       (Boolean(scheduleMeta.rescheduledSchedule) || hasRescheduleText);
+    const rescheduleTypeLabel = getRescheduleTypeLabel(
+      item.rescheduled_by_role ||
+      item.rescheduledByRole ||
+      scheduleMeta.rescheduledBy ||
+      ''
+    );
 
     const normalizedBranchId =
       Number(
@@ -2683,7 +2689,7 @@ function normalizeAppointments(items) {
       sourceDateKey: extractDateKey(rawDateTime),
       status: item.status || 'scheduled',
       type: isRescheduledPending
-        ? 'Rescheduled'
+        ? rescheduleTypeLabel
         : (item.type || item.bookingType || formatStatus(item.status || 'scheduled')),
       originalSchedule:
         scheduleMeta.originalSchedule ||
@@ -2700,6 +2706,24 @@ function formatStatus(status) {
   return String(status || 'scheduled')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getRescheduleTypeLabel(sourceRole) {
+  const role = String(sourceRole || '').trim().toLowerCase();
+
+  if (role === 'patient') {
+    return 'Mobile Rescheduled';
+  }
+
+  if (role === 'receptionist') {
+    return 'Receptionist Rescheduled';
+  }
+
+  if (role === 'admin') {
+    return 'Admin Rescheduled';
+  }
+
+  return 'Rescheduled';
 }
 
 function getAppointmentCalendarStatus(appointment) {
@@ -3071,16 +3095,22 @@ function extractRescheduleScheduleMeta(noteText) {
     return { originalSchedule: '', rescheduledSchedule: '' };
   }
 
-  const originalMatch = note.match(/^\s*Original\s*Schedule\s*:\s*(.+)$/im);
-  const rescheduledMatch = note.match(/^\s*Rescheduled\s*:\s*(.+)$/im);
-  const legacyMatch = note.match(/^\s*Rescheduled\s+to\s+(.+)$/im);
-  const reasonMatch = note.match(/^\s*Reschedule\s*reason\s*:\s*(.+)$/im);
+  const originalMatch = getLastLineMatch(note, /^\s*Original\s*Schedule\s*:\s*(.+)$/gim);
+  const rescheduledMatch = getLastLineMatch(note, /^\s*Rescheduled\s*:\s*(.+)$/gim);
+  const legacyMatch = getLastLineMatch(note, /^\s*Rescheduled\s+to\s+(.+)$/gim);
+  const reasonMatch = getLastLineMatch(note, /^\s*Reschedule\s*reason\s*:\s*(.+)$/gim);
+  const rescheduleReason = reasonMatch?.[1]?.trim() || '';
 
   return {
     originalSchedule: originalMatch?.[1]?.trim() || '',
     rescheduledSchedule: rescheduledMatch?.[1]?.trim() || legacyMatch?.[1]?.trim() || '',
-    rescheduleReason: reasonMatch?.[1]?.trim() || '',
+    rescheduleReason: rescheduleReason === '(none)' ? '' : rescheduleReason,
   };
+}
+
+function getLastLineMatch(text, pattern) {
+  const matches = Array.from(String(text || '').matchAll(pattern));
+  return matches.length ? matches[matches.length - 1] : null;
 }
 
 function normalizeRescheduleScheduleMeta(scheduleMeta, displayDate) {
