@@ -206,6 +206,13 @@ function getSummaryColumnLabel(type) {
   return 'Item Name';
 }
 
+function getInventoryItemName(item) {
+  if (!item) return 'N/A';
+  if (item.type === 'medicine') return item.medicineName || 'N/A';
+  if (item.type === 'equipment') return item.equipmentName || 'N/A';
+  return item.supplyName || 'N/A';
+}
+
 const emptyExpenseInventoryRows = { medicine: [], equipment: [], supplies: [] };
 const emptyExpenseItemOptions = { medicine: [], equipment: [], supplies: [] };
 const expenseRequiredFields = [
@@ -219,6 +226,21 @@ const expenseRequiredFields = [
   'threshold',
 ];
 const expenseCategoryLabels = { medicine: 'Dental Medicine', equipment: 'Dental Equipment', supplies: 'Dental Supplies' };
+const initialExpenseForm = {
+  date: '',
+  branchId: '',
+  category: 'supplies',
+  itemName: '',
+  supplier: '',
+  orderQuantity: '',
+  pricePerItem: '',
+  threshold: '',
+  maxStock: '',
+};
+const expenseGold = '#d4af37';
+const expenseGoldDark = '#9a6b00';
+const expenseGoldSoft = '#fff8e1';
+const expenseGoldBorder = '#f3d675';
 
 function uniqueSortedNames(rows, fieldName) {
   return Array.from(
@@ -250,26 +272,19 @@ export default function InventoryPage() {
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditConfirmModal, setShowEditConfirmModal] = useState(false);
+  const [showEditCancelConfirmModal, setShowEditCancelConfirmModal] = useState(false);
   const [showStockSummaryModal, setShowStockSummaryModal] = useState(false);
   const [showUsageHistoryModal, setShowUsageHistoryModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showExpenseConfirmModal, setShowExpenseConfirmModal] = useState(false);
   const [showExpenseCancelConfirmModal, setShowExpenseCancelConfirmModal] = useState(false);
-  const [expenseForm, setExpenseForm] = useState({
-    date: '',
-    branchId: '',
-    category: 'supplies',
-    itemName: '',
-    supplier: '',
-    orderQuantity: '',
-    pricePerItem: '',
-    threshold: '',
-    maxStock: '',
-  });
+  const [expenseForm, setExpenseForm] = useState(initialExpenseForm);
   const [expenseTouchedFields, setExpenseTouchedFields] = useState({});
   const [expenseInventoryRows, setExpenseInventoryRows] = useState(emptyExpenseInventoryRows);
   const [expenseBranchOptions, setExpenseBranchOptions] = useState([]);
   const [expenseSaving, setExpenseSaving] = useState(false);
+  const [expenseSaveSuccess, setExpenseSaveSuccess] = useState(false);
   const [expenseSaveError, setExpenseSaveError] = useState('');
   const [expenseStockLimitError, setExpenseStockLimitError] = useState(null);
   const [saveExpenseClicked, setSaveExpenseClicked] = useState(false);
@@ -729,6 +744,8 @@ export default function InventoryPage() {
     if (
       showLogoutModal ||
       showEditModal ||
+      showEditConfirmModal ||
+      showEditCancelConfirmModal ||
       showStockSummaryModal ||
       showUsageHistoryModal ||
       showExpenseModal ||
@@ -746,6 +763,8 @@ export default function InventoryPage() {
   }, [
     showLogoutModal,
     showEditModal,
+    showEditConfirmModal,
+    showEditCancelConfirmModal,
     showStockSummaryModal,
     showUsageHistoryModal,
     showExpenseModal,
@@ -758,6 +777,8 @@ export default function InventoryPage() {
       if (event.key === 'Escape') {
         closeLogoutModal();
         closeEditModal();
+        closeEditConfirmModal();
+        closeEditCancelConfirmModal();
         closeStockSummaryModal();
         closeUsageHistoryModal();
         closeExpenseModal();
@@ -899,7 +920,7 @@ export default function InventoryPage() {
 
   function handleEditOverlayClick(event) {
     if (event.target === event.currentTarget) {
-      closeEditModal();
+      handleCancelEditModal();
     }
   }
 
@@ -938,8 +959,27 @@ export default function InventoryPage() {
 
   function closeEditModal() {
     setShowEditModal(false);
+    setShowEditConfirmModal(false);
+    setShowEditCancelConfirmModal(false);
     setSelectedInventoryItem(null);
     setEditError('');
+  }
+
+  function closeEditConfirmModal() {
+    if (editSaving) return;
+    setShowEditConfirmModal(false);
+  }
+
+  function handleCancelEditModal() {
+    setShowEditCancelConfirmModal(true);
+  }
+
+  function closeEditCancelConfirmModal() {
+    setShowEditCancelConfirmModal(false);
+  }
+
+  function confirmCancelEditModal() {
+    closeEditModal();
   }
 
   function handleEditFormChange(field, value) {
@@ -949,7 +989,7 @@ export default function InventoryPage() {
     }));
   }
 
-  async function handleSaveEdit() {
+  function buildEditPayload() {
     if (!selectedInventoryItem) return;
 
     const type = selectedInventoryItem.type;
@@ -968,31 +1008,92 @@ export default function InventoryPage() {
       return;
     }
 
-    const payload =
-      type === 'medicine'
-        ? {
-            generic_name: editForm.genericName,
-            category: editForm.category,
-            form: editForm.form,
-            dosage: editForm.dosage,
-            unit: editForm.unit,
-            ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-            ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
-          }
-        : type === 'supplies'
-        ? {
-            brand: editForm.brand,
-            category: editForm.category,
-            unit: editForm.unit,
-            ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-            ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
-          }
-        : {
-            category: editForm.category,
-            maintenance_status: editForm.maintenanceStatus,
-            ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
-            ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
-          };
+    return type === 'medicine'
+      ? {
+          generic_name: editForm.genericName,
+          category: editForm.category,
+          form: editForm.form,
+          dosage: editForm.dosage,
+          unit: editForm.unit,
+          ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
+          ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
+        }
+      : type === 'supplies'
+      ? {
+          brand: editForm.brand,
+          category: editForm.category,
+          unit: editForm.unit,
+          ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
+          ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
+        }
+      : {
+          category: editForm.category,
+          maintenance_status: editForm.maintenanceStatus,
+          ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
+          ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
+        };
+  }
+
+  function getEditChangeSummary() {
+    if (!selectedInventoryItem) return [];
+
+    const fields =
+      selectedInventoryItem.type === 'medicine'
+        ? [
+            ['Generic Name', selectedInventoryItem.genericName, editForm.genericName],
+            ['Form', selectedInventoryItem.form, editForm.form],
+            ['Dosage', selectedInventoryItem.dosage, editForm.dosage],
+            ['Category', selectedInventoryItem.category, editForm.category],
+            ['Critical Stock Level', selectedInventoryItem.threshold, editForm.threshold],
+            ['Maximum Stock', selectedInventoryItem.maxStock, editForm.maxStock],
+            ['Unit', selectedInventoryItem.unit, editForm.unit],
+          ]
+        : selectedInventoryItem.type === 'supplies'
+        ? [
+            ['Brand', selectedInventoryItem.brand, editForm.brand],
+            ['Category', selectedInventoryItem.category, editForm.category],
+            ['Critical Stock Level', selectedInventoryItem.threshold, editForm.threshold],
+            ['Maximum Stock', selectedInventoryItem.maxStock, editForm.maxStock],
+            ['Unit', selectedInventoryItem.unit, editForm.unit],
+          ]
+        : [
+            ['Category', selectedInventoryItem.category, editForm.category],
+            ['Critical Stock Level', selectedInventoryItem.threshold, editForm.threshold],
+            ['Maximum Stock', selectedInventoryItem.maxStock, editForm.maxStock],
+            ['Maintenance Status', selectedInventoryItem.maintenanceStatus, editForm.maintenanceStatus],
+          ];
+
+    return fields
+      .map(([label, before, after]) => ({
+        label,
+        before: String(before ?? '').trim() || 'N/A',
+        after: String(after ?? '').trim() || 'N/A',
+      }))
+      .filter((change) => change.before !== change.after);
+  }
+
+  function handleSaveEdit() {
+    if (!selectedInventoryItem) return;
+
+    setEditError('');
+    const payload = buildEditPayload();
+    if (!payload) return;
+
+    if (!getEditChangeSummary().length) {
+      setEditError('No changes to save.');
+      return;
+    }
+
+    setShowEditConfirmModal(true);
+  }
+
+  async function handleConfirmSaveEdit() {
+    if (!selectedInventoryItem) return;
+
+    const payload = buildEditPayload();
+    if (!payload) return;
+
+    const type = selectedInventoryItem.type;
 
     setEditSaving(true);
     setEditError('');
@@ -1007,9 +1108,11 @@ export default function InventoryPage() {
       }
 
       await loadInventory();
+      setShowEditConfirmModal(false);
       closeEditModal();
     } catch (err) {
       setEditError(err.response?.data?.message || 'Failed to update item.');
+      setShowEditConfirmModal(false);
     } finally {
       setEditSaving(false);
     }
@@ -1070,7 +1173,9 @@ export default function InventoryPage() {
   function closeExpenseModal() {
     setShowExpenseModal(false);
     setShowExpenseCancelConfirmModal(false);
+    setExpenseForm(initialExpenseForm);
     setExpenseSaveError('');
+    setExpenseSaveSuccess(false);
     setExpenseStockLimitError(null);
     setExpenseTouchedFields({});
   }
@@ -1088,6 +1193,7 @@ export default function InventoryPage() {
   }
 
   function closeExpenseConfirmModal() {
+    if (expenseSaving || expenseSaveSuccess) return;
     setShowExpenseConfirmModal(false);
   }
 
@@ -1172,9 +1278,39 @@ export default function InventoryPage() {
     );
   }
 
+  function getExpenseFieldError(field) {
+    if (!isExpenseFieldInvalid(field)) return '';
+    if (field === 'orderQuantity' && Number(expenseForm[field] || 0) < 1) {
+      return 'This field is required.';
+    }
+    return 'This field is required.';
+  }
+
+  function renderExpenseFieldError(field) {
+    const message = getExpenseFieldError(field);
+    if (!message) return null;
+
+    return (
+      <span
+        style={{
+          color: '#dc2626',
+          fontSize: 12,
+          fontWeight: 700,
+          fontFamily: 'Arial, sans-serif',
+          lineHeight: 1.25,
+        }}
+      >
+        {message}
+      </span>
+    );
+  }
+
   function getExpenseFieldStyle(field) {
     return {
       ...styles.formInput,
+      borderColor: expenseGoldBorder,
+      background: '#fffdf7',
+      color: '#3f2f08',
       ...(isExpenseFieldInvalid(field)
         ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
         : {}),
@@ -1183,8 +1319,8 @@ export default function InventoryPage() {
 
   function renderRequiredLabel(label) {
     return (
-      <span style={styles.formLabel}>
-        {label} <span style={{ color: '#dc2626' }}>*</span>
+      <span style={{ ...styles.formLabel, color: expenseGoldDark }}>
+        {label} <span style={{ color: expenseGold }}>*</span>
       </span>
     );
   }
@@ -1192,6 +1328,14 @@ export default function InventoryPage() {
   function handleSaveExpense() {
     setExpenseSaveError('');
     setExpenseStockLimitError(null);
+
+    if (!isExpenseFormComplete) {
+      setExpenseTouchedFields((prev) => ({
+        ...prev,
+        ...Object.fromEntries(expenseRequiredFields.map((field) => [field, true])),
+      }));
+      return;
+    }
 
     const orderQuantity = Number(expenseForm.orderQuantity || 0);
     const maxStockValue = Number(expenseForm.maxStock || 0);
@@ -1263,17 +1407,15 @@ export default function InventoryPage() {
       setShowExpenseConfirmModal(false);
       await refreshExpenseFormOptions();
       await loadInventory();
-      setExpenseForm((prev) => ({
-        ...prev,
-        itemName: '',
-        supplier: '',
-        orderQuantity: '',
-        pricePerItem: '',
-        threshold: '',
-        maxStock: '',
-      }));
+      setExpenseSaving(false);
+      setExpenseSaveSuccess(true);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      setShowExpenseConfirmModal(false);
+      closeExpenseModal();
     } catch (err) {
       setExpenseSaveError(err.response?.data?.message || 'Failed to save expense.');
+      setExpenseSaveSuccess(false);
+      setExpenseSaving(false);
     } finally {
       setExpenseSaving(false);
     }
@@ -1715,21 +1857,67 @@ export default function InventoryPage() {
   function renderEditModalFields() {
     if (!selectedInventoryItem) return null;
 
+    const readOnlyFieldStyle = {
+      ...styles.formInput,
+      background: '#f8fafc',
+      color: '#475569',
+      cursor: 'not-allowed',
+    };
+
     return (
       <>
         <div style={styles.formGrid}>
+          <label style={styles.formGroup}>
+            <span style={styles.formLabel}>Item Name</span>
+            <input
+              type="text"
+              value={getInventoryItemName(selectedInventoryItem)}
+              readOnly
+              style={readOnlyFieldStyle}
+              aria-readonly="true"
+            />
+          </label>
+
           <label style={styles.formGroup}>
             <span style={styles.formLabel}>Branch</span>
             <input
               type="text"
               value={selectedInventoryItem.branchName || 'N/A'}
               readOnly
-              style={{
-                ...styles.formInput,
-                background: '#f8fafc',
-                color: '#475569',
-                cursor: 'not-allowed',
-              }}
+              style={readOnlyFieldStyle}
+              aria-readonly="true"
+            />
+          </label>
+
+          <label style={styles.formGroup}>
+            <span style={styles.formLabel}>Supplier</span>
+            <input
+              type="text"
+              value={selectedInventoryItem.supplier || 'N/A'}
+              readOnly
+              style={readOnlyFieldStyle}
+              aria-readonly="true"
+            />
+          </label>
+
+          <label style={styles.formGroup}>
+            <span style={styles.formLabel}>Quantity</span>
+            <input
+              type="text"
+              value={String(selectedInventoryItem.quantity ?? 0)}
+              readOnly
+              style={readOnlyFieldStyle}
+              aria-readonly="true"
+            />
+          </label>
+
+          <label style={styles.formGroup}>
+            <span style={styles.formLabel}>Price per Item</span>
+            <input
+              type="text"
+              value={formatPeso(selectedInventoryItem.pricePerItem || 0)}
+              readOnly
+              style={readOnlyFieldStyle}
               aria-readonly="true"
             />
           </label>
@@ -1862,11 +2050,6 @@ export default function InventoryPage() {
             </label>
           )}
         </div>
-
-        <p style={styles.helperText}>
-          Item name, branch, supplier, quantity, and price are managed through
-          expense input.
-        </p>
 
         {editError && (
           <p
@@ -2516,6 +2699,7 @@ export default function InventoryPage() {
                 </p>
               </div>
 
+              {false && (
               <button
                 type="button"
                 onClick={closeEditModal}
@@ -2523,11 +2707,20 @@ export default function InventoryPage() {
               >
                 ×
               </button>
+              )}
             </div>
 
             {renderEditModalFields()}
 
             <div style={styles.editModalActions}>
+              <button
+                type="button"
+                onClick={handleCancelEditModal}
+                style={styles.cancelEditBtn}
+              >
+                Cancel
+              </button>
+
               <button
                 type="button"
                 onClick={handleSaveEdit}
@@ -2536,13 +2729,100 @@ export default function InventoryPage() {
               >
                 {editSaving ? 'Saving...' : 'Save Changes'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isReceptionist && showEditConfirmModal && (
+        <div style={styles.modal} onClick={(event) => { if (event.target === event.currentTarget) closeEditConfirmModal(); }}>
+          <div style={styles.modalContent}>
+            <div style={{ ...styles.modalIcon, background: expenseGoldSoft, color: expenseGoldDark }}>
+              <i className="fi fi-rr-edit" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Save Changes?</h2>
+            <p style={styles.modalText}>
+              Do you want to save the following changes?
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18, fontFamily: 'Arial, sans-serif' }}>
+              {getEditChangeSummary().map((change) => (
+                <div
+                  key={change.label}
+                  style={{
+                    border: `1px solid ${expenseGoldBorder}`,
+                    borderRadius: 10,
+                    background: '#fffdf7',
+                    padding: '10px 12px',
+                    textAlign: 'left',
+                  }}
+                >
+                  <strong style={{ display: 'block', color: '#3f2f08', fontSize: 13, marginBottom: 6 }}>
+                    {change.label}
+                  </strong>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center', fontSize: 12, color: '#64748b' }}>
+                    <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{change.before}</span>
+                    <span style={{ color: expenseGoldDark, fontWeight: 800 }}>to</span>
+                    <span style={{ minWidth: 0, overflowWrap: 'anywhere', color: '#3f2f08', fontWeight: 800 }}>{change.after}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {editError && (
+              <p style={{ ...styles.modalText, color: '#dc2626' }}>{editError}</p>
+            )}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                disabled={editSaving}
+                onClick={closeEditConfirmModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                disabled={editSaving}
+                onClick={handleConfirmSaveEdit}
+              >
+                {editSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isReceptionist && showEditCancelConfirmModal && (
+        <div style={styles.modal} onClick={(event) => { if (event.target === event.currentTarget) closeEditCancelConfirmModal(); }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Edit?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? The details you changed will not be saved.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeEditCancelConfirmModal}
+              >
+                No
+              </button>
 
               <button
                 type="button"
-                onClick={closeEditModal}
-                style={styles.cancelEditBtn}
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCancelEditModal}
               >
-                Cancel
+                Yes, Cancel
               </button>
             </div>
           </div>
@@ -2551,11 +2831,11 @@ export default function InventoryPage() {
 
       {!isReceptionist && showExpenseModal && (
         <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) handleCancelExpenseModal(); }}>
-          <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '28px 28px 24px', boxShadow: '0 8px 32px rgba(0,0,0,0.16)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ background: '#fffdf7', border: `1px solid ${expenseGoldBorder}`, borderTop: `5px solid ${expenseGold}`, borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '26px 28px 24px', boxShadow: '0 18px 42px rgba(154, 107, 0, 0.18)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 4 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a', fontFamily: 'Arial, sans-serif' }}>Expense Input</h3>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b', fontFamily: 'Arial, sans-serif' }}>Inventory purchase expense</p>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#3f2f08', fontFamily: 'Arial, sans-serif' }}>Expense Input</h3>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: expenseGoldDark, fontFamily: 'Arial, sans-serif', fontWeight: 700 }}>Inventory purchase expense</p>
               </div>
             </div>
 
@@ -2568,6 +2848,7 @@ export default function InventoryPage() {
                 onBlur={() => handleExpenseFieldBlur('date')}
                 style={getExpenseFieldStyle('date')}
               />
+              {renderExpenseFieldError('date')}
             </label>
 
             <label style={styles.formGroup}>
@@ -2584,6 +2865,7 @@ export default function InventoryPage() {
                   <option key={b.id} value={b.id}>{getExpenseBranchLabel(b)}</option>
                 ))}
               </select>
+              {renderExpenseFieldError('branchId')}
             </label>
 
             <label style={styles.formGroup}>
@@ -2598,6 +2880,7 @@ export default function InventoryPage() {
                 <option value="equipment">Dental Equipment</option>
                 <option value="supplies">Dental Supplies</option>
               </select>
+              {renderExpenseFieldError('category')}
             </label>
 
             <label style={styles.formGroup}>
@@ -2614,6 +2897,7 @@ export default function InventoryPage() {
               <datalist id="inv-expense-item-options">
                 {expenseItemOptionsList.map((name) => <option key={name} value={name} />)}
               </datalist>
+              {renderExpenseFieldError('itemName')}
             </label>
 
             <label style={styles.formGroup}>
@@ -2630,6 +2914,7 @@ export default function InventoryPage() {
               <datalist id="inv-expense-supplier-options">
                 {expenseSupplierOptions.map((s) => <option key={s} value={s} />)}
               </datalist>
+              {renderExpenseFieldError('supplier')}
             </label>
 
             <label style={styles.formGroup}>
@@ -2643,6 +2928,7 @@ export default function InventoryPage() {
                 onBlur={() => handleExpenseFieldBlur('orderQuantity')}
                 style={getExpenseFieldStyle('orderQuantity')}
               />
+              {renderExpenseFieldError('orderQuantity')}
             </label>
 
             <label style={styles.formGroup}>
@@ -2656,6 +2942,7 @@ export default function InventoryPage() {
                 onBlur={() => handleExpenseFieldBlur('pricePerItem')}
                 style={getExpenseFieldStyle('pricePerItem')}
               />
+              {renderExpenseFieldError('pricePerItem')}
             </label>
 
             <label style={styles.formGroup}>
@@ -2671,11 +2958,12 @@ export default function InventoryPage() {
                 onBlur={() => handleExpenseFieldBlur('threshold')}
                 style={getExpenseFieldStyle('threshold')}
               />
+              {renderExpenseFieldError('threshold')}
             </label>
 
-            <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '12px 14px', fontFamily: 'Arial, sans-serif' }}>
-              <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Total Expense</p>
-              <h4 style={{ margin: '4px 0 0', fontSize: 15, color: '#0f172a', fontWeight: 700 }}>
+            <div style={{ background: expenseGoldSoft, border: `1px solid ${expenseGoldBorder}`, borderRadius: 8, padding: '12px 14px', fontFamily: 'Arial, sans-serif' }}>
+              <p style={{ margin: 0, fontSize: 12, color: expenseGoldDark, fontWeight: 800 }}>Total Expense</p>
+              <h4 style={{ margin: '4px 0 0', fontSize: 15, color: '#3f2f08', fontWeight: 800 }}>
                 {expenseForm.orderQuantity || 0} × {formatPeso(expenseForm.pricePerItem || 0)} = {formatPeso(computedExpense)}
               </h4>
             </div>
@@ -2758,11 +3046,10 @@ export default function InventoryPage() {
                 style={{
                   ...styles.saveBtn,
                   transform: saveExpenseClicked ? 'scale(0.97)' : 'scale(1)',
-                  opacity: !isExpenseFormComplete ? 0.55 : saveExpenseClicked ? 0.82 : 1,
+                  opacity: saveExpenseClicked ? 0.82 : 1,
                   transition: 'transform 120ms ease, opacity 120ms ease',
-                  cursor: isExpenseFormComplete ? 'pointer' : 'not-allowed',
+                  cursor: 'pointer',
                 }}
-                disabled={!isExpenseFormComplete}
                 onClick={handleSaveExpense}
               >
                 Save Expense
@@ -2775,54 +3062,68 @@ export default function InventoryPage() {
       {!isReceptionist && showExpenseConfirmModal && (
         <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeExpenseConfirmModal(); }}>
           <div style={styles.modalContent}>
-            <div style={styles.modalIcon}>
-              <i className="fi fi-rr-receipt" style={styles.modalIconText}></i>
-            </div>
-            <h2 style={styles.modalTitle}>Confirm Expense</h2>
-            <p style={styles.modalText}>Please review the details before saving this expense.</p>
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
-              {[
-                ['Date', expenseForm.date || 'Not selected'],
-                ['Branch', selectedExpenseBranch ? getExpenseBranchLabel(selectedExpenseBranch) : 'Not selected'],
-                ['Category', expenseCategoryLabels[expenseForm.category] || expenseForm.category],
-                ['Item Name', expenseForm.itemName || 'Not entered'],
-                ['Supplier', expenseForm.supplier || 'Not entered'],
-                ['Quantity', String(expenseForm.orderQuantity || 0)],
-                ['Price per Item', formatPeso(expenseForm.pricePerItem || 0)],
-                ['Critical Stock Level', expenseForm.threshold === '' ? 'Not set' : String(expenseForm.threshold)],
-                ['Maximum Stock', expenseForm.maxStock === '' ? 'Not set' : String(expenseForm.maxStock)],
-              ].map(([label, val]) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}>
-                  <span style={{ color: '#64748b' }}>{label}</span>
-                  <strong style={{ color: '#0f172a' }}>{val}</strong>
+            {expenseSaveSuccess ? (
+              <>
+                <div style={{ ...styles.modalIcon, background: expenseGoldSoft, color: expenseGoldDark }}>
+                  <i className="fi fi-rr-check" style={styles.modalIconText}></i>
                 </div>
-              ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14 }}>
-                <span style={{ color: '#374151', fontWeight: 700 }}>Total Expense</span>
-                <strong style={{ color: '#2563eb', fontSize: 15 }}>{formatPeso(computedExpense)}</strong>
-              </div>
-            </div>
-            {expenseSaveError && (
-              <p style={{ ...styles.modalText, color: '#dc2626' }}>{expenseSaveError}</p>
+                <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Expense saved successfully</h2>
+                <p style={{ ...styles.modalText, marginBottom: 0, color: expenseGoldDark }}>
+                  The expense input will close automatically.
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{ ...styles.modalIcon, background: expenseGoldSoft, color: expenseGoldDark }}>
+                  <i className="fi fi-rr-receipt" style={styles.modalIconText}></i>
+                </div>
+                <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Confirm Expense</h2>
+                <p style={styles.modalText}>Please review the details before saving this expense.</p>
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+                  {[
+                    ['Date', expenseForm.date || 'Not selected'],
+                    ['Branch', selectedExpenseBranch ? getExpenseBranchLabel(selectedExpenseBranch) : 'Not selected'],
+                    ['Category', expenseCategoryLabels[expenseForm.category] || expenseForm.category],
+                    ['Item Name', expenseForm.itemName || 'Not entered'],
+                    ['Supplier', expenseForm.supplier || 'Not entered'],
+                    ['Quantity', String(expenseForm.orderQuantity || 0)],
+                    ['Price per Item', formatPeso(expenseForm.pricePerItem || 0)],
+                    ['Critical Stock Level', expenseForm.threshold === '' ? 'Not set' : String(expenseForm.threshold)],
+                    ['Maximum Stock', expenseForm.maxStock === '' ? 'Not set' : String(expenseForm.maxStock)],
+                  ].map(([label, val]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${expenseGoldBorder}`, fontSize: 13, gap: 12 }}>
+                      <span style={{ color: expenseGoldDark }}>{label}</span>
+                      <strong style={{ color: '#3f2f08', textAlign: 'right' }}>{val}</strong>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, gap: 12 }}>
+                    <span style={{ color: '#3f2f08', fontWeight: 800 }}>Total Expense</span>
+                    <strong style={{ color: expenseGoldDark, fontSize: 15 }}>{formatPeso(computedExpense)}</strong>
+                  </div>
+                </div>
+                {expenseSaveError && (
+                  <p style={{ ...styles.modalText, color: '#dc2626' }}>{expenseSaveError}</p>
+                )}
+                <div style={styles.modalActions}>
+                  <button
+                    type="button"
+                    style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                    disabled={expenseSaving}
+                    onClick={closeExpenseConfirmModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...styles.modalButton, ...styles.saveBtn }}
+                    disabled={expenseSaving}
+                    onClick={handleConfirmExpenseSave}
+                  >
+                    {expenseSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </>
             )}
-            <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={{ ...styles.modalButton, ...styles.cancelBtn }}
-                disabled={expenseSaving}
-                onClick={closeExpenseConfirmModal}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                style={{ ...styles.modalButton, ...styles.saveBtn }}
-                disabled={expenseSaving}
-                onClick={handleConfirmExpenseSave}
-              >
-                {expenseSaving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
           </div>
         </div>
       )}
