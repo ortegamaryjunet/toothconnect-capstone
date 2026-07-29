@@ -229,7 +229,7 @@ const expenseCategoryLabels = { medicine: 'Dental Medicine', equipment: 'Dental 
 const initialExpenseForm = {
   date: '',
   branchId: '',
-  category: 'supplies',
+  category: '',
   itemName: '',
   supplier: '',
   orderQuantity: '',
@@ -278,13 +278,13 @@ export default function InventoryPage() {
   const [showUsageHistoryModal, setShowUsageHistoryModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showExpenseConfirmModal, setShowExpenseConfirmModal] = useState(false);
+  const [showExpenseSuccessModal, setShowExpenseSuccessModal] = useState(false);
   const [showExpenseCancelConfirmModal, setShowExpenseCancelConfirmModal] = useState(false);
   const [expenseForm, setExpenseForm] = useState(initialExpenseForm);
   const [expenseTouchedFields, setExpenseTouchedFields] = useState({});
   const [expenseInventoryRows, setExpenseInventoryRows] = useState(emptyExpenseInventoryRows);
   const [expenseBranchOptions, setExpenseBranchOptions] = useState([]);
   const [expenseSaving, setExpenseSaving] = useState(false);
-  const [expenseSaveSuccess, setExpenseSaveSuccess] = useState(false);
   const [expenseSaveError, setExpenseSaveError] = useState('');
   const [expenseStockLimitError, setExpenseStockLimitError] = useState(null);
   const [saveExpenseClicked, setSaveExpenseClicked] = useState(false);
@@ -623,7 +623,7 @@ export default function InventoryPage() {
   }, [expenseForm.branchId, expenseInventoryRows]);
 
   const selectedExpenseInventoryRows = useMemo(() => {
-    if (!expenseForm.branchId) return [];
+    if (!expenseForm.branchId || !expenseForm.category) return [];
     const branchId = Number(expenseForm.branchId);
     return (expenseInventoryRows[expenseForm.category] || []).filter(
       (row) => Number(row.branch_id) === branchId
@@ -750,6 +750,7 @@ export default function InventoryPage() {
       showUsageHistoryModal ||
       showExpenseModal ||
       showExpenseConfirmModal ||
+      showExpenseSuccessModal ||
       showExpenseCancelConfirmModal
     ) {
       document.body.style.overflow = 'hidden';
@@ -769,6 +770,7 @@ export default function InventoryPage() {
     showUsageHistoryModal,
     showExpenseModal,
     showExpenseConfirmModal,
+    showExpenseSuccessModal,
     showExpenseCancelConfirmModal,
   ]);
 
@@ -783,6 +785,7 @@ export default function InventoryPage() {
         closeUsageHistoryModal();
         closeExpenseModal();
         closeExpenseConfirmModal();
+        closeExpenseSuccessModal();
         closeExpenseCancelConfirmModal();
       }
     }
@@ -1175,7 +1178,6 @@ export default function InventoryPage() {
     setShowExpenseCancelConfirmModal(false);
     setExpenseForm(initialExpenseForm);
     setExpenseSaveError('');
-    setExpenseSaveSuccess(false);
     setExpenseStockLimitError(null);
     setExpenseTouchedFields({});
   }
@@ -1193,8 +1195,12 @@ export default function InventoryPage() {
   }
 
   function closeExpenseConfirmModal() {
-    if (expenseSaving || expenseSaveSuccess) return;
+    if (expenseSaving) return;
     setShowExpenseConfirmModal(false);
+  }
+
+  function closeExpenseSuccessModal() {
+    setShowExpenseSuccessModal(false);
   }
 
   async function refreshExpenseFormOptions() {
@@ -1309,7 +1315,7 @@ export default function InventoryPage() {
     return {
       ...styles.formInput,
       borderColor: expenseGoldBorder,
-      background: '#fffdf7',
+      background: '#ffffff',
       color: '#3f2f08',
       ...(isExpenseFieldInvalid(field)
         ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
@@ -1375,7 +1381,6 @@ export default function InventoryPage() {
         supplier: expenseForm.supplier,
         orderQuantity: expenseForm.orderQuantity,
         pricePerItem: expenseForm.pricePerItem,
-        maxStock: expenseForm.maxStock,
       });
 
       const thresholdValue =
@@ -1408,13 +1413,12 @@ export default function InventoryPage() {
       await refreshExpenseFormOptions();
       await loadInventory();
       setExpenseSaving(false);
-      setExpenseSaveSuccess(true);
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      setShowExpenseConfirmModal(false);
       closeExpenseModal();
+      setShowExpenseSuccessModal(true);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      setShowExpenseSuccessModal(false);
     } catch (err) {
       setExpenseSaveError(err.response?.data?.message || 'Failed to save expense.');
-      setExpenseSaveSuccess(false);
       setExpenseSaving(false);
     } finally {
       setExpenseSaving(false);
@@ -2803,7 +2807,7 @@ export default function InventoryPage() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Edit?</h2>
+            <h2 style={styles.modalTitle}>Cancel Edit</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel? The details you changed will not be saved.
             </p>
@@ -2831,7 +2835,7 @@ export default function InventoryPage() {
 
       {!isReceptionist && showExpenseModal && (
         <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) handleCancelExpenseModal(); }}>
-          <div style={{ background: '#fffdf7', border: `1px solid ${expenseGoldBorder}`, borderTop: `5px solid ${expenseGold}`, borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '26px 28px 24px', boxShadow: '0 18px 42px rgba(154, 107, 0, 0.18)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ background: '#ffffff', border: `1px solid ${expenseGoldBorder}`, borderTop: `5px solid ${expenseGold}`, borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '26px 28px 24px', boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 4 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#3f2f08', fontFamily: 'Arial, sans-serif' }}>Expense Input</h3>
@@ -2876,6 +2880,7 @@ export default function InventoryPage() {
                 onBlur={() => handleExpenseFieldBlur('category')}
                 style={getExpenseFieldStyle('category')}
               >
+                <option value="">Select Category</option>
                 <option value="medicine">Dental Medicine</option>
                 <option value="equipment">Dental Equipment</option>
                 <option value="supplies">Dental Supplies</option>
@@ -2891,7 +2896,7 @@ export default function InventoryPage() {
                 value={expenseForm.itemName}
                 onChange={(e) => handleExpenseChange('itemName', e.target.value)}
                 onBlur={() => handleExpenseFieldBlur('itemName')}
-                placeholder={!expenseForm.branchId ? 'Select Branch First' : expenseItemOptionsList.length ? 'Select or enter item name' : 'Enter item name'}
+                placeholder={!expenseForm.branchId ? 'Select Branch First' : !expenseForm.category ? 'Select Category First' : expenseItemOptionsList.length ? 'Select or enter item name' : 'Enter item name'}
                 style={getExpenseFieldStyle('itemName')}
               />
               <datalist id="inv-expense-item-options">
@@ -3061,69 +3066,69 @@ export default function InventoryPage() {
 
       {!isReceptionist && showExpenseConfirmModal && (
         <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeExpenseConfirmModal(); }}>
-          <div style={styles.modalContent}>
-            {expenseSaveSuccess ? (
-              <>
-                <div style={{ ...styles.modalIcon, background: expenseGoldSoft, color: expenseGoldDark }}>
-                  <i className="fi fi-rr-check" style={styles.modalIconText}></i>
+          <div style={{ ...styles.modalContent, boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)' }}>
+            <div style={{ ...styles.modalIcon, background: expenseGoldSoft, color: expenseGoldDark }}>
+              <i className="fi fi-rr-receipt" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Confirm Expense</h2>
+            <p style={styles.modalText}>Please review the details before saving this expense.</p>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {[
+                ['Date', expenseForm.date || 'Not selected'],
+                ['Branch', selectedExpenseBranch ? getExpenseBranchLabel(selectedExpenseBranch) : 'Not selected'],
+                ['Category', expenseCategoryLabels[expenseForm.category] || expenseForm.category],
+                ['Item Name', expenseForm.itemName || 'Not entered'],
+                ['Supplier', expenseForm.supplier || 'Not entered'],
+                ['Quantity', String(expenseForm.orderQuantity || 0)],
+                ['Price per Item', formatPeso(expenseForm.pricePerItem || 0)],
+                ['Critical Stock Level', expenseForm.threshold === '' ? 'Not set' : String(expenseForm.threshold)],
+                ['Maximum Stock', expenseForm.maxStock === '' ? 'Not set' : String(expenseForm.maxStock)],
+              ].map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${expenseGoldBorder}`, fontSize: 13, gap: 12 }}>
+                  <span style={{ color: expenseGoldDark }}>{label}</span>
+                  <strong style={{ color: '#3f2f08', textAlign: 'right' }}>{val}</strong>
                 </div>
-                <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Expense saved successfully</h2>
-                <p style={{ ...styles.modalText, marginBottom: 0, color: expenseGoldDark }}>
-                  The expense input will close automatically.
-                </p>
-              </>
-            ) : (
-              <>
-                <div style={{ ...styles.modalIcon, background: expenseGoldSoft, color: expenseGoldDark }}>
-                  <i className="fi fi-rr-receipt" style={styles.modalIconText}></i>
-                </div>
-                <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Confirm Expense</h2>
-                <p style={styles.modalText}>Please review the details before saving this expense.</p>
-                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
-                  {[
-                    ['Date', expenseForm.date || 'Not selected'],
-                    ['Branch', selectedExpenseBranch ? getExpenseBranchLabel(selectedExpenseBranch) : 'Not selected'],
-                    ['Category', expenseCategoryLabels[expenseForm.category] || expenseForm.category],
-                    ['Item Name', expenseForm.itemName || 'Not entered'],
-                    ['Supplier', expenseForm.supplier || 'Not entered'],
-                    ['Quantity', String(expenseForm.orderQuantity || 0)],
-                    ['Price per Item', formatPeso(expenseForm.pricePerItem || 0)],
-                    ['Critical Stock Level', expenseForm.threshold === '' ? 'Not set' : String(expenseForm.threshold)],
-                    ['Maximum Stock', expenseForm.maxStock === '' ? 'Not set' : String(expenseForm.maxStock)],
-                  ].map(([label, val]) => (
-                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${expenseGoldBorder}`, fontSize: 13, gap: 12 }}>
-                      <span style={{ color: expenseGoldDark }}>{label}</span>
-                      <strong style={{ color: '#3f2f08', textAlign: 'right' }}>{val}</strong>
-                    </div>
-                  ))}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, gap: 12 }}>
-                    <span style={{ color: '#3f2f08', fontWeight: 800 }}>Total Expense</span>
-                    <strong style={{ color: expenseGoldDark, fontSize: 15 }}>{formatPeso(computedExpense)}</strong>
-                  </div>
-                </div>
-                {expenseSaveError && (
-                  <p style={{ ...styles.modalText, color: '#dc2626' }}>{expenseSaveError}</p>
-                )}
-                <div style={styles.modalActions}>
-                  <button
-                    type="button"
-                    style={{ ...styles.modalButton, ...styles.cancelBtn }}
-                    disabled={expenseSaving}
-                    onClick={closeExpenseConfirmModal}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    style={{ ...styles.modalButton, ...styles.saveBtn }}
-                    disabled={expenseSaving}
-                    onClick={handleConfirmExpenseSave}
-                  >
-                    {expenseSaving ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-              </>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, gap: 12 }}>
+                <span style={{ color: '#3f2f08', fontWeight: 800 }}>Total Expense</span>
+                <strong style={{ color: expenseGoldDark, fontSize: 15 }}>{formatPeso(computedExpense)}</strong>
+              </div>
+            </div>
+            {expenseSaveError && (
+              <p style={{ ...styles.modalText, color: '#dc2626' }}>{expenseSaveError}</p>
             )}
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                disabled={expenseSaving}
+                onClick={closeExpenseConfirmModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                disabled={expenseSaving}
+                onClick={handleConfirmExpenseSave}
+              >
+                {expenseSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isReceptionist && showExpenseSuccessModal && (
+        <div style={styles.modal}>
+          <div style={{ ...styles.modalContent, boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)' }}>
+            <div style={{ ...styles.modalIcon, background: expenseGoldSoft, color: expenseGoldDark }}>
+              <i className="fi fi-rr-check" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Expense saved successfully</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0, color: expenseGoldDark }}>
+              The expense input has been saved.
+            </p>
           </div>
         </div>
       )}
