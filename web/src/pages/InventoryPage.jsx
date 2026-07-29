@@ -292,11 +292,18 @@ export default function InventoryPage() {
   const [saveExpenseClicked, setSaveExpenseClicked] = useState(false);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
   const [editForm, setEditForm] = useState({
+    equipmentName: '',
+    supplyName: '',
     genericName: '',
     brand: '',
     category: '',
     form: '',
     dosage: '',
+    modelNumber: '',
+    serialNumber: '',
+    purchaseDate: '',
+    warrantyDate: '',
+    location: '',
     unit: '',
     threshold: '',
     maxStock: '',
@@ -946,11 +953,18 @@ export default function InventoryPage() {
   function openEditModal(item) {
     setSelectedInventoryItem({ ...item, type: activeTab });
     setEditForm({
+      equipmentName: item.equipmentName === 'N/A' ? '' : item.equipmentName || '',
+      supplyName: item.supplyName === 'N/A' ? '' : item.supplyName || '',
       genericName: item.genericName === 'N/A' ? '' : item.genericName || '',
       brand: item.brand === 'N/A' ? '' : item.brand || '',
       category: item.category === 'N/A' ? '' : item.category || '',
       form: item.form === 'N/A' ? '' : item.form || '',
       dosage: item.dosage === 'N/A' ? '' : item.dosage || '',
+      modelNumber: item.modelNumber === 'N/A' ? '' : item.modelNumber || '',
+      serialNumber: item.serialNumber === 'N/A' ? '' : item.serialNumber || '',
+      purchaseDate: item.purchaseDate === 'N/A' ? '' : item.purchaseDate || '',
+      warrantyDate: item.warrantyDate === 'N/A' ? '' : item.warrantyDate || '',
+      location: item.location === 'N/A' ? '' : item.location || '',
       unit: item.unit === 'N/A' ? '' : item.unit || '',
       threshold: Number.isFinite(Number(item.threshold)) ? String(Number(item.threshold)) : '',
       maxStock: Number.isFinite(Number(item.maxStock)) && Number(item.maxStock) > 0 ? String(Number(item.maxStock)) : '',
@@ -1010,10 +1024,21 @@ export default function InventoryPage() {
     }
 
     if (selectedInventoryItem.type === 'supplies') {
-      return ['brand', 'category', 'threshold', 'unit'];
+      return ['supplyName', 'brand', 'category', 'threshold', 'unit'];
     }
 
-    return ['category', 'threshold', 'maintenanceStatus'];
+    return [
+      'equipmentName',
+      'brand',
+      'category',
+      'modelNumber',
+      'serialNumber',
+      'purchaseDate',
+      'warrantyDate',
+      'location',
+      'threshold',
+      'maintenanceStatus',
+    ];
   }
 
   function isEditFieldInvalid(field) {
@@ -1108,6 +1133,7 @@ export default function InventoryPage() {
         }
       : type === 'supplies'
       ? {
+          supply_name: editForm.supplyName.trim(),
           brand: editForm.brand.trim(),
           category: editForm.category.trim(),
           unit: editForm.unit.trim(),
@@ -1115,7 +1141,14 @@ export default function InventoryPage() {
           ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
         }
       : {
+          equipment_name: editForm.equipmentName.trim(),
+          brand: editForm.brand.trim(),
           category: editForm.category.trim(),
+          model_number: editForm.modelNumber.trim(),
+          serial_number: editForm.serialNumber.trim(),
+          purchase_date: editForm.purchaseDate,
+          warranty_date: editForm.warrantyDate,
+          location: editForm.location.trim(),
           maintenance_status: editForm.maintenanceStatus,
           ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
           ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
@@ -1138,6 +1171,7 @@ export default function InventoryPage() {
           ]
         : selectedInventoryItem.type === 'supplies'
         ? [
+            ['Supply Name', selectedInventoryItem.supplyName, editForm.supplyName],
             ['Brand', selectedInventoryItem.brand, editForm.brand],
             ['Category', selectedInventoryItem.category, editForm.category],
             ['Critical Stock Level', selectedInventoryItem.threshold, editForm.threshold],
@@ -1145,7 +1179,14 @@ export default function InventoryPage() {
             ['Unit', selectedInventoryItem.unit, editForm.unit],
           ]
         : [
+            ['Equipment Name', selectedInventoryItem.equipmentName, editForm.equipmentName],
+            ['Brand', selectedInventoryItem.brand, editForm.brand],
             ['Category', selectedInventoryItem.category, editForm.category],
+            ['Model Number', selectedInventoryItem.modelNumber, editForm.modelNumber],
+            ['Serial Number', selectedInventoryItem.serialNumber, editForm.serialNumber],
+            ['Purchase Date', selectedInventoryItem.purchaseDate, editForm.purchaseDate],
+            ['Warranty Date', selectedInventoryItem.warrantyDate, editForm.warrantyDate],
+            ['Location', selectedInventoryItem.location, editForm.location],
             ['Critical Stock Level', selectedInventoryItem.threshold, editForm.threshold],
             ['Maximum Stock', selectedInventoryItem.maxStock, editForm.maxStock],
             ['Maintenance Status', selectedInventoryItem.maintenanceStatus, editForm.maintenanceStatus],
@@ -1256,11 +1297,18 @@ export default function InventoryPage() {
   function openEditModalCross(item, type) {
     setSelectedInventoryItem({ ...item, type });
     setEditForm({
+      equipmentName: item.equipmentName === 'N/A' ? '' : item.equipmentName || '',
+      supplyName: item.supplyName === 'N/A' ? '' : item.supplyName || '',
       genericName: item.genericName === 'N/A' ? '' : item.genericName || '',
       brand: item.brand === 'N/A' ? '' : item.brand || '',
       category: item.category === 'N/A' ? '' : item.category || '',
       form: item.form === 'N/A' ? '' : item.form || '',
       dosage: item.dosage === 'N/A' ? '' : item.dosage || '',
+      modelNumber: item.modelNumber === 'N/A' ? '' : item.modelNumber || '',
+      serialNumber: item.serialNumber === 'N/A' ? '' : item.serialNumber || '',
+      purchaseDate: item.purchaseDate === 'N/A' ? '' : item.purchaseDate || '',
+      warrantyDate: item.warrantyDate === 'N/A' ? '' : item.warrantyDate || '',
+      location: item.location === 'N/A' ? '' : item.location || '',
       unit: item.unit === 'N/A' ? '' : item.unit || '',
       threshold: Number.isFinite(Number(item.threshold)) ? String(Number(item.threshold)) : '',
       maxStock: Number.isFinite(Number(item.maxStock)) && Number(item.maxStock) > 0 ? String(Number(item.maxStock)) : '',
@@ -1972,6 +2020,305 @@ export default function InventoryPage() {
     };
     const editLabelStyle = { ...styles.formLabel, color: expenseGoldDark };
 
+    if (selectedInventoryItem.type === 'equipment') {
+      return (
+        <>
+          <div style={styles.formGrid}>
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Equipment Name')}
+              <input
+                type="text"
+                value={editForm.equipmentName}
+                onChange={(event) =>
+                  handleEditFormChange('equipmentName', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('equipmentName')}
+                style={getEditFieldStyle('equipmentName')}
+              />
+              {renderEditFieldError('equipmentName')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Brand')}
+              <input
+                type="text"
+                value={editForm.brand}
+                onChange={(event) =>
+                  handleEditFormChange('brand', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('brand')}
+                style={getEditFieldStyle('brand')}
+              />
+              {renderEditFieldError('brand')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Category')}
+              <input
+                type="text"
+                value={editForm.category}
+                onChange={(event) =>
+                  handleEditFormChange('category', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('category')}
+                style={getEditFieldStyle('category')}
+              />
+              {renderEditFieldError('category')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Model Number')}
+              <input
+                type="text"
+                value={editForm.modelNumber}
+                onChange={(event) =>
+                  handleEditFormChange('modelNumber', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('modelNumber')}
+                style={getEditFieldStyle('modelNumber')}
+              />
+              {renderEditFieldError('modelNumber')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Serial Number')}
+              <input
+                type="text"
+                value={editForm.serialNumber}
+                onChange={(event) =>
+                  handleEditFormChange('serialNumber', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('serialNumber')}
+                style={getEditFieldStyle('serialNumber')}
+              />
+              {renderEditFieldError('serialNumber')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Purchase Date')}
+              <input
+                type="date"
+                value={editForm.purchaseDate}
+                onChange={(event) =>
+                  handleEditFormChange('purchaseDate', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('purchaseDate')}
+                style={getEditFieldStyle('purchaseDate')}
+              />
+              {renderEditFieldError('purchaseDate')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Warranty Date')}
+              <input
+                type="date"
+                value={editForm.warrantyDate}
+                onChange={(event) =>
+                  handleEditFormChange('warrantyDate', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('warrantyDate')}
+                style={getEditFieldStyle('warrantyDate')}
+              />
+              {renderEditFieldError('warrantyDate')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Location')}
+              <input
+                type="text"
+                value={editForm.location}
+                onChange={(event) =>
+                  handleEditFormChange('location', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('location')}
+                style={getEditFieldStyle('location')}
+              />
+              {renderEditFieldError('location')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Critical Stock Level')}
+              <input
+                type="number"
+                inputMode="numeric"
+                min="0"
+                step="1"
+                value={editForm.threshold}
+                onChange={(event) =>
+                  handleEditFormChange('threshold', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('threshold')}
+                onWheel={(event) => event.currentTarget.blur()}
+                style={getEditFieldStyle('threshold')}
+              />
+              {renderEditFieldError('threshold')}
+            </label>
+
+            <label style={styles.formGroup}>
+              <span style={editLabelStyle}>Maximum Stock</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="0"
+                step="1"
+                value={editForm.maxStock}
+                onChange={(event) =>
+                  handleEditFormChange('maxStock', event.target.value)
+                }
+                onWheel={(event) => event.currentTarget.blur()}
+                style={getEditFieldStyle('maxStock')}
+              />
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Maintenance Status')}
+              <select
+                value={editForm.maintenanceStatus}
+                onChange={(event) =>
+                  handleEditFormChange('maintenanceStatus', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('maintenanceStatus')}
+                style={getEditFieldStyle('maintenanceStatus')}
+              >
+                <option value="Available">Available</option>
+                <option value="Under Maintenance">Under Maintenance</option>
+                <option value="Needs Repair">Needs Repair</option>
+                <option value="Retired">Retired</option>
+              </select>
+              {renderEditFieldError('maintenanceStatus')}
+            </label>
+          </div>
+
+          {editError && (
+            <p
+              style={{
+                ...styles.helperText,
+                background: '#fef2f2',
+                color: '#b91c1c',
+              }}
+            >
+              {editError}
+            </p>
+          )}
+        </>
+      );
+    }
+
+    if (selectedInventoryItem.type === 'supplies') {
+      return (
+        <>
+          <div style={styles.formGrid}>
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Supply Name')}
+              <input
+                type="text"
+                value={editForm.supplyName}
+                onChange={(event) =>
+                  handleEditFormChange('supplyName', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('supplyName')}
+                style={getEditFieldStyle('supplyName')}
+              />
+              {renderEditFieldError('supplyName')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Brand')}
+              <input
+                type="text"
+                value={editForm.brand}
+                onChange={(event) =>
+                  handleEditFormChange('brand', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('brand')}
+                style={getEditFieldStyle('brand')}
+              />
+              {renderEditFieldError('brand')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Category')}
+              <input
+                type="text"
+                value={editForm.category}
+                onChange={(event) =>
+                  handleEditFormChange('category', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('category')}
+                style={getEditFieldStyle('category')}
+              />
+              {renderEditFieldError('category')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Unit')}
+              <input
+                type="text"
+                value={editForm.unit}
+                onChange={(event) =>
+                  handleEditFormChange('unit', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('unit')}
+                style={getEditFieldStyle('unit')}
+              />
+              {renderEditFieldError('unit')}
+            </label>
+
+            <label style={styles.formGroup}>
+              {renderEditRequiredLabel('Critical Stock Level')}
+              <input
+                type="number"
+                inputMode="numeric"
+                min="0"
+                step="1"
+                value={editForm.threshold}
+                onChange={(event) =>
+                  handleEditFormChange('threshold', event.target.value)
+                }
+                onBlur={() => handleEditFieldBlur('threshold')}
+                onWheel={(event) => event.currentTarget.blur()}
+                style={getEditFieldStyle('threshold')}
+              />
+              {renderEditFieldError('threshold')}
+            </label>
+
+            <label style={styles.formGroup}>
+              <span style={editLabelStyle}>Maximum Stock</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="0"
+                step="1"
+                value={editForm.maxStock}
+                onChange={(event) =>
+                  handleEditFormChange('maxStock', event.target.value)
+                }
+                onWheel={(event) => event.currentTarget.blur()}
+                style={getEditFieldStyle('maxStock')}
+              />
+            </label>
+          </div>
+
+          <p style={{ ...styles.helperText, border: `1px solid ${expenseGoldBorder}`, background: '#ffffff', color: expenseGoldDark, fontWeight: 700 }}>
+            Branch, supplier, quantity, and price are managed through expense
+            input.
+          </p>
+
+          {editError && (
+            <p
+              style={{
+                ...styles.helperText,
+                background: '#fef2f2',
+                color: '#b91c1c',
+              }}
+            >
+              {editError}
+            </p>
+          )}
+        </>
+      );
+    }
+
     return (
       <>
         <div style={styles.formGrid}>
@@ -2135,45 +2482,24 @@ export default function InventoryPage() {
                 handleEditFormChange('maxStock', event.target.value)
               }
               onWheel={(event) => event.currentTarget.blur()}
-              style={styles.formInput}
+              style={getEditFieldStyle('maxStock')}
             />
           </label>
 
-          {selectedInventoryItem.type !== 'equipment' && (
-            <label style={styles.formGroup}>
-              {renderEditRequiredLabel('Unit')}
-              <input
-                type="text"
-                value={editForm.unit}
-                onChange={(event) =>
-                  handleEditFormChange('unit', event.target.value)
-                }
-                onBlur={() => handleEditFieldBlur('unit')}
-                style={getEditFieldStyle('unit')}
-              />
-              {renderEditFieldError('unit')}
-            </label>
-          )}
+          <label style={styles.formGroup}>
+            {renderEditRequiredLabel('Unit')}
+            <input
+              type="text"
+              value={editForm.unit}
+              onChange={(event) =>
+                handleEditFormChange('unit', event.target.value)
+              }
+              onBlur={() => handleEditFieldBlur('unit')}
+              style={getEditFieldStyle('unit')}
+            />
+            {renderEditFieldError('unit')}
+          </label>
 
-          {selectedInventoryItem.type === 'equipment' && (
-            <label style={styles.formGroup}>
-              {renderEditRequiredLabel('Maintenance Status')}
-              <select
-                value={editForm.maintenanceStatus}
-                onChange={(event) =>
-                  handleEditFormChange('maintenanceStatus', event.target.value)
-                }
-                onBlur={() => handleEditFieldBlur('maintenanceStatus')}
-                style={getEditFieldStyle('maintenanceStatus')}
-              >
-                <option value="Available">Available</option>
-                <option value="Under Maintenance">Under Maintenance</option>
-                <option value="Needs Repair">Needs Repair</option>
-                <option value="Retired">Retired</option>
-              </select>
-              {renderEditFieldError('maintenanceStatus')}
-            </label>
-          )}
         </div>
 
         <p style={{ ...styles.helperText, border: `1px solid ${expenseGoldBorder}`, background: '#ffffff', color: expenseGoldDark, fontWeight: 700 }}>
