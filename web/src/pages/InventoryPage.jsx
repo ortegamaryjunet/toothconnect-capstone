@@ -242,7 +242,7 @@ const expenseGoldDark = '#9a6b00';
 const expenseGoldSoft = '#fff8e1';
 const expenseGoldBorder = '#f3d675';
 const LETTERS_AND_SPACES_ONLY = /^[A-Za-z\s]+$/;
-const editLettersOnlyFields = ['genericName', 'category', 'unit'];
+const editLettersOnlyFields = ['genericName', 'form', 'category', 'unit'];
 
 function uniqueSortedNames(rows, fieldName) {
   return Array.from(
@@ -1042,6 +1042,8 @@ export default function InventoryPage() {
   function getEditFieldStyle(field) {
     return {
       ...styles.formInput,
+      borderColor: expenseGoldBorder,
+      color: '#3f2f08',
       ...(isEditFieldInvalid(field)
         ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
         : {}),
@@ -1050,8 +1052,8 @@ export default function InventoryPage() {
 
   function renderEditRequiredLabel(label) {
     return (
-      <span style={styles.formLabel}>
-        {label} <span style={{ color: '#dc2626' }}>*</span>
+      <span style={{ ...styles.formLabel, color: expenseGoldDark }}>
+        {label} <span style={{ color: expenseGold }}>*</span>
       </span>
     );
   }
@@ -1963,16 +1965,18 @@ export default function InventoryPage() {
 
     const readOnlyFieldStyle = {
       ...styles.formInput,
-      background: '#f8fafc',
-      color: '#475569',
+      borderColor: expenseGoldBorder,
+      background: '#ffffff',
+      color: '#3f2f08',
       cursor: 'not-allowed',
     };
+    const editLabelStyle = { ...styles.formLabel, color: expenseGoldDark };
 
     return (
       <>
         <div style={styles.formGrid}>
           <label style={styles.formGroup}>
-            <span style={styles.formLabel}>Item Name</span>
+            <span style={editLabelStyle}>Item Name</span>
             <input
               type="text"
               value={getInventoryItemName(selectedInventoryItem)}
@@ -1983,7 +1987,7 @@ export default function InventoryPage() {
           </label>
 
           <label style={styles.formGroup}>
-            <span style={styles.formLabel}>Branch</span>
+            <span style={editLabelStyle}>Branch</span>
             <input
               type="text"
               value={selectedInventoryItem.branchName || 'N/A'}
@@ -1994,7 +1998,7 @@ export default function InventoryPage() {
           </label>
 
           <label style={styles.formGroup}>
-            <span style={styles.formLabel}>Supplier</span>
+            <span style={editLabelStyle}>Supplier</span>
             <input
               type="text"
               value={selectedInventoryItem.supplier || 'N/A'}
@@ -2005,7 +2009,7 @@ export default function InventoryPage() {
           </label>
 
           <label style={styles.formGroup}>
-            <span style={styles.formLabel}>Quantity</span>
+            <span style={editLabelStyle}>Quantity</span>
             <input
               type="text"
               value={String(selectedInventoryItem.quantity ?? 0)}
@@ -2016,7 +2020,7 @@ export default function InventoryPage() {
           </label>
 
           <label style={styles.formGroup}>
-            <span style={styles.formLabel}>Price per Item</span>
+            <span style={editLabelStyle}>Price per Item</span>
             <input
               type="text"
               value={formatPeso(selectedInventoryItem.pricePerItem || 0)}
@@ -2120,7 +2124,7 @@ export default function InventoryPage() {
           </label>
 
           <label style={styles.formGroup}>
-            <span style={styles.formLabel}>Maximum Stock</span>
+            <span style={editLabelStyle}>Maximum Stock</span>
             <input
               type="number"
               inputMode="numeric"
@@ -2130,6 +2134,7 @@ export default function InventoryPage() {
               onChange={(event) =>
                 handleEditFormChange('maxStock', event.target.value)
               }
+              onWheel={(event) => event.currentTarget.blur()}
               style={styles.formInput}
             />
           </label>
@@ -2171,7 +2176,7 @@ export default function InventoryPage() {
           )}
         </div>
 
-        <p style={styles.helperText}>
+        <p style={{ ...styles.helperText, border: `1px solid ${expenseGoldBorder}`, background: '#ffffff', color: expenseGoldDark, fontWeight: 700 }}>
           Item name, branch, supplier, quantity, and price are managed through
           expense input.
         </p>
@@ -2815,11 +2820,11 @@ export default function InventoryPage() {
 
       {!isReceptionist && showEditModal && (
         <div style={styles.modal} onClick={handleEditOverlayClick}>
-          <div style={styles.editModalContent}>
+          <div style={{ ...styles.editModalContent, border: '1px solid #e5e7eb', boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)' }}>
             <div style={styles.editModalHeader}>
               <div>
-                <h2 style={styles.modalTitle}>Edit Inventory Item</h2>
-                <p style={styles.modalText}>
+                <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Edit Inventory Item</h2>
+                <p style={{ ...styles.modalText, color: expenseGoldDark, fontWeight: 700 }}>
                   Only item classification fields can be updated here.
                 </p>
               </div>
