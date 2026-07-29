@@ -52,6 +52,19 @@ const DAY_TO_WEEKDAY = {
   Saturday: 6,
 };
 
+const DENTIST_SPECIALIZATIONS = [
+  'General Dentistry',
+  'Orthodontics',
+  'Endodontics',
+  'Periodontics',
+  'Prosthodontics',
+  'Pediatric Dentistry',
+  'Oral Surgery',
+  'Cosmetic Dentistry',
+  'Implant Dentistry',
+  'Radiology',
+];
+
 function filterNameVal(val) {
   return val.replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
 }
@@ -166,6 +179,17 @@ function parseWorkDays(val) {
     .filter(Boolean);
 }
 
+function parseSpecializations(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean);
+  }
+
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function formatScheduleEntries(entries = []) {
   if (!Array.isArray(entries) || entries.length === 0) {
     return [];
@@ -229,6 +253,7 @@ export default function AdminEmployees() {
 
   const [employees, setEmployees] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [serviceCategories, setServiceCategories] = useState([]);
 
   const isMobile = screenWidth <= 850;
   const isTablet = screenWidth > 850 && screenWidth <= 1200;
@@ -285,8 +310,20 @@ export default function AdminEmployees() {
       }
     }
 
+    async function loadServices() {
+      try {
+        const res = await api.get('/auth/services');
+        const all = res.data.services || [];
+        const categories = [...new Set(all.map((service) => service.category).filter(Boolean))].sort();
+        setServiceCategories(categories);
+      } catch (err) {
+        console.error('Failed to load services', err);
+      }
+    }
+
     loadEmployees();
     loadBranches();
+    loadServices();
   }, []);
 
   useEffect(() => {
@@ -755,8 +792,16 @@ export default function AdminEmployees() {
   }
 
   function openEmployeeModal(employee) {
-    setSelectedEmployee(employee);
-    setEditedEmployee({ ...employee });
+    const normalizedEmployee =
+      employee?.role === 'Dentist'
+        ? {
+            ...employee,
+            specializations: parseSpecializations(employee.specializations || employee.workDepartment || employee.specialization),
+          }
+        : employee;
+
+    setSelectedEmployee(normalizedEmployee);
+    setEditedEmployee({ ...normalizedEmployee });
     setIsEditingEmployee(false);
 
     const hasSchedule =
@@ -1356,6 +1401,97 @@ export default function AdminEmployees() {
             </option>
           ))}
         </select>
+      </div>
+    );
+  }
+
+  function toggleEditedDentistSpecialization(value, checked) {
+    setEditedEmployee((prev) => {
+      const current = parseSpecializations(prev?.specializations || prev?.workDepartment || prev?.specialization);
+      const next = new Set(current);
+
+      if (checked) next.add(value);
+      else next.delete(value);
+
+      const specializations = Array.from(next);
+      const text = specializations.join(', ');
+
+      return {
+        ...prev,
+        specializations,
+        specialization: text,
+        workDepartment: text,
+      };
+    });
+  }
+
+  function modalDentistSpecializations() {
+    const options = serviceCategories.length > 0 ? serviceCategories : DENTIST_SPECIALIZATIONS;
+    const selected = parseSpecializations(
+      editedEmployee?.specializations || editedEmployee?.workDepartment || editedEmployee?.specialization
+    );
+    const hasError = editErrors.has('workDepartment');
+
+    if (!isEditingEmployee) {
+      return (
+        <div style={styles.employeeModalField}>
+          <label style={styles.employeeModalLabel}>Specialization / Department</label>
+          <input
+            type="text"
+            value={selected.join(', ')}
+            readOnly
+            style={{
+              ...styles.employeeModalInput,
+              ...styles.employeeModalInputReadOnly,
+            }}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div style={styles.employeeModalField}>
+        <label style={styles.employeeModalLabel}>
+          Specialization / Department
+          {hasError && (
+            <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>
+          )}
+        </label>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: screenWidth <= 640 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+            gap: 8,
+            padding: 12,
+            border: `1px solid ${hasError ? '#dc2626' : '#d9e2ef'}`,
+            borderRadius: 12,
+            background: '#f8fafc',
+          }}
+        >
+          {options.map((option) => (
+            <label
+              key={option}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                color: '#172554',
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={(event) =>
+                  toggleEditedDentistSpecialization(option, event.target.checked)
+                }
+              />
+              {option}
+            </label>
+          ))}
+        </div>
       </div>
     );
   }
@@ -2206,14 +2342,14 @@ export default function AdminEmployees() {
                 {(editedEmployee?.role === 'Dentist' ||
                   editedEmployee?.role === 'Dental Assistant') && (
                   <div style={styles.employeeModalGridTwo}>
-                    {modalField(
-                      editedEmployee?.role === 'Dentist'
-                        ? 'Specialization / Department'
-                        : 'Department',
-                      'workDepartment',
-                      'text',
-                      filterProfTextVal
-                    )}
+                    {editedEmployee?.role === 'Dentist'
+                      ? modalDentistSpecializations()
+                      : modalField(
+                          'Department',
+                          'workDepartment',
+                          'text',
+                          filterProfTextVal
+                        )}
                     {editedEmployee?.role === 'Dental Assistant' &&
                       modalField('Assigned Dentist', 'assignedDentist')}
                   </div>
@@ -2678,6 +2814,9 @@ function employeeToStaffPayload(employee) {
     email: employee.email,
     position: employee.position,
     specialization: employee.specialization,
+    specializations: employee.role === 'Dentist'
+      ? parseSpecializations(employee.specializations || employee.workDepartment || employee.specialization)
+      : [],
     workDepartment: employee.workDepartment,
     medicalDegree: employee.medicalDegree,
     licenseNumber: employee.licenseNumber,

@@ -423,6 +423,7 @@ export default function AdminEmployeeForm() {
   const [branchSpecializationOptions, setBranchSpecializationOptions] = useState([]);
   const [specializationsLoading, setSpecializationsLoading] = useState(false);
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
+  const [selectedDentistSpecializations, setSelectedDentistSpecializations] = useState([]);
   const [formErrors, setFormErrors] = useState(new Set());
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
@@ -548,6 +549,7 @@ export default function AdminEmployeeForm() {
   useEffect(() => {
     setSelectedBranchId('');
     setSelectedSpecialization('');
+    setSelectedDentistSpecializations([]);
     setEnablePerDayBranch(false);
     setDentistWorkDays([]);
     setRecepWorkHours([]);
@@ -702,7 +704,7 @@ export default function AdminEmployeeForm() {
       .forEach((name) => { if (!formData.get(name)) errors.add(name); });
     if (!selectedBranchId) errors.add('branchId');
     if (employeeType === 'dentist') {
-      if (!selectedSpecialization) errors.add('department');
+      if (selectedDentistSpecializations.length === 0) errors.add('department');
       ['startDate', 'employmentType', 'shiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
     } else if (employeeType === 'dentalAssistant') {
       if (!selectedSpecialization) errors.add('daDepartment');
@@ -796,6 +798,8 @@ export default function AdminEmployeeForm() {
       const branchId = Number(selectedBranchId);
       const workDays = isDentist ? dentistWorkDays : formData.getAll('schedule[]');
       const scheduleEntries = [];
+      const dentistSpecializations = isDentist ? selectedDentistSpecializations : [];
+      const dentistSpecializationText = dentistSpecializations.join(', ');
 
       if (isDentist && enablePerDayBranch) {
         for (const day of workDays) {
@@ -826,12 +830,13 @@ export default function AdminEmployeeForm() {
         contact_number: payload[`${prefix}Contact`],
         email: payload[`${prefix}Email`],
         position: isDentist ? 'Dentist' : isDentalAssistant ? 'Dental Assistant' : 'Receptionist',
-        specialization: isDentist ? payload.specialization || null : null,
+        specialization: isDentist ? dentistSpecializationText || payload.specialization || null : null,
         work_department: isDentist
-          ? payload.department || null
+          ? dentistSpecializationText || null
           : isDentalAssistant
             ? payload.daDepartment || null
             : null,
+        specializations: isDentist ? dentistSpecializations : [],
         medical_degree: isDentist ? payload.medicalDegree : null,
         license_number: isDentist ? payload.licenseNumber : null,
         years_experience: isDentist
@@ -872,7 +877,7 @@ export default function AdminEmployeeForm() {
         branch_ids: [branchId],
         phone: payload[`${prefix}Contact`],
         password: payload.accessPassword,
-        department: isDentist ? (payload.department || null) : null,
+        department: isDentist ? (dentistSpecializationText || null) : null,
         staffProfile: commonStaffProfile,
       });
 
@@ -1213,6 +1218,112 @@ export default function AdminEmployeeForm() {
     );
   }
 
+  function toggleDentistSpecialization(value, checked) {
+    setSelectedDentistSpecializations((prev) => {
+      const next = new Set(Array.isArray(prev) ? prev : []);
+      if (checked) next.add(value);
+      else next.delete(value);
+      return Array.from(next);
+    });
+
+    if (checked) {
+      setFormErrors((prev) => {
+        const next = new Set(prev);
+        next.delete('department');
+        return next;
+      });
+    }
+  }
+
+  function renderDentistSpecializationSelect() {
+    const hasError = formErrors.has('department');
+    const disabled = !selectedBranchId || specializationsLoading || specializationOptions.length === 0;
+
+    return (
+      <div style={styles.field}>
+        <label style={styles.label}>
+          Specialization / Department
+          {hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+        </label>
+        <div
+          style={{
+            ...styles.scheduleGrid,
+            borderColor: hasError ? '#dc2626' : '#d9e2ef',
+            borderWidth: hasError ? 2 : 1,
+            opacity: disabled ? 0.65 : 1,
+          }}
+        >
+          {disabled ? (
+            <span style={{ color: '#64748b', fontSize: 14 }}>
+              {!selectedBranchId
+                ? 'Select a branch first'
+                : specializationsLoading
+                  ? 'Loading...'
+                  : 'No categories found'}
+            </span>
+          ) : (
+            specializationOptions.map((option) => {
+              const value = option.value ?? option;
+              const label = option.label ?? option;
+              return (
+                <label key={value} style={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={selectedDentistSpecializations.includes(value)}
+                    onChange={(event) =>
+                      toggleDentistSpecialization(value, event.target.checked)
+                    }
+                    style={styles.checkboxInput}
+                  />
+                  {label}
+                </label>
+              );
+            })
+          )}
+        </div>
+        {selectedDentistSpecializations.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+            {selectedDentistSpecializations.map((specialization) => (
+              <span
+                key={specialization}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 10px',
+                  borderRadius: 999,
+                  background: '#fff8e1',
+                  border: '1px solid #d4af37',
+                  color: '#7a5700',
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                {specialization}
+                <button
+                  type="button"
+                  onClick={() => toggleDentistSpecialization(specialization, false)}
+                  style={{
+                    border: 0,
+                    background: 'transparent',
+                    color: '#7a5700',
+                    cursor: 'pointer',
+                    fontWeight: 800,
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                  aria-label={`Remove ${specialization}`}
+                >
+                  x
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderDentistForm() {
     return (
       <div style={styles.formSection}>
@@ -1227,20 +1338,6 @@ export default function AdminEmployeeForm() {
               <FieldRaw label="Medical License Number" name="licenseNumber" styles={styles} />
             </div>
             <div style={styles.rowTwo}>
-              <SelectFieldRaw
-                label="Specialization"
-                name="specialization"
-                placeholder={
-                  specializationsLoading
-                    ? 'Loading...'
-                    : specializationOptions.length === 0
-                      ? 'No categories found'
-                      : 'Select specialization'
-                }
-                options={specializationOptions}
-                disabled={specializationsLoading || specializationOptions.length === 0}
-                styles={styles}
-              />
               <FieldRaw
                 label="Years of Experience"
                 name="experienceYears"
@@ -1254,6 +1351,7 @@ export default function AdminEmployeeForm() {
                 errorMessage={fieldErrors.experienceYears}
                 styles={styles}
               />
+              <div />
             </div>
 
             <h3 style={styles.subTitle}>Previous Work</h3>
@@ -1274,27 +1372,7 @@ export default function AdminEmployeeForm() {
           <>
             <div style={styles.rowTwo}>
               {renderBranchSelect()}
-              <SelectFieldRaw
-                label="Specialization / Department"
-                name="department"
-                placeholder={
-                  !selectedBranchId
-                    ? 'Select a branch first'
-                    : specializationsLoading
-                      ? 'Loading…'
-                      : 'Select specialization'
-                }
-                options={specializationOptions}
-                disabled={!selectedBranchId || specializationsLoading}
-                required
-                value={selectedSpecialization}
-                onChange={(e) => {
-                  setSelectedSpecialization(e.target.value);
-                  if (e.target.value) setFormErrors((prev) => { const n = new Set(prev); n.delete('department'); return n; });
-                }}
-                hasError={formErrors.has('department')}
-                styles={styles}
-              />
+              {renderDentistSpecializationSelect()}
               <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>

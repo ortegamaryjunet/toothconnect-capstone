@@ -1026,6 +1026,10 @@ setWebsiteContentSaveConfirmModal({
     return value.replace(/[^a-zA-Z\s]/g, '');
   }
 
+  function allowServiceNameText(value) {
+    return value.replace(/[^a-zA-Z\s()\-]/g, '');
+  }
+
   function allowTextContent(value) {
     return value.replace(/[^a-zA-Z0-9\s.,]/g, '');
   }
@@ -1239,7 +1243,7 @@ setWebsiteContentSaveConfirmModal({
     let newValue = value;
 
     if (name === 'name' || name === 'category') {
-      newValue = allowLettersOnly(value);
+      newValue = allowServiceNameText(value);
     }
 
     if (name === 'contact_person') {
@@ -1343,8 +1347,8 @@ setWebsiteContentSaveConfirmModal({
       return 'This field is required.';
     }
 
-    if ((name === 'name' || name === 'category') && !/^[a-zA-Z\s]+$/.test(value)) {
-      return `${label} must contain letters only.`;
+    if ((name === 'name' || name === 'category') && !/^[a-zA-Z\s()\-]+$/.test(value)) {
+      return `${label} can only contain letters, spaces, parentheses, and hyphen.`;
     }
 
     if (name === 'price' && !/^\d+(\.\d+)?$/.test(value)) {

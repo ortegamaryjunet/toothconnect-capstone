@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS treatments;
 DROP TABLE IF EXISTS treatment_plans;
 DROP TABLE IF EXISTS appointments;
 DROP TABLE IF EXISTS dentist_schedules;
+DROP TABLE IF EXISTS dentist_specializations;
 DROP TABLE IF EXISTS dentist_services;
 DROP TABLE IF EXISTS services;
 DROP TABLE IF EXISTS messages;
@@ -220,6 +221,14 @@ CREATE TABLE dentist_services (
   PRIMARY KEY (dentist_id, service_id),
   FOREIGN KEY (dentist_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+);
+
+CREATE TABLE dentist_specializations (
+  dentist_id INT NOT NULL,
+  specialization VARCHAR(100) NOT NULL,
+  PRIMARY KEY (dentist_id, specialization),
+  FOREIGN KEY (dentist_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_dentist_specializations_name (specialization)
 );
 
 CREATE TABLE dentist_schedules (
