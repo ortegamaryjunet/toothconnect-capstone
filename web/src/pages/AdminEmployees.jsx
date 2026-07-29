@@ -206,6 +206,35 @@ function formatScheduleEntries(entries = []) {
   });
 }
 
+function makeScheduleDraftBlock(entry = {}) {
+  return {
+    id: entry.id || `schedule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    branch_id: entry.branch_id ? String(entry.branch_id) : '',
+    start_time: entry.start_time ? String(entry.start_time).slice(0, 5) : '',
+    end_time: entry.end_time ? String(entry.end_time).slice(0, 5) : '',
+  };
+}
+
+function buildScheduleDraft(employee) {
+  const draft = {};
+
+  for (const entry of employee?.scheduleEntries || []) {
+    const weekday = Number(entry.weekday);
+
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+      continue;
+    }
+
+    if (!Array.isArray(draft[weekday])) {
+      draft[weekday] = [];
+    }
+
+    draft[weekday].push(makeScheduleDraftBlock(entry));
+  }
+
+  return draft;
+}
+
 export default function AdminEmployees() {
   const { user } = useAuth();
   const adminName = user?.name || 'Admin';
@@ -810,23 +839,7 @@ export default function AdminEmployees() {
 
     setUsePerDayBranchSchedule(hasSchedule);
 
-    const draft = {};
-
-    for (const entry of employee?.scheduleEntries || []) {
-      const weekday = Number(entry.weekday);
-
-      if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
-        continue;
-      }
-
-      draft[weekday] = {
-        branch_id: entry.branch_id,
-        start_time: entry.start_time || '',
-        end_time: entry.end_time || '',
-      };
-    }
-
-    setScheduleDraft(draft);
+    setScheduleDraft(buildScheduleDraft(employee));
 
     setShowEmployeeModal(true);
   }
@@ -957,6 +970,7 @@ export default function AdminEmployees() {
     setEmployeeSaveConfirmModal(null);
     setShowScheduleLockWarningModal(false);
     setEditedEmployee({ ...selectedEmployee });
+    setScheduleDraft(buildScheduleDraft(selectedEmployee));
     setIsEditingEmployee(false);
     setEditErrors(new Set());
     setLiveEditErrors({});
@@ -969,6 +983,66 @@ export default function AdminEmployees() {
       ...prev,
       [name]: value,
     }));
+  }
+
+  function createModalScheduleBlock(overrides = {}) {
+    return makeScheduleDraftBlock({
+      branch_id: overrides.branch_id ?? editedEmployee?.branchId ?? '',
+      start_time: overrides.start_time ?? editedEmployee?.workStartTime ?? '',
+      end_time: overrides.end_time ?? editedEmployee?.workEndTime ?? '',
+    });
+  }
+
+  function ensureModalScheduleDay(weekday) {
+    setScheduleDraft((prev) => {
+      if (Array.isArray(prev?.[weekday]) && prev[weekday].length > 0) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [weekday]: [createModalScheduleBlock()],
+      };
+    });
+  }
+
+  function removeModalScheduleDay(weekday) {
+    setScheduleDraft((prev) => {
+      const next = { ...prev };
+      delete next[weekday];
+      return next;
+    });
+  }
+
+  function addModalScheduleBlock(weekday) {
+    setScheduleDraft((prev) => ({
+      ...prev,
+      [weekday]: [
+        ...(Array.isArray(prev?.[weekday]) ? prev[weekday] : []),
+        createModalScheduleBlock(),
+      ],
+    }));
+  }
+
+  function updateModalScheduleBlock(weekday, blockId, field, value) {
+    setScheduleDraft((prev) => ({
+      ...prev,
+      [weekday]: (Array.isArray(prev?.[weekday]) ? prev[weekday] : []).map((block) =>
+        block.id === blockId ? { ...block, [field]: value } : block
+      ),
+    }));
+  }
+
+  function removeModalScheduleBlock(weekday, blockId) {
+    setScheduleDraft((prev) => {
+      const current = Array.isArray(prev?.[weekday]) ? prev[weekday] : [];
+      const nextBlocks = current.filter((block) => block.id !== blockId);
+
+      return {
+        ...prev,
+        [weekday]: nextBlocks.length > 0 ? nextBlocks : [createModalScheduleBlock()],
+      };
+    });
   }
 
   function validateLiveEmployeeField(name, value) {
@@ -1095,42 +1169,43 @@ export default function AdminEmployees() {
       const assignedBranchId = Number(editedEmployee?.branchId);
 
       const scheduleEntries = checkedDays
-        .map((day) => {
+        .flatMap((day) => {
           const weekday = DAY_TO_WEEKDAY[day];
-          const draft = scheduleDraft?.[weekday] || {};
-
-          const branchId = usePerDayBranchSchedule
-            ? Number(draft.branch_id || assignedBranchId)
-            : assignedBranchId;
-
-          const startTime =
-            (usePerDayBranchSchedule ? draft.start_time : '') ||
-            editedEmployee?.workStartTime ||
-            '';
-
-          const endTime =
-            (usePerDayBranchSchedule ? draft.end_time : '') ||
-            editedEmployee?.workEndTime ||
-            '';
 
           if (!Number.isInteger(weekday)) {
-            return null;
+            return [];
           }
 
-          if (!Number.isInteger(branchId) || branchId <= 0) {
-            return null;
-          }
+          const blocks = usePerDayBranchSchedule
+            ? (Array.isArray(scheduleDraft?.[weekday]) && scheduleDraft[weekday].length > 0
+                ? scheduleDraft[weekday]
+                : [createModalScheduleBlock()])
+            : [{
+                branch_id: assignedBranchId,
+                start_time: editedEmployee?.workStartTime || '',
+                end_time: editedEmployee?.workEndTime || '',
+              }];
 
-          if (!startTime || !endTime) {
-            return null;
-          }
+          return blocks.map((draft) => {
+            const branchId = Number(draft.branch_id || assignedBranchId);
+            const startTime = draft.start_time || editedEmployee?.workStartTime || '';
+            const endTime = draft.end_time || editedEmployee?.workEndTime || '';
 
-          return {
-            weekday,
-            branch_id: branchId,
-            start_time: startTime,
-            end_time: endTime,
-          };
+            if (!Number.isInteger(branchId) || branchId <= 0) {
+              return null;
+            }
+
+            if (!startTime || !endTime) {
+              return null;
+            }
+
+            return {
+              weekday,
+              branch_id: branchId,
+              start_time: startTime,
+              end_time: endTime,
+            };
+          });
         })
         .filter(Boolean);
 
@@ -1642,11 +1717,18 @@ export default function AdminEmployees() {
                     const newDays = event.target.checked
                       ? [...checkedDays, day]
                       : checkedDays.filter((d) => d !== day);
+                    const weekday = DAY_TO_WEEKDAY[day];
 
                     setEditedEmployee((prev) => ({
                       ...prev,
                       workDays: newDays,
                     }));
+
+                    if (event.target.checked && usePerDayBranchSchedule) {
+                      ensureModalScheduleDay(weekday);
+                    } else if (!event.target.checked) {
+                      removeModalScheduleDay(weekday);
+                    }
                   }}
                   style={{
                     accentColor: isLocked ? '#d4af37' : '#2563eb',
@@ -1724,126 +1806,163 @@ export default function AdminEmployees() {
           <input
             type="checkbox"
             checked={usePerDayBranchSchedule}
-            onChange={(event) =>
-              setUsePerDayBranchSchedule(event.target.checked)
-            }
+            onChange={(event) => {
+              setUsePerDayBranchSchedule(event.target.checked);
+              if (event.target.checked) {
+                checkedDays.forEach((day) => ensureModalScheduleDay(DAY_TO_WEEKDAY[day]));
+              }
+            }}
             style={{ accentColor: '#2563eb' }}
           />
 
           <span style={{ fontSize: 13, color: '#334155' }}>
-            Enable different branch per day
+            Enable branch time blocks per selected day
           </span>
         </div>
 
         {usePerDayBranchSchedule && (
           <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
-            {EDIT_DAY_OPTIONS.map((day) => {
+            {checkedDays.length === 0 && (
+              <span style={{ color: '#8b6508', fontSize: 12, fontWeight: 700 }}>
+                Select work schedule days first.
+              </span>
+            )}
+
+            {checkedDays.map((day) => {
               const weekday = DAY_TO_WEEKDAY[day];
-              const isChecked = checkedDays.includes(day);
               const isLocked = isScheduleDayLocked(day);
               const lock = getScheduleLockForDay(day);
-              const draft = scheduleDraft?.[weekday] || {};
-              const branchValue = draft.branch_id ?? assignedBranchId ?? '';
-              const startValue =
-                draft.start_time ?? editedEmployee?.workStartTime ?? '';
-              const endValue =
-                draft.end_time ?? editedEmployee?.workEndTime ?? '';
+              const blocks = Array.isArray(scheduleDraft?.[weekday]) && scheduleDraft[weekday].length > 0
+                ? scheduleDraft[weekday]
+                : [createModalScheduleBlock()];
 
               return (
                 <div
                   key={day}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '100px 1fr 1fr 1fr',
-                    gap: 10,
-                    alignItems: 'center',
-                    opacity: isChecked ? 1 : 0.5,
+                    gap: 8,
                     borderLeft: isLocked ? '3px solid #d4af37' : '3px solid transparent',
                     paddingLeft: isLocked ? 8 : 0,
                   }}
                 >
                   <div
-                    title={
-                      isLocked
-                        ? `${day} has active appointments in ${lock?.branch_address || lock?.branch_name || 'this branch'}.`
-                        : ''
-                    }
                     style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: isLocked ? '#8b6508' : '#0f172a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
                     }}
                   >
-                    {day}
+                    <div
+                      title={
+                        isLocked
+                          ? `${day} has active appointments in ${lock?.branch_address || lock?.branch_name || 'this branch'}.`
+                          : ''
+                      }
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: isLocked ? '#8b6508' : '#0f172a',
+                      }}
+                    >
+                      {day}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => addModalScheduleBlock(weekday)}
+                      style={{
+                        ...styles.modalButton,
+                        padding: '8px 12px',
+                        minWidth: 110,
+                        height: 38,
+                        background: '#eef2f7',
+                        color: '#0f172a',
+                        opacity: isLocked ? 0.55 : 1,
+                      }}
+                    >
+                      Add Branch
+                    </button>
                   </div>
 
-                  <select
-                    value={branchValue}
-                    disabled={!isChecked || isLocked}
-                    onChange={(event) => {
-                      const value = event.target.value;
+                  {blocks.map((block) => (
+                    <div
+                      key={block.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : '1.3fr 1fr 1fr auto',
+                        gap: 10,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <select
+                        value={block.branch_id || assignedBranchId || ''}
+                        disabled={isLocked}
+                        onChange={(event) =>
+                          updateModalScheduleBlock(weekday, block.id, 'branch_id', event.target.value)
+                        }
+                        style={{
+                          ...styles.employeeModalInput,
+                          ...(isLocked ? styles.employeeModalInputReadOnly : {}),
+                        }}
+                      >
+                        <option value="">Select branch</option>
 
-                      setScheduleDraft((prev) => ({
-                        ...prev,
-                        [weekday]: {
-                          ...(prev?.[weekday] || {}),
-                          branch_id: value,
-                        },
-                      }));
-                    }}
-                    style={{
-                      ...styles.employeeModalInput,
-                      ...(!isChecked || isLocked ? styles.employeeModalInputReadOnly : {}),
-                    }}
-                  >
-                    <option value="">Select branch</option>
+                        {branches.map((branch) => (
+                          <option key={branch.id} value={String(branch.id)}>
+                            {branch.address
+                              ? `${branch.name} - ${branch.address}`
+                              : branch.name}
+                          </option>
+                        ))}
+                      </select>
 
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={String(branch.id)}>
-                        {branch.address
-                          ? `${branch.name} - ${branch.address}`
-                          : branch.name}
-                      </option>
-                    ))}
-                  </select>
+                      <input
+                        type="time"
+                        value={block.start_time || editedEmployee?.workStartTime || ''}
+                        disabled={isLocked}
+                        onChange={(event) =>
+                          updateModalScheduleBlock(weekday, block.id, 'start_time', event.target.value)
+                        }
+                        style={{
+                          ...styles.employeeModalInput,
+                          ...(isLocked ? styles.employeeModalInputReadOnly : {}),
+                        }}
+                      />
 
-                  <input
-                    type="time"
-                    value={startValue}
-                    disabled={!isChecked || isLocked}
-                    onChange={(event) => {
-                      setScheduleDraft((prev) => ({
-                        ...prev,
-                        [weekday]: {
-                          ...(prev?.[weekday] || {}),
-                          start_time: event.target.value,
-                        },
-                      }));
-                    }}
-                    style={{
-                      ...styles.employeeModalInput,
-                      ...(!isChecked || isLocked ? styles.employeeModalInputReadOnly : {}),
-                    }}
-                  />
+                      <input
+                        type="time"
+                        value={block.end_time || editedEmployee?.workEndTime || ''}
+                        disabled={isLocked}
+                        onChange={(event) =>
+                          updateModalScheduleBlock(weekday, block.id, 'end_time', event.target.value)
+                        }
+                        style={{
+                          ...styles.employeeModalInput,
+                          ...(isLocked ? styles.employeeModalInputReadOnly : {}),
+                        }}
+                      />
 
-                  <input
-                    type="time"
-                    value={endValue}
-                    disabled={!isChecked || isLocked}
-                    onChange={(event) => {
-                      setScheduleDraft((prev) => ({
-                        ...prev,
-                        [weekday]: {
-                          ...(prev?.[weekday] || {}),
-                          end_time: event.target.value,
-                        },
-                      }));
-                    }}
-                    style={{
-                      ...styles.employeeModalInput,
-                      ...(!isChecked || isLocked ? styles.employeeModalInputReadOnly : {}),
-                    }}
-                  />
+                      <button
+                        type="button"
+                        disabled={isLocked || blocks.length === 1}
+                        onClick={() => removeModalScheduleBlock(weekday, block.id)}
+                        style={{
+                          ...styles.modalButton,
+                          padding: '10px 12px',
+                          minWidth: 86,
+                          height: 42,
+                          background: '#eef2f7',
+                          color: '#0f172a',
+                          opacity: isLocked || blocks.length === 1 ? 0.55 : 1,
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
                 </div>
               );
             })}

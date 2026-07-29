@@ -547,7 +547,7 @@ async function listAvailableSlots({ date, branch, serviceName }) {
 
   // Availability rule for website UI:
   // - Block overlaps using existing appointment duration + buffer (prevents double-booking)
-  // - Do NOT require the selected service to "fit" within the dentist's schedule end time
+  // - Require the full service duration + buffer to fit within the dentist schedule.
   const busyByDentist = {};
   for (const id of dentistIds) busyByDentist[id] = [];
   for (const a of apptRows) {
@@ -578,9 +578,9 @@ async function listAvailableSlots({ date, branch, serviceName }) {
       const schedEndMin = timeToMinutes(String(d.end_time));
       if (schedStartMin === null || schedEndMin === null) continue;
 
-      // Must start within dentist schedule window (in local minutes)
+      // The full appointment window must fit inside the dentist schedule.
       if (slotMinutes < schedStartMin) continue;
-      if (slotMinutes >= schedEndMin) continue;
+      if (slotMinutes + requiredMinutes > schedEndMin) continue;
 
       const busy = busyByDentist[d.dentist_id] || [];
       const overlaps = busy.some((b) => slotStartMs < b.endMs && slotEndMs > b.startMs);
@@ -795,6 +795,10 @@ async function autoBookAppointment(appointmentData) {
     ? Number(service.time_buffer_min)
     : APPOINTMENT_BUFFER_MINUTES;
   const blockedEndUtc = new Date(startUtc.getTime() + (Number(service.duration_min || 30) + serviceBufferMin) * 60 * 1000);
+  const appointmentStartMinutes = timeToMinutes(appointmentTime);
+  const appointmentEndTime = Number.isFinite(appointmentStartMinutes)
+    ? minutesToTimeString(appointmentStartMinutes + Number(service.duration_min || 30) + serviceBufferMin)
+    : String(appointmentTime).slice(0, 5);
 
   const weekday = new Date(Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day)).getUTCDay();
   const weekdayAlt = alternateWeekday(weekday);
@@ -816,13 +820,14 @@ async function autoBookAppointment(appointmentData) {
                AND ? BETWEEN sr.date_from AND sr.date_to
            )
          ORDER BY u.id ASC`
-      : `SELECT DISTINCT u.id
-         FROM users u
-         JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
-         JOIN dentist_schedules dsch ON dsch.dentist_id = u.id AND dsch.branch_id = ? AND dsch.weekday IN (?, ?)
-         JOIN services s ON s.id = dsv.service_id AND s.category = ?
-         WHERE u.role = 'dentist'
-           AND u.status = 'Active'
+        : `SELECT DISTINCT u.id
+           FROM users u
+           JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+           JOIN dentist_schedules dsch ON dsch.dentist_id = u.id AND dsch.branch_id = ? AND dsch.weekday IN (?, ?)
+             AND dsch.start_time <= ? AND dsch.end_time >= ?
+           JOIN services s ON s.id = dsv.service_id AND s.category = ?
+           WHERE u.role = 'dentist'
+             AND u.status = 'Active'
            AND NOT EXISTS (
              SELECT 1 FROM schedule_requests sr
              WHERE sr.dentist_id = u.id
@@ -833,7 +838,7 @@ async function autoBookAppointment(appointmentData) {
          ORDER BY u.id ASC`,
     isSunday
       ? [service.id, service.category, appointmentDate]
-      : [service.id, branchId, weekday, weekdayAlt, service.category, appointmentDate]
+      : [service.id, branchId, weekday, weekdayAlt, appointmentTime, appointmentEndTime, service.category, appointmentDate]
   );
 
   let dentistCandidates = candidateRows;
@@ -857,6 +862,7 @@ async function autoBookAppointment(appointmentData) {
            FROM users u
            JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
            JOIN dentist_schedules dsch ON dsch.dentist_id = u.id AND dsch.branch_id = ? AND dsch.weekday IN (?, ?)
+             AND dsch.start_time <= ? AND dsch.end_time >= ?
            WHERE u.role = 'dentist'
              AND u.status = 'Active'
              AND NOT EXISTS (
@@ -867,7 +873,7 @@ async function autoBookAppointment(appointmentData) {
                  AND ? BETWEEN sr.date_from AND sr.date_to
              )
            ORDER BY u.id ASC`,
-      isSunday ? [service.id, appointmentDate] : [service.id, branchId, weekday, weekdayAlt, appointmentDate]
+      isSunday ? [service.id, appointmentDate] : [service.id, branchId, weekday, weekdayAlt, appointmentTime, appointmentEndTime, appointmentDate]
     );
     dentistCandidates = fallbackCandidates;
   }

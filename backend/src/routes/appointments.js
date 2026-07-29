@@ -243,6 +243,7 @@ async function assignRoundRobinDentist(conn, {
 
 async function validateExplicitDentistAssignment(conn, {
   dentistId,
+  branchId,
   serviceId,
   start,
   blockedEnd,
@@ -260,6 +261,25 @@ async function validateExplicitDentistAssignment(conn, {
   );
   if (offers.length === 0) {
     throw httpError(400, 'This dentist does not offer the requested service');
+  }
+
+  const localStart = clinicLocalParts(start);
+  const localEnd = clinicLocalParts(blockedEnd);
+  if (localStart.weekday !== 0) {
+    const [scheduleRows] = await conn.query(
+      `SELECT 1
+       FROM dentist_schedules dsch
+       WHERE dsch.dentist_id = ?
+         AND dsch.branch_id = ?
+         AND dsch.weekday = ?
+         AND dsch.start_time <= ?
+         AND dsch.end_time >= ?
+       LIMIT 1`,
+      [dentistId, branchId, localStart.weekday, localStart.time, localEnd.time]
+    );
+    if (scheduleRows.length === 0) {
+      throw httpError(409, 'This dentist is not scheduled at this branch for the selected time.');
+    }
   }
 
   const leave = await getApprovedLeaveForDentistOnDate(conn, Number(dentistId), clinicDateKey);
@@ -928,7 +948,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
       throw httpError(409, 'This time slot is already taken at this branch');
     }
 
-    if (role === 'patient' || !assignedDentistId) {
+    if (!assignedDentistId) {
       assignedDentistId = await assignRoundRobinDentist(conn, {
         branchId: effectiveBranchId,
         serviceId: Number(service_id),
@@ -939,6 +959,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     } else {
       await validateExplicitDentistAssignment(conn, {
         dentistId: assignedDentistId,
+        branchId: effectiveBranchId,
         serviceId: Number(service_id),
         start,
         blockedEnd,
@@ -994,7 +1015,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
         service_id,
         start_time: toMySQLDateTime(start),
         created_by_role: role,
-        assignment_mode: role === 'patient' || !dentist_id ? 'round_robin' : 'explicit',
+        assignment_mode: !dentist_id ? 'round_robin' : 'explicit',
         reschedule_of: reschedule_appointment_id || null,
       })]
     );

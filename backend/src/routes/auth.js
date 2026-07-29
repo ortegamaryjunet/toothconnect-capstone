@@ -153,26 +153,15 @@ async function replaceDentistSchedules(dentistId, scheduleEntries = []) {
   }
 
   const entries = Array.isArray(scheduleEntries) ? scheduleEntries : [];
-  const cleaned = [];
-
-  for (const entry of entries) {
-    const branchId = Number(entry?.branch_id);
-    const weekday = Number(entry?.weekday);
-    const startTime = entry?.start_time ? String(entry.start_time).slice(0, 8) : null;
-    const endTime = entry?.end_time ? String(entry.end_time).slice(0, 8) : null;
-
-    if (!Number.isInteger(branchId) || branchId <= 0) continue;
-    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) continue;
-    if (!startTime || !endTime) continue;
-
-    cleaned.push({ branchId, weekday, startTime, endTime });
-  }
+  const cleaned = entries.map(normalizeScheduleEntry).filter(Boolean);
 
   if (entries.length > 0 && cleaned.length === 0) {
     const err = new Error('Invalid schedule_entries');
     err.statusCode = 400;
     throw err;
   }
+
+  assertScheduleEntriesDoNotOverlap(cleaned);
 
   const [[dentist]] = await pool.query(
     'SELECT id, role, home_branch_id FROM users WHERE id = ? LIMIT 1',
@@ -194,10 +183,10 @@ async function replaceDentistSchedules(dentistId, scheduleEntries = []) {
       await conn.query(
         `INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time)
          VALUES ${cleaned.map(() => '(?, ?, ?, ?, ?)').join(', ')}`,
-        cleaned.flatMap((row) => [id, row.branchId, row.weekday, row.startTime, row.endTime])
+        cleaned.flatMap((row) => [id, row.branch_id, row.weekday, row.start_time, row.end_time])
       );
 
-      const extraBranches = [...new Set(cleaned.map((row) => row.branchId))].filter(
+      const extraBranches = [...new Set(cleaned.map((row) => row.branch_id))].filter(
         (b) => Number(b) !== Number(dentist.home_branch_id)
       );
       for (const branchId of extraBranches) {
@@ -233,6 +222,45 @@ function normalizeScheduleEntry(entry) {
     start_time: String(startTime).slice(0, 8),
     end_time: String(endTime).slice(0, 8),
   };
+}
+
+function timeToMinutes(value) {
+  const [hour, minute] = String(value || '').split(':').map((part) => Number(part));
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function assertScheduleEntriesDoNotOverlap(entries = []) {
+  const byWeekday = new Map();
+
+  for (const entry of entries) {
+    const start = timeToMinutes(entry.start_time);
+    const end = timeToMinutes(entry.end_time);
+
+    if (start === null || end === null || start >= end) {
+      const err = new Error('Schedule start time must be before end time.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!byWeekday.has(entry.weekday)) byWeekday.set(entry.weekday, []);
+    byWeekday.get(entry.weekday).push({ ...entry, start, end });
+  }
+
+  for (const [weekday, rows] of byWeekday.entries()) {
+    rows.sort((a, b) => a.start - b.start);
+
+    for (let index = 1; index < rows.length; index += 1) {
+      if (rows[index].start < rows[index - 1].end) {
+        const err = new Error(
+          `${formatScheduleLockDay({ weekday })} has overlapping branch schedule times.`
+        );
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+  }
 }
 
 function formatScheduleLockDay(lock) {
@@ -2430,22 +2458,32 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
 
       // New path: optional per-day branch schedules.
       if (scheduleEntries.length > 0) {
-        for (const entry of scheduleEntries) {
-          const branchId = Number(entry.branch_id || home_branch_id);
-          const weekday =
-            Number.isInteger(entry.weekday)
+        const cleanedScheduleEntries = scheduleEntries
+          .map((entry) => normalizeScheduleEntry({
+            ...entry,
+            branch_id: entry.branch_id || home_branch_id,
+            weekday: Number.isInteger(entry.weekday)
               ? entry.weekday
-              : DAY_TO_WEEKDAY[String(entry.day || '').trim()];
-          const startTime = entry.start_time || staffProfile.work_start_time || null;
-          const endTime = entry.end_time || staffProfile.work_end_time || null;
+              : DAY_TO_WEEKDAY[String(entry.day || '').trim()],
+            start_time: entry.start_time || staffProfile.work_start_time || null,
+            end_time: entry.end_time || staffProfile.work_end_time || null,
+          }))
+          .filter(Boolean);
 
-          if (!branchId || weekday === undefined || !startTime || !endTime) {
-            continue;
-          }
+        if (cleanedScheduleEntries.length === 0) {
+          const err = new Error('Invalid schedule_entries');
+          err.statusCode = 400;
+          throw err;
+        }
+
+        assertScheduleEntriesDoNotOverlap(cleanedScheduleEntries);
+
+        for (const entry of cleanedScheduleEntries) {
+          const branchId = Number(entry.branch_id);
 
           await pool.query(
             'INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
-            [userId, branchId, weekday, startTime, endTime]
+            [userId, branchId, entry.weekday, entry.start_time, entry.end_time]
           );
 
           // Ensure the dentist is associated with any additional branches used in schedules.
@@ -2496,7 +2534,7 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(err.statusCode || 500).json({ message: err.statusCode ? err.message : 'Server error' });
   }
 });
 

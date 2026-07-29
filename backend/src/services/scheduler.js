@@ -152,14 +152,14 @@ async function getEligibleDentists(serviceId, branchId, dentistId = null) {
   return rows;
 }
 
-async function getDentistSchedule(dentistId, branchId, weekday) {
+async function getDentistSchedules(dentistId, branchId, weekday) {
   const [rows] = await pool.query(
     `SELECT start_time, end_time FROM dentist_schedules
      WHERE dentist_id = ? AND branch_id = ? AND weekday = ?
-     LIMIT 1`,
+     ORDER BY start_time ASC`,
     [dentistId, branchId, weekday]
   );
-  return rows[0] || null;
+  return rows;
 }
 
 async function getDentistAppointmentsOnDay(dentistId, dayStart, dayEnd) {
@@ -281,6 +281,73 @@ function scoreSlot({ slot, dentist, dayIndex, preferences, preferredStart }) {
   return { score, breakdown };
 }
 
+async function addScheduleCandidates({
+  day,
+  dentist,
+  dayStart,
+  dayEnd,
+  dayIndex,
+  workStart,
+  workEnd,
+  dayCandidateFloor,
+  branchBusyIntervals,
+  service,
+  serviceBufferMin,
+  preferences,
+  preferredStart,
+  allCandidates,
+}) {
+  if (workStart >= workEnd) return;
+
+  const existing = await getDentistAppointmentsOnDay(dentist.id, dayStart, dayEnd);
+  const candidateWorkStart = maxDate(workStart, dayCandidateFloor);
+
+  const candidates = generateReceptionistAlignedSlots({
+    day,
+    notBefore: candidateWorkStart,
+    workStart,
+    workEnd,
+    durationMin: service.duration_min + serviceBufferMin,
+  });
+
+  for (const slot of candidates) {
+    if (slot.start <= new Date()) continue;
+
+    const branchConflict = branchBusyIntervals.some((b) =>
+      rangesOverlap(slot.start, slot.end, b.start, b.end)
+    );
+    if (branchConflict) continue;
+
+    const conflict = existing.some((e) =>
+      rangesOverlap(slot.start, slot.end, e.start, e.end)
+    );
+    if (conflict) continue;
+
+    const { score, breakdown } = scoreSlot({
+      slot,
+      dentist,
+      dayIndex,
+      preferences,
+      preferredStart,
+    });
+
+    const treatmentEnd = addMinutes(slot.start, service.duration_min);
+
+    allCandidates.push({
+      dentist_id: dentist.id,
+      dentist_name: dentist.name,
+      start_time: toMySQLDateTime(slot.start),
+      end_time: toMySQLDateTime(treatmentEnd),
+      distance_to_preferred_minutes: preferredStart
+        ? Math.round(Math.abs(slot.start.getTime() - preferredStart.getTime()) / 60000)
+        : null,
+      is_before_preferred: preferredStart ? slot.start < preferredStart : false,
+      score,
+      breakdown,
+    });
+  }
+}
+
 async function suggestSlots({
   patientId,
   branchId,
@@ -375,71 +442,50 @@ async function suggestSlots({
         continue;
       }
 
-      let workStart, workEnd;
-
       if (weekday === 0) {
         // Sunday: dentists are on-call for all assigned branches — no schedule entry required.
         // Use full clinic hours. getDentistAppointmentsOnDay queries ALL branches,
         // so a booking at any branch blocks the dentist's Sunday availability everywhere.
         const clinic = clinicBoundsForDay(day);
-        workStart = clinic.start;
-        workEnd = clinic.end;
-      } else {
-        const schedule = await getDentistSchedule(dentist.id, branchId, weekday);
-        if (!schedule) continue;
-
-        const clinic = clinicBoundsForDay(day);
-        workStart = maxDate(combineDateAndClinicTime(day, schedule.start_time), clinic.start);
-        workEnd = minDate(combineDateAndClinicTime(day, schedule.end_time), clinic.end);
-      }
-
-      if (workStart >= workEnd) continue;
-
-      const existing = await getDentistAppointmentsOnDay(dentist.id, dayStart, dayEnd);
-      const candidateWorkStart = maxDate(workStart, dayCandidateFloor);
-
-      const candidates = generateReceptionistAlignedSlots({
-        day,
-        notBefore: candidateWorkStart,
-        workStart,
-        workEnd,
-        durationMin: service.duration_min + serviceBufferMin,
-      });
-
-      for (const slot of candidates) {
-        if (slot.start <= new Date()) continue;
-        const branchConflict = branchBusyIntervals.some((b) =>
-          rangesOverlap(slot.start, slot.end, b.start, b.end)
-        );
-        if (branchConflict) continue;
-
-        const conflict = existing.some(e =>
-          rangesOverlap(slot.start, slot.end, e.start, e.end)
-        );
-        if (conflict) continue;
-
-        const { score, breakdown } = scoreSlot({
-          slot,
+        await addScheduleCandidates({
+          day,
           dentist,
+          dayStart,
+          dayEnd,
           dayIndex,
+          workStart: clinic.start,
+          workEnd: clinic.end,
+          dayCandidateFloor,
+          branchBusyIntervals,
+          service,
+          serviceBufferMin,
           preferences,
           preferredStart,
+          allCandidates,
         });
+      } else {
+        const schedules = await getDentistSchedules(dentist.id, branchId, weekday);
+        if (schedules.length === 0) continue;
 
-        const treatmentEnd = addMinutes(slot.start, service.duration_min);
-
-        allCandidates.push({
-          dentist_id: dentist.id,
-          dentist_name: dentist.name,
-          start_time: toMySQLDateTime(slot.start),
-          end_time: toMySQLDateTime(treatmentEnd),
-          distance_to_preferred_minutes: preferredStart
-            ? Math.round(Math.abs(slot.start.getTime() - preferredStart.getTime()) / 60000)
-            : null,
-          is_before_preferred: preferredStart ? slot.start < preferredStart : false,
-          score,
-          breakdown,
-        });
+        const clinic = clinicBoundsForDay(day);
+        for (const schedule of schedules) {
+          await addScheduleCandidates({
+            day,
+            dentist,
+            dayStart,
+            dayEnd,
+            dayIndex,
+            workStart: maxDate(combineDateAndClinicTime(day, schedule.start_time), clinic.start),
+            workEnd: minDate(combineDateAndClinicTime(day, schedule.end_time), clinic.end),
+            dayCandidateFloor,
+            branchBusyIntervals,
+            service,
+            serviceBufferMin,
+            preferences,
+            preferredStart,
+            allCandidates,
+          });
+        }
       }
     }
     dayIndex++;

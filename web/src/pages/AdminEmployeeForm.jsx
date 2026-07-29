@@ -430,6 +430,7 @@ export default function AdminEmployeeForm() {
   const [accessEmail, setAccessEmail] = useState('');
   const [enablePerDayBranch, setEnablePerDayBranch] = useState(false);
   const [dentistWorkDays, setDentistWorkDays] = useState([]);
+  const [dentistScheduleBlocks, setDentistScheduleBlocks] = useState({});
   const [recepWorkHours, setRecepWorkHours] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
   const [phoneValues, setPhoneValues] = useState({});
@@ -474,6 +475,107 @@ export default function AdminEmployeeForm() {
   const dentistOptions = dentists.length > 0 ? dentists : [];
   const specializationOptions =
     serviceCategories.length > 0 ? serviceCategories : DENTIST_SPECIALIZATIONS;
+
+  function createDentistScheduleBlock(day, overrides = {}) {
+    return {
+      id: `${day}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      branch_id: overrides.branch_id ?? selectedBranchId ?? '',
+      start_time: overrides.start_time ?? '',
+      end_time: overrides.end_time ?? '',
+    };
+  }
+
+  function ensureDentistScheduleBlock(day) {
+    setDentistScheduleBlocks((prev) => {
+      if (Array.isArray(prev?.[day]) && prev[day].length > 0) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [day]: [createDentistScheduleBlock(day)],
+      };
+    });
+  }
+
+  function removeDentistScheduleDay(day) {
+    setDentistScheduleBlocks((prev) => {
+      const next = { ...prev };
+      delete next[day];
+      return next;
+    });
+  }
+
+  function addDentistScheduleBlock(day) {
+    setDentistScheduleBlocks((prev) => ({
+      ...prev,
+      [day]: [
+        ...(Array.isArray(prev?.[day]) ? prev[day] : []),
+        createDentistScheduleBlock(day),
+      ],
+    }));
+  }
+
+  function updateDentistScheduleBlock(day, blockId, field, value) {
+    setDentistScheduleBlocks((prev) => ({
+      ...prev,
+      [day]: (Array.isArray(prev?.[day]) ? prev[day] : []).map((block) =>
+        block.id === blockId ? { ...block, [field]: value } : block
+      ),
+    }));
+  }
+
+  function removeDentistScheduleBlock(day, blockId) {
+    setDentistScheduleBlocks((prev) => {
+      const current = Array.isArray(prev?.[day]) ? prev[day] : [];
+      const nextBlocks = current.filter((block) => block.id !== blockId);
+
+      return {
+        ...prev,
+        [day]: nextBlocks.length > 0 ? nextBlocks : [createDentistScheduleBlock(day)],
+      };
+    });
+  }
+
+  function scheduleTimeToMinutes(value) {
+    const [hour, minute] = String(value || '').split(':').map((part) => Number(part));
+    if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+    return hour * 60 + minute;
+  }
+
+  function findScheduleBlockError(entries) {
+    for (const entry of entries) {
+      if (!entry.branch_id || !entry.start_time || !entry.end_time) {
+        return 'Please complete every branch schedule block.';
+      }
+
+      const start = scheduleTimeToMinutes(entry.start_time);
+      const end = scheduleTimeToMinutes(entry.end_time);
+      if (start === null || end === null || start >= end) {
+        return 'Schedule start time must be before end time.';
+      }
+    }
+
+    const byDay = new Map();
+    for (const entry of entries) {
+      if (!byDay.has(entry.day)) byDay.set(entry.day, []);
+      byDay.get(entry.day).push({
+        start: scheduleTimeToMinutes(entry.start_time),
+        end: scheduleTimeToMinutes(entry.end_time),
+      });
+    }
+
+    for (const [day, rows] of byDay.entries()) {
+      rows.sort((a, b) => a.start - b.start);
+      for (let index = 1; index < rows.length; index += 1) {
+        if (rows[index].start < rows[index - 1].end) {
+          return `${day} has overlapping branch schedule times.`;
+        }
+      }
+    }
+
+    return '';
+  }
 
   useEffect(() => {
     function handleResize() { setScreenWidth(window.innerWidth); }
@@ -552,6 +654,7 @@ export default function AdminEmployeeForm() {
     setSelectedDentistSpecializations([]);
     setEnablePerDayBranch(false);
     setDentistWorkDays([]);
+    setDentistScheduleBlocks({});
     setRecepWorkHours([]);
   }, [employeeType]);
 
@@ -559,6 +662,20 @@ export default function AdminEmployeeForm() {
     setBranchSpecializationOptions([]);
     setSpecializationsLoading(false);
   }, [selectedBranchId]);
+
+  useEffect(() => {
+    if (!enablePerDayBranch) return;
+
+    setDentistScheduleBlocks((prev) => {
+      const next = {};
+      for (const day of dentistWorkDays) {
+        next[day] = Array.isArray(prev?.[day]) && prev[day].length > 0
+          ? prev[day]
+          : [createDentistScheduleBlock(day)];
+      }
+      return next;
+    });
+  }, [enablePerDayBranch, dentistWorkDays, selectedBranchId]);
 
   function calculateAge(birthdayStr) {
     if (!birthdayStr) return '';
@@ -803,14 +920,25 @@ export default function AdminEmployeeForm() {
 
       if (isDentist && enablePerDayBranch) {
         for (const day of workDays) {
-          const raw = formData.get(`schedule_branch_${day}`);
-          const dayBranchId = Number(raw || branchId);
-          scheduleEntries.push({
-            day,
-            branch_id: dayBranchId || branchId,
-            start_time: payload.docWorkStart,
-            end_time: payload.docWorkEnd,
-          });
+          const blocks = Array.isArray(dentistScheduleBlocks?.[day])
+            ? dentistScheduleBlocks[day]
+            : [];
+
+          for (const block of blocks) {
+            scheduleEntries.push({
+              day,
+              branch_id: Number(block.branch_id || branchId),
+              start_time: block.start_time,
+              end_time: block.end_time,
+            });
+          }
+        }
+
+        const scheduleError = findScheduleBlockError(scheduleEntries);
+        if (scheduleEntries.length === 0 || scheduleError) {
+          setErrorModalMessage(scheduleError || 'Please add at least one branch schedule block.');
+          setShowErrorModal(true);
+          return;
         }
       }
 
@@ -1392,6 +1520,11 @@ export default function AdminEmployeeForm() {
                     else next.delete(day);
                     return Array.from(next);
                   });
+                  if (checked && enablePerDayBranch) {
+                    ensureDentistScheduleBlock(day);
+                  } else if (!checked) {
+                    removeDentistScheduleDay(day);
+                  }
                 }}
               />
               <TimeRangeFieldRaw startName="docWorkStart" endName="docWorkEnd" styles={styles} />
@@ -1399,15 +1532,20 @@ export default function AdminEmployeeForm() {
 
             <div style={styles.rowTwo}>
               <div style={styles.field}>
-                <label style={styles.label}>Per-day branch (Optional)</label>
+                <label style={styles.label}>Multiple Branch Schedule (Optional)</label>
                 <label style={styles.checkboxLabel}>
                   <input
                     type="checkbox"
                     checked={enablePerDayBranch}
-                    onChange={(e) => setEnablePerDayBranch(e.target.checked)}
+                    onChange={(e) => {
+                      setEnablePerDayBranch(e.target.checked);
+                      if (e.target.checked) {
+                        dentistWorkDays.forEach((day) => ensureDentistScheduleBlock(day));
+                      }
+                    }}
                     style={styles.checkboxInput}
                   />
-                  Assign different branch per day
+                  Allow branch time blocks per selected day
                 </label>
               </div>
               <div />
@@ -1415,38 +1553,102 @@ export default function AdminEmployeeForm() {
 
             {enablePerDayBranch && (
               <div style={styles.field}>
-                <label style={styles.label}>Branch per selected day</label>
+                <label style={styles.label}>Branch Schedule Blocks</label>
                 <p style={{ margin: '6px 0 12px', color: '#6f675b', fontSize: 12 }}>
-                  Only the days checked in "Work Schedule Days" will be saved.
+                  A dentist can be assigned to more than one branch on the same day, as long as the times do not overlap.
                 </p>
-                <div style={styles.scheduleGrid}>
-                  {DAY_OPTIONS.map((day) => (
-                    <div
-                      key={day}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        opacity: dentistWorkDays.includes(day) ? 1 : 0.5,
-                      }}
-                    >
-                      <span style={{ minWidth: 90, fontWeight: 600 }}>{day}</span>
-                      <select
-                        name={`schedule_branch_${day}`}
-                        defaultValue={selectedBranchId || ''}
-                        style={styles.input}
-                        disabled={!selectedBranchId || !dentistWorkDays.includes(day)}
-                        aria-disabled={!selectedBranchId || !dentistWorkDays.includes(day)}
-                      >
-                        <option value="" disabled>
-                          Select branch
-                        </option>
-                        {branchOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {dentistWorkDays.length === 0 && (
+                    <p style={{ margin: 0, color: '#8b6508', fontSize: 13, fontWeight: 700 }}>
+                      Select work schedule days first.
+                    </p>
+                  )}
+
+                  {dentistWorkDays.map((day) => {
+                    const blocks = Array.isArray(dentistScheduleBlocks?.[day])
+                      ? dentistScheduleBlocks[day]
+                      : [];
+                    const visibleBlocks = blocks.length > 0
+                      ? blocks
+                      : [createDentistScheduleBlock(day)];
+
+                    return (
+                      <div key={day} style={{ display: 'grid', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                          <span style={{ fontWeight: 700, color: '#8b6508' }}>{day}</span>
+                          <button
+                            type="button"
+                            style={styles.addWorkBtn}
+                            onClick={() => addDentistScheduleBlock(day)}
+                          >
+                            Add Branch
+                          </button>
+                        </div>
+
+                        {visibleBlocks.map((block) => (
+                          <div
+                            key={block.id}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: isSmallScreen ? '1fr' : '1.5fr 1fr 1fr auto',
+                              gap: 10,
+                              alignItems: 'center',
+                            }}
+                          >
+                            <select
+                              value={block.branch_id || ''}
+                              onChange={(event) =>
+                                updateDentistScheduleBlock(day, block.id, 'branch_id', event.target.value)
+                              }
+                              style={styles.input}
+                            >
+                              <option value="" disabled>
+                                Select branch
+                              </option>
+                              {branchOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+
+                            <select
+                              value={block.start_time || ''}
+                              onChange={(event) =>
+                                updateDentistScheduleBlock(day, block.id, 'start_time', event.target.value)
+                              }
+                              style={styles.input}
+                            >
+                              <option value="" disabled>Start time</option>
+                              {timeSlots.map((slot) => (
+                                <option key={slot.value} value={slot.value}>{slot.label}</option>
+                              ))}
+                            </select>
+
+                            <select
+                              value={block.end_time || ''}
+                              onChange={(event) =>
+                                updateDentistScheduleBlock(day, block.id, 'end_time', event.target.value)
+                              }
+                              style={styles.input}
+                            >
+                              <option value="" disabled>End time</option>
+                              {timeSlots.map((slot) => (
+                                <option key={slot.value} value={slot.value}>{slot.label}</option>
+                              ))}
+                            </select>
+
+                            <button
+                              type="button"
+                              style={styles.removeWorkBtn}
+                              onClick={() => removeDentistScheduleBlock(day, block.id)}
+                              disabled={visibleBlocks.length === 1}
+                            >
+                              Remove
+                            </button>
+                          </div>
                         ))}
-                      </select>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
