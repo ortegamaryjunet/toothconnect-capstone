@@ -2959,7 +2959,7 @@ export default function InventoryPage() {
 
       {!isReceptionist && showExpenseModal && (
         <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) handleCancelExpenseModal(); }}>
-          <div style={{ background: '#ffffff', border: `1px solid ${expenseGoldBorder}`, borderTop: `5px solid ${expenseGold}`, borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '26px 28px 24px', boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '26px 28px 24px', boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 4 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#3f2f08', fontFamily: 'Arial, sans-serif' }}>Expense Input</h3>
@@ -3090,9 +3090,9 @@ export default function InventoryPage() {
               {renderExpenseFieldError('threshold')}
             </label>
 
-            <div style={{ background: expenseGoldSoft, border: `1px solid ${expenseGoldBorder}`, borderRadius: 8, padding: '12px 14px', fontFamily: 'Arial, sans-serif' }}>
-              <p style={{ margin: 0, fontSize: 12, color: expenseGoldDark, fontWeight: 800 }}>Total Expense</p>
-              <h4 style={{ margin: '4px 0 0', fontSize: 15, color: '#3f2f08', fontWeight: 800 }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px', fontFamily: 'Arial, sans-serif' }}>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b', fontWeight: 800 }}>Total Expense</p>
+              <h4 style={{ margin: '4px 0 0', fontSize: 15, color: '#0f172a', fontWeight: 800 }}>
                 {expenseForm.orderQuantity || 0} × {formatPeso(expenseForm.pricePerItem || 0)} = {formatPeso(computedExpense)}
               </h4>
             </div>
