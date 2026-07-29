@@ -55,7 +55,7 @@ export default function AdminPatients() {
 
       try {
         const rows = await listPatients();
-        setPatients(rows.map(mapPatientRow));
+        setPatients(rows.map((row, index) => mapPatientRow(row, index)));
       } catch (err) {
         setPatientsError(
           err.response?.data?.message || 'Failed to load patients.'
@@ -814,7 +814,7 @@ function splitName(name = '') {
   };
 }
 
-function mapPatientRow(row) {
+function mapPatientRow(row, index = 0) {
   const fullName = row.full_name || row.fullName || row.name || '';
   const nameParts = splitName(fullName);
 
@@ -824,7 +824,7 @@ function mapPatientRow(row) {
   const userId = row.user_id || row.userId || row.id;
 
   return {
-    id: `P-${String(row.id).padStart(4, '0')}`,
+    id: String(index + 1),
     rawId: row.id,
     userId,
     lastName,
