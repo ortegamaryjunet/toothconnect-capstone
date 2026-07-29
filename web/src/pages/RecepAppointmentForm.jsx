@@ -76,6 +76,7 @@ export default function RecepAppointmentForm() {
   const [dayAppointments, setDayAppointments] = useState([]);
   const [dayAppointmentsLoading, setDayAppointmentsLoading] = useState(false);
   const [dentistBranchIds, setDentistBranchIds] = useState({});
+  const [dentistScheduleEntries, setDentistScheduleEntries] = useState({});
   const [dentistBusySlots, setDentistBusySlots] = useState([]);
   const [dentistBusySlotsLoading, setDentistBusySlotsLoading] = useState(false);
   const [dentistOnLeave, setDentistOnLeave] = useState(false);
@@ -111,21 +112,6 @@ export default function RecepAppointmentForm() {
       ? toTimePickerValue(formData.hour, formData.minute)
       : '';
   const selectedTime = timePickerValue ? formatTimePickerValue(timePickerValue) : '';
-  const isFormSubmittable = useMemo(() => {
-    const nextFieldErrors = validateRequiredPatientFields(formData);
-    return (
-      !metaLoading &&
-      !submitting &&
-      Boolean(formData.branchId) &&
-      Boolean(formData.serviceId) &&
-      Boolean(formData.dentistId) &&
-      Boolean(selectedDate) &&
-      Boolean(formData.hour) &&
-      Boolean(formData.minute) &&
-      Object.values(nextFieldErrors).every((message) => !message)
-    );
-  }, [formData, metaLoading, selectedDate, submitting]);
-
   const selectedService = useMemo(() => {
     return services.find((service) => String(service.id) === String(formData.serviceId));
   }, [services, formData.serviceId]);
@@ -135,6 +121,38 @@ export default function RecepAppointmentForm() {
   const selectedDentist = useMemo(() => {
     return dentists.find((dentist) => String(dentist.id) === String(formData.dentistId));
   }, [dentists, formData.dentistId]);
+  const selectedDentistBranchSchedules = useMemo(() => {
+    if (!formData.dentistId || !formData.branchId) return [];
+    const branchId = Number(formData.branchId);
+    return (dentistScheduleEntries[Number(formData.dentistId)] || []).filter(
+      (entry) => Number(entry.branch_id) === branchId
+    );
+  }, [dentistScheduleEntries, formData.branchId, formData.dentistId]);
+  const selectedDateScheduleEntries = useMemo(() => {
+    if (!selectedDate || selectedDentistBranchSchedules.length === 0) return [];
+    const weekday = getWeekdayFromDateKey(selectedDate);
+    return selectedDentistBranchSchedules.filter((entry) => Number(entry.weekday) === weekday);
+  }, [selectedDate, selectedDentistBranchSchedules]);
+  const hasDentistBranchSchedule =
+    !formData.dentistId || !formData.branchId || selectedDentistBranchSchedules.length > 0;
+  const isSelectedDateScheduledForBranch =
+    !formData.dentistId || !formData.branchId || selectedDateScheduleEntries.length > 0;
+  const isFormSubmittable = useMemo(() => {
+    const nextFieldErrors = validateRequiredPatientFields(formData);
+    return (
+      !metaLoading &&
+      !submitting &&
+      Boolean(formData.branchId) &&
+      Boolean(formData.serviceId) &&
+      Boolean(formData.dentistId) &&
+      Boolean(selectedDate) &&
+      hasDentistBranchSchedule &&
+      isSelectedDateScheduledForBranch &&
+      Boolean(formData.hour) &&
+      Boolean(formData.minute) &&
+      Object.values(nextFieldErrors).every((message) => !message)
+    );
+  }, [formData, hasDentistBranchSchedule, isSelectedDateScheduledForBranch, metaLoading, selectedDate, submitting]);
   const appointmentSummaryRows = useMemo(
     () => [
       ['Patient Name', formData.patientName.trim() || 'Not entered'],
@@ -201,12 +219,28 @@ export default function RecepAppointmentForm() {
       return slots.map((s) => ({ ...s, available: false }));
     }
 
+    if (formData.dentistId && formData.branchId) {
+      return slots.map((slot) => ({
+        ...slot,
+        available:
+          slot.available &&
+          selectedDateScheduleEntries.some((entry) =>
+            isSlotInsideSchedule(slot.value, estimatedDuration + selectedServiceBuffer, entry)
+          ),
+      }));
+    }
+
     return slots;
-  }, [dentistBusySlots, dayAppointments, formData.dentistId, selectedDate, estimatedDuration, selectedServiceBuffer, dentistOnLeave]);
+  }, [dentistBusySlots, dayAppointments, formData.dentistId, formData.branchId, selectedDate, estimatedDuration, selectedServiceBuffer, dentistOnLeave, selectedDateScheduleEntries]);
 
   const calendarDays = useMemo(() => {
-    return buildCalendarDays(calendarYear, calendarMonth, today);
-  }, [calendarYear, calendarMonth]);
+    return buildCalendarDays(
+      calendarYear,
+      calendarMonth,
+      today,
+      formData.dentistId && formData.branchId ? selectedDentistBranchSchedules : null
+    );
+  }, [calendarYear, calendarMonth, formData.branchId, formData.dentistId, selectedDentistBranchSchedules]);
 
   const currentMonthLabel = `${months[calendarMonth]} ${calendarYear}`;
 
@@ -371,15 +405,18 @@ export default function RecepAppointmentForm() {
 
       const serviceMap = {};
       const branchMap = {};
+      const scheduleMap = {};
       for (const d of dentistOptions) {
         if (Array.isArray(d.service_ids)) serviceMap[d.id] = d.service_ids;
         if (Array.isArray(d.branch_ids)) branchMap[d.id] = d.branch_ids;
+        if (Array.isArray(d.schedule_entries)) scheduleMap[d.id] = d.schedule_entries;
       }
 
       setBranches(branchOptions);
       setDentists(dentistOptions);
       setDentistsByService(serviceMap);
       setDentistBranchIds(branchMap);
+      setDentistScheduleEntries(scheduleMap);
       setServices(serviceOptions);
       setFormData((current) => ({
         ...current,
@@ -696,6 +733,16 @@ export default function RecepAppointmentForm() {
 
     if (!formData.branchId) {
       setFormError('Your receptionist account is not assigned to a branch.');
+      return;
+    }
+
+    if (!hasDentistBranchSchedule) {
+      setFormError('This dentist has no available schedule for this branch.');
+      return;
+    }
+
+    if (!isSelectedDateScheduledForBranch) {
+      setFormError('This dentist is not scheduled at this branch on the selected date.');
       return;
     }
 
@@ -1121,7 +1168,24 @@ export default function RecepAppointmentForm() {
                     </p>
                   )}
 
-                  {(dayAppointmentsLoading || dentistBusySlotsLoading) ? (
+                  {formData.dentistId && formData.branchId && !hasDentistBranchSchedule && (
+                    <p style={styles.slotEmptyText}>
+                      This dentist has no available schedule for this branch.
+                    </p>
+                  )}
+
+                  {formData.dentistId &&
+                    formData.branchId &&
+                    hasDentistBranchSchedule &&
+                    !isSelectedDateScheduledForBranch && (
+                      <p style={styles.slotEmptyText}>
+                        This dentist is not scheduled at this branch on the selected date.
+                      </p>
+                    )}
+
+                  {formData.dentistId &&
+                  formData.branchId &&
+                  (!hasDentistBranchSchedule || !isSelectedDateScheduledForBranch) ? null : (dayAppointmentsLoading || dentistBusySlotsLoading) ? (
                     <p style={styles.slotLoadingText}>Loading available slots...</p>
                   ) : availableSlots.filter((s) => s.available).length === 0 ? (
                     <p style={styles.slotEmptyText}>No available slots on this date.</p>
@@ -1329,11 +1393,14 @@ function AppointmentSummaryRows({ rows, styles }) {
   );
 }
 
-function buildCalendarDays(year, month, today) {
+function buildCalendarDays(year, month, today, scheduleEntries = null) {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const startDay = firstDay.getDay();
   const totalDays = lastDay.getDate();
+  const scheduledWeekdays = Array.isArray(scheduleEntries)
+    ? new Set(scheduleEntries.map((entry) => Number(entry.weekday)))
+    : null;
 
   const days = [];
   let currentWeek = [];
@@ -1352,11 +1419,13 @@ function buildCalendarDays(year, month, today) {
     date.setHours(0, 0, 0, 0);
 
     const dateKey = toDateKey(date);
+    const weekday = date.getDay();
+    const hasScheduleForDate = !scheduledWeekdays || scheduledWeekdays.has(weekday);
 
     currentWeek.push({
       day,
       dateKey,
-      disabled: date < today,
+      disabled: date < today || !hasScheduleForDate,
       isToday: false,
     });
 
@@ -1388,6 +1457,26 @@ function toDateKey(date) {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function getWeekdayFromDateKey(dateKey) {
+  const [year, month, day] = String(dateKey || '').split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day).getDay();
+}
+
+function parseScheduleTimeToMinutes(value) {
+  const [hour = '0', minute = '0'] = String(value || '').split(':');
+  return Number(hour) * 60 + Number(minute);
+}
+
+function isSlotInsideSchedule(slotValue, blockedMinutes, scheduleEntry) {
+  const slotStart = parseScheduleTimeToMinutes(slotValue);
+  const slotEnd = slotStart + blockedMinutes;
+  const scheduleStart = parseScheduleTimeToMinutes(scheduleEntry.start_time);
+  const scheduleEnd = parseScheduleTimeToMinutes(scheduleEntry.end_time);
+
+  return slotStart >= scheduleStart && slotEnd <= scheduleEnd;
 }
 
 function getPeriodFromHour(hourValue) {

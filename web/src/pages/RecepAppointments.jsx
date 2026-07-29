@@ -1894,20 +1894,20 @@ export default function RecepAppointments() {
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
-                onClick={savePaymentMode}
-                disabled={paymentModal.saving}
-              >
-                {paymentModal.saving ? 'Saving...' : 'Save'}
-              </button>
-
-              <button
-                type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={closePaymentModal}
                 disabled={paymentModal.saving}
               >
                 Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={savePaymentMode}
+                disabled={paymentModal.saving}
+              >
+                {paymentModal.saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -1963,14 +1963,6 @@ export default function RecepAppointments() {
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn, backgroundColor: '#e53e3e' }}
-                onClick={handleConfirmCancelWithReason}
-              >
-                Confirm Cancel
-              </button>
-
-              <button
-                type="button"
                 style={{ ...styles.modalButton, ...styles.cancelBtn }}
                 onClick={() => {
                   setCancelReasonModal({ show: false, appointmentId: null });
@@ -1978,7 +1970,15 @@ export default function RecepAppointments() {
                   setCancelReasonError('');
                 }}
               >
-                Keep Appointment
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn, backgroundColor: '#e53e3e' }}
+                onClick={handleConfirmCancelWithReason}
+              >
+                Yes, Cancel
               </button>
             </div>
           </div>
@@ -2322,7 +2322,7 @@ export default function RecepAppointments() {
               <i className="fi fi-rr-triangle-warning" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Cancel Reschedule?</h2>
+            <h2 style={styles.modalTitle}>Cancel Reschedule</h2>
             <p style={styles.modalText}>
               Are you sure you want to cancel this reschedule? The selected date, time, and reason will not be saved.
             </p>

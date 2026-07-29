@@ -1184,11 +1184,11 @@
       height: 44,
       borderRadius: 12,
       border: 'none',
-      background: '#dc2626',
-      color: '#ffffff',
+      background: '#e5e7eb',
+      color: '#0f172a',
       cursor: 'pointer',
       padding: '0 16px',
-      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
       fontSize: 14,
       fontWeight: 800,
     },
@@ -1197,12 +1197,14 @@
       height: 44,
       borderRadius: 12,
       border: 'none',
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      background: '#d4af37',
       color: '#ffffff',
       cursor: 'pointer',
       padding: '0 18px',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
+      fontWeight: 700,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     modalIcon: {
@@ -1318,9 +1320,10 @@
     },
 
     modalGoldBtn: {
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      background: '#d4af37',
       color: '#ffffff',
       fontWeight: 'bold',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     cancelBtn: {

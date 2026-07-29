@@ -292,21 +292,19 @@ async function validateExplicitDentistAssignment(conn, {
 
   const localStart = clinicLocalParts(start);
   const localEnd = clinicLocalParts(blockedEnd);
-  if (localStart.weekday !== 0) {
-    const [scheduleRows] = await conn.query(
-      `SELECT 1
-       FROM dentist_schedules dsch
-       WHERE dsch.dentist_id = ?
-         AND dsch.branch_id = ?
-         AND dsch.weekday = ?
-         AND dsch.start_time <= ?
-         AND dsch.end_time >= ?
-       LIMIT 1`,
-      [dentistId, branchId, localStart.weekday, localStart.time, localEnd.time]
-    );
-    if (scheduleRows.length === 0) {
-      throw httpError(409, 'This dentist is not scheduled at this branch for the selected time.');
-    }
+  const [scheduleRows] = await conn.query(
+    `SELECT 1
+     FROM dentist_schedules dsch
+     WHERE dsch.dentist_id = ?
+       AND dsch.branch_id = ?
+       AND dsch.weekday = ?
+       AND dsch.start_time <= ?
+       AND dsch.end_time >= ?
+     LIMIT 1`,
+    [dentistId, branchId, localStart.weekday, localStart.time, localEnd.time]
+  );
+  if (scheduleRows.length === 0) {
+    throw httpError(409, 'This dentist is not scheduled at this branch for the selected time.');
   }
 
   const leave = await getApprovedLeaveForDentistOnDate(conn, Number(dentistId), clinicDateKey);
@@ -625,6 +623,7 @@ router.get('/_meta/services-and-branches', async (req, res) => {
     const dentistIds = dentists.map(d => d.id);
     let dentistServiceMap = {};
     let dentistBranchMap = {};
+    let dentistScheduleMap = {};
     if (dentistIds.length > 0) {
       const placeholders = dentistIds.map(() => '?').join(',');
       const [dsRows] = await pool.query(
@@ -643,11 +642,28 @@ router.get('/_meta/services-and-branches', async (req, res) => {
         if (!dentistBranchMap[row.dentist_id]) dentistBranchMap[row.dentist_id] = [];
         dentistBranchMap[row.dentist_id].push(row.branch_id);
       }
+      const [scheduleRows] = await pool.query(
+        `SELECT dentist_id, branch_id, weekday, start_time, end_time
+         FROM dentist_schedules
+         WHERE dentist_id IN (${placeholders})
+         ORDER BY weekday ASC, start_time ASC`,
+        dentistIds
+      );
+      for (const row of scheduleRows) {
+        if (!dentistScheduleMap[row.dentist_id]) dentistScheduleMap[row.dentist_id] = [];
+        dentistScheduleMap[row.dentist_id].push({
+          branch_id: row.branch_id,
+          weekday: row.weekday,
+          start_time: row.start_time,
+          end_time: row.end_time,
+        });
+      }
     }
     const annotatedDentists = dentists.map(d => ({
       ...d,
       service_ids: dentistServiceMap[d.id] || [],
       branch_ids: dentistBranchMap[d.id] || [],
+      schedule_entries: dentistScheduleMap[d.id] || [],
     }));
 
     res.json({ services: annotatedServices, branches, dentists: annotatedDentists });
