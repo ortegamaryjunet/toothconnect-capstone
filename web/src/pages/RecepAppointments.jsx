@@ -965,7 +965,7 @@ export default function RecepAppointments() {
         title: 'Mark as No-Show',
         message: 'Are you sure you want to mark this appointment as no-show?',
         rows: getActionSummaryRows(appointment),
-        confirmText: 'Yes, Mark as No-Show',
+        confirmText: 'Mark as No-Show',
         confirmStyle: 'gold',
       });
       return;
