@@ -67,12 +67,35 @@ const SUFFIX_OPTIONS = ['Jr', 'Sr', 'II', 'III', 'IV'];
 const DAY_OPTIONS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const EMPLOYMENT_TYPES = ['Full-Time', 'Part-Time', 'Contract', 'Intern'];
+const STAFF_SHIFT_TYPES = ['Full Day', 'Custom Hours'];
 
 const DENTIST_SPECIALIZATIONS = [
   'General Dentistry', 'Orthodontics', 'Endodontics', 'Periodontics',
   'Prosthodontics', 'Pediatric Dentistry', 'Oral Surgery', 'Cosmetic Dentistry',
   'Implant Dentistry', 'Radiology',
 ];
+
+function timeLabelToValue(hourText, minuteText, periodText) {
+  let hour = Number(hourText);
+  const minute = Number(minuteText);
+  const period = String(periodText || '').toUpperCase();
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return '';
+  if (period === 'PM' && hour !== 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function parseBranchOperatingHours(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return null;
+
+  const start = timeLabelToValue(match[1], match[2], match[3]);
+  const end = timeLabelToValue(match[4], match[5], match[6]);
+  return start && end ? { start, end } : null;
+}
 
 const phoneCountryOptions = getCountries().map((country) => ({
   country,
@@ -261,19 +284,50 @@ function ScheduleFieldRaw({ name, dayOptions, styles, checkedValues = null, onTo
   );
 }
 
-function TimeRangeFieldRaw({ startName, endName, styles }) {
+function TimeRangeFieldRaw({
+  startName,
+  endName,
+  styles,
+  startValue,
+  endValue,
+  onStartChange,
+  onEndChange,
+  disabled = false,
+  hasError = false,
+}) {
+  const controlled = startValue !== undefined && endValue !== undefined;
+  const selectStyle = {
+    ...styles.input,
+    ...(disabled ? styles.readOnlyInput : {}),
+    ...(hasError ? { borderColor: '#dc2626', borderWidth: '2px' } : {}),
+  };
+
   return (
     <div style={styles.field}>
-      <label style={styles.label}>Working Hours</label>
+      <label style={styles.label}>
+        Working Hours{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+      </label>
       <div style={styles.timeGroup}>
-        <select name={startName} defaultValue="" style={styles.input}>
+        {disabled && controlled && <input type="hidden" name={startName} value={startValue} readOnly />}
+        <select
+          name={startName}
+          disabled={disabled}
+          {...(controlled ? { value: startValue, onChange: (e) => onStartChange?.(e.target.value) } : { defaultValue: '' })}
+          style={selectStyle}
+        >
           <option value="" disabled>Start time</option>
           {timeSlots.map((slot) => (
             <option key={slot.value} value={slot.value}>{slot.label}</option>
           ))}
         </select>
         <span style={styles.separator}>to</span>
-        <select name={endName} defaultValue="" style={styles.input}>
+        {disabled && controlled && <input type="hidden" name={endName} value={endValue} readOnly />}
+        <select
+          name={endName}
+          disabled={disabled}
+          {...(controlled ? { value: endValue, onChange: (e) => onEndChange?.(e.target.value) } : { defaultValue: '' })}
+          style={selectStyle}
+        >
           <option value="" disabled>End time</option>
           {timeSlots.map((slot) => (
             <option key={slot.value} value={slot.value}>{slot.label}</option>
@@ -430,9 +484,10 @@ export default function AdminEmployeeForm() {
   const [errorModalMessage, setErrorModalMessage] = useState('');
   const [accessEmail, setAccessEmail] = useState('');
   const [enablePerDayBranch, setEnablePerDayBranch] = useState(false);
+  const [docWorkStart, setDocWorkStart] = useState('');
+  const [docWorkEnd, setDocWorkEnd] = useState('');
   const [dentistWorkDays, setDentistWorkDays] = useState([]);
   const [dentistScheduleBlocks, setDentistScheduleBlocks] = useState({});
-  const [recepWorkHours, setRecepWorkHours] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
   const [phoneValues, setPhoneValues] = useState({});
   const [phoneCountries, setPhoneCountries] = useState({});
@@ -461,6 +516,12 @@ export default function AdminEmployeeForm() {
   const [doctorWorkItems, setDoctorWorkItems] = useState([{ id: 1 }]);
   const [assistantWorkItems, setAssistantWorkItems] = useState([{ id: 2 }]);
   const [receptionistWorkItems, setReceptionistWorkItems] = useState([{ id: 3 }]);
+  const [daShiftType, setDaShiftType] = useState('');
+  const [daWorkStart, setDaWorkStart] = useState('');
+  const [daWorkEnd, setDaWorkEnd] = useState('');
+  const [recepShiftType, setRecepShiftType] = useState('');
+  const [recepWorkStart, setRecepWorkStart] = useState('');
+  const [recepWorkEnd, setRecepWorkEnd] = useState('');
 
   const isMobile = screenWidth <= 768;
   const isTablet = screenWidth > 768 && screenWidth <= 1100;
@@ -472,6 +533,8 @@ export default function AdminEmployeeForm() {
     value: String(branch.id),
     label: branch.address ? `${branch.name} - ${branch.address}` : branch.name,
   }));
+  const selectedBranch = branches.find((branch) => String(branch.id) === String(selectedBranchId));
+  const selectedBranchHours = parseBranchOperatingHours(selectedBranch?.operating_hours);
 
   const dentistOptions = dentists.length > 0 ? dentists : [];
   const specializationOptions =
@@ -489,9 +552,24 @@ export default function AdminEmployeeForm() {
     return {
       id: `${day}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       branch_id: overrides.branch_id ?? selectedBranchId ?? '',
-      start_time: overrides.start_time ?? '',
-      end_time: overrides.end_time ?? '',
+      start_time: overrides.start_time ?? docWorkStart ?? '',
+      end_time: overrides.end_time ?? docWorkEnd ?? '',
     };
+  }
+
+  function updateDentistScheduleBlockTime(field, value) {
+    setDentistScheduleBlocks((prev) => {
+      const next = {};
+
+      for (const [day, blocks] of Object.entries(prev || {})) {
+        next[day] = (Array.isArray(blocks) ? blocks : []).map((block) => ({
+          ...block,
+          [field]: value,
+        }));
+      }
+
+      return next;
+    });
   }
 
   function ensureDentistScheduleBlock(day) {
@@ -663,15 +741,34 @@ export default function AdminEmployeeForm() {
     setSelectedDentistSpecializations([]);
     setAdditionalDentistBranchIds([]);
     setEnablePerDayBranch(false);
+    setDocWorkStart('');
+    setDocWorkEnd('');
     setDentistWorkDays([]);
     setDentistScheduleBlocks({});
-    setRecepWorkHours([]);
+    setDaShiftType('');
+    setDaWorkStart('');
+    setDaWorkEnd('');
+    setRecepShiftType('');
+    setRecepWorkStart('');
+    setRecepWorkEnd('');
   }, [employeeType]);
 
   useEffect(() => {
     setBranchSpecializationOptions([]);
     setSpecializationsLoading(false);
   }, [selectedBranchId]);
+
+  useEffect(() => {
+    if (employeeType === 'dentalAssistant' && daShiftType === 'Full Day' && selectedBranchHours) {
+      setDaWorkStart(selectedBranchHours.start);
+      setDaWorkEnd(selectedBranchHours.end);
+    }
+
+    if (employeeType === 'receptionist' && recepShiftType === 'Full Day' && selectedBranchHours) {
+      setRecepWorkStart(selectedBranchHours.start);
+      setRecepWorkEnd(selectedBranchHours.end);
+    }
+  }, [employeeType, daShiftType, recepShiftType, selectedBranchHours?.start, selectedBranchHours?.end]);
 
   useEffect(() => {
     if (!enablePerDayBranch) return;
@@ -843,9 +940,12 @@ export default function AdminEmployeeForm() {
     } else if (employeeType === 'dentalAssistant') {
       if (!selectedSpecialization) errors.add('daDepartment');
       ['daStartDate', 'daEmploymentType', 'daShiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
+      if (!formData.get('daWorkStart')) errors.add('daWorkStart');
+      if (!formData.get('daWorkEnd')) errors.add('daWorkEnd');
     } else {
-      ['startDate', 'employmentType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
-      if (recepWorkHours.length === 0) errors.add('recepWorkHours');
+      ['startDate', 'employmentType', 'recepShiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
+      if (!formData.get('recepWorkStart')) errors.add('recepWorkStart');
+      if (!formData.get('recepWorkEnd')) errors.add('recepWorkEnd');
     }
     if (employeeType !== 'dentalAssistant') {
       ['accessEmail', 'accessPassword', 'confirmPassword'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
@@ -861,8 +961,8 @@ export default function AdminEmployeeForm() {
     const sec3 = employeeType === 'dentist'
       ? ['branchId', 'department', 'startDate', 'employmentType', 'shiftType']
       : employeeType === 'dentalAssistant'
-        ? ['branchId', 'daDepartment', 'daStartDate', 'daEmploymentType', 'daShiftType']
-        : ['branchId', 'startDate', 'employmentType', 'recepWorkHours'];
+        ? ['branchId', 'daDepartment', 'daStartDate', 'daEmploymentType', 'daShiftType', 'daWorkStart', 'daWorkEnd']
+        : ['branchId', 'startDate', 'employmentType', 'recepShiftType', 'recepWorkStart', 'recepWorkEnd'];
     const sec4 = ['accessEmail', 'accessPassword', 'confirmPassword'];
     const maps = {
       dentist: { docPersonal: sec1, docWork: sec3, docAccess: sec4 },
@@ -922,7 +1022,6 @@ export default function AdminEmployeeForm() {
     try {
       const isDentist = employeeType === 'dentist';
       const isDentalAssistant = employeeType === 'dentalAssistant';
-      const recepChecked = recepWorkHours.includes('10:00-19:00');
       const prefix = isDentist ? 'doctor' : isDentalAssistant ? 'da' : 'recep';
       const role = isDentist ? 'dentist' : 'receptionist';
       const firstName = payload[`${prefix}FirstName`] || '';
@@ -996,10 +1095,10 @@ export default function AdminEmployeeForm() {
           ? payload.daShiftType
           : isDentist
             ? payload.shiftType || null
-            : null,
+            : payload.recepShiftType || null,
         work_days: workDays,
-        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : (recepChecked ? '10:00' : ''),
-        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : (recepChecked ? '19:00' : ''),
+        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : payload.recepWorkStart,
+        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : payload.recepWorkEnd,
         ...(isDentist && enablePerDayBranch && scheduleEntries.length > 0
           ? { schedule_entries: scheduleEntries }
           : {}),
@@ -1596,7 +1695,36 @@ export default function AdminEmployeeForm() {
                   }
                 }}
               />
-              <TimeRangeFieldRaw startName="docWorkStart" endName="docWorkEnd" styles={styles} />
+              <TimeRangeFieldRaw
+                startName="docWorkStart"
+                endName="docWorkEnd"
+                startValue={docWorkStart}
+                endValue={docWorkEnd}
+                onStartChange={(value) => {
+                  setDocWorkStart(value);
+                  updateDentistScheduleBlockTime('start_time', value);
+                  if (value) {
+                    setFormErrors((prev) => {
+                      const next = new Set(prev);
+                      next.delete('docWorkStart');
+                      return next;
+                    });
+                  }
+                }}
+                onEndChange={(value) => {
+                  setDocWorkEnd(value);
+                  updateDentistScheduleBlockTime('end_time', value);
+                  if (value) {
+                    setFormErrors((prev) => {
+                      const next = new Set(prev);
+                      next.delete('docWorkEnd');
+                      return next;
+                    });
+                  }
+                }}
+                hasError={formErrors.has('docWorkStart') || formErrors.has('docWorkEnd')}
+                styles={styles}
+              />
             </div>
 
             <div style={styles.rowTwo}>
@@ -1791,7 +1919,17 @@ export default function AdminEmployeeForm() {
             </div>
             <div style={styles.rowTwo}>
               <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
-              <TimeRangeFieldRaw startName="daWorkStart" endName="daWorkEnd" styles={styles} />
+              <TimeRangeFieldRaw
+                startName="daWorkStart"
+                endName="daWorkEnd"
+                startValue={daWorkStart}
+                endValue={daWorkEnd}
+                onStartChange={setDaWorkStart}
+                onEndChange={setDaWorkEnd}
+                disabled={daShiftType === 'Full Day'}
+                hasError={formErrors.has('daWorkStart') || formErrors.has('daWorkEnd')}
+                styles={styles}
+              />
             </div>
             <div style={styles.rowTwo}>
               <SelectFieldRaw
@@ -1821,7 +1959,30 @@ export default function AdminEmployeeForm() {
               <SelectFieldRaw label="Employment Type" name="daEmploymentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('daEmploymentType')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>
-              <SelectFieldRaw label="Shift Type" name="daShiftType" placeholder="Select Type" options={['Day', 'Afternoon', 'Night']} hasError={formErrors.has('daShiftType')} styles={styles} />
+              <SelectFieldRaw
+                label="Shift Type"
+                name="daShiftType"
+                placeholder="Select Type"
+                options={STAFF_SHIFT_TYPES}
+                value={daShiftType}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setDaShiftType(value);
+                  if (value) {
+                    setFormErrors((prev) => {
+                      const next = new Set(prev);
+                      next.delete('daShiftType');
+                      return next;
+                    });
+                  }
+                  if (value === 'Full Day' && selectedBranchHours) {
+                    setDaWorkStart(selectedBranchHours.start);
+                    setDaWorkEnd(selectedBranchHours.end);
+                  }
+                }}
+                hasError={formErrors.has('daShiftType')}
+                styles={styles}
+              />
             </div>
           </>
         )}
@@ -1879,37 +2040,47 @@ export default function AdminEmployeeForm() {
             </div>
             <div style={styles.rowTwo}>
               <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
-              {(() => {
-                const hasError = formErrors.has('recepWorkHours');
-                const isChecked = recepWorkHours.includes('10:00-19:00');
-                return (
-                  <div style={styles.field}>
-                    <label style={styles.label}>
-                      Working Hours{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
-                    </label>
-                    <div style={{ ...(hasError ? { border: '2px solid #dc2626', borderRadius: 12, padding: '6px 10px', display: 'inline-block' } : {}) }}>
-                      <label style={styles.checkboxLabel}>
-                        <input
-                          type="checkbox"
-                          style={styles.checkboxInput}
-                          checked={isChecked}
-                          onChange={(e) => {
-                            setRecepWorkHours(e.target.checked ? ['10:00-19:00'] : []);
-                            if (e.target.checked) {
-                              setFormErrors((prev) => { const n = new Set(prev); n.delete('recepWorkHours'); return n; });
-                            }
-                          }}
-                        />
-                        10:00 AM - 7:00 PM
-                      </label>
-                    </div>
-                  </div>
-                );
-              })()}
+              <TimeRangeFieldRaw
+                startName="recepWorkStart"
+                endName="recepWorkEnd"
+                startValue={recepWorkStart}
+                endValue={recepWorkEnd}
+                onStartChange={setRecepWorkStart}
+                onEndChange={setRecepWorkEnd}
+                disabled={recepShiftType === 'Full Day'}
+                hasError={formErrors.has('recepWorkStart') || formErrors.has('recepWorkEnd')}
+                styles={styles}
+              />
             </div>
             <div style={styles.rowTwo}>
               <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
               <SelectFieldRaw label="Employment Type" name="employmentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('employmentType')} styles={styles} />
+            </div>
+            <div style={styles.rowTwo}>
+              <SelectFieldRaw
+                label="Shift Type"
+                name="recepShiftType"
+                placeholder="Select Type"
+                options={STAFF_SHIFT_TYPES}
+                value={recepShiftType}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setRecepShiftType(value);
+                  if (value) {
+                    setFormErrors((prev) => {
+                      const next = new Set(prev);
+                      next.delete('recepShiftType');
+                      return next;
+                    });
+                  }
+                  if (value === 'Full Day' && selectedBranchHours) {
+                    setRecepWorkStart(selectedBranchHours.start);
+                    setRecepWorkEnd(selectedBranchHours.end);
+                  }
+                }}
+                hasError={formErrors.has('recepShiftType')}
+                styles={styles}
+              />
             </div>
           </>
         )}

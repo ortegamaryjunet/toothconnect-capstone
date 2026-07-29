@@ -148,12 +148,41 @@ function isValidTimeValue(value) {
   return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(String(value || '').trim());
 }
 
+function timeLabelToValue(hourText, minuteText, periodText) {
+  let hour = Number(hourText);
+  const minute = Number(minuteText);
+  const period = String(periodText || '').toUpperCase();
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return '';
+  if (period === 'PM' && hour !== 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function parseBranchOperatingHours(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return null;
+
+  const start = timeLabelToValue(match[1], match[2], match[3]);
+  const end = timeLabelToValue(match[4], match[5], match[6]);
+  return start && end ? { start, end } : null;
+}
+
+function normalizeStaffShiftType(role, value) {
+  const shift = String(value || '').trim();
+  if (role === 'Dentist') return shift;
+  if (['Day', 'Afternoon', 'Night'].includes(shift)) return 'Full Day';
+  return shift;
+}
+
 function getShiftTypeOptions(role) {
   if (role === 'Dentist') {
     return ['By Appointment'];
   }
 
-  return ['Day', 'Afternoon', 'Night'];
+  return ['Full Day', 'Custom Hours'];
 }
 
 function parseWorkDays(val) {
@@ -849,7 +878,22 @@ export default function AdminEmployees() {
             ...employee,
             specializations: parseSpecializations(employee.specializations || employee.workDepartment || employee.specialization),
           }
-        : employee;
+        : {
+            ...employee,
+            shiftType: normalizeStaffShiftType(employee?.role, employee?.shiftType),
+          };
+
+    if (
+      normalizedEmployee?.role !== 'Dentist' &&
+      normalizedEmployee?.shiftType === 'Full Day'
+    ) {
+      const branch = branches.find((item) => String(item.id) === String(normalizedEmployee.branchId));
+      const hours = parseBranchOperatingHours(branch?.operating_hours);
+      if (hours) {
+        normalizedEmployee.workStartTime = hours.start;
+        normalizedEmployee.workEndTime = hours.end;
+      }
+    }
 
     setSelectedEmployee(normalizedEmployee);
     setEditedEmployee({ ...normalizedEmployee });
@@ -1001,10 +1045,23 @@ export default function AdminEmployees() {
   function handleEmployeeInputChange(event) {
     const { name, value } = event.target;
 
-    setEditedEmployee((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setEditedEmployee((prev) => {
+      const next = {
+        ...prev,
+        [name]: value,
+      };
+
+      if (name === 'shiftType' && prev?.role !== 'Dentist' && value === 'Full Day') {
+        const branch = branches.find((item) => String(item.id) === String(prev?.branchId));
+        const hours = parseBranchOperatingHours(branch?.operating_hours);
+        if (hours) {
+          next.workStartTime = hours.start;
+          next.workEndTime = hours.end;
+        }
+      }
+
+      return next;
+    });
   }
 
   function createModalScheduleBlock(overrides = {}) {
@@ -1053,6 +1110,21 @@ export default function AdminEmployees() {
         block.id === blockId ? { ...block, [field]: value } : block
       ),
     }));
+  }
+
+  function updateModalScheduleBlockTime(field, value) {
+    setScheduleDraft((prev) => {
+      const next = {};
+
+      for (const [weekday, blocks] of Object.entries(prev || {})) {
+        next[weekday] = (Array.isArray(blocks) ? blocks : []).map((block) => ({
+          ...block,
+          [field]: value,
+        }));
+      }
+
+      return next;
+    });
   }
 
   function removeModalScheduleBlock(weekday, blockId) {
@@ -1120,11 +1192,11 @@ export default function AdminEmployees() {
       }
     });
 
-    if (editedEmployee?.role === 'Dentist') {
-      if (!editedEmployee?.branchId) {
-        errors.add('branchId');
-      }
+    if (!editedEmployee?.branchId) {
+      errors.add('branchId');
+    }
 
+    if (editedEmployee?.role === 'Dentist') {
       if (!editedEmployee?.workStartTime) {
         errors.add('workStartTime');
       }
@@ -1137,6 +1209,16 @@ export default function AdminEmployees() {
 
       if (days.length === 0) {
         errors.add('workDays');
+      }
+    } else if (editedEmployee?.role === 'Receptionist' || editedEmployee?.role === 'Dental Assistant') {
+      if (!editedEmployee?.shiftType) {
+        errors.add('shiftType');
+      }
+      if (!editedEmployee?.workStartTime) {
+        errors.add('workStartTime');
+      }
+      if (!editedEmployee?.workEndTime) {
+        errors.add('workEndTime');
       }
     }
 
@@ -1170,7 +1252,11 @@ export default function AdminEmployees() {
       errors.add('yearsExperience');
     }
 
-    if (editedEmployee?.role === 'Dentist') {
+    if (
+      editedEmployee?.role === 'Dentist' ||
+      editedEmployee?.role === 'Receptionist' ||
+      editedEmployee?.role === 'Dental Assistant'
+    ) {
       if (!isValidTimeValue(editedEmployee?.workStartTime)) {
         errors.add('workStartTime');
       }
@@ -1401,9 +1487,14 @@ export default function AdminEmployees() {
     const fieldErrorMessage = liveEditErrors[name] || liveErrorMessage;
     const hasError = editErrors.has(name) || Boolean(fieldErrorMessage);
     const isLockedTimeField =
-      editedEmployee?.role === 'Dentist' &&
       ['workStartTime', 'workEndTime'].includes(name) &&
-      hasLockedScheduleDays();
+      (
+        (editedEmployee?.role === 'Dentist' && hasLockedScheduleDays()) ||
+        (
+          (editedEmployee?.role === 'Receptionist' || editedEmployee?.role === 'Dental Assistant') &&
+          editedEmployee?.shiftType === 'Full Day'
+        )
+      );
     const isFieldDisabled = !isEditingEmployee || isLockedTimeField;
 
     return (
@@ -1429,6 +1520,22 @@ export default function AdminEmployees() {
               ...prev,
               [name]: val,
             }));
+
+            if (
+              editedEmployee?.role === 'Dentist' &&
+              name === 'workStartTime' &&
+              !hasLockedScheduleDays()
+            ) {
+              updateModalScheduleBlockTime('start_time', val);
+            }
+
+            if (
+              editedEmployee?.role === 'Dentist' &&
+              name === 'workEndTime' &&
+              !hasLockedScheduleDays()
+            ) {
+              updateModalScheduleBlockTime('end_time', val);
+            }
 
             validateLiveEmployeeField(name, val);
           }}
@@ -1460,7 +1567,9 @@ export default function AdminEmployees() {
 
         {isLockedTimeField && (
           <span style={{ color: '#8b6508', fontSize: 12, fontWeight: 700, marginTop: 4 }}>
-            Work hours are locked while this dentist has active appointments on scheduled days.
+            {editedEmployee?.role === 'Dentist'
+              ? 'Work hours are locked while this dentist has active appointments on scheduled days.'
+              : 'Full Day uses the selected branch operating hours.'}
           </span>
         )}
       </div>
@@ -1646,21 +1755,33 @@ export default function AdminEmployees() {
               (branch) => String(branch.id) === event.target.value
             );
 
-            setEditedEmployee((prev) => ({
-              ...prev,
-              branchId: event.target.value,
-              branchName: selected?.name || '',
-              branchAddress: selected?.address
-                ? `${selected.name} - ${selected.address}`
-                : selected?.name || '',
-              additionalBranchIds: (Array.isArray(prev?.additionalBranchIds) ? prev.additionalBranchIds : [])
-                .filter((branchId) => String(branchId) !== String(event.target.value)),
-              branchIds: [
-                event.target.value,
-                ...(Array.isArray(prev?.additionalBranchIds) ? prev.additionalBranchIds : [])
-                  .filter((branchId) => String(branchId) !== String(event.target.value)),
-              ].filter(Boolean),
-            }));
+            setEditedEmployee((prev) => {
+              const nextAdditionalBranchIds = (Array.isArray(prev?.additionalBranchIds) ? prev.additionalBranchIds : [])
+                .filter((branchId) => String(branchId) !== String(event.target.value));
+              const next = {
+                ...prev,
+                branchId: event.target.value,
+                branchName: selected?.name || '',
+                branchAddress: selected?.address
+                  ? `${selected.name} - ${selected.address}`
+                  : selected?.name || '',
+                additionalBranchIds: nextAdditionalBranchIds,
+                branchIds: [
+                  event.target.value,
+                  ...nextAdditionalBranchIds,
+                ].filter(Boolean),
+              };
+
+              if (prev?.role !== 'Dentist' && prev?.shiftType === 'Full Day') {
+                const hours = parseBranchOperatingHours(selected?.operating_hours);
+                if (hours) {
+                  next.workStartTime = hours.start;
+                  next.workEndTime = hours.end;
+                }
+              }
+
+              return next;
+            });
 
             if (event.target.value) {
               setEditErrors((prev) => {
