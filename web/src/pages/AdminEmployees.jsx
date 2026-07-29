@@ -52,6 +52,19 @@ const DAY_TO_WEEKDAY = {
   Saturday: 6,
 };
 
+const DENTIST_SPECIALIZATIONS = [
+  'General Dentistry',
+  'Orthodontics',
+  'Endodontics',
+  'Periodontics',
+  'Prosthodontics',
+  'Pediatric Dentistry',
+  'Oral Surgery',
+  'Cosmetic Dentistry',
+  'Implant Dentistry',
+  'Radiology',
+];
+
 function filterNameVal(val) {
   return val.replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
 }
@@ -135,35 +148,89 @@ function isValidTimeValue(value) {
   return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(String(value || '').trim());
 }
 
+function timeLabelToValue(hourText, minuteText, periodText) {
+  let hour = Number(hourText);
+  const minute = Number(minuteText);
+  const period = String(periodText || '').toUpperCase();
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return '';
+  if (period === 'PM' && hour !== 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function parseBranchOperatingHours(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return null;
+
+  const start = timeLabelToValue(match[1], match[2], match[3]);
+  const end = timeLabelToValue(match[4], match[5], match[6]);
+  return start && end ? { start, end } : null;
+}
+
+function normalizeStaffShiftType(role, value) {
+  const shift = String(value || '').trim();
+  if (role === 'Dentist') return shift;
+  if (['Day', 'Afternoon', 'Night'].includes(shift)) return 'Full Day';
+  return shift;
+}
+
 function getShiftTypeOptions(role) {
   if (role === 'Dentist') {
     return ['By Appointment'];
   }
 
-  return ['Day', 'Afternoon', 'Night'];
+  return ['Full Day', 'Custom Hours'];
 }
 
 function parseWorkDays(val) {
+  const sortDays = (days) => days
+    .map((day) => String(day || '').trim())
+    .filter(Boolean)
+    .sort((a, b) => {
+      const indexA = EDIT_DAY_OPTIONS.indexOf(a);
+      const indexB = EDIT_DAY_OPTIONS.indexOf(b);
+      return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+    });
+
   if (!val) {
     return [];
   }
 
   if (Array.isArray(val)) {
-    return val;
+    return sortDays(val);
   }
 
   try {
     const parsed = JSON.parse(val);
 
     if (Array.isArray(parsed)) {
-      return parsed;
+      return sortDays(parsed);
     }
   } catch (_) {}
 
-  return String(val)
+  return sortDays(String(val).split(','));
+}
+
+function parseSpecializations(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean);
+  }
+
+  return String(value || '')
     .split(',')
-    .map((d) => d.trim())
+    .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function normalizeBranchIdArray(value) {
+  return [...new Set(
+    (Array.isArray(value) ? value : String(value || '').split(','))
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+  )];
 }
 
 function formatScheduleEntries(entries = []) {
@@ -180,6 +247,35 @@ function formatScheduleEntries(entries = []) {
 
     return `${day}: ${branch}${hours ? ` (${hours})` : ''}`;
   });
+}
+
+function makeScheduleDraftBlock(entry = {}) {
+  return {
+    id: entry.id || `schedule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    branch_id: entry.branch_id ? String(entry.branch_id) : '',
+    start_time: entry.start_time ? String(entry.start_time).slice(0, 5) : '',
+    end_time: entry.end_time ? String(entry.end_time).slice(0, 5) : '',
+  };
+}
+
+function buildScheduleDraft(employee) {
+  const draft = {};
+
+  for (const entry of employee?.scheduleEntries || []) {
+    const weekday = Number(entry.weekday);
+
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+      continue;
+    }
+
+    if (!Array.isArray(draft[weekday])) {
+      draft[weekday] = [];
+    }
+
+    draft[weekday].push(makeScheduleDraftBlock(entry));
+  }
+
+  return draft;
 }
 
 export default function AdminEmployees() {
@@ -229,6 +325,7 @@ export default function AdminEmployees() {
 
   const [employees, setEmployees] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [serviceCategories, setServiceCategories] = useState([]);
 
   const isMobile = screenWidth <= 850;
   const isTablet = screenWidth > 850 && screenWidth <= 1200;
@@ -267,6 +364,14 @@ export default function AdminEmployees() {
   }, []);
 
   useEffect(() => {
+    if (editedEmployee?.role !== 'Dentist') return;
+    if (normalizeBranchIdArray(editedEmployee?.additionalBranchIds).length > 0) return;
+
+    setUsePerDayBranchSchedule(false);
+    setScheduleDraft({});
+  }, [editedEmployee?.role, editedEmployee?.additionalBranchIds]);
+
+  useEffect(() => {
     async function loadEmployees() {
       try {
         const res = await api.get('/auth/staff-profiles');
@@ -285,8 +390,20 @@ export default function AdminEmployees() {
       }
     }
 
+    async function loadServices() {
+      try {
+        const res = await api.get('/auth/services');
+        const all = res.data.services || [];
+        const categories = [...new Set(all.map((service) => service.category).filter(Boolean))].sort();
+        setServiceCategories(categories);
+      } catch (err) {
+        console.error('Failed to load services', err);
+      }
+    }
+
     loadEmployees();
     loadBranches();
+    loadServices();
   }, []);
 
   useEffect(() => {
@@ -755,8 +872,31 @@ export default function AdminEmployees() {
   }
 
   function openEmployeeModal(employee) {
-    setSelectedEmployee(employee);
-    setEditedEmployee({ ...employee });
+    const normalizedEmployee =
+      employee?.role === 'Dentist'
+        ? {
+            ...employee,
+            specializations: parseSpecializations(employee.specializations || employee.workDepartment || employee.specialization),
+          }
+        : {
+            ...employee,
+            shiftType: normalizeStaffShiftType(employee?.role, employee?.shiftType),
+          };
+
+    if (
+      normalizedEmployee?.role !== 'Dentist' &&
+      normalizedEmployee?.shiftType === 'Full Day'
+    ) {
+      const branch = branches.find((item) => String(item.id) === String(normalizedEmployee.branchId));
+      const hours = parseBranchOperatingHours(branch?.operating_hours);
+      if (hours) {
+        normalizedEmployee.workStartTime = hours.start;
+        normalizedEmployee.workEndTime = hours.end;
+      }
+    }
+
+    setSelectedEmployee(normalizedEmployee);
+    setEditedEmployee({ ...normalizedEmployee });
     setIsEditingEmployee(false);
 
     const hasSchedule =
@@ -765,23 +905,7 @@ export default function AdminEmployees() {
 
     setUsePerDayBranchSchedule(hasSchedule);
 
-    const draft = {};
-
-    for (const entry of employee?.scheduleEntries || []) {
-      const weekday = Number(entry.weekday);
-
-      if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
-        continue;
-      }
-
-      draft[weekday] = {
-        branch_id: entry.branch_id,
-        start_time: entry.start_time || '',
-        end_time: entry.end_time || '',
-      };
-    }
-
-    setScheduleDraft(draft);
+    setScheduleDraft(buildScheduleDraft(employee));
 
     setShowEmployeeModal(true);
   }
@@ -912,6 +1036,7 @@ export default function AdminEmployees() {
     setEmployeeSaveConfirmModal(null);
     setShowScheduleLockWarningModal(false);
     setEditedEmployee({ ...selectedEmployee });
+    setScheduleDraft(buildScheduleDraft(selectedEmployee));
     setIsEditingEmployee(false);
     setEditErrors(new Set());
     setLiveEditErrors({});
@@ -920,10 +1045,98 @@ export default function AdminEmployees() {
   function handleEmployeeInputChange(event) {
     const { name, value } = event.target;
 
-    setEditedEmployee((prev) => ({
+    setEditedEmployee((prev) => {
+      const next = {
+        ...prev,
+        [name]: value,
+      };
+
+      if (name === 'shiftType' && prev?.role !== 'Dentist' && value === 'Full Day') {
+        const branch = branches.find((item) => String(item.id) === String(prev?.branchId));
+        const hours = parseBranchOperatingHours(branch?.operating_hours);
+        if (hours) {
+          next.workStartTime = hours.start;
+          next.workEndTime = hours.end;
+        }
+      }
+
+      return next;
+    });
+  }
+
+  function createModalScheduleBlock(overrides = {}) {
+    return makeScheduleDraftBlock({
+      branch_id: overrides.branch_id ?? editedEmployee?.branchId ?? '',
+      start_time: overrides.start_time ?? editedEmployee?.workStartTime ?? '',
+      end_time: overrides.end_time ?? editedEmployee?.workEndTime ?? '',
+    });
+  }
+
+  function ensureModalScheduleDay(weekday) {
+    setScheduleDraft((prev) => {
+      if (Array.isArray(prev?.[weekday]) && prev[weekday].length > 0) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [weekday]: [createModalScheduleBlock()],
+      };
+    });
+  }
+
+  function removeModalScheduleDay(weekday) {
+    setScheduleDraft((prev) => {
+      const next = { ...prev };
+      delete next[weekday];
+      return next;
+    });
+  }
+
+  function addModalScheduleBlock(weekday) {
+    setScheduleDraft((prev) => ({
       ...prev,
-      [name]: value,
+      [weekday]: [
+        ...(Array.isArray(prev?.[weekday]) ? prev[weekday] : []),
+        createModalScheduleBlock(),
+      ],
     }));
+  }
+
+  function updateModalScheduleBlock(weekday, blockId, field, value) {
+    setScheduleDraft((prev) => ({
+      ...prev,
+      [weekday]: (Array.isArray(prev?.[weekday]) ? prev[weekday] : []).map((block) =>
+        block.id === blockId ? { ...block, [field]: value } : block
+      ),
+    }));
+  }
+
+  function updateModalScheduleBlockTime(field, value) {
+    setScheduleDraft((prev) => {
+      const next = {};
+
+      for (const [weekday, blocks] of Object.entries(prev || {})) {
+        next[weekday] = (Array.isArray(blocks) ? blocks : []).map((block) => ({
+          ...block,
+          [field]: value,
+        }));
+      }
+
+      return next;
+    });
+  }
+
+  function removeModalScheduleBlock(weekday, blockId) {
+    setScheduleDraft((prev) => {
+      const current = Array.isArray(prev?.[weekday]) ? prev[weekday] : [];
+      const nextBlocks = current.filter((block) => block.id !== blockId);
+
+      return {
+        ...prev,
+        [weekday]: nextBlocks.length > 0 ? nextBlocks : [createModalScheduleBlock()],
+      };
+    });
   }
 
   function validateLiveEmployeeField(name, value) {
@@ -979,11 +1192,11 @@ export default function AdminEmployees() {
       }
     });
 
-    if (editedEmployee?.role === 'Dentist') {
-      if (!editedEmployee?.branchId) {
-        errors.add('branchId');
-      }
+    if (!editedEmployee?.branchId) {
+      errors.add('branchId');
+    }
 
+    if (editedEmployee?.role === 'Dentist') {
       if (!editedEmployee?.workStartTime) {
         errors.add('workStartTime');
       }
@@ -996,6 +1209,16 @@ export default function AdminEmployees() {
 
       if (days.length === 0) {
         errors.add('workDays');
+      }
+    } else if (editedEmployee?.role === 'Receptionist' || editedEmployee?.role === 'Dental Assistant') {
+      if (!editedEmployee?.shiftType) {
+        errors.add('shiftType');
+      }
+      if (!editedEmployee?.workStartTime) {
+        errors.add('workStartTime');
+      }
+      if (!editedEmployee?.workEndTime) {
+        errors.add('workEndTime');
       }
     }
 
@@ -1029,7 +1252,11 @@ export default function AdminEmployees() {
       errors.add('yearsExperience');
     }
 
-    if (editedEmployee?.role === 'Dentist') {
+    if (
+      editedEmployee?.role === 'Dentist' ||
+      editedEmployee?.role === 'Receptionist' ||
+      editedEmployee?.role === 'Dental Assistant'
+    ) {
       if (!isValidTimeValue(editedEmployee?.workStartTime)) {
         errors.add('workStartTime');
       }
@@ -1050,42 +1277,43 @@ export default function AdminEmployees() {
       const assignedBranchId = Number(editedEmployee?.branchId);
 
       const scheduleEntries = checkedDays
-        .map((day) => {
+        .flatMap((day) => {
           const weekday = DAY_TO_WEEKDAY[day];
-          const draft = scheduleDraft?.[weekday] || {};
-
-          const branchId = usePerDayBranchSchedule
-            ? Number(draft.branch_id || assignedBranchId)
-            : assignedBranchId;
-
-          const startTime =
-            (usePerDayBranchSchedule ? draft.start_time : '') ||
-            editedEmployee?.workStartTime ||
-            '';
-
-          const endTime =
-            (usePerDayBranchSchedule ? draft.end_time : '') ||
-            editedEmployee?.workEndTime ||
-            '';
 
           if (!Number.isInteger(weekday)) {
-            return null;
+            return [];
           }
 
-          if (!Number.isInteger(branchId) || branchId <= 0) {
-            return null;
-          }
+          const blocks = usePerDayBranchSchedule
+            ? (Array.isArray(scheduleDraft?.[weekday]) && scheduleDraft[weekday].length > 0
+                ? scheduleDraft[weekday]
+                : [createModalScheduleBlock()])
+            : [{
+                branch_id: assignedBranchId,
+                start_time: editedEmployee?.workStartTime || '',
+                end_time: editedEmployee?.workEndTime || '',
+              }];
 
-          if (!startTime || !endTime) {
-            return null;
-          }
+          return blocks.map((draft) => {
+            const branchId = Number(draft.branch_id || assignedBranchId);
+            const startTime = draft.start_time || editedEmployee?.workStartTime || '';
+            const endTime = draft.end_time || editedEmployee?.workEndTime || '';
 
-          return {
-            weekday,
-            branch_id: branchId,
-            start_time: startTime,
-            end_time: endTime,
-          };
+            if (!Number.isInteger(branchId) || branchId <= 0) {
+              return null;
+            }
+
+            if (!startTime || !endTime) {
+              return null;
+            }
+
+            return {
+              weekday,
+              branch_id: branchId,
+              start_time: startTime,
+              end_time: endTime,
+            };
+          });
         })
         .filter(Boolean);
 
@@ -1102,6 +1330,10 @@ export default function AdminEmployees() {
     if (name === 'branchId') {
       const branch = branches.find((item) => String(item.id) === String(value));
       return branch?.address ? `${branch.name} - ${branch.address}` : branch?.name || employee?.branchAddress || value || 'Not selected';
+    }
+
+    if (name === 'additionalBranchIds' || name === 'branchIds') {
+      return formatBranchList(value) || 'None';
     }
 
     if (name === 'workDays') {
@@ -1143,6 +1375,7 @@ export default function AdminEmployees() {
       ['assignedDentist', 'Assigned Dentist'],
       ['startDate', 'Start Date'],
       ['branchId', 'Assigned Branch'],
+      ['additionalBranchIds', 'Also Dentist In Branches'],
       ['employmentType', 'Employment Type'],
       ['shiftType', 'Shift Type'],
       ['workDays', 'Work Days'],
@@ -1254,9 +1487,14 @@ export default function AdminEmployees() {
     const fieldErrorMessage = liveEditErrors[name] || liveErrorMessage;
     const hasError = editErrors.has(name) || Boolean(fieldErrorMessage);
     const isLockedTimeField =
-      editedEmployee?.role === 'Dentist' &&
       ['workStartTime', 'workEndTime'].includes(name) &&
-      hasLockedScheduleDays();
+      (
+        (editedEmployee?.role === 'Dentist' && hasLockedScheduleDays()) ||
+        (
+          (editedEmployee?.role === 'Receptionist' || editedEmployee?.role === 'Dental Assistant') &&
+          editedEmployee?.shiftType === 'Full Day'
+        )
+      );
     const isFieldDisabled = !isEditingEmployee || isLockedTimeField;
 
     return (
@@ -1282,6 +1520,22 @@ export default function AdminEmployees() {
               ...prev,
               [name]: val,
             }));
+
+            if (
+              editedEmployee?.role === 'Dentist' &&
+              name === 'workStartTime' &&
+              !hasLockedScheduleDays()
+            ) {
+              updateModalScheduleBlockTime('start_time', val);
+            }
+
+            if (
+              editedEmployee?.role === 'Dentist' &&
+              name === 'workEndTime' &&
+              !hasLockedScheduleDays()
+            ) {
+              updateModalScheduleBlockTime('end_time', val);
+            }
 
             validateLiveEmployeeField(name, val);
           }}
@@ -1313,7 +1567,9 @@ export default function AdminEmployees() {
 
         {isLockedTimeField && (
           <span style={{ color: '#8b6508', fontSize: 12, fontWeight: 700, marginTop: 4 }}>
-            Work hours are locked while this dentist has active appointments on scheduled days.
+            {editedEmployee?.role === 'Dentist'
+              ? 'Work hours are locked while this dentist has active appointments on scheduled days.'
+              : 'Full Day uses the selected branch operating hours.'}
           </span>
         )}
       </div>
@@ -1356,6 +1612,97 @@ export default function AdminEmployees() {
             </option>
           ))}
         </select>
+      </div>
+    );
+  }
+
+  function toggleEditedDentistSpecialization(value, checked) {
+    setEditedEmployee((prev) => {
+      const current = parseSpecializations(prev?.specializations || prev?.workDepartment || prev?.specialization);
+      const next = new Set(current);
+
+      if (checked) next.add(value);
+      else next.delete(value);
+
+      const specializations = Array.from(next);
+      const text = specializations.join(', ');
+
+      return {
+        ...prev,
+        specializations,
+        specialization: text,
+        workDepartment: text,
+      };
+    });
+  }
+
+  function modalDentistSpecializations() {
+    const options = serviceCategories.length > 0 ? serviceCategories : DENTIST_SPECIALIZATIONS;
+    const selected = parseSpecializations(
+      editedEmployee?.specializations || editedEmployee?.workDepartment || editedEmployee?.specialization
+    );
+    const hasError = editErrors.has('workDepartment');
+
+    if (!isEditingEmployee) {
+      return (
+        <div style={styles.employeeModalField}>
+          <label style={styles.employeeModalLabel}>Specialization / Department</label>
+          <input
+            type="text"
+            value={selected.join(', ')}
+            readOnly
+            style={{
+              ...styles.employeeModalInput,
+              ...styles.employeeModalInputReadOnly,
+            }}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div style={styles.employeeModalField}>
+        <label style={styles.employeeModalLabel}>
+          Specialization / Department
+          {hasError && (
+            <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>
+          )}
+        </label>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: screenWidth <= 640 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+            gap: 8,
+            padding: 12,
+            border: `1px solid ${hasError ? '#dc2626' : '#d9e2ef'}`,
+            borderRadius: 12,
+            background: '#f8fafc',
+          }}
+        >
+          {options.map((option) => (
+            <label
+              key={option}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                color: '#172554',
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={(event) =>
+                  toggleEditedDentistSpecialization(option, event.target.checked)
+                }
+              />
+              {option}
+            </label>
+          ))}
+        </div>
       </div>
     );
   }
@@ -1408,14 +1755,33 @@ export default function AdminEmployees() {
               (branch) => String(branch.id) === event.target.value
             );
 
-            setEditedEmployee((prev) => ({
-              ...prev,
-              branchId: event.target.value,
-              branchName: selected?.name || '',
-              branchAddress: selected?.address
-                ? `${selected.name} - ${selected.address}`
-                : selected?.name || '',
-            }));
+            setEditedEmployee((prev) => {
+              const nextAdditionalBranchIds = (Array.isArray(prev?.additionalBranchIds) ? prev.additionalBranchIds : [])
+                .filter((branchId) => String(branchId) !== String(event.target.value));
+              const next = {
+                ...prev,
+                branchId: event.target.value,
+                branchName: selected?.name || '',
+                branchAddress: selected?.address
+                  ? `${selected.name} - ${selected.address}`
+                  : selected?.name || '',
+                additionalBranchIds: nextAdditionalBranchIds,
+                branchIds: [
+                  event.target.value,
+                  ...nextAdditionalBranchIds,
+                ].filter(Boolean),
+              };
+
+              if (prev?.role !== 'Dentist' && prev?.shiftType === 'Full Day') {
+                const hours = parseBranchOperatingHours(selected?.operating_hours);
+                if (hours) {
+                  next.workStartTime = hours.start;
+                  next.workEndTime = hours.end;
+                }
+              }
+
+              return next;
+            });
 
             if (event.target.value) {
               setEditErrors((prev) => {
@@ -1457,19 +1823,120 @@ export default function AdminEmployees() {
     );
   }
 
+  function toggleEditedAdditionalBranch(value, checked) {
+    setEditedEmployee((prev) => {
+      const homeBranchId = String(prev?.branchId || '');
+      const next = new Set((Array.isArray(prev?.additionalBranchIds) ? prev.additionalBranchIds : []).map(String));
+
+      if (checked && String(value) !== homeBranchId) next.add(String(value));
+      else next.delete(String(value));
+
+      const additionalBranchIds = Array.from(next);
+      return {
+        ...prev,
+        additionalBranchIds,
+        branchIds: Array.from(new Set([homeBranchId, ...additionalBranchIds].filter(Boolean))),
+      };
+    });
+  }
+
+  function formatBranchList(branchIds = []) {
+    const labels = normalizeBranchIdArray(branchIds)
+      .map((branchId) => {
+        const branch = branches.find((item) => String(item.id) === String(branchId));
+        return branch?.address ? `${branch.name} - ${branch.address}` : branch?.name || '';
+      })
+      .filter(Boolean);
+    return labels.join(', ');
+  }
+
+  function modalAdditionalBranches() {
+    if (editedEmployee?.role !== 'Dentist') return null;
+
+    const selected = normalizeBranchIdArray(editedEmployee?.additionalBranchIds);
+    const options = branches.filter((branch) => String(branch.id) !== String(editedEmployee?.branchId || ''));
+
+    if (!isEditingEmployee) {
+      return (
+        <div style={styles.employeeModalField}>
+          <label style={styles.employeeModalLabel}>Also Dentist In Branches</label>
+          <input
+            type="text"
+            value={formatBranchList(selected) || 'None'}
+            readOnly
+            style={{
+              ...styles.employeeModalInput,
+              ...styles.employeeModalInputReadOnly,
+            }}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div style={styles.employeeModalField}>
+        <label style={styles.employeeModalLabel}>Also Dentist In Branches (Optional)</label>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '12px 20px',
+            padding: 12,
+            border: '1px solid #d9e2ef',
+            borderRadius: 12,
+            background: '#f8fafc',
+          }}
+        >
+          {options.length === 0 ? (
+            <span style={{ color: '#64748b', fontSize: 13 }}>No other branches available</span>
+          ) : (
+            options.map((branch) => {
+              const value = String(branch.id);
+              return (
+                <label
+                  key={branch.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    color: '#172554',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.map(String).includes(value)}
+                    onChange={(event) =>
+                      toggleEditedAdditionalBranch(value, event.target.checked)
+                    }
+                  />
+                  {branch.address ? `${branch.name} - ${branch.address}` : branch.name}
+                </label>
+              );
+            })
+          )}
+        </div>
+        <span style={{ color: '#6f675b', fontSize: 12, marginTop: 4 }}>
+          These branches show the dentist as part of the branch, but do not create appointment availability.
+        </span>
+      </div>
+    );
+  }
+
   function modalWorkDays() {
     const checkedDays = parseWorkDays(editedEmployee?.workDays);
 
     return (
-      <div style={styles.employeeModalField}>
+      <div style={{ ...styles.employeeModalField, marginTop: editedEmployee?.role === 'Dentist' && isEditingEmployee ? 8 : 0 }}>
         <label style={styles.employeeModalLabel}>Work Schedule Days</label>
 
         <div
           style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '8px 16px',
-            marginTop: 4,
+            gap: '12px 24px',
+            marginTop: 8,
           }}
         >
           {EDIT_DAY_OPTIONS.map((day) => {
@@ -1506,11 +1973,18 @@ export default function AdminEmployees() {
                     const newDays = event.target.checked
                       ? [...checkedDays, day]
                       : checkedDays.filter((d) => d !== day);
+                    const weekday = DAY_TO_WEEKDAY[day];
 
                     setEditedEmployee((prev) => ({
                       ...prev,
                       workDays: newDays,
                     }));
+
+                    if (event.target.checked && usePerDayBranchSchedule) {
+                      ensureModalScheduleDay(weekday);
+                    } else if (!event.target.checked) {
+                      removeModalScheduleDay(weekday);
+                    }
                   }}
                   style={{
                     accentColor: isLocked ? '#d4af37' : '#2563eb',
@@ -1570,6 +2044,12 @@ export default function AdminEmployees() {
 
     const checkedDays = parseWorkDays(editedEmployee?.workDays);
     const assignedBranchId = Number(editedEmployee?.branchId);
+    const selectedAdditionalBranchIds = normalizeBranchIdArray(editedEmployee?.additionalBranchIds);
+    const canUsePerDayBranchSchedule = selectedAdditionalBranchIds.length > 0;
+    const allowedScheduleBranchIds = new Set([
+      String(assignedBranchId || ''),
+      ...selectedAdditionalBranchIds.map(String),
+    ].filter(Boolean));
 
     return (
       <div style={styles.employeeModalField}>
@@ -1588,131 +2068,186 @@ export default function AdminEmployees() {
           <input
             type="checkbox"
             checked={usePerDayBranchSchedule}
-            onChange={(event) =>
-              setUsePerDayBranchSchedule(event.target.checked)
-            }
-            style={{ accentColor: '#2563eb' }}
+            disabled={!canUsePerDayBranchSchedule}
+            onChange={(event) => {
+              if (!canUsePerDayBranchSchedule) return;
+              setUsePerDayBranchSchedule(event.target.checked);
+              if (event.target.checked) {
+                checkedDays.forEach((day) => ensureModalScheduleDay(DAY_TO_WEEKDAY[day]));
+              }
+            }}
+            style={{
+              accentColor: '#2563eb',
+              cursor: canUsePerDayBranchSchedule ? 'pointer' : 'not-allowed',
+            }}
           />
 
           <span style={{ fontSize: 13, color: '#334155' }}>
-            Enable different branch per day
+            Enable branch time blocks per selected day
           </span>
         </div>
 
+        {!canUsePerDayBranchSchedule && (
+          <p style={{ margin: '6px 0 0', color: '#8b6508', fontSize: 12, fontWeight: 700 }}>
+            Select another branch in "Also Dentist In Branches" to enable this.
+          </p>
+        )}
+
         {usePerDayBranchSchedule && (
-          <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
-            {EDIT_DAY_OPTIONS.map((day) => {
+          <div style={{ marginTop: 16, display: 'grid', gap: 18 }}>
+            {checkedDays.length === 0 && (
+              <span style={{ color: '#8b6508', fontSize: 12, fontWeight: 700 }}>
+                Select work schedule days first.
+              </span>
+            )}
+
+            {checkedDays.map((day) => {
               const weekday = DAY_TO_WEEKDAY[day];
-              const isChecked = checkedDays.includes(day);
               const isLocked = isScheduleDayLocked(day);
               const lock = getScheduleLockForDay(day);
-              const draft = scheduleDraft?.[weekday] || {};
-              const branchValue = draft.branch_id ?? assignedBranchId ?? '';
-              const startValue =
-                draft.start_time ?? editedEmployee?.workStartTime ?? '';
-              const endValue =
-                draft.end_time ?? editedEmployee?.workEndTime ?? '';
+              const blocks = Array.isArray(scheduleDraft?.[weekday]) && scheduleDraft[weekday].length > 0
+                ? scheduleDraft[weekday]
+                : [createModalScheduleBlock()];
 
               return (
                 <div
                   key={day}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '100px 1fr 1fr 1fr',
                     gap: 10,
-                    alignItems: 'center',
-                    opacity: isChecked ? 1 : 0.5,
                     borderLeft: isLocked ? '3px solid #d4af37' : '3px solid transparent',
                     paddingLeft: isLocked ? 8 : 0,
+                    paddingBottom: 8,
                   }}
                 >
                   <div
-                    title={
-                      isLocked
-                        ? `${day} has active appointments in ${lock?.branch_address || lock?.branch_name || 'this branch'}.`
-                        : ''
-                    }
                     style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: isLocked ? '#8b6508' : '#0f172a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
                     }}
                   >
-                    {day}
+                    <div
+                      title={
+                        isLocked
+                          ? `${day} has active appointments in ${lock?.branch_address || lock?.branch_name || 'this branch'}.`
+                          : ''
+                      }
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: isLocked ? '#8b6508' : '#0f172a',
+                      }}
+                    >
+                      {day}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => addModalScheduleBlock(weekday)}
+                      style={{
+                        ...styles.modalButton,
+                        padding: '10px 12px',
+                        minWidth: 86,
+                        height: 42,
+                        background: isLocked ? '#eef2f7' : '#d4af37',
+                        color: isLocked ? '#0f172a' : '#ffffff',
+                        opacity: isLocked ? 0.55 : 1,
+                        boxShadow: isLocked ? 'none' : '0 8px 18px rgba(139, 101, 8, 0.18)',
+                      }}
+                    >
+                      Add Branch
+                    </button>
                   </div>
 
-                  <select
-                    value={branchValue}
-                    disabled={!isChecked || isLocked}
-                    onChange={(event) => {
-                      const value = event.target.value;
+                  {blocks.map((block) => (
+                    <div
+                      key={block.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : '1.3fr 1fr 1fr auto',
+                        gap: 10,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <select
+                        value={block.branch_id || assignedBranchId || ''}
+                        disabled={isLocked}
+                        onChange={(event) =>
+                          updateModalScheduleBlock(weekday, block.id, 'branch_id', event.target.value)
+                        }
+                        style={{
+                          ...styles.employeeModalInput,
+                          ...(isLocked ? styles.employeeModalInputReadOnly : {}),
+                        }}
+                      >
+                        <option value="">Select branch</option>
 
-                      setScheduleDraft((prev) => ({
-                        ...prev,
-                        [weekday]: {
-                          ...(prev?.[weekday] || {}),
-                          branch_id: value,
-                        },
-                      }));
-                    }}
-                    style={{
-                      ...styles.employeeModalInput,
-                      ...(!isChecked || isLocked ? styles.employeeModalInputReadOnly : {}),
-                    }}
-                  >
-                    <option value="">Select branch</option>
+                        {branches
+                          .filter((branch) =>
+                            allowedScheduleBranchIds.has(String(branch.id)) ||
+                            String(branch.id) === String(block.branch_id || '')
+                          )
+                          .map((branch) => (
+                          <option key={branch.id} value={String(branch.id)}>
+                            {branch.address
+                              ? `${branch.name} - ${branch.address}`
+                              : branch.name}
+                          </option>
+                        ))}
+                      </select>
 
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={String(branch.id)}>
-                        {branch.address
-                          ? `${branch.name} - ${branch.address}`
-                          : branch.name}
-                      </option>
-                    ))}
-                  </select>
+                      <input
+                        type="time"
+                        value={block.start_time || editedEmployee?.workStartTime || ''}
+                        disabled={isLocked}
+                        onChange={(event) =>
+                          updateModalScheduleBlock(weekday, block.id, 'start_time', event.target.value)
+                        }
+                        style={{
+                          ...styles.employeeModalInput,
+                          ...(isLocked ? styles.employeeModalInputReadOnly : {}),
+                        }}
+                      />
 
-                  <input
-                    type="time"
-                    value={startValue}
-                    disabled={!isChecked || isLocked}
-                    onChange={(event) => {
-                      setScheduleDraft((prev) => ({
-                        ...prev,
-                        [weekday]: {
-                          ...(prev?.[weekday] || {}),
-                          start_time: event.target.value,
-                        },
-                      }));
-                    }}
-                    style={{
-                      ...styles.employeeModalInput,
-                      ...(!isChecked || isLocked ? styles.employeeModalInputReadOnly : {}),
-                    }}
-                  />
+                      <input
+                        type="time"
+                        value={block.end_time || editedEmployee?.workEndTime || ''}
+                        disabled={isLocked}
+                        onChange={(event) =>
+                          updateModalScheduleBlock(weekday, block.id, 'end_time', event.target.value)
+                        }
+                        style={{
+                          ...styles.employeeModalInput,
+                          ...(isLocked ? styles.employeeModalInputReadOnly : {}),
+                        }}
+                      />
 
-                  <input
-                    type="time"
-                    value={endValue}
-                    disabled={!isChecked || isLocked}
-                    onChange={(event) => {
-                      setScheduleDraft((prev) => ({
-                        ...prev,
-                        [weekday]: {
-                          ...(prev?.[weekday] || {}),
-                          end_time: event.target.value,
-                        },
-                      }));
-                    }}
-                    style={{
-                      ...styles.employeeModalInput,
-                      ...(!isChecked || isLocked ? styles.employeeModalInputReadOnly : {}),
-                    }}
-                  />
+                      <button
+                        type="button"
+                        disabled={isLocked || blocks.length === 1}
+                        onClick={() => removeModalScheduleBlock(weekday, block.id)}
+                        style={{
+                          ...styles.modalButton,
+                          padding: '10px 12px',
+                          minWidth: 86,
+                          height: 42,
+                          background: '#eef2f7',
+                          color: '#0f172a',
+                          opacity: isLocked || blocks.length === 1 ? 0.55 : 1,
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
                 </div>
               );
             })}
 
-            <div style={{ fontSize: 12, color: '#6f675b', marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: '#6f675b', marginTop: 10, marginBottom: 8 }}>
               Only checked days in "Work Schedule Days" will be saved.
             </div>
           </div>
@@ -2206,16 +2741,18 @@ export default function AdminEmployees() {
                 {(editedEmployee?.role === 'Dentist' ||
                   editedEmployee?.role === 'Dental Assistant') && (
                   <div style={styles.employeeModalGridTwo}>
-                    {modalField(
-                      editedEmployee?.role === 'Dentist'
-                        ? 'Specialization / Department'
-                        : 'Department',
-                      'workDepartment',
-                      'text',
-                      filterProfTextVal
-                    )}
-                    {editedEmployee?.role === 'Dental Assistant' &&
-                      modalField('Assigned Dentist', 'assignedDentist')}
+                    {editedEmployee?.role === 'Dentist'
+                      ? modalDentistSpecializations()
+                      : modalField(
+                          'Department',
+                          'workDepartment',
+                          'text',
+                          filterProfTextVal
+                        )}
+                    {editedEmployee?.role === 'Dentist'
+                      ? modalAdditionalBranches()
+                      : editedEmployee?.role === 'Dental Assistant' &&
+                        modalField('Assigned Dentist', 'assignedDentist')}
                   </div>
                 )}
 
@@ -2662,6 +3199,13 @@ function formatCSVValue(value) {
 function employeeToStaffPayload(employee) {
   const payload = {
     branchId: employee.branchId,
+    branchIds: employee.role === 'Dentist'
+      ? [
+          employee.branchId,
+          ...normalizeBranchIdArray(employee.additionalBranchIds),
+          ...normalizeBranchIdArray(employee.branchIds),
+        ]
+      : [employee.branchId].filter(Boolean),
     firstName: employee.firstName,
     middleName: employee.middleName,
     lastName: employee.lastName,
@@ -2678,6 +3222,9 @@ function employeeToStaffPayload(employee) {
     email: employee.email,
     position: employee.position,
     specialization: employee.specialization,
+    specializations: employee.role === 'Dentist'
+      ? parseSpecializations(employee.specializations || employee.workDepartment || employee.specialization)
+      : [],
     workDepartment: employee.workDepartment,
     medicalDegree: employee.medicalDegree,
     licenseNumber: employee.licenseNumber,

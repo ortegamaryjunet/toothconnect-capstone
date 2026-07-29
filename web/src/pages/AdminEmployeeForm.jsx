@@ -67,12 +67,35 @@ const SUFFIX_OPTIONS = ['Jr', 'Sr', 'II', 'III', 'IV'];
 const DAY_OPTIONS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const EMPLOYMENT_TYPES = ['Full-Time', 'Part-Time', 'Contract', 'Intern'];
+const STAFF_SHIFT_TYPES = ['Full Day', 'Custom Hours'];
 
 const DENTIST_SPECIALIZATIONS = [
   'General Dentistry', 'Orthodontics', 'Endodontics', 'Periodontics',
   'Prosthodontics', 'Pediatric Dentistry', 'Oral Surgery', 'Cosmetic Dentistry',
   'Implant Dentistry', 'Radiology',
 ];
+
+function timeLabelToValue(hourText, minuteText, periodText) {
+  let hour = Number(hourText);
+  const minute = Number(minuteText);
+  const period = String(periodText || '').toUpperCase();
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return '';
+  if (period === 'PM' && hour !== 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function parseBranchOperatingHours(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return null;
+
+  const start = timeLabelToValue(match[1], match[2], match[3]);
+  const end = timeLabelToValue(match[4], match[5], match[6]);
+  return start && end ? { start, end } : null;
+}
 
 const phoneCountryOptions = getCountries().map((country) => ({
   country,
@@ -261,19 +284,50 @@ function ScheduleFieldRaw({ name, dayOptions, styles, checkedValues = null, onTo
   );
 }
 
-function TimeRangeFieldRaw({ startName, endName, styles }) {
+function TimeRangeFieldRaw({
+  startName,
+  endName,
+  styles,
+  startValue,
+  endValue,
+  onStartChange,
+  onEndChange,
+  disabled = false,
+  hasError = false,
+}) {
+  const controlled = startValue !== undefined && endValue !== undefined;
+  const selectStyle = {
+    ...styles.input,
+    ...(disabled ? styles.readOnlyInput : {}),
+    ...(hasError ? { borderColor: '#dc2626', borderWidth: '2px' } : {}),
+  };
+
   return (
     <div style={styles.field}>
-      <label style={styles.label}>Working Hours</label>
+      <label style={styles.label}>
+        Working Hours{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+      </label>
       <div style={styles.timeGroup}>
-        <select name={startName} defaultValue="" style={styles.input}>
+        {disabled && controlled && <input type="hidden" name={startName} value={startValue} readOnly />}
+        <select
+          name={startName}
+          disabled={disabled}
+          {...(controlled ? { value: startValue, onChange: (e) => onStartChange?.(e.target.value) } : { defaultValue: '' })}
+          style={selectStyle}
+        >
           <option value="" disabled>Start time</option>
           {timeSlots.map((slot) => (
             <option key={slot.value} value={slot.value}>{slot.label}</option>
           ))}
         </select>
         <span style={styles.separator}>to</span>
-        <select name={endName} defaultValue="" style={styles.input}>
+        {disabled && controlled && <input type="hidden" name={endName} value={endValue} readOnly />}
+        <select
+          name={endName}
+          disabled={disabled}
+          {...(controlled ? { value: endValue, onChange: (e) => onEndChange?.(e.target.value) } : { defaultValue: '' })}
+          style={selectStyle}
+        >
           <option value="" disabled>End time</option>
           {timeSlots.map((slot) => (
             <option key={slot.value} value={slot.value}>{slot.label}</option>
@@ -423,13 +477,17 @@ export default function AdminEmployeeForm() {
   const [branchSpecializationOptions, setBranchSpecializationOptions] = useState([]);
   const [specializationsLoading, setSpecializationsLoading] = useState(false);
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
+  const [selectedDentistSpecializations, setSelectedDentistSpecializations] = useState([]);
+  const [additionalDentistBranchIds, setAdditionalDentistBranchIds] = useState([]);
   const [formErrors, setFormErrors] = useState(new Set());
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
   const [accessEmail, setAccessEmail] = useState('');
   const [enablePerDayBranch, setEnablePerDayBranch] = useState(false);
+  const [docWorkStart, setDocWorkStart] = useState('');
+  const [docWorkEnd, setDocWorkEnd] = useState('');
   const [dentistWorkDays, setDentistWorkDays] = useState([]);
-  const [recepWorkHours, setRecepWorkHours] = useState([]);
+  const [dentistScheduleBlocks, setDentistScheduleBlocks] = useState({});
   const [fieldErrors, setFieldErrors] = useState({});
   const [phoneValues, setPhoneValues] = useState({});
   const [phoneCountries, setPhoneCountries] = useState({});
@@ -458,6 +516,12 @@ export default function AdminEmployeeForm() {
   const [doctorWorkItems, setDoctorWorkItems] = useState([{ id: 1 }]);
   const [assistantWorkItems, setAssistantWorkItems] = useState([{ id: 2 }]);
   const [receptionistWorkItems, setReceptionistWorkItems] = useState([{ id: 3 }]);
+  const [daShiftType, setDaShiftType] = useState('');
+  const [daWorkStart, setDaWorkStart] = useState('');
+  const [daWorkEnd, setDaWorkEnd] = useState('');
+  const [recepShiftType, setRecepShiftType] = useState('');
+  const [recepWorkStart, setRecepWorkStart] = useState('');
+  const [recepWorkEnd, setRecepWorkEnd] = useState('');
 
   const isMobile = screenWidth <= 768;
   const isTablet = screenWidth > 768 && screenWidth <= 1100;
@@ -469,10 +533,136 @@ export default function AdminEmployeeForm() {
     value: String(branch.id),
     label: branch.address ? `${branch.name} - ${branch.address}` : branch.name,
   }));
+  const selectedBranch = branches.find((branch) => String(branch.id) === String(selectedBranchId));
+  const selectedBranchHours = parseBranchOperatingHours(selectedBranch?.operating_hours);
 
   const dentistOptions = dentists.length > 0 ? dentists : [];
   const specializationOptions =
     serviceCategories.length > 0 ? serviceCategories : DENTIST_SPECIALIZATIONS;
+  const additionalBranchOptions = branchOptions.filter(
+    (option) => String(option.value) !== String(selectedBranchId)
+  );
+  const canUsePerDayBranchSchedule = additionalDentistBranchIds.length > 0;
+  const allowedScheduleBranchOptions = branchOptions.filter((option) =>
+    String(option.value) === String(selectedBranchId) ||
+    additionalDentistBranchIds.map(String).includes(String(option.value))
+  );
+
+  function createDentistScheduleBlock(day, overrides = {}) {
+    return {
+      id: `${day}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      branch_id: overrides.branch_id ?? selectedBranchId ?? '',
+      start_time: overrides.start_time ?? docWorkStart ?? '',
+      end_time: overrides.end_time ?? docWorkEnd ?? '',
+    };
+  }
+
+  function updateDentistScheduleBlockTime(field, value) {
+    setDentistScheduleBlocks((prev) => {
+      const next = {};
+
+      for (const [day, blocks] of Object.entries(prev || {})) {
+        next[day] = (Array.isArray(blocks) ? blocks : []).map((block) => ({
+          ...block,
+          [field]: value,
+        }));
+      }
+
+      return next;
+    });
+  }
+
+  function ensureDentistScheduleBlock(day) {
+    setDentistScheduleBlocks((prev) => {
+      if (Array.isArray(prev?.[day]) && prev[day].length > 0) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [day]: [createDentistScheduleBlock(day)],
+      };
+    });
+  }
+
+  function removeDentistScheduleDay(day) {
+    setDentistScheduleBlocks((prev) => {
+      const next = { ...prev };
+      delete next[day];
+      return next;
+    });
+  }
+
+  function addDentistScheduleBlock(day) {
+    setDentistScheduleBlocks((prev) => ({
+      ...prev,
+      [day]: [
+        ...(Array.isArray(prev?.[day]) ? prev[day] : []),
+        createDentistScheduleBlock(day),
+      ],
+    }));
+  }
+
+  function updateDentistScheduleBlock(day, blockId, field, value) {
+    setDentistScheduleBlocks((prev) => ({
+      ...prev,
+      [day]: (Array.isArray(prev?.[day]) ? prev[day] : []).map((block) =>
+        block.id === blockId ? { ...block, [field]: value } : block
+      ),
+    }));
+  }
+
+  function removeDentistScheduleBlock(day, blockId) {
+    setDentistScheduleBlocks((prev) => {
+      const current = Array.isArray(prev?.[day]) ? prev[day] : [];
+      const nextBlocks = current.filter((block) => block.id !== blockId);
+
+      return {
+        ...prev,
+        [day]: nextBlocks.length > 0 ? nextBlocks : [createDentistScheduleBlock(day)],
+      };
+    });
+  }
+
+  function scheduleTimeToMinutes(value) {
+    const [hour, minute] = String(value || '').split(':').map((part) => Number(part));
+    if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+    return hour * 60 + minute;
+  }
+
+  function findScheduleBlockError(entries) {
+    for (const entry of entries) {
+      if (!entry.branch_id || !entry.start_time || !entry.end_time) {
+        return 'Please complete every branch schedule block.';
+      }
+
+      const start = scheduleTimeToMinutes(entry.start_time);
+      const end = scheduleTimeToMinutes(entry.end_time);
+      if (start === null || end === null || start >= end) {
+        return 'Schedule start time must be before end time.';
+      }
+    }
+
+    const byDay = new Map();
+    for (const entry of entries) {
+      if (!byDay.has(entry.day)) byDay.set(entry.day, []);
+      byDay.get(entry.day).push({
+        start: scheduleTimeToMinutes(entry.start_time),
+        end: scheduleTimeToMinutes(entry.end_time),
+      });
+    }
+
+    for (const [day, rows] of byDay.entries()) {
+      rows.sort((a, b) => a.start - b.start);
+      for (let index = 1; index < rows.length; index += 1) {
+        if (rows[index].start < rows[index - 1].end) {
+          return `${day} has overlapping branch schedule times.`;
+        }
+      }
+    }
+
+    return '';
+  }
 
   useEffect(() => {
     function handleResize() { setScreenWidth(window.innerWidth); }
@@ -548,15 +738,58 @@ export default function AdminEmployeeForm() {
   useEffect(() => {
     setSelectedBranchId('');
     setSelectedSpecialization('');
+    setSelectedDentistSpecializations([]);
+    setAdditionalDentistBranchIds([]);
     setEnablePerDayBranch(false);
+    setDocWorkStart('');
+    setDocWorkEnd('');
     setDentistWorkDays([]);
-    setRecepWorkHours([]);
+    setDentistScheduleBlocks({});
+    setDaShiftType('');
+    setDaWorkStart('');
+    setDaWorkEnd('');
+    setRecepShiftType('');
+    setRecepWorkStart('');
+    setRecepWorkEnd('');
   }, [employeeType]);
 
   useEffect(() => {
     setBranchSpecializationOptions([]);
     setSpecializationsLoading(false);
   }, [selectedBranchId]);
+
+  useEffect(() => {
+    if (employeeType === 'dentalAssistant' && daShiftType === 'Full Day' && selectedBranchHours) {
+      setDaWorkStart(selectedBranchHours.start);
+      setDaWorkEnd(selectedBranchHours.end);
+    }
+
+    if (employeeType === 'receptionist' && recepShiftType === 'Full Day' && selectedBranchHours) {
+      setRecepWorkStart(selectedBranchHours.start);
+      setRecepWorkEnd(selectedBranchHours.end);
+    }
+  }, [employeeType, daShiftType, recepShiftType, selectedBranchHours?.start, selectedBranchHours?.end]);
+
+  useEffect(() => {
+    if (!enablePerDayBranch) return;
+
+    setDentistScheduleBlocks((prev) => {
+      const next = {};
+      for (const day of dentistWorkDays) {
+        next[day] = Array.isArray(prev?.[day]) && prev[day].length > 0
+          ? prev[day]
+          : [createDentistScheduleBlock(day)];
+      }
+      return next;
+    });
+  }, [enablePerDayBranch, dentistWorkDays, selectedBranchId]);
+
+  useEffect(() => {
+    if (canUsePerDayBranchSchedule) return;
+
+    setEnablePerDayBranch(false);
+    setDentistScheduleBlocks({});
+  }, [canUsePerDayBranchSchedule]);
 
   function calculateAge(birthdayStr) {
     if (!birthdayStr) return '';
@@ -702,14 +935,17 @@ export default function AdminEmployeeForm() {
       .forEach((name) => { if (!formData.get(name)) errors.add(name); });
     if (!selectedBranchId) errors.add('branchId');
     if (employeeType === 'dentist') {
-      if (!selectedSpecialization) errors.add('department');
+      if (selectedDentistSpecializations.length === 0) errors.add('department');
       ['startDate', 'employmentType', 'shiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
     } else if (employeeType === 'dentalAssistant') {
       if (!selectedSpecialization) errors.add('daDepartment');
       ['daStartDate', 'daEmploymentType', 'daShiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
+      if (!formData.get('daWorkStart')) errors.add('daWorkStart');
+      if (!formData.get('daWorkEnd')) errors.add('daWorkEnd');
     } else {
-      ['startDate', 'employmentType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
-      if (recepWorkHours.length === 0) errors.add('recepWorkHours');
+      ['startDate', 'employmentType', 'recepShiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
+      if (!formData.get('recepWorkStart')) errors.add('recepWorkStart');
+      if (!formData.get('recepWorkEnd')) errors.add('recepWorkEnd');
     }
     if (employeeType !== 'dentalAssistant') {
       ['accessEmail', 'accessPassword', 'confirmPassword'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
@@ -725,8 +961,8 @@ export default function AdminEmployeeForm() {
     const sec3 = employeeType === 'dentist'
       ? ['branchId', 'department', 'startDate', 'employmentType', 'shiftType']
       : employeeType === 'dentalAssistant'
-        ? ['branchId', 'daDepartment', 'daStartDate', 'daEmploymentType', 'daShiftType']
-        : ['branchId', 'startDate', 'employmentType', 'recepWorkHours'];
+        ? ['branchId', 'daDepartment', 'daStartDate', 'daEmploymentType', 'daShiftType', 'daWorkStart', 'daWorkEnd']
+        : ['branchId', 'startDate', 'employmentType', 'recepShiftType', 'recepWorkStart', 'recepWorkEnd'];
     const sec4 = ['accessEmail', 'accessPassword', 'confirmPassword'];
     const maps = {
       dentist: { docPersonal: sec1, docWork: sec3, docAccess: sec4 },
@@ -786,7 +1022,6 @@ export default function AdminEmployeeForm() {
     try {
       const isDentist = employeeType === 'dentist';
       const isDentalAssistant = employeeType === 'dentalAssistant';
-      const recepChecked = recepWorkHours.includes('10:00-19:00');
       const prefix = isDentist ? 'doctor' : isDentalAssistant ? 'da' : 'recep';
       const role = isDentist ? 'dentist' : 'receptionist';
       const firstName = payload[`${prefix}FirstName`] || '';
@@ -796,17 +1031,30 @@ export default function AdminEmployeeForm() {
       const branchId = Number(selectedBranchId);
       const workDays = isDentist ? dentistWorkDays : formData.getAll('schedule[]');
       const scheduleEntries = [];
+      const dentistSpecializations = isDentist ? selectedDentistSpecializations : [];
+      const dentistSpecializationText = dentistSpecializations.join(', ');
 
       if (isDentist && enablePerDayBranch) {
         for (const day of workDays) {
-          const raw = formData.get(`schedule_branch_${day}`);
-          const dayBranchId = Number(raw || branchId);
-          scheduleEntries.push({
-            day,
-            branch_id: dayBranchId || branchId,
-            start_time: payload.docWorkStart,
-            end_time: payload.docWorkEnd,
-          });
+          const blocks = Array.isArray(dentistScheduleBlocks?.[day])
+            ? dentistScheduleBlocks[day]
+            : [];
+
+          for (const block of blocks) {
+            scheduleEntries.push({
+              day,
+              branch_id: Number(block.branch_id || branchId),
+              start_time: block.start_time,
+              end_time: block.end_time,
+            });
+          }
+        }
+
+        const scheduleError = findScheduleBlockError(scheduleEntries);
+        if (scheduleEntries.length === 0 || scheduleError) {
+          setErrorModalMessage(scheduleError || 'Please add at least one branch schedule block.');
+          setShowErrorModal(true);
+          return;
         }
       }
 
@@ -826,12 +1074,13 @@ export default function AdminEmployeeForm() {
         contact_number: payload[`${prefix}Contact`],
         email: payload[`${prefix}Email`],
         position: isDentist ? 'Dentist' : isDentalAssistant ? 'Dental Assistant' : 'Receptionist',
-        specialization: isDentist ? payload.specialization || null : null,
+        specialization: isDentist ? dentistSpecializationText || payload.specialization || null : null,
         work_department: isDentist
-          ? payload.department || null
+          ? dentistSpecializationText || null
           : isDentalAssistant
             ? payload.daDepartment || null
             : null,
+        specializations: isDentist ? dentistSpecializations : [],
         medical_degree: isDentist ? payload.medicalDegree : null,
         license_number: isDentist ? payload.licenseNumber : null,
         years_experience: isDentist
@@ -846,10 +1095,10 @@ export default function AdminEmployeeForm() {
           ? payload.daShiftType
           : isDentist
             ? payload.shiftType || null
-            : null,
+            : payload.recepShiftType || null,
         work_days: workDays,
-        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : (recepChecked ? '10:00' : ''),
-        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : (recepChecked ? '19:00' : ''),
+        work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : payload.recepWorkStart,
+        work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : payload.recepWorkEnd,
         ...(isDentist && enablePerDayBranch && scheduleEntries.length > 0
           ? { schedule_entries: scheduleEntries }
           : {}),
@@ -869,10 +1118,13 @@ export default function AdminEmployeeForm() {
         name: fullName,
         role,
         home_branch_id: branchId,
-        branch_ids: [branchId],
+        branch_ids: [
+          branchId,
+          ...additionalDentistBranchIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0),
+        ],
         phone: payload[`${prefix}Contact`],
         password: payload.accessPassword,
-        department: isDentist ? (payload.department || null) : null,
+        department: isDentist ? (dentistSpecializationText || null) : null,
         staffProfile: commonStaffProfile,
       });
 
@@ -1198,6 +1450,9 @@ export default function AdminEmployeeForm() {
           value={selectedBranchId}
           onChange={(e) => {
             setSelectedBranchId(e.target.value);
+            setAdditionalDentistBranchIds((prev) =>
+              (Array.isArray(prev) ? prev : []).filter((branchId) => String(branchId) !== String(e.target.value))
+            );
             if (e.target.value) setFormErrors((prev) => { const n = new Set(prev); n.delete('branchId'); return n; });
           }}
           style={{ ...styles.input, ...(hasError ? { borderColor: '#dc2626', borderWidth: '2px' } : {}) }}
@@ -1209,6 +1464,155 @@ export default function AdminEmployeeForm() {
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
+      </div>
+    );
+  }
+
+  function toggleAdditionalDentistBranch(value, checked) {
+    setAdditionalDentistBranchIds((prev) => {
+      const next = new Set(Array.isArray(prev) ? prev : []);
+      if (checked) next.add(String(value));
+      else next.delete(String(value));
+      return Array.from(next);
+    });
+  }
+
+  function renderAdditionalDentistBranches() {
+    if (employeeType !== 'dentist') return null;
+
+    return (
+      <div style={styles.field}>
+        <label style={styles.label}>Also Dentist In Branches (Optional)</label>
+        <div style={styles.scheduleGrid}>
+          {!selectedBranchId ? (
+            <span style={{ color: '#64748b', fontSize: 14 }}>Select assigned branch first</span>
+          ) : additionalBranchOptions.length === 0 ? (
+            <span style={{ color: '#64748b', fontSize: 14 }}>No other branches available</span>
+          ) : (
+            additionalBranchOptions.map((option) => (
+              <label key={option.value} style={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={additionalDentistBranchIds.includes(String(option.value))}
+                  onChange={(event) =>
+                    toggleAdditionalDentistBranch(option.value, event.target.checked)
+                  }
+                  style={styles.checkboxInput}
+                />
+                {option.label}
+              </label>
+            ))
+          )}
+        </div>
+        <p style={{ margin: '6px 0 0', color: '#6f675b', fontSize: 12 }}>
+          These branches show the dentist as part of the branch, but does not create appointment availability.
+        </p>
+      </div>
+    );
+  }
+
+  function toggleDentistSpecialization(value, checked) {
+    setSelectedDentistSpecializations((prev) => {
+      const next = new Set(Array.isArray(prev) ? prev : []);
+      if (checked) next.add(value);
+      else next.delete(value);
+      return Array.from(next);
+    });
+
+    if (checked) {
+      setFormErrors((prev) => {
+        const next = new Set(prev);
+        next.delete('department');
+        return next;
+      });
+    }
+  }
+
+  function renderDentistSpecializationSelect() {
+    const hasError = formErrors.has('department');
+    const disabled = !selectedBranchId || specializationsLoading || specializationOptions.length === 0;
+
+    return (
+      <div style={styles.field}>
+        <label style={styles.label}>
+          Specialization / Department
+          {hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+        </label>
+        <div
+          style={{
+            ...styles.scheduleGrid,
+            borderColor: hasError ? '#dc2626' : '#d9e2ef',
+            borderWidth: hasError ? 2 : 1,
+            opacity: disabled ? 0.65 : 1,
+          }}
+        >
+          {disabled ? (
+            <span style={{ color: '#64748b', fontSize: 14 }}>
+              {!selectedBranchId
+                ? 'Select a branch first'
+                : specializationsLoading
+                  ? 'Loading...'
+                  : 'No categories found'}
+            </span>
+          ) : (
+            specializationOptions.map((option) => {
+              const value = option.value ?? option;
+              const label = option.label ?? option;
+              return (
+                <label key={value} style={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={selectedDentistSpecializations.includes(value)}
+                    onChange={(event) =>
+                      toggleDentistSpecialization(value, event.target.checked)
+                    }
+                    style={styles.checkboxInput}
+                  />
+                  {label}
+                </label>
+              );
+            })
+          )}
+        </div>
+        {selectedDentistSpecializations.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+            {selectedDentistSpecializations.map((specialization) => (
+              <span
+                key={specialization}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 10px',
+                  borderRadius: 999,
+                  background: '#fff8e1',
+                  border: '1px solid #d4af37',
+                  color: '#7a5700',
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                {specialization}
+                <button
+                  type="button"
+                  onClick={() => toggleDentistSpecialization(specialization, false)}
+                  style={{
+                    border: 0,
+                    background: 'transparent',
+                    color: '#7a5700',
+                    cursor: 'pointer',
+                    fontWeight: 800,
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                  aria-label={`Remove ${specialization}`}
+                >
+                  x
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -1227,20 +1631,6 @@ export default function AdminEmployeeForm() {
               <FieldRaw label="Medical License Number" name="licenseNumber" styles={styles} />
             </div>
             <div style={styles.rowTwo}>
-              <SelectFieldRaw
-                label="Specialization"
-                name="specialization"
-                placeholder={
-                  specializationsLoading
-                    ? 'Loading...'
-                    : specializationOptions.length === 0
-                      ? 'No categories found'
-                      : 'Select specialization'
-                }
-                options={specializationOptions}
-                disabled={specializationsLoading || specializationOptions.length === 0}
-                styles={styles}
-              />
               <FieldRaw
                 label="Years of Experience"
                 name="experienceYears"
@@ -1254,6 +1644,7 @@ export default function AdminEmployeeForm() {
                 errorMessage={fieldErrors.experienceYears}
                 styles={styles}
               />
+              <div />
             </div>
 
             <h3 style={styles.subTitle}>Previous Work</h3>
@@ -1274,27 +1665,10 @@ export default function AdminEmployeeForm() {
           <>
             <div style={styles.rowTwo}>
               {renderBranchSelect()}
-              <SelectFieldRaw
-                label="Specialization / Department"
-                name="department"
-                placeholder={
-                  !selectedBranchId
-                    ? 'Select a branch first'
-                    : specializationsLoading
-                      ? 'Loading…'
-                      : 'Select specialization'
-                }
-                options={specializationOptions}
-                disabled={!selectedBranchId || specializationsLoading}
-                required
-                value={selectedSpecialization}
-                onChange={(e) => {
-                  setSelectedSpecialization(e.target.value);
-                  if (e.target.value) setFormErrors((prev) => { const n = new Set(prev); n.delete('department'); return n; });
-                }}
-                hasError={formErrors.has('department')}
-                styles={styles}
-              />
+              {renderAdditionalDentistBranches()}
+            </div>
+            <div style={styles.rowTwo}>
+              {renderDentistSpecializationSelect()}
               <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>
@@ -1314,61 +1688,176 @@ export default function AdminEmployeeForm() {
                     else next.delete(day);
                     return Array.from(next);
                   });
+                  if (checked && enablePerDayBranch) {
+                    ensureDentistScheduleBlock(day);
+                  } else if (!checked) {
+                    removeDentistScheduleDay(day);
+                  }
                 }}
               />
-              <TimeRangeFieldRaw startName="docWorkStart" endName="docWorkEnd" styles={styles} />
+              <TimeRangeFieldRaw
+                startName="docWorkStart"
+                endName="docWorkEnd"
+                startValue={docWorkStart}
+                endValue={docWorkEnd}
+                onStartChange={(value) => {
+                  setDocWorkStart(value);
+                  updateDentistScheduleBlockTime('start_time', value);
+                  if (value) {
+                    setFormErrors((prev) => {
+                      const next = new Set(prev);
+                      next.delete('docWorkStart');
+                      return next;
+                    });
+                  }
+                }}
+                onEndChange={(value) => {
+                  setDocWorkEnd(value);
+                  updateDentistScheduleBlockTime('end_time', value);
+                  if (value) {
+                    setFormErrors((prev) => {
+                      const next = new Set(prev);
+                      next.delete('docWorkEnd');
+                      return next;
+                    });
+                  }
+                }}
+                hasError={formErrors.has('docWorkStart') || formErrors.has('docWorkEnd')}
+                styles={styles}
+              />
             </div>
 
             <div style={styles.rowTwo}>
               <div style={styles.field}>
-                <label style={styles.label}>Per-day branch (Optional)</label>
+                <label style={styles.label}>Multiple Branch Schedule (Optional)</label>
                 <label style={styles.checkboxLabel}>
                   <input
                     type="checkbox"
                     checked={enablePerDayBranch}
-                    onChange={(e) => setEnablePerDayBranch(e.target.checked)}
+                    disabled={!canUsePerDayBranchSchedule}
+                    onChange={(e) => {
+                      if (!canUsePerDayBranchSchedule) return;
+                      setEnablePerDayBranch(e.target.checked);
+                      if (e.target.checked) {
+                        dentistWorkDays.forEach((day) => ensureDentistScheduleBlock(day));
+                      }
+                    }}
                     style={styles.checkboxInput}
                   />
-                  Assign different branch per day
+                  Allow branch time blocks per selected day
                 </label>
+                {!canUsePerDayBranchSchedule && (
+                  <p style={{ margin: '6px 0 0', color: '#8b6508', fontSize: 12, fontWeight: 700 }}>
+                    Select another branch in "Also Dentist In Branches" to enable this.
+                  </p>
+                )}
               </div>
               <div />
             </div>
 
             {enablePerDayBranch && (
               <div style={styles.field}>
-                <label style={styles.label}>Branch per selected day</label>
+                <label style={styles.label}>Branch Schedule Blocks</label>
                 <p style={{ margin: '6px 0 12px', color: '#6f675b', fontSize: 12 }}>
-                  Only the days checked in "Work Schedule Days" will be saved.
+                  A dentist can be assigned to more than one branch on the same day, as long as the times do not overlap.
                 </p>
-                <div style={styles.scheduleGrid}>
-                  {DAY_OPTIONS.map((day) => (
-                    <div
-                      key={day}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        opacity: dentistWorkDays.includes(day) ? 1 : 0.5,
-                      }}
-                    >
-                      <span style={{ minWidth: 90, fontWeight: 600 }}>{day}</span>
-                      <select
-                        name={`schedule_branch_${day}`}
-                        defaultValue={selectedBranchId || ''}
-                        style={styles.input}
-                        disabled={!selectedBranchId || !dentistWorkDays.includes(day)}
-                        aria-disabled={!selectedBranchId || !dentistWorkDays.includes(day)}
-                      >
-                        <option value="" disabled>
-                          Select branch
-                        </option>
-                        {branchOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {dentistWorkDays.length === 0 && (
+                    <p style={{ margin: 0, color: '#8b6508', fontSize: 13, fontWeight: 700 }}>
+                      Select work schedule days first.
+                    </p>
+                  )}
+
+                  {dentistWorkDays.map((day) => {
+                    const blocks = Array.isArray(dentistScheduleBlocks?.[day])
+                      ? dentistScheduleBlocks[day]
+                      : [];
+                    const visibleBlocks = blocks.length > 0
+                      ? blocks
+                      : [createDentistScheduleBlock(day)];
+
+                    return (
+                      <div key={day} style={{ display: 'grid', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                          <span style={{ fontWeight: 700, color: '#8b6508' }}>{day}</span>
+                          <button
+                            type="button"
+                            style={{
+                              ...styles.addWorkBtn,
+                              width: 86,
+                              height: 42,
+                              padding: '10px 12px',
+                            }}
+                            onClick={() => addDentistScheduleBlock(day)}
+                          >
+                            Add Branch
+                          </button>
+                        </div>
+
+                        {visibleBlocks.map((block) => (
+                          <div
+                            key={block.id}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: isSmallScreen ? '1fr' : '1.5fr 1fr 1fr auto',
+                              gap: 10,
+                              alignItems: 'center',
+                            }}
+                          >
+                            <select
+                              value={block.branch_id || ''}
+                              onChange={(event) =>
+                                updateDentistScheduleBlock(day, block.id, 'branch_id', event.target.value)
+                              }
+                              style={styles.input}
+                            >
+                              <option value="" disabled>
+                                Select branch
+                              </option>
+                              {allowedScheduleBranchOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+
+                            <select
+                              value={block.start_time || ''}
+                              onChange={(event) =>
+                                updateDentistScheduleBlock(day, block.id, 'start_time', event.target.value)
+                              }
+                              style={styles.input}
+                            >
+                              <option value="" disabled>Start time</option>
+                              {timeSlots.map((slot) => (
+                                <option key={slot.value} value={slot.value}>{slot.label}</option>
+                              ))}
+                            </select>
+
+                            <select
+                              value={block.end_time || ''}
+                              onChange={(event) =>
+                                updateDentistScheduleBlock(day, block.id, 'end_time', event.target.value)
+                              }
+                              style={styles.input}
+                            >
+                              <option value="" disabled>End time</option>
+                              {timeSlots.map((slot) => (
+                                <option key={slot.value} value={slot.value}>{slot.label}</option>
+                              ))}
+                            </select>
+
+                            <button
+                              type="button"
+                              style={styles.removeWorkBtn}
+                              onClick={() => removeDentistScheduleBlock(day, block.id)}
+                              disabled={visibleBlocks.length === 1}
+                            >
+                              Remove
+                            </button>
+                          </div>
                         ))}
-                      </select>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1430,7 +1919,17 @@ export default function AdminEmployeeForm() {
             </div>
             <div style={styles.rowTwo}>
               <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
-              <TimeRangeFieldRaw startName="daWorkStart" endName="daWorkEnd" styles={styles} />
+              <TimeRangeFieldRaw
+                startName="daWorkStart"
+                endName="daWorkEnd"
+                startValue={daWorkStart}
+                endValue={daWorkEnd}
+                onStartChange={setDaWorkStart}
+                onEndChange={setDaWorkEnd}
+                disabled={daShiftType === 'Full Day'}
+                hasError={formErrors.has('daWorkStart') || formErrors.has('daWorkEnd')}
+                styles={styles}
+              />
             </div>
             <div style={styles.rowTwo}>
               <SelectFieldRaw
@@ -1460,7 +1959,30 @@ export default function AdminEmployeeForm() {
               <SelectFieldRaw label="Employment Type" name="daEmploymentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('daEmploymentType')} styles={styles} />
             </div>
             <div style={styles.rowTwo}>
-              <SelectFieldRaw label="Shift Type" name="daShiftType" placeholder="Select Type" options={['Day', 'Afternoon', 'Night']} hasError={formErrors.has('daShiftType')} styles={styles} />
+              <SelectFieldRaw
+                label="Shift Type"
+                name="daShiftType"
+                placeholder="Select Type"
+                options={STAFF_SHIFT_TYPES}
+                value={daShiftType}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setDaShiftType(value);
+                  if (value) {
+                    setFormErrors((prev) => {
+                      const next = new Set(prev);
+                      next.delete('daShiftType');
+                      return next;
+                    });
+                  }
+                  if (value === 'Full Day' && selectedBranchHours) {
+                    setDaWorkStart(selectedBranchHours.start);
+                    setDaWorkEnd(selectedBranchHours.end);
+                  }
+                }}
+                hasError={formErrors.has('daShiftType')}
+                styles={styles}
+              />
             </div>
           </>
         )}
@@ -1518,37 +2040,47 @@ export default function AdminEmployeeForm() {
             </div>
             <div style={styles.rowTwo}>
               <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
-              {(() => {
-                const hasError = formErrors.has('recepWorkHours');
-                const isChecked = recepWorkHours.includes('10:00-19:00');
-                return (
-                  <div style={styles.field}>
-                    <label style={styles.label}>
-                      Working Hours{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
-                    </label>
-                    <div style={{ ...(hasError ? { border: '2px solid #dc2626', borderRadius: 12, padding: '6px 10px', display: 'inline-block' } : {}) }}>
-                      <label style={styles.checkboxLabel}>
-                        <input
-                          type="checkbox"
-                          style={styles.checkboxInput}
-                          checked={isChecked}
-                          onChange={(e) => {
-                            setRecepWorkHours(e.target.checked ? ['10:00-19:00'] : []);
-                            if (e.target.checked) {
-                              setFormErrors((prev) => { const n = new Set(prev); n.delete('recepWorkHours'); return n; });
-                            }
-                          }}
-                        />
-                        10:00 AM - 7:00 PM
-                      </label>
-                    </div>
-                  </div>
-                );
-              })()}
+              <TimeRangeFieldRaw
+                startName="recepWorkStart"
+                endName="recepWorkEnd"
+                startValue={recepWorkStart}
+                endValue={recepWorkEnd}
+                onStartChange={setRecepWorkStart}
+                onEndChange={setRecepWorkEnd}
+                disabled={recepShiftType === 'Full Day'}
+                hasError={formErrors.has('recepWorkStart') || formErrors.has('recepWorkEnd')}
+                styles={styles}
+              />
             </div>
             <div style={styles.rowTwo}>
               <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
               <SelectFieldRaw label="Employment Type" name="employmentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('employmentType')} styles={styles} />
+            </div>
+            <div style={styles.rowTwo}>
+              <SelectFieldRaw
+                label="Shift Type"
+                name="recepShiftType"
+                placeholder="Select Type"
+                options={STAFF_SHIFT_TYPES}
+                value={recepShiftType}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setRecepShiftType(value);
+                  if (value) {
+                    setFormErrors((prev) => {
+                      const next = new Set(prev);
+                      next.delete('recepShiftType');
+                      return next;
+                    });
+                  }
+                  if (value === 'Full Day' && selectedBranchHours) {
+                    setRecepWorkStart(selectedBranchHours.start);
+                    setRecepWorkEnd(selectedBranchHours.end);
+                  }
+                }}
+                hasError={formErrors.has('recepShiftType')}
+                styles={styles}
+              />
             </div>
           </>
         )}

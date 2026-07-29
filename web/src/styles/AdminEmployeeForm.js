@@ -363,9 +363,9 @@ const createAdminEmployeeFormStyles = ({
     },
 
     scheduleGrid: {
-      display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-      gap: 11,
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: isMobile ? '12px 18px' : '12px 24px',
       padding: 14,
       background: '#f8fafc',
       border: '1px solid #e2e8f0',

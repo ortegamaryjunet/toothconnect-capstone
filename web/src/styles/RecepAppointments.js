@@ -1180,16 +1180,31 @@
       color: '#0f172a',
     },
 
+    modalDangerBtn: {
+      height: 44,
+      borderRadius: 12,
+      border: 'none',
+      background: '#e5e7eb',
+      color: '#0f172a',
+      cursor: 'pointer',
+      padding: '0 16px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 800,
+    },
+
     modalPrimaryBtn: {
       height: 44,
       borderRadius: 12,
       border: 'none',
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      background: '#d4af37',
       color: '#ffffff',
       cursor: 'pointer',
       padding: '0 18px',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
+      fontWeight: 700,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     modalIcon: {
@@ -1204,9 +1219,28 @@
       justifyContent: 'center',
     },
 
+    modalIconGold: {
+      width: 70,
+      height: 70,
+      margin: '0 auto 16px',
+      borderRadius: '50%',
+      background: '#fff7df',
+      color: '#b47a00',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: '1px solid #f1d37a',
+    },
+
     modalIconText: {
       fontSize: 30,
       lineHeight: 1,
+    },
+
+    modalIconTextGold: {
+      fontSize: 30,
+      lineHeight: 1,
+      color: '#b47a00',
     },
 
     modalTitle: {
@@ -1223,6 +1257,43 @@
       marginBottom: 24,
       marginTop: 0,
       lineHeight: 1.5,
+    },
+
+    modalErrorText: {
+      margin: '0 0 16px',
+      color: '#dc2626',
+      fontSize: 13,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      textAlign: 'left',
+    },
+
+    modalDetailList: {
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'Arial, sans-serif',
+      marginBottom: 18,
+    },
+
+    modalDetailRow: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 14,
+      padding: '7px 0',
+      borderBottom: '1px solid #f1f5f9',
+      fontSize: 13,
+      textAlign: 'left',
+    },
+
+    modalDetailLabel: {
+      color: '#64748b',
+      flexShrink: 0,
+    },
+
+    modalDetailValue: {
+      color: '#0f172a',
+      textAlign: 'right',
+      wordBreak: 'break-word',
     },
 
     modalActions: {
@@ -1246,6 +1317,13 @@
       background: '#dc2626',
       color: '#ffffff',
       fontWeight: 'bold',
+    },
+
+    modalGoldBtn: {
+      background: '#d4af37',
+      color: '#ffffff',
+      fontWeight: 'bold',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     cancelBtn: {

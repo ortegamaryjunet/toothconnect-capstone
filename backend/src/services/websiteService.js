@@ -2,7 +2,10 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../config/db');
 const { APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime } = require('../utils/scheduling');
-const { getServiceKitAvailability } = require('../utils/serviceKitAvailability');
+const {
+  ensureServiceKitsBranchColumn,
+  getServiceKitAvailability,
+} = require('../utils/serviceKitAvailability');
 
 function hash32FNV1a(input) {
   const str = String(input ?? '');
@@ -128,6 +131,8 @@ function canonicalizeBranchText(value) {
 }
 
 async function listClinicServices() {
+  await ensureServiceKitsBranchColumn(db);
+
   const [rows] = await db.query(
     `SELECT
        id,
@@ -141,25 +146,77 @@ async function listClinicServices() {
      WHERE status = 'Active'
      ORDER BY name ASC`
   );
-  const filtered = [];
-  for (const row of rows) {
-    const [branchRows] = await db.query(
-      `SELECT DISTINCT dsch.branch_id
-       FROM dentist_services dsv
-       JOIN users u ON u.id = dsv.dentist_id AND u.role = 'dentist' AND u.status = 'Active'
-       JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id
-       WHERE dsv.service_id = ?`,
-      [row.id]
-    );
-    let available = false;
-    for (const branch of branchRows) {
-      const kit = await getServiceKitAvailability(db, { serviceId: row.id, branchId: branch.branch_id });
-      if (kit.available) {
-        available = true;
-        break;
+
+  const [branches] = await db.query(`SELECT id, name, address FROM branches`);
+  const branchById = new Map(branches.map((branch) => [Number(branch.id), branch]));
+  const branchIdsByService = new Map();
+
+  function addServiceBranch(serviceId, branchId) {
+    const cleanServiceId = Number(serviceId);
+    const cleanBranchId = Number(branchId);
+    if (!cleanServiceId || !cleanBranchId || !branchById.has(cleanBranchId)) return;
+    if (!branchIdsByService.has(cleanServiceId)) {
+      branchIdsByService.set(cleanServiceId, new Set());
+    }
+    branchIdsByService.get(cleanServiceId).add(cleanBranchId);
+  }
+
+  const [dentistBranchRows] = await db.query(
+    `SELECT DISTINCT dsv.service_id, dsch.branch_id
+     FROM dentist_services dsv
+     JOIN users u ON u.id = dsv.dentist_id AND u.role = 'dentist' AND u.status = 'Active'
+     JOIN dentist_schedules dsch ON dsch.dentist_id = dsv.dentist_id`
+  );
+  for (const row of dentistBranchRows) {
+    addServiceBranch(row.service_id, row.branch_id);
+  }
+
+  const [serviceKitBranchRows] = await db.query(
+    `SELECT DISTINCT service_id, branch_id
+     FROM service_kits`
+  );
+  for (const row of serviceKitBranchRows) {
+    if (row.branch_id) {
+      addServiceBranch(row.service_id, row.branch_id);
+    } else {
+      for (const branch of branches) {
+        addServiceBranch(row.service_id, branch.id);
       }
     }
-    if (available) filtered.push(row);
+  }
+
+  const filtered = [];
+  for (const row of rows) {
+    const availableBranchIds = [];
+    for (const branchId of Array.from(branchIdsByService.get(Number(row.id)) || [])) {
+      const kit = await getServiceKitAvailability(db, { serviceId: row.id, branchId });
+      if (kit.available) {
+        availableBranchIds.push(branchId);
+      }
+    }
+    if (availableBranchIds.length > 0) {
+      filtered.push({
+        ...row,
+        available_branch_ids: availableBranchIds,
+        available_branch_names: availableBranchIds.flatMap((branchId) => {
+          const branch = branchById.get(Number(branchId));
+          if (!branch) return [];
+          const names = [];
+          if (branch.address) names.push(branch.address, `${branch.address} Branch`);
+          if (branch.name) names.push(branch.name);
+          return names;
+        }),
+        available_branch_keys: availableBranchIds.flatMap((branchId) => {
+          const branch = branchById.get(Number(branchId));
+          if (!branch) return [];
+          return [branch.address, branch.name]
+            .filter(Boolean)
+            .flatMap((value) => [value, `${value} Branch`])
+            .map(canonicalizeBranchText)
+            .filter(Boolean);
+        }),
+      });
+    }
   }
   return filtered;
 }
@@ -547,7 +604,7 @@ async function listAvailableSlots({ date, branch, serviceName }) {
 
   // Availability rule for website UI:
   // - Block overlaps using existing appointment duration + buffer (prevents double-booking)
-  // - Do NOT require the selected service to "fit" within the dentist's schedule end time
+  // - Require the full service duration + buffer to fit within the dentist schedule.
   const busyByDentist = {};
   for (const id of dentistIds) busyByDentist[id] = [];
   for (const a of apptRows) {
@@ -578,9 +635,9 @@ async function listAvailableSlots({ date, branch, serviceName }) {
       const schedEndMin = timeToMinutes(String(d.end_time));
       if (schedStartMin === null || schedEndMin === null) continue;
 
-      // Must start within dentist schedule window (in local minutes)
+      // The full appointment window must fit inside the dentist schedule.
       if (slotMinutes < schedStartMin) continue;
-      if (slotMinutes >= schedEndMin) continue;
+      if (slotMinutes + requiredMinutes > schedEndMin) continue;
 
       const busy = busyByDentist[d.dentist_id] || [];
       const overlaps = busy.some((b) => slotStartMs < b.endMs && slotEndMs > b.startMs);
@@ -795,6 +852,10 @@ async function autoBookAppointment(appointmentData) {
     ? Number(service.time_buffer_min)
     : APPOINTMENT_BUFFER_MINUTES;
   const blockedEndUtc = new Date(startUtc.getTime() + (Number(service.duration_min || 30) + serviceBufferMin) * 60 * 1000);
+  const appointmentStartMinutes = timeToMinutes(appointmentTime);
+  const appointmentEndTime = Number.isFinite(appointmentStartMinutes)
+    ? minutesToTimeString(appointmentStartMinutes + Number(service.duration_min || 30) + serviceBufferMin)
+    : String(appointmentTime).slice(0, 5);
 
   const weekday = new Date(Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day)).getUTCDay();
   const weekdayAlt = alternateWeekday(weekday);
@@ -816,13 +877,14 @@ async function autoBookAppointment(appointmentData) {
                AND ? BETWEEN sr.date_from AND sr.date_to
            )
          ORDER BY u.id ASC`
-      : `SELECT DISTINCT u.id
-         FROM users u
-         JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
-         JOIN dentist_schedules dsch ON dsch.dentist_id = u.id AND dsch.branch_id = ? AND dsch.weekday IN (?, ?)
-         JOIN services s ON s.id = dsv.service_id AND s.category = ?
-         WHERE u.role = 'dentist'
-           AND u.status = 'Active'
+        : `SELECT DISTINCT u.id
+           FROM users u
+           JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
+           JOIN dentist_schedules dsch ON dsch.dentist_id = u.id AND dsch.branch_id = ? AND dsch.weekday IN (?, ?)
+             AND dsch.start_time <= ? AND dsch.end_time >= ?
+           JOIN services s ON s.id = dsv.service_id AND s.category = ?
+           WHERE u.role = 'dentist'
+             AND u.status = 'Active'
            AND NOT EXISTS (
              SELECT 1 FROM schedule_requests sr
              WHERE sr.dentist_id = u.id
@@ -833,7 +895,7 @@ async function autoBookAppointment(appointmentData) {
          ORDER BY u.id ASC`,
     isSunday
       ? [service.id, service.category, appointmentDate]
-      : [service.id, branchId, weekday, weekdayAlt, service.category, appointmentDate]
+      : [service.id, branchId, weekday, weekdayAlt, appointmentTime, appointmentEndTime, service.category, appointmentDate]
   );
 
   let dentistCandidates = candidateRows;
@@ -857,6 +919,7 @@ async function autoBookAppointment(appointmentData) {
            FROM users u
            JOIN dentist_services dsv ON dsv.dentist_id = u.id AND dsv.service_id = ?
            JOIN dentist_schedules dsch ON dsch.dentist_id = u.id AND dsch.branch_id = ? AND dsch.weekday IN (?, ?)
+             AND dsch.start_time <= ? AND dsch.end_time >= ?
            WHERE u.role = 'dentist'
              AND u.status = 'Active'
              AND NOT EXISTS (
@@ -867,7 +930,7 @@ async function autoBookAppointment(appointmentData) {
                  AND ? BETWEEN sr.date_from AND sr.date_to
              )
            ORDER BY u.id ASC`,
-      isSunday ? [service.id, appointmentDate] : [service.id, branchId, weekday, weekdayAlt, appointmentDate]
+      isSunday ? [service.id, appointmentDate] : [service.id, branchId, weekday, weekdayAlt, appointmentTime, appointmentEndTime, appointmentDate]
     );
     dentistCandidates = fallbackCandidates;
   }

@@ -68,6 +68,7 @@ async function seed() {
     'treatments',
     'appointments',
     'dentist_schedules',
+    'dentist_specializations',
     'dentist_services',
     'services',
     'otp_codes',
@@ -85,6 +86,15 @@ async function seed() {
   await safeDeleteAndReset(tables);
 
   await ensureColumn('staff_profile', 'work_department', 'VARCHAR(150) NULL');
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS dentist_specializations (
+      dentist_id INT NOT NULL,
+      specialization VARCHAR(100) NOT NULL,
+      PRIMARY KEY (dentist_id, specialization),
+      FOREIGN KEY (dentist_id) REFERENCES users(id) ON DELETE CASCADE,
+      INDEX idx_dentist_specializations_name (specialization)
+    )
+  `);
 
   // =========================
   // Branches
@@ -267,6 +277,19 @@ async function seed() {
 
       -- Dr. Maureen Datu - Orthodontics (Braces)
       (3, 8)
+    `
+  );
+
+  await pool.query(
+    `
+    INSERT INTO dentist_specializations (dentist_id, specialization)
+    VALUES
+      (2, 'Periodontics'),
+      (2, 'Cosmetic Dentistry'),
+      (2, 'Prosthodontics'),
+      (2, 'Orthodontics'),
+      (4, 'Endodontics'),
+      (3, 'Orthodontics')
     `
   );
 

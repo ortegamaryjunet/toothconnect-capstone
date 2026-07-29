@@ -8,11 +8,14 @@ const {
   addMinutes,
   startOfUTCDay,
 } = require('../utils/scheduling');
-const { clinicDateKeyFromUtcDate } = require('../utils/clinic');
+const { CLINIC_TIMEZONE_OFFSET_MINUTES, clinicDateKeyFromUtcDate } = require('../utils/clinic');
 const { getApprovedLeaveForDentistOnDate } = require('../utils/leaves');
 const { sendPushToUser } = require('../services/push');
 const { suggestSlots } = require('../services/scheduler');
-const { getServiceKitAvailability } = require('../utils/serviceKitAvailability');
+const {
+  ensureServiceKitsBranchColumn,
+  getServiceKitAvailability,
+} = require('../utils/serviceKitAvailability');
 
 const router = express.Router();
 
@@ -28,6 +31,30 @@ const DEFAULT_CANCELLATION_POLICY_MESSAGE =
   'Please contact the clinic as soon as possible if you need to cancel or reschedule your appointment.';
 const PATIENT_CANCELLATION_LOCK_HOURS = 24;
 let appointmentSettingsTableReady = false;
+
+function formatScheduleStampForNote(dateValue) {
+  const date = new Date(dateValue);
+  const shifted = new Date(date.getTime() + CLINIC_TIMEZONE_OFFSET_MINUTES * 60 * 1000);
+  const datePart = `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
+  const hour24 = shifted.getUTCHours();
+  const minuteText = String(shifted.getUTCMinutes()).padStart(2, '0');
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 || 12;
+
+  return `${datePart} ${hour12}:${minuteText} ${period}`;
+}
+
+function buildRescheduleNoteForNewAppointment({ existing, reason, originalStart, newStart }) {
+  const prefix = String(existing || '').trim();
+  const cleanReason = String(reason || '').trim();
+  const originalLine = `Original Schedule: ${formatScheduleStampForNote(originalStart)}`;
+  const rescheduledLine = `Rescheduled: ${formatScheduleStampForNote(newStart)}`;
+  const reasonLine = cleanReason ? `Reschedule reason: ${cleanReason}` : 'Reschedule reason: (none)';
+
+  return prefix
+    ? `${prefix}\n\n${originalLine}\n${rescheduledLine}\n${reasonLine}`
+    : `${originalLine}\n${rescheduledLine}\n${reasonLine}`;
+}
 
 async function ensureAppointmentSettingsTable() {
   if (appointmentSettingsTableReady) {
@@ -243,6 +270,7 @@ async function assignRoundRobinDentist(conn, {
 
 async function validateExplicitDentistAssignment(conn, {
   dentistId,
+  branchId,
   serviceId,
   start,
   blockedEnd,
@@ -260,6 +288,23 @@ async function validateExplicitDentistAssignment(conn, {
   );
   if (offers.length === 0) {
     throw httpError(400, 'This dentist does not offer the requested service');
+  }
+
+  const localStart = clinicLocalParts(start);
+  const localEnd = clinicLocalParts(blockedEnd);
+  const [scheduleRows] = await conn.query(
+    `SELECT 1
+     FROM dentist_schedules dsch
+     WHERE dsch.dentist_id = ?
+       AND dsch.branch_id = ?
+       AND dsch.weekday = ?
+       AND dsch.start_time <= ?
+       AND dsch.end_time >= ?
+     LIMIT 1`,
+    [dentistId, branchId, localStart.weekday, localStart.time, localEnd.time]
+  );
+  if (scheduleRows.length === 0) {
+    throw httpError(409, 'This dentist is not scheduled at this branch for the selected time.');
   }
 
   const leave = await getApprovedLeaveForDentistOnDate(conn, Number(dentistId), clinicDateKey);
@@ -515,6 +560,11 @@ router.get('/_meta/services-and-branches', async (req, res) => {
       dentistParams
     );
 
+    const branchIdsForMeta = branches.map((branch) => Number(branch.id)).filter(Boolean);
+    const allowedBranchIdSet = new Set(branchIdsForMeta);
+
+    await ensureServiceKitsBranchColumn(pool);
+
     const [serviceAvailability] = await pool.query(
       `SELECT DISTINCT dsv.service_id, dsch.branch_id
        FROM dentist_services dsv
@@ -524,17 +574,39 @@ router.get('/_meta/services-and-branches', async (req, res) => {
 
     const branchIdsByService = {};
     for (const row of serviceAvailability) {
+      if (!allowedBranchIdSet.has(Number(row.branch_id))) continue;
       if (!branchIdsByService[row.service_id]) {
-        branchIdsByService[row.service_id] = [];
+        branchIdsByService[row.service_id] = new Set();
       }
-      branchIdsByService[row.service_id].push(row.branch_id);
+      branchIdsByService[row.service_id].add(Number(row.branch_id));
+    }
+
+    const [serviceKitBranches] = await pool.query(
+      `SELECT DISTINCT service_id, branch_id
+       FROM service_kits`
+    );
+    for (const row of serviceKitBranches) {
+      if (!branchIdsByService[row.service_id]) {
+        branchIdsByService[row.service_id] = new Set();
+      }
+
+      if (row.branch_id) {
+        const branchId = Number(row.branch_id);
+        if (allowedBranchIdSet.has(branchId)) {
+          branchIdsByService[row.service_id].add(branchId);
+        }
+      } else {
+        for (const branchId of branchIdsForMeta) {
+          branchIdsByService[row.service_id].add(branchId);
+        }
+      }
     }
 
     const annotatedServices = [];
     for (const s of services) {
-      const dentistBranches = branchIdsByService[s.id] || [];
+      const serviceBranchIds = Array.from(branchIdsByService[s.id] || []);
       const kitAvailableBranchIds = [];
-      for (const bid of dentistBranches) {
+      for (const bid of serviceBranchIds) {
         const kitAvailability = await getServiceKitAvailability(pool, { serviceId: s.id, branchId: bid });
         if (kitAvailability.available) {
           kitAvailableBranchIds.push(bid);
@@ -551,6 +623,7 @@ router.get('/_meta/services-and-branches', async (req, res) => {
     const dentistIds = dentists.map(d => d.id);
     let dentistServiceMap = {};
     let dentistBranchMap = {};
+    let dentistScheduleMap = {};
     if (dentistIds.length > 0) {
       const placeholders = dentistIds.map(() => '?').join(',');
       const [dsRows] = await pool.query(
@@ -569,11 +642,28 @@ router.get('/_meta/services-and-branches', async (req, res) => {
         if (!dentistBranchMap[row.dentist_id]) dentistBranchMap[row.dentist_id] = [];
         dentistBranchMap[row.dentist_id].push(row.branch_id);
       }
+      const [scheduleRows] = await pool.query(
+        `SELECT dentist_id, branch_id, weekday, start_time, end_time
+         FROM dentist_schedules
+         WHERE dentist_id IN (${placeholders})
+         ORDER BY weekday ASC, start_time ASC`,
+        dentistIds
+      );
+      for (const row of scheduleRows) {
+        if (!dentistScheduleMap[row.dentist_id]) dentistScheduleMap[row.dentist_id] = [];
+        dentistScheduleMap[row.dentist_id].push({
+          branch_id: row.branch_id,
+          weekday: row.weekday,
+          start_time: row.start_time,
+          end_time: row.end_time,
+        });
+      }
     }
     const annotatedDentists = dentists.map(d => ({
       ...d,
       service_ids: dentistServiceMap[d.id] || [],
       branch_ids: dentistBranchMap[d.id] || [],
+      schedule_entries: dentistScheduleMap[d.id] || [],
     }));
 
     res.json({ services: annotatedServices, branches, dentists: annotatedDentists });
@@ -743,7 +833,16 @@ router.get('/', async (req, res) => {
          pay.ewallet_provider, pay.reference_number, pay.receipt_url,
          pay.receipt_uploaded_at, pay.proof_image_url,
          pay.recorded_by, pay.recorded_at, pay.paid_at, pay.verified_at,
-         pay.rejection_reason
+         pay.rejection_reason,
+         (
+           SELECT JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.created_by_role'))
+           FROM audit_logs al
+           WHERE al.action = 'appointment_created'
+             AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.appointment_id')) AS UNSIGNED) = a.id
+             AND JSON_EXTRACT(al.details, '$.reschedule_of') IS NOT NULL
+           ORDER BY al.created_at DESC, al.id DESC
+           LIMIT 1
+         ) AS rescheduled_by_role
        FROM appointments a
        JOIN branches b ON b.id = a.branch_id
        JOIN users p ON p.id = a.patient_id
@@ -819,7 +918,17 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, res) => {
-  const { branch_id, patient_id, dentist_id, service_id, start_time, reschedule_appointment_id, initial_status, note } = req.body;
+  const {
+    branch_id,
+    patient_id,
+    dentist_id,
+    service_id,
+    start_time,
+    reschedule_appointment_id,
+    reschedule_reason,
+    initial_status,
+    note,
+  } = req.body;
   const role = req.user.role;
   const userId = req.user.user_id;
   const userBranches = req.user.branches || [];
@@ -928,7 +1037,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
       throw httpError(409, 'This time slot is already taken at this branch');
     }
 
-    if (role === 'patient' || !assignedDentistId) {
+    if (!assignedDentistId) {
       assignedDentistId = await assignRoundRobinDentist(conn, {
         branchId: effectiveBranchId,
         serviceId: Number(service_id),
@@ -939,6 +1048,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     } else {
       await validateExplicitDentistAssignment(conn, {
         dentistId: assignedDentistId,
+        branchId: effectiveBranchId,
         serviceId: Number(service_id),
         start,
         blockedEnd,
@@ -948,7 +1058,10 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
 
     // Validate and cancel old appointment when rescheduling
     let oldAppt = null;
+    let generatedRescheduleNote = '';
     if (reschedule_appointment_id) {
+      const normalizedRescheduleReason =
+        typeof reschedule_reason === 'string' ? reschedule_reason.trim() : '';
       const rescheduleId = parseInt(reschedule_appointment_id, 10);
       const [oldRows] = await conn.query(
         'SELECT * FROM appointments WHERE id = ? AND status = ?',
@@ -961,7 +1074,28 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
       if (role === 'patient' && oldAppt.patient_id !== effectivePatientId) {
         throw httpError(403, 'Forbidden');
       }
-      await conn.query(`UPDATE appointments SET status = 'cancelled' WHERE id = ?`, [rescheduleId]);
+      if (role === 'patient' && !normalizedRescheduleReason) {
+        throw httpError(400, 'Reschedule reason is required');
+      }
+      await conn.query(
+        `UPDATE appointments
+         SET status = 'cancelled',
+             cancellation_reason = ?,
+             cancelled_by = ?
+         WHERE id = ?`,
+        [
+          normalizedRescheduleReason ||
+            (role === 'patient' ? 'Rescheduled by patient' : 'Rescheduled by staff'),
+          role,
+          rescheduleId,
+        ]
+      );
+      generatedRescheduleNote = buildRescheduleNoteForNewAppointment({
+        existing: oldAppt.dentist_note || '',
+        reason: normalizedRescheduleReason,
+        originalStart: oldAppt.start_time,
+        newStart: start,
+      });
       isReschedule = true;
     }
 
@@ -973,9 +1107,10 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     const insertColumns = ['branch_id', 'patient_id', 'dentist_id', 'service_id', 'start_time', 'duration_min', 'status'];
     const insertValues = [effectiveBranchId, effectivePatientId, assignedDentistId, service_id, toMySQLDateTime(start), service.duration_min, effectiveStatus];
     const normalizedNote = typeof note === 'string' ? note.trim() : '';
-    if (normalizedNote) {
+    const noteForInsert = normalizedNote || generatedRescheduleNote;
+    if (noteForInsert) {
       insertColumns.push('dentist_note');
-      insertValues.push(normalizedNote);
+      insertValues.push(noteForInsert);
     }
 
     [result] = await conn.query(
@@ -994,8 +1129,12 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
         service_id,
         start_time: toMySQLDateTime(start),
         created_by_role: role,
-        assignment_mode: role === 'patient' || !dentist_id ? 'round_robin' : 'explicit',
+        assignment_mode: !dentist_id ? 'round_robin' : 'explicit',
         reschedule_of: reschedule_appointment_id || null,
+        reschedule_reason:
+          typeof reschedule_reason === 'string' && reschedule_reason.trim()
+            ? reschedule_reason.trim()
+            : null,
       })]
     );
 
@@ -1078,6 +1217,15 @@ router.patch('/:id/cancel', async (req, res) => {
 
     if (role === 'patient' && appt.patient_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
+    }
+    if (role === 'patient') {
+      const hoursUntilAppointment =
+        (new Date(appt.start_time).getTime() - Date.now()) / (60 * 60 * 1000);
+      if (hoursUntilAppointment <= PATIENT_CANCELLATION_LOCK_HOURS) {
+        return res.status(400).json({
+          message: 'Appointments can no longer be cancelled within 24 hours of the scheduled time.',
+        });
+      }
     }
     if (role === 'dentist' && appt.dentist_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });

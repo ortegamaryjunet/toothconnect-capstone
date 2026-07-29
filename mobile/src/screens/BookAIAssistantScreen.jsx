@@ -259,11 +259,18 @@ export default function BookAIAssistantScreen({ navigation }) {
 
   async function loadMeta() {
     try {
-      const res = await api.get('/appointments/_meta/services-and-branches');
-      setBranches(res.data.branches);
-      setServices(res.data.services);
-      if (res.data.branches.length > 0) {
-        setSelectedBranch(res.data.branches[0].id);
+      const [metaRes, servicesRes] = await Promise.all([
+        api.get('/appointments/_meta/services-and-branches'),
+        api.get('/patients/services').catch(() => null),
+      ]);
+      const metaServices = Array.isArray(metaRes.data.services) ? metaRes.data.services : [];
+      const clinicServices = Array.isArray(servicesRes?.data?.services) ? servicesRes.data.services : [];
+      const branches = Array.isArray(metaRes.data.branches) ? metaRes.data.branches : [];
+
+      setBranches(branches);
+      setServices(clinicServices.length > 0 ? clinicServices : metaServices);
+      if (branches.length > 0) {
+        setSelectedBranch(branches[0].id);
       }
     } catch (err) {
       setMetaError(err.response?.data?.message || 'Failed to load clinic data.');

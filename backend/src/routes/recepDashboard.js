@@ -59,8 +59,32 @@ router.get('/', async (req, res) => {
 
     const [[appointmentRow]] = await pool.query(
       `SELECT COUNT(*) AS total
-       FROM appointments
-       WHERE branch_id IN (${ph})`,
+       FROM appointments a
+       WHERE a.branch_id IN (${ph})
+         AND NOT EXISTS (
+           SELECT 1
+           FROM audit_logs al
+           WHERE al.action = 'appointment_created'
+             AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.reschedule_of')) AS UNSIGNED) = a.id
+         )`,
+      userBranches
+    );
+
+    const [[rescheduledRow]] = await pool.query(
+      `SELECT COUNT(DISTINCT a.id) AS total
+       FROM appointments a
+       WHERE a.branch_id IN (${ph})
+         AND a.status = 'scheduled'
+         AND (
+           EXISTS (
+             SELECT 1
+             FROM audit_logs al
+             WHERE al.action = 'appointment_created'
+               AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.appointment_id')) AS UNSIGNED) = a.id
+               AND JSON_EXTRACT(al.details, '$.reschedule_of') IS NOT NULL
+           )
+           OR a.dentist_note REGEXP '(^|[[:space:]])Rescheduled[[:space:]]*:'
+         )`,
       userBranches
     );
 
@@ -124,7 +148,7 @@ router.get('/', async (req, res) => {
       stats: {
         totalPatients: Number(patientRow.total || 0),
         totalAppointments: Number(appointmentRow.total || 0),
-        rescheduledAppointments: 0,
+        rescheduledAppointments: Number(rescheduledRow.total || 0),
         pendingAppointments: Number(pendingRow.total || 0),
         activeDentists: Number(dentistRow.total || 0),
         cancelledAppointments: Number(cancelledRow.total || 0),

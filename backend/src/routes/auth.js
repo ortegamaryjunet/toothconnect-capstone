@@ -46,6 +46,60 @@ async function loadUserBranches(userId) {
   ])];
 }
 
+async function loadUserBranchAffiliationsByUserIds(userIds = []) {
+  const ids = (Array.isArray(userIds) ? userIds : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+
+  if (ids.length === 0) return new Map();
+
+  const placeholders = ids.map(() => '?').join(',');
+  const [rows] = await pool.query(
+    `SELECT user_id, branch_id, is_primary
+     FROM user_branches
+     WHERE user_id IN (${placeholders})
+     ORDER BY is_primary DESC, branch_id ASC`,
+    ids
+  );
+
+  const byUser = new Map();
+  for (const row of rows) {
+    const userId = Number(row.user_id);
+    if (!byUser.has(userId)) byUser.set(userId, []);
+    byUser.get(userId).push({
+      branch_id: Number(row.branch_id),
+      is_primary: Boolean(row.is_primary),
+    });
+  }
+
+  return byUser;
+}
+
+function normalizeBranchIdList(values = []) {
+  return [...new Set(
+    (Array.isArray(values) ? values : [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0)
+  )];
+}
+
+async function syncUserBranchAffiliations(conn, userId, homeBranchId, branchIds = []) {
+  const id = Number(userId);
+  const homeId = Number(homeBranchId);
+  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(homeId) || homeId <= 0) return;
+
+  const finalBranchIds = normalizeBranchIdList([homeId, ...branchIds]);
+
+  await conn.query('UPDATE users SET home_branch_id = ? WHERE id = ?', [homeId, id]);
+  await conn.query('DELETE FROM user_branches WHERE user_id = ?', [id]);
+  for (const branchId of finalBranchIds) {
+    await conn.query(
+      'INSERT INTO user_branches (user_id, branch_id, is_primary) VALUES (?, ?, ?)',
+      [id, branchId, branchId === homeId]
+    );
+  }
+}
+
 function formatMysqlDate(value) {
   if (!value) return null;
   if (value instanceof Date) {
@@ -63,6 +117,8 @@ function mapStaffProfileRow(row) {
     profileId: row.id,
     userId: row.user_id,
     branchId: row.branch_id,
+    branchIds: Array.isArray(row.branch_ids) ? row.branch_ids : [],
+    additionalBranchIds: Array.isArray(row.additional_branch_ids) ? row.additional_branch_ids : [],
     branchName: row.branch_name,
     branchAddress: row.branch_address,
     role: row.staff_type,
@@ -153,26 +209,15 @@ async function replaceDentistSchedules(dentistId, scheduleEntries = []) {
   }
 
   const entries = Array.isArray(scheduleEntries) ? scheduleEntries : [];
-  const cleaned = [];
-
-  for (const entry of entries) {
-    const branchId = Number(entry?.branch_id);
-    const weekday = Number(entry?.weekday);
-    const startTime = entry?.start_time ? String(entry.start_time).slice(0, 8) : null;
-    const endTime = entry?.end_time ? String(entry.end_time).slice(0, 8) : null;
-
-    if (!Number.isInteger(branchId) || branchId <= 0) continue;
-    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) continue;
-    if (!startTime || !endTime) continue;
-
-    cleaned.push({ branchId, weekday, startTime, endTime });
-  }
+  const cleaned = entries.map(normalizeScheduleEntry).filter(Boolean);
 
   if (entries.length > 0 && cleaned.length === 0) {
     const err = new Error('Invalid schedule_entries');
     err.statusCode = 400;
     throw err;
   }
+
+  assertScheduleEntriesDoNotOverlap(cleaned);
 
   const [[dentist]] = await pool.query(
     'SELECT id, role, home_branch_id FROM users WHERE id = ? LIMIT 1',
@@ -194,10 +239,10 @@ async function replaceDentistSchedules(dentistId, scheduleEntries = []) {
       await conn.query(
         `INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time)
          VALUES ${cleaned.map(() => '(?, ?, ?, ?, ?)').join(', ')}`,
-        cleaned.flatMap((row) => [id, row.branchId, row.weekday, row.startTime, row.endTime])
+        cleaned.flatMap((row) => [id, row.branch_id, row.weekday, row.start_time, row.end_time])
       );
 
-      const extraBranches = [...new Set(cleaned.map((row) => row.branchId))].filter(
+      const extraBranches = [...new Set(cleaned.map((row) => row.branch_id))].filter(
         (b) => Number(b) !== Number(dentist.home_branch_id)
       );
       for (const branchId of extraBranches) {
@@ -233,6 +278,45 @@ function normalizeScheduleEntry(entry) {
     start_time: String(startTime).slice(0, 8),
     end_time: String(endTime).slice(0, 8),
   };
+}
+
+function timeToMinutes(value) {
+  const [hour, minute] = String(value || '').split(':').map((part) => Number(part));
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function assertScheduleEntriesDoNotOverlap(entries = []) {
+  const byWeekday = new Map();
+
+  for (const entry of entries) {
+    const start = timeToMinutes(entry.start_time);
+    const end = timeToMinutes(entry.end_time);
+
+    if (start === null || end === null || start >= end) {
+      const err = new Error('Schedule start time must be before end time.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!byWeekday.has(entry.weekday)) byWeekday.set(entry.weekday, []);
+    byWeekday.get(entry.weekday).push({ ...entry, start, end });
+  }
+
+  for (const [weekday, rows] of byWeekday.entries()) {
+    rows.sort((a, b) => a.start - b.start);
+
+    for (let index = 1; index < rows.length; index += 1) {
+      if (rows[index].start < rows[index - 1].end) {
+        const err = new Error(
+          `${formatScheduleLockDay({ weekday })} has overlapping branch schedule times.`
+        );
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+  }
 }
 
 function formatScheduleLockDay(lock) {
@@ -352,6 +436,109 @@ function normalizeInt(value, fallback = 0) {
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+function normalizeSpecializationList(value) {
+  const values = Array.isArray(value)
+    ? value
+    : String(value || '')
+        .split(',')
+        .map((item) => item.trim());
+
+  return [...new Set(
+    values
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+  )];
+}
+
+async function ensureDentistSpecializationsTable(conn = pool) {
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS dentist_specializations (
+      dentist_id INT NOT NULL,
+      specialization VARCHAR(100) NOT NULL,
+      PRIMARY KEY (dentist_id, specialization),
+      FOREIGN KEY (dentist_id) REFERENCES users(id) ON DELETE CASCADE,
+      INDEX idx_dentist_specializations_name (specialization)
+    )
+  `);
+}
+
+async function loadDentistSpecializationsByDentistIds(dentistIds = []) {
+  const ids = (Array.isArray(dentistIds) ? dentistIds : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+
+  if (ids.length === 0) return new Map();
+
+  await ensureDentistSpecializationsTable();
+  const placeholders = ids.map(() => '?').join(',');
+  const [rows] = await pool.query(
+    `SELECT dentist_id, specialization
+     FROM dentist_specializations
+     WHERE dentist_id IN (${placeholders})
+     ORDER BY specialization ASC`,
+    ids
+  );
+
+  const byDentist = new Map();
+  for (const row of rows) {
+    const dentistId = Number(row.dentist_id);
+    if (!byDentist.has(dentistId)) byDentist.set(dentistId, []);
+    byDentist.get(dentistId).push(row.specialization);
+  }
+
+  return byDentist;
+}
+
+async function replaceDentistSpecializationsAndServices(dentistId, specializationValues = []) {
+  const id = Number(dentistId);
+  if (!Number.isInteger(id) || id <= 0) {
+    const err = new Error('Invalid dentist id');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const specializations = normalizeSpecializationList(specializationValues);
+  await ensureDentistSpecializationsTable();
+  const conn = await pool.getConnection();
+
+  try {
+    await conn.beginTransaction();
+
+    await conn.query('DELETE FROM dentist_specializations WHERE dentist_id = ?', [id]);
+    await conn.query('DELETE FROM dentist_services WHERE dentist_id = ?', [id]);
+
+    if (specializations.length > 0) {
+      await conn.query(
+        `INSERT INTO dentist_specializations (dentist_id, specialization)
+         VALUES ${specializations.map(() => '(?, ?)').join(', ')}`,
+        specializations.flatMap((specialization) => [id, specialization])
+      );
+
+      const [services] = await conn.query(
+        `SELECT id FROM services
+         WHERE status = 'Active'
+           AND category IN (${specializations.map(() => '?').join(',')})`,
+        specializations
+      );
+
+      if (services.length > 0) {
+        await conn.query(
+          `INSERT IGNORE INTO dentist_services (dentist_id, service_id)
+           VALUES ${services.map(() => '(?, ?)').join(', ')}`,
+          services.flatMap((service) => [id, service.id])
+        );
+      }
+    }
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 function staffPayloadToDb(payload = {}, { allowStatus = false } = {}) {
   const firstName = normalizeNullable(payload.first_name ?? payload.firstName);
   const lastName = normalizeNullable(payload.last_name ?? payload.lastName);
@@ -415,10 +602,35 @@ async function fetchStaffProfileBy(whereClause, params) {
   const mapped = mapStaffProfileRow(rows[0]);
   if (rows[0].user_role === 'dentist' && mapped.userId) {
     try {
+      const branchAffiliations = await loadUserBranchAffiliationsByUserIds([mapped.userId]);
+      const branchIds = (branchAffiliations.get(Number(mapped.userId)) || [])
+        .map((row) => row.branch_id);
+      mapped.branchIds = branchIds;
+      mapped.additionalBranchIds = branchIds.filter((branchId) => Number(branchId) !== Number(mapped.branchId));
+    } catch (_) {
+      mapped.branchIds = mapped.branchId ? [Number(mapped.branchId)] : [];
+      mapped.additionalBranchIds = [];
+    }
+
+    try {
       const schedulesByDentist = await loadDentistScheduleEntriesByDentistIds([mapped.userId]);
       mapped.scheduleEntries = schedulesByDentist.get(Number(mapped.userId)) || [];
     } catch (_) {
       mapped.scheduleEntries = [];
+    }
+
+    try {
+      const specializationsByDentist = await loadDentistSpecializationsByDentistIds([mapped.userId]);
+      const specializations =
+        specializationsByDentist.get(Number(mapped.userId)) ||
+        normalizeSpecializationList(mapped.workDepartment || mapped.specialization);
+      mapped.specializations = specializations;
+      if (specializations.length > 0) {
+        mapped.specialization = specializations.join(', ');
+        mapped.workDepartment = specializations.join(', ');
+      }
+    } catch (_) {
+      mapped.specializations = normalizeSpecializationList(mapped.workDepartment || mapped.specialization);
     }
   }
 
@@ -615,8 +827,10 @@ async function loadBranchesWithStats() {
        (
          SELECT COUNT(*)
          FROM users u
+         JOIN user_branches ub ON ub.user_id = u.id
          WHERE u.role = 'dentist'
-           AND u.home_branch_id = b.id
+           AND u.status = 'Active'
+           AND ub.branch_id = b.id
        ) AS dentist_count,
        (
          SELECT COUNT(*)
@@ -663,6 +877,10 @@ async function loadServices() {
     time_buffer_min: Number(row.time_buffer_min ?? 30),
     status: row.status || 'Active',
   }));
+}
+
+function isValidServiceText(value) {
+  return /^[a-zA-Z\s()\-]+$/.test(String(value || '').trim());
 }
 
 router.get('/branches', async (req, res) => {
@@ -729,6 +947,12 @@ router.post('/services', authenticate, requireRole('admin'), async (req, res) =>
     });
   }
 
+  if (!isValidServiceText(name) || !isValidServiceText(category)) {
+    return res.status(400).json({
+      message: 'Service name and category can only contain letters, spaces, parentheses, and hyphen',
+    });
+  }
+
   if (!['Active', 'Inactive', 'Discontinued'].includes(status)) {
     return res.status(400).json({ message: 'Invalid service status' });
   }
@@ -765,6 +989,12 @@ router.patch('/services/:id', authenticate, requireRole('admin'), async (req, re
   if (!name || !category || !Number.isFinite(servicePrice) || !Number.isFinite(durationMin) || !status) {
     return res.status(400).json({
       message: 'Service name, category, price, duration, and status are required',
+    });
+  }
+
+  if (!isValidServiceText(name) || !isValidServiceText(category)) {
+    return res.status(400).json({
+      message: 'Service name and category can only contain letters, spaces, parentheses, and hyphen',
     });
   }
 
@@ -1949,12 +2179,26 @@ router.get('/staff-profiles', authenticate, requireRole('admin'), async (req, re
       .map((row) => row.user_id);
 
     const schedulesByDentist = await loadDentistScheduleEntriesByDentistIds(dentistUserIds);
+    const specializationsByDentist = await loadDentistSpecializationsByDentistIds(dentistUserIds);
+    const branchAffiliationsByDentist = await loadUserBranchAffiliationsByUserIds(dentistUserIds);
 
     res.json({
       employees: rows.map((row) => {
         const mapped = mapStaffProfileRow(row);
         if (row.user_role === 'dentist') {
+          const branchIds = (branchAffiliationsByDentist.get(Number(row.user_id)) || [])
+            .map((branch) => branch.branch_id);
+          mapped.branchIds = branchIds;
+          mapped.additionalBranchIds = branchIds.filter((branchId) => Number(branchId) !== Number(mapped.branchId));
           mapped.scheduleEntries = schedulesByDentist.get(Number(row.user_id)) || [];
+          const specializations =
+            specializationsByDentist.get(Number(row.user_id)) ||
+            normalizeSpecializationList(mapped.workDepartment || mapped.specialization);
+          mapped.specializations = specializations;
+          if (specializations.length > 0) {
+            mapped.specialization = specializations.join(', ');
+            mapped.workDepartment = specializations.join(', ');
+          }
         }
         return mapped;
       }),
@@ -2051,12 +2295,18 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
 
   try {
     const wantsScheduleUpdate = Array.isArray(req.body?.schedule_entries);
+    const wantsSpecializationUpdate =
+      req.body?.specializations !== undefined ||
+      req.body?.specialization !== undefined ||
+      req.body?.workDepartment !== undefined ||
+      req.body?.work_department !== undefined;
     const wantsBranchUpdate =
       req.body?.branchId !== undefined || req.body?.branch_id !== undefined;
     let linkedUserIdForSchedule = null;
     let currentBranchIdForSchedule = null;
+    let linkedUserRole = null;
 
-    if (wantsScheduleUpdate || wantsBranchUpdate) {
+    if (wantsScheduleUpdate || wantsBranchUpdate || wantsSpecializationUpdate) {
       const [urows] = await pool.query(
         `SELECT u.id, u.role, sp.branch_id
          FROM staff_profile sp
@@ -2077,6 +2327,7 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
         linkedUserIdForSchedule = u.id;
         currentBranchIdForSchedule = u.branch_id;
       }
+      linkedUserRole = u.role;
     }
 
     if (linkedUserIdForSchedule && (wantsScheduleUpdate || wantsBranchUpdate)) {
@@ -2095,6 +2346,30 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
 
     if (wantsScheduleUpdate && linkedUserIdForSchedule) {
       await replaceDentistSchedules(linkedUserIdForSchedule, req.body.schedule_entries);
+    }
+
+    if (wantsSpecializationUpdate && linkedUserIdForSchedule && linkedUserRole === 'dentist') {
+      await replaceDentistSpecializationsAndServices(
+        linkedUserIdForSchedule,
+        req.body.specializations ??
+          req.body.workDepartment ??
+          req.body.work_department ??
+          req.body.specialization
+      );
+    }
+
+    if (linkedUserIdForSchedule && linkedUserRole === 'dentist') {
+      const nextHomeBranchId = Number(req.body.branchId ?? req.body.branch_id ?? currentBranchIdForSchedule);
+      const requestedBranchIds = normalizeBranchIdList(req.body.branchIds ?? req.body.branch_ids ?? []);
+      const scheduleBranchIds = Array.isArray(req.body.schedule_entries)
+        ? req.body.schedule_entries.map((entry) => entry?.branch_id ?? entry?.branchId)
+        : [];
+      await syncUserBranchAffiliations(
+        pool,
+        linkedUserIdForSchedule,
+        nextHomeBranchId,
+        [...requestedBranchIds, ...scheduleBranchIds]
+      );
     }
 
     const profile = await fetchStaffProfileBy('sp.id = ?', [profileId]);
@@ -2271,22 +2546,32 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
 
       // New path: optional per-day branch schedules.
       if (scheduleEntries.length > 0) {
-        for (const entry of scheduleEntries) {
-          const branchId = Number(entry.branch_id || home_branch_id);
-          const weekday =
-            Number.isInteger(entry.weekday)
+        const cleanedScheduleEntries = scheduleEntries
+          .map((entry) => normalizeScheduleEntry({
+            ...entry,
+            branch_id: entry.branch_id || home_branch_id,
+            weekday: Number.isInteger(entry.weekday)
               ? entry.weekday
-              : DAY_TO_WEEKDAY[String(entry.day || '').trim()];
-          const startTime = entry.start_time || staffProfile.work_start_time || null;
-          const endTime = entry.end_time || staffProfile.work_end_time || null;
+              : DAY_TO_WEEKDAY[String(entry.day || '').trim()],
+            start_time: entry.start_time || staffProfile.work_start_time || null,
+            end_time: entry.end_time || staffProfile.work_end_time || null,
+          }))
+          .filter(Boolean);
 
-          if (!branchId || weekday === undefined || !startTime || !endTime) {
-            continue;
-          }
+        if (cleanedScheduleEntries.length === 0) {
+          const err = new Error('Invalid schedule_entries');
+          err.statusCode = 400;
+          throw err;
+        }
+
+        assertScheduleEntriesDoNotOverlap(cleanedScheduleEntries);
+
+        for (const entry of cleanedScheduleEntries) {
+          const branchId = Number(entry.branch_id);
 
           await pool.query(
             'INSERT INTO dentist_schedules (dentist_id, branch_id, weekday, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
-            [userId, branchId, weekday, startTime, endTime]
+            [userId, branchId, entry.weekday, entry.start_time, entry.end_time]
           );
 
           // Ensure the dentist is associated with any additional branches used in schedules.
@@ -2317,19 +2602,13 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
         }
       }
 
-      const serviceCategory = staffProfile.work_department || department;
-      if (serviceCategory) {
-        const [svcRows] = await pool.query(
-          'SELECT id FROM services WHERE category = ? AND status = ?',
-          [serviceCategory, 'Active']
-        );
-        for (const svc of svcRows) {
-          await pool.query(
-            'INSERT IGNORE INTO dentist_services (dentist_id, service_id) VALUES (?, ?)',
-            [userId, svc.id]
-          );
-        }
-      }
+      await replaceDentistSpecializationsAndServices(
+        userId,
+        staffProfile.specializations ??
+          staffProfile.work_departments ??
+          staffProfile.work_department ??
+          department
+      );
     }
 
     if (!password) {
@@ -2343,7 +2622,7 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(err.statusCode || 500).json({ message: err.statusCode ? err.message : 'Server error' });
   }
 });
 

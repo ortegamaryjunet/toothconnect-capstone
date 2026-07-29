@@ -1,6 +1,7 @@
 ﻿import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  getCountries,
   getCountryCallingCode,
   parsePhoneNumberFromString,
 } from 'libphonenumber-js';
@@ -105,6 +106,11 @@ const NATIONALITY_OPTIONS = [
   'Ukrainian',
   'Vietnamese',
 ];
+
+const phoneCountryOptions = getCountries().map((country) => ({
+  country,
+  callingCode: getCountryCallingCode(country),
+}));
 
 export default function RecepRecords() {
   const navigate = useNavigate();
@@ -338,15 +344,12 @@ export default function RecepRecords() {
       middleName: sourcePatient.middleName || '',
       lastName: sourcePatient.lastName || '',
       email: sourcePatient.email || '',
-      dateOfBirth: sourcePatient.dateOfBirth || '',
+      dateOfBirth: toDateInputValue(sourcePatient.dateOfBirth),
       age: sourcePatient.age || '',
       gender: sourcePatient.gender || '',
       contactCountry: contactFormValue.country,
       emergencyContactCountry: emergencyContactFormValue.country,
-      contactNumber: normalizePhoneNumber(
-        sourcePatient.contactNumber,
-        contactFormValue.country
-      ),
+      contactNumber: contactFormValue.number,
       fullName: [
         sourcePatient.firstName,
         sourcePatient.middleName,
@@ -360,10 +363,7 @@ export default function RecepRecords() {
       occupation: sourcePatient.occupation || '',
       civilStatus: sourcePatient.civilStatus || '',
       emergencyContactName: sourcePatient.emergencyContactName || '',
-      emergencyContactNumber: normalizePhoneNumber(
-        sourcePatient.emergencyContactNumber,
-        emergencyContactFormValue.country
-      ),
+      emergencyContactNumber: emergencyContactFormValue.number,
       medicalConditions: sourcePatient.medicalConditions || '',
       allergies: sourcePatient.allergies || '',
       medications: sourcePatient.medications || '',
@@ -440,18 +440,15 @@ export default function RecepRecords() {
         infoId: patientId,
         fullName: profile.full_name || current?.fullName || '',
         email: profile.email || current?.email || '',
-        contactNumber: normalizePhoneNumber(
-          profile.contact_number || current?.contactNumber || '',
-          profile.contact_number
-            ? profileContactValue.country
-            : current?.contactCountry || 'PH'
-        ),
+        contactNumber: profile.contact_number
+          ? profileContactValue.number
+          : current?.contactNumber || '',
         contactCountry: profile.contact_number
           ? profileContactValue.country
           : current?.contactCountry || 'PH',
         address: profile.address || current?.address || '',
-        dateOfBirth: profile.birthday || current?.dateOfBirth || '',
-        age: profile.age || calculateAge(profile.birthday) || current?.age || '',
+        dateOfBirth: toDateInputValue(profile.birthday || current?.dateOfBirth),
+        age: profile.age || calculateAge(profile.birthday || current?.dateOfBirth) || current?.age || '',
         gender: profile.sex || current?.gender || '',
         lastName: nameParts.lastName || current?.lastName || '',
         firstName: nameParts.firstName || current?.firstName || '',
@@ -461,14 +458,9 @@ export default function RecepRecords() {
         civilStatus: profile.civil_status || current?.civilStatus || '',
         emergencyContactName:
           profile.emergency_contact_name || current?.emergencyContactName || '',
-        emergencyContactNumber: normalizePhoneNumber(
-          profile.emergency_contact_number ||
-            current?.emergencyContactNumber ||
-            '',
-          profile.emergency_contact_number
-            ? profileEmergencyContactValue.country
-            : current?.emergencyContactCountry || 'PH'
-        ),
+        emergencyContactNumber: profile.emergency_contact_number
+          ? profileEmergencyContactValue.number
+          : current?.emergencyContactNumber || '',
         emergencyContactCountry: profile.emergency_contact_number
           ? profileEmergencyContactValue.country
           : current?.emergencyContactCountry || 'PH',
@@ -520,7 +512,7 @@ export default function RecepRecords() {
     const countryCode = String(
       countryData?.countryCode || currentCountry || 'PH'
     ).toUpperCase();
-    const nextValue = normalizePhoneNumber(rawValue, countryCode);
+    const nextValue = rawValue.replace(/\D/g, '');
 
     setEditPatient((current) => ({
       ...current,
@@ -1448,6 +1440,12 @@ export default function RecepRecords() {
                 styles={styles}
                 label="Contact Number"
                 value={editPatient.contactNumber}
+                country={editPatient.contactCountry || 'PH'}
+                onCountryChange={(country) =>
+                  handleEditPhoneChange('contactNumber', editPatient.contactNumber, {
+                    countryCode: country.toLowerCase(),
+                  })
+                }
                 disabled={editModalReadOnly}
                 error={editErrors.contactNumber}
                 onChange={(phone, countryData) =>
@@ -1579,6 +1577,14 @@ export default function RecepRecords() {
                 styles={styles}
                 label="Emergency Contact Number"
                 value={editPatient.emergencyContactNumber || ''}
+                country={editPatient.emergencyContactCountry || 'PH'}
+                onCountryChange={(country) =>
+                  handleEditPhoneChange(
+                    'emergencyContactNumber',
+                    editPatient.emergencyContactNumber,
+                    { countryCode: country.toLowerCase() }
+                  )
+                }
                 disabled={editModalReadOnly}
                 error={editErrors.emergencyContactNumber}
                 onChange={(phone, countryData) =>
@@ -1881,6 +1887,8 @@ function PhoneField({
   styles,
   label,
   value,
+  country = 'PH',
+  onCountryChange,
   onChange,
   disabled = false,
   error = '',
@@ -1892,18 +1900,43 @@ function PhoneField({
         {error && <span style={styles.fieldErrorAsterisk}>*</span>}
       </label>
 
-      <input
-        type="tel"
-        value={value || ''}
-        onChange={(event) => onChange?.(event.target.value)}
-        disabled={disabled}
-        placeholder="+639XXXXXXXXX"
-        style={{
-          ...styles.fieldInput,
-          ...(disabled ? styles.phoneButtonDisabled : {}),
-          ...(error ? styles.fieldInputError : {}),
-        }}
-      />
+      <div style={styles.phoneInputContainer}>
+        <select
+          value={country}
+          onChange={(event) => onCountryChange?.(event.target.value)}
+          disabled={disabled}
+          style={{
+            ...styles.phoneCountrySelect,
+            ...(disabled ? styles.phoneButtonDisabled : {}),
+            ...(error ? styles.fieldInputError : {}),
+          }}
+          aria-label={`${label} country code`}
+        >
+          {phoneCountryOptions.map((option) => (
+            <option key={option.country} value={option.country}>
+              {option.country} +{option.callingCode}
+            </option>
+          ))}
+        </select>
+
+        <input
+          type="tel"
+          value={value || ''}
+          onChange={(event) =>
+            onChange?.(event.target.value, { countryCode: country.toLowerCase() })
+          }
+          disabled={disabled}
+          placeholder="9123456789"
+          autoComplete="tel"
+          inputMode="tel"
+          maxLength={15}
+          style={{
+            ...styles.phoneInput,
+            ...(disabled ? styles.phoneButtonDisabled : {}),
+            ...(error ? styles.fieldInputError : {}),
+          }}
+        />
+      </div>
 
       {error && <p style={styles.fieldErrorText}>{error}</p>}
     </div>
@@ -1980,7 +2013,7 @@ function getContactFormValue(value) {
 
   return {
     country: phoneNumber.country || 'PH',
-    number: phoneNumber.number || String(value || '').replace(/\D/g, ''),
+    number: phoneNumber.nationalNumber || String(value || '').replace(/\D/g, ''),
   };
 }
 
@@ -2021,8 +2054,9 @@ function normalizePatients(items) {
   }
 
   return items.map((item, index) => {
-    const dateOfBirth =
-      item.dateOfBirth || item.dob || item.birthDate || item.birthday || '';
+    const dateOfBirth = toDateInputValue(
+      item.dateOfBirth || item.dob || item.birthDate || item.birthday || ''
+    );
 
     const age = item.age || calculateAge(dateOfBirth) || '';
     const fullName = item.full_name || item.name || '';
@@ -2058,6 +2092,31 @@ function normalizePatients(items) {
       dentalHistory: item.dental_history || item.dentalHistory || '',
     };
   });
+}
+
+function toDateInputValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const dateOnlyMatch = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (dateOnlyMatch) {
+    return dateOnlyMatch[1];
+  }
+
+  const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, month, day, year] = slashMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return '';
+
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 function splitFullName(fullName) {

@@ -242,6 +242,19 @@ export default function DashboardScreen({ navigation }) {
       .toUpperCase();
   }, [clinicBranch]);
 
+  const displayedDentists = useMemo(() => {
+    if (!clinicBranch?.id) return dentists;
+    return dentists.filter((dentist) => {
+      const branchIds = Array.isArray(dentist.branch_ids)
+        ? dentist.branch_ids
+        : String(dentist.branch_ids || dentist.home_branch_id || '')
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean);
+      return branchIds.some((branchId) => String(branchId) === String(clinicBranch.id));
+    });
+  }, [dentists, clinicBranch?.id]);
+
   const greetingName = user?.name ? user.name.split(" ")[0] : "there";
 
   function getGreeting() {
@@ -480,12 +493,12 @@ export default function DashboardScreen({ navigation }) {
                 <View style={styles.dentistCard}>
                   <Text style={styles.dentistName}>Loading...</Text>
                 </View>
-              ) : dentists.length === 0 ? (
+              ) : displayedDentists.length === 0 ? (
                 <View style={styles.dentistCard}>
                   <Text style={styles.dentistName}>No dentists found.</Text>
                 </View>
               ) : (
-                dentists.map((dentist) => (
+                displayedDentists.map((dentist) => (
                   <View key={dentist.id} style={styles.dentistCard}>
                     <View style={styles.dentistInitialBox}>
                       <Text style={styles.dentistInitial}>

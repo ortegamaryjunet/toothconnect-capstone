@@ -4,22 +4,72 @@ const TABLE_CONFIG = {
   equipment: { table: 'equipment', nameColumn: 'equipment_name' },
 };
 
-async function getServiceKitRows(executor, serviceId) {
+let serviceKitsBranchColumnReady = false;
+
+async function ensureServiceKitsBranchColumn(executor) {
+  if (serviceKitsBranchColumnReady) return;
+
+  const [columns] = await executor.query(`SHOW COLUMNS FROM service_kits LIKE 'branch_id'`);
+  if (columns.length === 0) {
+    await executor.query(`ALTER TABLE service_kits ADD COLUMN branch_id INT NULL AFTER service_id`);
+  }
+
+  const [indexes] = await executor.query(`SHOW INDEX FROM service_kits`);
+  const hasBranchUnique = indexes.some((row) => row.Key_name === 'uniq_service_kit_branch');
+  if (!hasBranchUnique) {
+    await executor.query(`ALTER TABLE service_kits ADD UNIQUE KEY uniq_service_kit_branch (service_id, branch_id)`);
+  }
+
+  const [updatedIndexes] = await executor.query(`SHOW INDEX FROM service_kits`);
+  const grouped = new Map();
+  for (const row of updatedIndexes) {
+    if (!grouped.has(row.Key_name)) grouped.set(row.Key_name, []);
+    grouped.get(row.Key_name).push(row);
+  }
+
+  for (const [keyName, rows] of grouped.entries()) {
+    if (keyName === 'PRIMARY') continue;
+    const uniqueColumns = rows
+      .filter((row) => Number(row.Non_unique) === 0)
+      .sort((a, b) => Number(a.Seq_in_index) - Number(b.Seq_in_index))
+      .map((row) => row.Column_name);
+
+    if (uniqueColumns.length === 1 && uniqueColumns[0] === 'service_id') {
+      const escapedKeyName = String(keyName).replace(/`/g, '``');
+      await executor.query(`ALTER TABLE service_kits DROP INDEX \`${escapedKeyName}\``);
+    }
+  }
+
+  serviceKitsBranchColumnReady = true;
+}
+
+async function getServiceKitRecord(executor, serviceId, branchId = null) {
+  await ensureServiceKitsBranchColumn(executor);
+
   const [kitRows] = await executor.query(
-    `SELECT id
+    `SELECT id, service_id, branch_id, notes
      FROM service_kits
      WHERE service_id = ?
+       AND (? IS NULL OR branch_id = ? OR branch_id IS NULL)
+     ORDER BY
+       CASE WHEN branch_id = ? THEN 0 WHEN branch_id IS NULL THEN 1 ELSE 2 END,
+       id ASC
      LIMIT 1`,
-    [serviceId]
+    [serviceId, branchId || null, branchId || null, branchId || null]
   );
 
-  if (!kitRows.length) return [];
+  return kitRows[0] || null;
+}
+
+async function getServiceKitRows(executor, serviceId, branchId = null) {
+  const kit = await getServiceKitRecord(executor, serviceId, branchId);
+  if (!kit) return [];
 
   const [itemRows] = await executor.query(
     `SELECT category, item_name, default_quantity
      FROM service_kit_items
      WHERE service_kit_id = ?`,
-    [kitRows[0].id]
+    [kit.id]
   );
   return itemRows;
 }
@@ -47,7 +97,7 @@ async function resolveKitItemStock(executor, branchId, item) {
 }
 
 async function getServiceKitAvailability(executor, { serviceId, branchId }) {
-  const items = await getServiceKitRows(executor, serviceId);
+  const items = await getServiceKitRows(executor, serviceId, branchId);
   if (items.length === 0) {
     return { has_kit: false, available: true, items: [] };
   }
@@ -76,6 +126,8 @@ async function getServiceKitAvailability(executor, { serviceId, branchId }) {
 }
 
 module.exports = {
+  ensureServiceKitsBranchColumn,
+  getServiceKitRecord,
   getServiceKitRows,
   resolveKitItemStock,
   getServiceKitAvailability,

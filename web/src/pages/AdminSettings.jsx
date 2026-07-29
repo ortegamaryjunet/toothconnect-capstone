@@ -115,6 +115,10 @@ const branchRequiredFields = [
   'status',
 ];
 
+const BRANCH_OPERATING_HOURS_FORMAT = 'Mon - Sat, 10:00 AM - 7:00 PM';
+const BRANCH_OPERATING_HOURS_REGEX =
+  /^[A-Za-z]{3}(?:\s*-\s*[A-Za-z]{3})?,\s*(?:0?[1-9]|1[0-2]):[0-5]\d\s*(?:AM|PM)\s*-\s*(?:0?[1-9]|1[0-2]):[0-5]\d\s*(?:AM|PM)$/i;
+
 const initialServiceForm = {
   id: '',
   name: '',
@@ -453,7 +457,9 @@ export default function AdminSettings() {
 
   const isBranchFormComplete = branchRequiredFields.every(
     (field) => String(branchForm[field] ?? '').trim() !== ''
-  ) && !validatePhoneNumber(branchForm.phone, branchPhoneCountry);
+  ) &&
+    !validatePhoneNumber(branchForm.phone, branchPhoneCountry) &&
+    BRANCH_OPERATING_HOURS_REGEX.test(String(branchForm.operating_hours || '').trim());
 
   const serviceCategoryOptions = useMemo(() => {
     return [
@@ -1026,6 +1032,10 @@ setWebsiteContentSaveConfirmModal({
     return value.replace(/[^a-zA-Z\s]/g, '');
   }
 
+  function allowServiceNameText(value) {
+    return value.replace(/[^a-zA-Z\s()\-]/g, '');
+  }
+
   function allowTextContent(value) {
     return value.replace(/[^a-zA-Z0-9\s.,]/g, '');
   }
@@ -1239,7 +1249,7 @@ setWebsiteContentSaveConfirmModal({
     let newValue = value;
 
     if (name === 'name' || name === 'category') {
-      newValue = allowLettersOnly(value);
+      newValue = allowServiceNameText(value);
     }
 
     if (name === 'contact_person') {
@@ -1270,6 +1280,14 @@ setWebsiteContentSaveConfirmModal({
       return (
         branchTouchedFields[name] &&
         !!validatePhoneNumber(branchForm.phone, branchPhoneCountry)
+      );
+    }
+
+    if (name === 'operating_hours') {
+      const value = String(branchForm.operating_hours || '').trim();
+      return (
+        branchTouchedFields[name] &&
+        (!value || !BRANCH_OPERATING_HOURS_REGEX.test(value))
       );
     }
 
@@ -1304,13 +1322,30 @@ setWebsiteContentSaveConfirmModal({
     return validatePhoneNumber(branchForm.phone, branchPhoneCountry);
   }
 
+  function getBranchOperatingHoursError() {
+    if (!branchTouchedFields.operating_hours) {
+      return '';
+    }
+
+    const value = String(branchForm.operating_hours || '').trim();
+    if (!value) {
+      return 'This field is required.';
+    }
+
+    if (!BRANCH_OPERATING_HOURS_REGEX.test(value)) {
+      return `Follow this format: ${BRANCH_OPERATING_HOURS_FORMAT}`;
+    }
+
+    return '';
+  }
+
   function handleServiceChange(name, value) {
     setServiceTouchedFields((prev) => ({ ...prev, [name]: true }));
 
     let newValue = value;
 
     if (name === 'name' || name === 'category') {
-      newValue = allowLettersOnly(value);
+      newValue = allowServiceNameText(value);
     }
 
     if (name === 'price') {
@@ -1343,8 +1378,8 @@ setWebsiteContentSaveConfirmModal({
       return 'This field is required.';
     }
 
-    if ((name === 'name' || name === 'category') && !/^[a-zA-Z\s]+$/.test(value)) {
-      return `${label} must contain letters only.`;
+    if ((name === 'name' || name === 'category') && !/^[a-zA-Z\s()\-]+$/.test(value)) {
+      return `${label} can only contain letters, spaces, parentheses, and hyphen.`;
     }
 
     if (name === 'price' && !/^\d+(\.\d+)?$/.test(value)) {
@@ -1734,8 +1769,8 @@ setWebsiteContentSaveConfirmModal({
   }
 
   async function openServiceKitManager(service = null) {
-    const resolvedServiceId = service?.id ? String(service.id) : String(services?.[0]?.id || '');
-    if (!resolvedServiceId) return alert('No service available.');
+    const resolvedServiceId = service?.id ? String(service.id) : '';
+    if (!services.length) return alert('No service available.');
 
     const branchId = Number(branches?.[0]?.id || 0);
     if (!branchId) return alert('No branch available.');
@@ -1743,15 +1778,15 @@ setWebsiteContentSaveConfirmModal({
     setServiceKitOverlay(true);
     setServiceKitBranchId(String(branchId));
     setServiceKitServiceId(resolvedServiceId);
+    setServiceKitItems([]);
     setServiceKitItemErrors([]);
-    setServiceKitServicesForBranch([]);
+    setServiceKitServicesForBranch(services);
 
     try {
-      const [supplies, medicines, equipment, data] = await Promise.all([
+      const [supplies, medicines, equipment] = await Promise.all([
         listSupplies(branchId),
         listMedicines(branchId),
         listEquipment(branchId),
-        getManageServiceKit(Number(resolvedServiceId), branchId),
       ]);
 
       setServiceKitInventory({
@@ -1760,34 +1795,20 @@ setWebsiteContentSaveConfirmModal({
         equipment: Array.isArray(equipment) ? equipment : [],
       });
 
-      // Load services for this branch (best-effort); fallback to all services.
-      try {
-        const meta = await api.get('/appointments/_meta/services-and-branches');
-        const metaServices = Array.isArray(meta.data?.services) ? meta.data.services : [];
-        const filtered = metaServices.filter((s) =>
-          Array.isArray(s.available_branch_ids)
-            ? s.available_branch_ids.includes(Number(branchId))
-            : true
-        );
-        const serviceOptions = filtered.length ? filtered : services;
-        setServiceKitServicesForBranch(serviceOptions);
-        if (!serviceOptions.some((s) => String(s.id) === String(resolvedServiceId))) {
-          const nextId = String(serviceOptions[0]?.id || '');
-          if (nextId) setServiceKitServiceId(nextId);
-        }
-      } catch {
-        setServiceKitServicesForBranch(services);
-      }
+      setServiceKitServicesForBranch(services);
 
-      setServiceKitItems((data.items || []).map((item) => ({
-        category: item.category,
-        item_name: item.item_name,
-        default_quantity: String(item.default_quantity || ''),
-        current_stock: item.current_stock,
-      })));
-      setServiceKitItemErrors(
-        (data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' }))
-      );
+      if (resolvedServiceId) {
+        const data = await getManageServiceKit(Number(resolvedServiceId), branchId);
+        setServiceKitItems((data.items || []).map((item) => ({
+          category: item.category,
+          item_name: item.item_name,
+          default_quantity: String(item.default_quantity || ''),
+          current_stock: item.current_stock,
+        })));
+        setServiceKitItemErrors(
+          (data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' }))
+        );
+      }
     } catch (err) {
       setServiceKitItems([]);
       alert(err.response?.data?.message || 'Failed to load service kit.');
@@ -1809,42 +1830,10 @@ setWebsiteContentSaveConfirmModal({
         equipment: Array.isArray(equipment) ? equipment : [],
       });
 
-      // Load services "available" for this branch (based on appointment meta).
-      // Fallback: if meta fails or yields empty, show all services.
-      let serviceOptions = services;
-      try {
-        const meta = await api.get('/appointments/_meta/services-and-branches');
-        const metaServices = Array.isArray(meta.data?.services) ? meta.data.services : [];
-        const filtered = metaServices.filter((s) =>
-          Array.isArray(s.available_branch_ids)
-            ? s.available_branch_ids.includes(Number(branchId))
-            : true
-        );
-        serviceOptions = filtered.length ? filtered : services;
-      } catch {
-        serviceOptions = services;
-      }
-      setServiceKitServicesForBranch(serviceOptions);
-
-      // If the currently selected service is not in this branch's list, reset to first.
-      const branchServiceIds = new Set(serviceOptions.map((s) => String(s.id)));
-      const nextServiceId = branchServiceIds.has(String(serviceKitServiceId))
-        ? String(serviceKitServiceId)
-        : String(serviceOptions[0]?.id || '');
-      if (nextServiceId && nextServiceId !== String(serviceKitServiceId)) {
-        setServiceKitServiceId(nextServiceId);
-      }
-
-      const data = nextServiceId
-        ? await getManageServiceKit(Number(nextServiceId), branchId)
-        : { items: [] };
-      setServiceKitItems((data.items || []).map((item) => ({
-        category: item.category,
-        item_name: item.item_name,
-        default_quantity: String(item.default_quantity || ''),
-        current_stock: item.current_stock,
-      })));
-      setServiceKitItemErrors((data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' })));
+      setServiceKitServicesForBranch(services);
+      setServiceKitServiceId('');
+      setServiceKitItems([]);
+      setServiceKitItemErrors([]);
     } catch {
       setServiceKitItems([]);
     }
@@ -1972,7 +1961,9 @@ setWebsiteContentSaveConfirmModal({
     try {
       await saveManageServiceKit(Number(serviceKitServiceId), payload);
       setShowServiceKitSaveConfirmModal(false);
-      setServiceKitOverlay(false);
+      setServiceKitServiceId('');
+      setServiceKitItems([]);
+      setServiceKitItemErrors([]);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service kit.');
     }
@@ -3448,7 +3439,7 @@ setWebsiteContentSaveConfirmModal({
           addIcon={sectionConfig.services.addIcon}
           onAdd={() => openServiceForm()}
         >
-          <button type="button" style={styles.secondaryBtn} onClick={() => openServiceKitManager(filteredServices[0])} disabled={!filteredServices.length}>
+          <button type="button" style={styles.secondaryBtn} onClick={() => openServiceKitManager()} disabled={!filteredServices.length}>
             Manage Service Kit
           </button>
           <button type="button" style={styles.secondaryBtn} onClick={openServiceKitHistory}>
@@ -4003,8 +3994,13 @@ setWebsiteContentSaveConfirmModal({
                   }
                   onBlur={() => handleBranchFieldBlur('operating_hours')}
                   style={getBranchFieldStyle('operating_hours')}
-                  placeholder="Mon - Sat, 9:00 AM - 5:00 PM"
+                  placeholder={BRANCH_OPERATING_HOURS_FORMAT}
                 />
+                {getBranchOperatingHoursError() && (
+                  <span style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>
+                    {getBranchOperatingHoursError()}
+                  </span>
+                )}
               </Field>
 
               <Field label="Years Active" styles={styles}>
@@ -4500,6 +4496,9 @@ setWebsiteContentSaveConfirmModal({
                 style={styles.formInput}
                 disabled={!serviceKitBranchSelected}
               >
+                <option value="" disabled>
+                  Choose a Service
+                </option>
                 {(serviceKitServicesForBranch.length ? serviceKitServicesForBranch : services).map((svc) => (
                   <option key={svc.id} value={svc.id}>
                     {svc.name}
@@ -4937,7 +4936,11 @@ setWebsiteContentSaveConfirmModal({
                 <button
                   type="button"
                   style={{ ...styles.secondaryBtn, height: 48 }}
-                  onClick={() => setServiceKitHistoryFilters({ startDate: '', endDate: '', branchId: '' })}
+                  onClick={() => {
+                    const emptyFilters = { startDate: '', endDate: '', branchId: '' };
+                    setServiceKitHistoryFilters(emptyFilters);
+                    loadServiceKitHistory(emptyFilters);
+                  }}
                 >
                   Clear
                 </button>

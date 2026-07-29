@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthContext';
 import { listAppointments, cancelAppointment } from '../api/appointments';
 import { formatRelativeDate, formatTimeOnly } from '../utils/datetime';
+import { isCancellationLocked } from '../utils/appointments';
 import styles from '../styles/PatientHomeScreen';
 import { getUnreadCount } from '../api/notifications';
 
@@ -62,6 +63,14 @@ export default function PatientHomeScreen({ navigation }) {
   }
 
   async function handleCancel(appointment) {
+    if (isCancellationLocked(appointment)) {
+      Alert.alert(
+        'Cancellation locked',
+        'Appointments can no longer be cancelled within 24 hours of the scheduled time.'
+      );
+      return;
+    }
+
     Alert.alert(
       'Cancel appointment?',
       `${appointment.service_name} on ${formatRelativeDate(appointment.start_time)} at ${formatTimeOnly(appointment.start_time)}`,
@@ -173,7 +182,10 @@ export default function PatientHomeScreen({ navigation }) {
             <Text style={styles.emptyApptsText}>No upcoming appointments.{'\n'}Tap "Book" above to schedule one.</Text>
           </View>
         ) : (
-          upcoming.map(a => (
+          upcoming.map(a => {
+            const cancellationLocked = isCancellationLocked(a);
+
+            return (
             <View key={a.id} style={styles.apptCard}>
               <View style={styles.apptTopRow}>
                 <Text style={styles.apptDateTime}>
@@ -185,11 +197,26 @@ export default function PatientHomeScreen({ navigation }) {
                 {a.service_name} with {a.dentist_name}
               </Text>
               <Text style={styles.apptBranch}>{a.branch_name}</Text>
-              <TouchableOpacity onPress={() => handleCancel(a)} style={styles.apptCancelLink}>
-                <Text style={styles.apptCancelLinkText}>Cancel</Text>
+              <TouchableOpacity
+                onPress={() => handleCancel(a)}
+                style={[
+                  styles.apptCancelLink,
+                  cancellationLocked && styles.apptCancelLinkDisabled,
+                ]}
+                disabled={cancellationLocked}
+              >
+                <Text
+                  style={[
+                    styles.apptCancelLinkText,
+                    cancellationLocked && styles.apptCancelLinkTextDisabled,
+                  ]}
+                >
+                  Cancel
+                </Text>
               </TouchableOpacity>
             </View>
-          ))
+            );
+          })
         )}
 
         {past.length > 0 && (

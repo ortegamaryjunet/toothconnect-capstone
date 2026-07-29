@@ -22,6 +22,35 @@ let cachedServices = null;
 let servicesLoading = true;
 let servicesLoadFailed = false;
 
+function normalizeBookingBranch(value) {
+    return String(value || "")
+        .trim()
+        .replace(/ Branch$/i, "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "");
+}
+
+function getBookingServiceName(service) {
+    return typeof service === "string" ? service : String(service && service.name ? service.name : "");
+}
+
+function serviceMatchesSelectedBranch(service, branch) {
+    if (!branch || typeof service === "string") return true;
+    const selected = normalizeBookingBranch(branch);
+    const branchKeys = Array.isArray(service.available_branch_keys) ? service.available_branch_keys : [];
+    const branchNames = Array.isArray(service.available_branch_names) ? service.available_branch_names : [];
+    const candidates = branchKeys.length > 0
+        ? branchKeys
+        : branchNames.map(normalizeBookingBranch);
+    if (candidates.length === 0) return true;
+    return candidates.some(function (branchName) {
+        const candidate = normalizeBookingBranch(branchName);
+        return candidate === selected || candidate.includes(selected) || selected.includes(candidate);
+    });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     // Layout tweak:
     // - Ensure Step 1 (form-card) is the left column
@@ -296,7 +325,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const data = await res.json();
             const list = data.services || [];
             if (list.length > 0) {
-                cachedServices = list.map(function (s) { return s.name; });
+                cachedServices = list.map(function (s) {
+                    return typeof s === "string" ? { name: s, available_branch_names: [] } : s;
+                });
             } else {
                 cachedServices = [];
                 servicesLoadFailed = true;
@@ -323,26 +354,35 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        const services = Array.isArray(cachedServices) ? cachedServices : [];
+        const services = (Array.isArray(cachedServices) ? cachedServices : []).filter(function (service) {
+            return serviceMatchesSelectedBranch(service, selectedBranch);
+        });
         if (servicesLoadFailed || services.length === 0) {
             const p = document.createElement("p");
-            p.textContent = "Services are temporarily unavailable.";
+            p.textContent = selectedBranch ? "No services available for this branch." : "Services are temporarily unavailable.";
             p.classList.add("disabled-option");
             reasonOptions.appendChild(p);
-            if (reasonText) reasonText.textContent = "Services unavailable";
+            if (reasonText) reasonText.textContent = selectedBranch ? "No services for branch" : "Services unavailable";
             if (selectedReason) selectedReason.value = "";
             if (reasonBtn) reasonBtn.classList.add("input-error");
-            showFieldError("reasonError", "Services are temporarily unavailable. Please try again later or contact the clinic.");
+            showFieldError(
+                "reasonError",
+                selectedBranch
+                    ? "No services are available for the selected branch."
+                    : "Services are temporarily unavailable. Please try again later or contact the clinic."
+            );
             return;
         }
 
         services.forEach(function (service) {
+            const serviceName = getBookingServiceName(service);
+            if (!serviceName) return;
             const p = document.createElement("p");
-            p.dataset.value = service;
-            p.textContent = service;
+            p.dataset.value = serviceName;
+            p.textContent = serviceName;
             p.addEventListener("click", function () {
-                reasonText.textContent = service;
-                selectedReason.value = service;
+                reasonText.textContent = serviceName;
+                selectedReason.value = serviceName;
                 reasonOptions.classList.remove("show");
                 clearFieldError("reasonError");
                 if (reasonBtn) reasonBtn.classList.remove("input-error");

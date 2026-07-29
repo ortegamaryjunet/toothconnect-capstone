@@ -27,6 +27,7 @@ import { getUnreadCount } from '../api/notifications';
 import { getCloudinarySignature, uploadPaymentReceipt } from '../api/payments';
 import { getBranchCity } from '../utils/branch';
 import { formatDateTime, formatRelativeDate, formatTimeOnly } from '../utils/datetime';
+import { isCancellationLocked } from '../utils/appointments';
 import styles from '../styles/AppointmentsScreen';
 
 const CANCEL_REASONS = [
@@ -51,7 +52,6 @@ const HISTORY_FILTERS = [
 
 const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024;
 const RECEIPT_PICKER_QUALITY = 0.72;
-const CANCELLATION_LOCK_HOURS = 24;
 const DEFAULT_CANCELLATION_POLICY =
   'Please contact the clinic as soon as possible if you need to cancel or reschedule your appointment.';
 
@@ -67,6 +67,12 @@ export default function AppointmentsScreen({ navigation, route }) {
   const [cancelModal, setCancelModal] = useState({ visible: false, appointment: null });
   const [selectedReason, setSelectedReason] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [rescheduleModal, setRescheduleModal] = useState({
+    visible: false,
+    appointment: null,
+    reason: '',
+    error: '',
+  });
 
   const [ratingModal, setRatingModal] = useState({ visible: false, appointment: null, step: 'loading', existingFeedback: null });
   const [ratingValue, setRatingValue] = useState(0);
@@ -192,6 +198,52 @@ export default function AppointmentsScreen({ navigation, route }) {
     if (isCancellationLocked(appointment)) return;
     setSelectedReason(null);
     setCancelModal({ visible: true, appointment });
+  }
+
+  function openRescheduleModal(appointment) {
+    setRescheduleModal({
+      visible: true,
+      appointment,
+      reason: '',
+      error: '',
+    });
+  }
+
+  function closeRescheduleModal() {
+    setRescheduleModal({
+      visible: false,
+      appointment: null,
+      reason: '',
+      error: '',
+    });
+  }
+
+  function handleContinueReschedule() {
+    const reason = rescheduleModal.reason.trim();
+    const appointment = rescheduleModal.appointment;
+    if (!appointment) return;
+
+    if (!reason) {
+      setRescheduleModal((prev) => ({
+        ...prev,
+        error: 'Please enter your reason for rescheduling.',
+      }));
+      return;
+    }
+
+    closeRescheduleModal();
+    navigation.navigate('BookSuggestions', {
+      service: {
+        id: appointment.service_id,
+        name: appointment.service_name,
+        duration_min: appointment.duration_min,
+        price: appointment.price ?? appointment.service_price,
+      },
+      branchId: appointment.branch_id,
+      branchName: getAppointmentBranchCity(appointment),
+      rescheduleAppointmentId: appointment.id,
+      rescheduleReason: reason,
+    });
   }
 
   async function handleUploadReceipt(appointment) {
@@ -328,12 +380,16 @@ export default function AppointmentsScreen({ navigation, route }) {
     return true;
   }
 
-  function isCancellationLocked(appointment) {
-    if (!appointment?.start_time) return false;
-    const scheduledAt = new Date(appointment.start_time).getTime();
-    if (Number.isNaN(scheduledAt)) return false;
-    const hoursUntilAppointment = (scheduledAt - Date.now()) / (60 * 60 * 1000);
-    return hoursUntilAppointment <= CANCELLATION_LOCK_HOURS;
+  function isRescheduledAppointment(appointment) {
+    const note = String(
+      appointment?.dentist_note ||
+      appointment?.note ||
+      appointment?.notes ||
+      ''
+    );
+
+    return String(appointment?.status || '').toLowerCase() === 'scheduled' &&
+      /(^|\n)\s*Rescheduled\s*:/i.test(note);
   }
 
   function renderAppointmentCard(appt) {
@@ -343,6 +399,7 @@ export default function AppointmentsScreen({ navigation, route }) {
     const isHighlighted = highlightedId === appt.id;
     const paymentTracker = getPaymentTracker(appt);
     const cancellationLocked = isCancellationLocked(appt);
+    const isRescheduled = isRescheduledAppointment(appt);
 
     return (
       <View
@@ -381,7 +438,9 @@ export default function AppointmentsScreen({ navigation, route }) {
                 ? 'Missed'
                 : appt.status === 'cancelled' || appt.status === 'canceled'
                   ? 'Cancelled'
-                  : 'Scheduled'}
+                  : isRescheduled
+                    ? 'Rescheduled'
+                    : 'Scheduled'}
         </Text>
 
         <View style={styles.paymentTracker}>
@@ -449,19 +508,7 @@ export default function AppointmentsScreen({ navigation, route }) {
             <>
               <TouchableOpacity
                 style={styles.btnReschedule}
-                onPress={() =>
-                  navigation.navigate('BookSuggestions', {
-                    service: {
-                      id: appt.service_id,
-                      name: appt.service_name,
-                      duration_min: appt.duration_min,
-                      price: appt.price ?? appt.service_price,
-                    },
-                    branchId: appt.branch_id,
-                    branchName: getAppointmentBranchCity(appt),
-                    rescheduleAppointmentId: appt.id,
-                  })
-                }
+                onPress={() => openRescheduleModal(appt)}
               >
                 <Text style={styles.btnRescheduleText}>Reschedule</Text>
               </TouchableOpacity>
@@ -765,6 +812,72 @@ export default function AppointmentsScreen({ navigation, route }) {
             </TouchableOpacity>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Reschedule Modal */}
+      <Modal
+        visible={rescheduleModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeRescheduleModal}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={styles.rescheduleModalOverlay} onPress={closeRescheduleModal}>
+            <Pressable style={styles.rescheduleModalCard} onPress={() => {}}>
+              <View style={styles.rescheduleModalIcon}>
+                <Text style={styles.rescheduleModalIconText}>R</Text>
+              </View>
+              <Text style={styles.rescheduleModalTitle}>Reason for Rescheduling</Text>
+              {rescheduleModal.appointment && (
+                <Text style={styles.rescheduleModalSub}>
+                  {rescheduleModal.appointment.service_name} -{' '}
+                  {formatRelativeDate(rescheduleModal.appointment.start_time)} -{' '}
+                  {formatTimeOnly(rescheduleModal.appointment.start_time)}
+                </Text>
+              )}
+              <TextInput
+                style={[
+                  styles.rescheduleReasonInput,
+                  rescheduleModal.error && styles.rescheduleReasonInputError,
+                ]}
+                placeholder="Tell us why you need to reschedule"
+                placeholderTextColor="#9a8a66"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                value={rescheduleModal.reason}
+                onChangeText={(text) =>
+                  setRescheduleModal((prev) => ({
+                    ...prev,
+                    reason: text,
+                    error: text.trim() ? '' : prev.error,
+                  }))
+                }
+                maxLength={500}
+              />
+              {rescheduleModal.error ? (
+                <Text style={styles.rescheduleErrorText}>{rescheduleModal.error}</Text>
+              ) : null}
+              <View style={styles.rescheduleModalActions}>
+                <TouchableOpacity
+                  style={styles.rescheduleCancelButton}
+                  onPress={closeRescheduleModal}
+                >
+                  <Text style={styles.rescheduleCancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.rescheduleContinueButton}
+                  onPress={handleContinueReschedule}
+                >
+                  <Text style={styles.rescheduleContinueButtonText}>Choose Slot</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Cancel Modal */}

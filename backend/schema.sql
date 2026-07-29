@@ -1,45 +1,6 @@
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS appointment_consumption;
-DROP TABLE IF EXISTS inventory_usage_history;
-DROP TABLE IF EXISTS schedule_requests;
-DROP TABLE IF EXISTS service_kit_items;
-DROP TABLE IF EXISTS service_kits;
-DROP TABLE IF EXISTS clinic_expenses;
-DROP TABLE IF EXISTS payments;
-DROP TABLE IF EXISTS patient_feedback;
-DROP TABLE IF EXISTS treatments;
-DROP TABLE IF EXISTS treatment_plans;
-DROP TABLE IF EXISTS appointments;
-DROP TABLE IF EXISTS dentist_schedules;
-DROP TABLE IF EXISTS dentist_services;
-DROP TABLE IF EXISTS services;
-DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS notifications;
-DROP TABLE IF EXISTS supplies;
-DROP TABLE IF EXISTS medicines;
-DROP TABLE IF EXISTS equipment;
-DROP TABLE IF EXISTS audit_logs;
-DROP TABLE IF EXISTS refresh_tokens;
-DROP TABLE IF EXISTS access_grants;
-DROP TABLE IF EXISTS user_branches;
-DROP TABLE IF EXISTS otp_codes;
-DROP TABLE IF EXISTS pending_registrations;
-DROP TABLE IF EXISTS patient_profile;
-DROP TABLE IF EXISTS staff_previous_work;
-DROP TABLE IF EXISTS staff_profile;
-DROP TABLE IF EXISTS user_presence;
-DROP TABLE IF EXISTS online_appointments_tbl;
-DROP TABLE IF EXISTS inquiry_replies;
-DROP TABLE IF EXISTS online_inquiries_tbl;
-DROP TABLE IF EXISTS website_content;
-DROP TABLE IF EXISTS website_faqs;
-DROP TABLE IF EXISTS website_services;
-DROP TABLE IF EXISTS website_announcements;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS branches;
-SET FOREIGN_KEY_CHECKS = 1;
+-- Fresh database schema. Existing databases should use files in backend/migrations instead of resetting tables.
 
-CREATE TABLE branches (
+CREATE TABLE IF NOT EXISTS branches (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   address VARCHAR(255) NULL,
@@ -52,7 +13,7 @@ CREATE TABLE branches (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   role ENUM('admin','dentist','receptionist','patient') NOT NULL,
   home_branch_id INT NULL,
@@ -71,13 +32,13 @@ CREATE TABLE users (
   FOREIGN KEY (home_branch_id) REFERENCES branches(id)
 );
 
-CREATE TABLE user_presence (
+CREATE TABLE IF NOT EXISTS user_presence (
   user_id INT PRIMARY KEY,
   last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE patient_profile (
+CREATE TABLE IF NOT EXISTS patient_profile (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL UNIQUE,
   full_name VARCHAR(100) NOT NULL,
@@ -103,7 +64,7 @@ CREATE TABLE patient_profile (
   INDEX idx_patient_profile_email (email)
 );
 
-CREATE TABLE staff_profile (
+CREATE TABLE IF NOT EXISTS staff_profile (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NULL,
   branch_id INT NULL,
@@ -152,7 +113,7 @@ CREATE TABLE staff_profile (
   INDEX idx_staff_profile_assigned_dentist (assigned_dentist_profile_id)
 );
 
-CREATE TABLE staff_previous_work (
+CREATE TABLE IF NOT EXISTS staff_previous_work (
   id INT AUTO_INCREMENT PRIMARY KEY,
   staff_profile_id INT NOT NULL,
   company_name VARCHAR(150) NULL,
@@ -169,7 +130,7 @@ CREATE TABLE staff_previous_work (
   INDEX idx_staff_previous_work_profile_id (staff_profile_id)
 );
 
-CREATE TABLE user_branches (
+CREATE TABLE IF NOT EXISTS user_branches (
   user_id INT NOT NULL,
   branch_id INT NOT NULL,
   is_primary BOOLEAN DEFAULT FALSE,
@@ -178,7 +139,7 @@ CREATE TABLE user_branches (
   FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
 );
 
-CREATE TABLE access_grants (
+CREATE TABLE IF NOT EXISTS access_grants (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   branch_id INT NOT NULL,
@@ -191,7 +152,7 @@ CREATE TABLE access_grants (
   FOREIGN KEY (granted_by) REFERENCES users(id)
 );
 
-CREATE TABLE otp_codes (
+CREATE TABLE IF NOT EXISTS otp_codes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(150) NOT NULL,
   code_hash VARCHAR(255) NOT NULL,
@@ -203,7 +164,7 @@ CREATE TABLE otp_codes (
   INDEX idx_email_purpose (email, purpose)
 );
 
-CREATE TABLE services (
+CREATE TABLE IF NOT EXISTS services (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   category VARCHAR(100) NOT NULL DEFAULT 'General Dentistry',
@@ -214,7 +175,7 @@ CREATE TABLE services (
   description TEXT NULL
 );
 
-CREATE TABLE dentist_services (
+CREATE TABLE IF NOT EXISTS dentist_services (
   dentist_id INT NOT NULL,
   service_id INT NOT NULL,
   PRIMARY KEY (dentist_id, service_id),
@@ -222,7 +183,15 @@ CREATE TABLE dentist_services (
   FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
 );
 
-CREATE TABLE dentist_schedules (
+CREATE TABLE IF NOT EXISTS dentist_specializations (
+  dentist_id INT NOT NULL,
+  specialization VARCHAR(100) NOT NULL,
+  PRIMARY KEY (dentist_id, specialization),
+  FOREIGN KEY (dentist_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_dentist_specializations_name (specialization)
+);
+
+CREATE TABLE IF NOT EXISTS dentist_schedules (
   id INT AUTO_INCREMENT PRIMARY KEY,
   dentist_id INT NOT NULL,
   branch_id INT NOT NULL,
@@ -233,7 +202,7 @@ CREATE TABLE dentist_schedules (
   FOREIGN KEY (branch_id) REFERENCES branches(id)
 );
 
-CREATE TABLE appointments (
+CREATE TABLE IF NOT EXISTS appointments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   branch_id INT NOT NULL,
   patient_id INT NOT NULL,
@@ -254,7 +223,7 @@ CREATE TABLE appointments (
   FOREIGN KEY (service_id) REFERENCES services(id)
 );
 
-CREATE TABLE appointment_settings (
+CREATE TABLE IF NOT EXISTS appointment_settings (
   setting_key VARCHAR(100) PRIMARY KEY,
   setting_value TEXT NOT NULL,
   updated_by INT NULL,
@@ -262,7 +231,7 @@ CREATE TABLE appointment_settings (
   FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE TABLE treatments (
+CREATE TABLE IF NOT EXISTS treatments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   appointment_id INT NOT NULL,
   dentist_id INT NOT NULL,
@@ -274,7 +243,7 @@ CREATE TABLE treatments (
   FOREIGN KEY (dentist_id) REFERENCES users(id)
 );
 
-CREATE TABLE treatment_plans (
+CREATE TABLE IF NOT EXISTS treatment_plans (
   id INT AUTO_INCREMENT PRIMARY KEY,
   patient_id INT NOT NULL,
   dentist_id INT NOT NULL,
@@ -293,7 +262,7 @@ CREATE TABLE treatment_plans (
   INDEX idx_treatment_plans_status (status)
 );
 
-CREATE TABLE patient_feedback (
+CREATE TABLE IF NOT EXISTS patient_feedback (
   id INT AUTO_INCREMENT PRIMARY KEY,
   appointment_id INT NOT NULL UNIQUE,
   branch_id INT NOT NULL,
@@ -314,7 +283,7 @@ CREATE TABLE patient_feedback (
   INDEX idx_patient_feedback_rating (rating)
 );
 
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   appointment_id INT NOT NULL,
   branch_id INT NOT NULL,
@@ -354,7 +323,7 @@ CREATE TABLE payments (
   INDEX idx_payments_paid_at (paid_at)
 );
 
-CREATE TABLE clinic_expenses (
+CREATE TABLE IF NOT EXISTS clinic_expenses (
   id INT AUTO_INCREMENT PRIMARY KEY,
   branch_id INT NOT NULL,
   category VARCHAR(100) NOT NULL,
@@ -373,7 +342,7 @@ CREATE TABLE clinic_expenses (
   INDEX idx_clinic_expenses_status (status)
 );
 
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
   id INT AUTO_INCREMENT PRIMARY KEY,
   branch_id INT NOT NULL,
   sender_id INT NOT NULL,
@@ -387,7 +356,7 @@ CREATE TABLE messages (
   FOREIGN KEY (receiver_id) REFERENCES users(id)
 );
 
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   type VARCHAR(50) NOT NULL,
@@ -401,7 +370,7 @@ CREATE TABLE notifications (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE supplies (
+CREATE TABLE IF NOT EXISTS supplies (
   id INT AUTO_INCREMENT PRIMARY KEY,
   branch_id INT NOT NULL,
   supply_name VARCHAR(255) NOT NULL,
@@ -431,7 +400,7 @@ CREATE TABLE supplies (
   INDEX idx_supplies_low (branch_id, quantity, low_stock_threshold)
 );
 
-CREATE TABLE medicines (
+CREATE TABLE IF NOT EXISTS medicines (
   id INT AUTO_INCREMENT PRIMARY KEY,
   branch_id INT NOT NULL,
 
@@ -465,7 +434,7 @@ CREATE TABLE medicines (
   INDEX idx_medicines_low (branch_id, quantity, low_stock_threshold)
 );
 
-CREATE TABLE equipment (
+CREATE TABLE IF NOT EXISTS equipment (
   id INT AUTO_INCREMENT PRIMARY KEY,
   branch_id INT NOT NULL,
 
@@ -506,16 +475,20 @@ CREATE TABLE equipment (
   INDEX idx_equipment_branch (branch_id)
 );
 
-CREATE TABLE service_kits (
+CREATE TABLE IF NOT EXISTS service_kits (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  service_id INT NOT NULL UNIQUE,
+  service_id INT NOT NULL,
+  branch_id INT NULL,
   notes VARCHAR(500) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (service_id) REFERENCES services(id)
+  FOREIGN KEY (service_id) REFERENCES services(id),
+  FOREIGN KEY (branch_id) REFERENCES branches(id),
+  UNIQUE KEY uniq_service_kit_branch (service_id, branch_id),
+  INDEX idx_service_kits_service_branch (service_id, branch_id)
 );
 
-CREATE TABLE service_kit_items (
+CREATE TABLE IF NOT EXISTS service_kit_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
   service_kit_id INT NOT NULL,
   category ENUM('supply', 'medicine', 'equipment') NOT NULL,
@@ -525,7 +498,7 @@ CREATE TABLE service_kit_items (
   INDEX idx_kit_items_kit (service_kit_id)
 );
 
-CREATE TABLE appointment_consumption (
+CREATE TABLE IF NOT EXISTS appointment_consumption (
   id INT AUTO_INCREMENT PRIMARY KEY,
   appointment_id INT NOT NULL,
   category ENUM('supply', 'medicine', 'equipment') NOT NULL,
@@ -540,7 +513,7 @@ CREATE TABLE appointment_consumption (
   INDEX idx_consumption_item (category, item_id)
 );
 
-CREATE TABLE inventory_usage_history (
+CREATE TABLE IF NOT EXISTS inventory_usage_history (
   id INT AUTO_INCREMENT PRIMARY KEY,
   appointment_id INT NOT NULL,
   branch_id INT NOT NULL,
@@ -563,7 +536,7 @@ CREATE TABLE inventory_usage_history (
   INDEX idx_usage_item (inventory_type, item_id)
 );
 
-CREATE TABLE schedule_requests (
+CREATE TABLE IF NOT EXISTS schedule_requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   dentist_id INT NOT NULL,
   request_type ENUM('leave', 'transfer') NOT NULL,
@@ -584,7 +557,7 @@ CREATE TABLE schedule_requests (
   INDEX idx_schedule_requests_status (status)
 );
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   action VARCHAR(100) NOT NULL,
@@ -597,7 +570,7 @@ CREATE TABLE audit_logs (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   token_hash VARCHAR(255) NOT NULL,
@@ -611,7 +584,7 @@ CREATE TABLE refresh_tokens (
   INDEX idx_user_platform (user_id, platform)
 );
 
-CREATE TABLE pending_registrations (
+CREATE TABLE IF NOT EXISTS pending_registrations (
   id INT AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(150) NOT NULL,
   name VARCHAR(100) NOT NULL,
@@ -625,7 +598,7 @@ CREATE TABLE pending_registrations (
   INDEX idx_email_role (email, intended_role)
 );
 
-CREATE TABLE online_appointments_tbl (
+CREATE TABLE IF NOT EXISTS online_appointments_tbl (
   id INT AUTO_INCREMENT PRIMARY KEY,
   appointment_date DATE NOT NULL,
   appointment_time TIME NOT NULL,
@@ -643,7 +616,7 @@ CREATE TABLE online_appointments_tbl (
   FOREIGN KEY (assigned_dentist_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE TABLE online_inquiries_tbl (
+CREATE TABLE IF NOT EXISTS online_inquiries_tbl (
   id INT AUTO_INCREMENT PRIMARY KEY,
   full_name VARCHAR(150) NOT NULL,
   email_address VARCHAR(150) NOT NULL,
@@ -656,7 +629,7 @@ CREATE TABLE online_inquiries_tbl (
   INDEX idx_online_inquiry_branch (branch)
 );
 
-CREATE TABLE inquiry_replies (
+CREATE TABLE IF NOT EXISTS inquiry_replies (
   id INT AUTO_INCREMENT PRIMARY KEY,
   inquiry_id INT NOT NULL,
   replied_by INT NOT NULL,
@@ -668,7 +641,7 @@ CREATE TABLE inquiry_replies (
   INDEX idx_inquiry_replies_inquiry_id (inquiry_id)
 );
 
-CREATE TABLE website_content (
+CREATE TABLE IF NOT EXISTS website_content (
   id INT AUTO_INCREMENT PRIMARY KEY,
   section VARCHAR(50) NOT NULL,
   field_key VARCHAR(100) NOT NULL,
@@ -677,7 +650,7 @@ CREATE TABLE website_content (
   UNIQUE KEY uq_wc_section_key (section, field_key)
 );
 
-CREATE TABLE website_faqs (
+CREATE TABLE IF NOT EXISTS website_faqs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   question TEXT NOT NULL,
   answer TEXT NOT NULL,
@@ -686,7 +659,7 @@ CREATE TABLE website_faqs (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE website_services (
+CREATE TABLE IF NOT EXISTS website_services (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
   image_path VARCHAR(255) NULL,
@@ -697,7 +670,7 @@ CREATE TABLE website_services (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE website_announcements (
+CREATE TABLE IF NOT EXISTS website_announcements (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   message TEXT NOT NULL,

@@ -155,7 +155,15 @@ function filterSlotResultFrom(result, minStartISO) {
 }
 
 export default function BookSuggestionsScreen({ navigation, route }) {
-  const { service, branchId, branchName, rescheduleAppointmentId, preferredDate: aiDate, preferredTime: aiTime } = route.params;
+  const {
+    service,
+    branchId,
+    branchName,
+    rescheduleAppointmentId,
+    rescheduleReason,
+    preferredDate: aiDate,
+    preferredTime: aiTime,
+  } = route.params;
   const [resolvedService, setResolvedService] = useState(service);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -390,6 +398,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
       branchName,
       suggestion,
       rescheduleAppointmentId: rescheduleAppointmentId || null,
+      rescheduleReason: rescheduleReason || '',
     });
   }
 
