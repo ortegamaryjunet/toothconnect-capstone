@@ -241,6 +241,8 @@ const expenseGold = '#d4af37';
 const expenseGoldDark = '#9a6b00';
 const expenseGoldSoft = '#fff8e1';
 const expenseGoldBorder = '#f3d675';
+const LETTERS_AND_SPACES_ONLY = /^[A-Za-z\s]+$/;
+const editLettersOnlyFields = ['genericName', 'category', 'unit'];
 
 function uniqueSortedNames(rows, fieldName) {
   return Array.from(
@@ -300,6 +302,7 @@ export default function InventoryPage() {
     maxStock: '',
     maintenanceStatus: '',
   });
+  const [editTouchedFields, setEditTouchedFields] = useState({});
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const [inventoryLoading, setInventoryLoading] = useState(false);
@@ -957,6 +960,7 @@ export default function InventoryPage() {
           : item.maintenanceStatus || 'Available',
     });
     setEditError('');
+    setEditTouchedFields({});
     setShowEditModal(true);
   }
 
@@ -966,6 +970,7 @@ export default function InventoryPage() {
     setShowEditCancelConfirmModal(false);
     setSelectedInventoryItem(null);
     setEditError('');
+    setEditTouchedFields({});
   }
 
   function closeEditConfirmModal() {
@@ -986,10 +991,88 @@ export default function InventoryPage() {
   }
 
   function handleEditFormChange(field, value) {
+    setEditTouchedFields((prev) => ({ ...prev, [field]: true }));
     setEditForm((prev) => ({
       ...prev,
       [field]: value,
     }));
+  }
+
+  function handleEditFieldBlur(field) {
+    setEditTouchedFields((prev) => ({ ...prev, [field]: true }));
+  }
+
+  function getRequiredEditFields() {
+    if (!selectedInventoryItem) return [];
+
+    if (selectedInventoryItem.type === 'medicine') {
+      return ['genericName', 'form', 'dosage', 'category', 'threshold', 'unit'];
+    }
+
+    if (selectedInventoryItem.type === 'supplies') {
+      return ['brand', 'category', 'threshold', 'unit'];
+    }
+
+    return ['category', 'threshold', 'maintenanceStatus'];
+  }
+
+  function isEditFieldInvalid(field) {
+    return editTouchedFields[field] && Boolean(getEditFieldError(field));
+  }
+
+  function getEditFieldError(field) {
+    const value = String(editForm[field] ?? '');
+    const trimmedValue = value.trim();
+
+    if (getRequiredEditFields().includes(field) && trimmedValue === '') {
+      return 'This field is required.';
+    }
+
+    if (
+      editLettersOnlyFields.includes(field) &&
+      trimmedValue !== '' &&
+      !LETTERS_AND_SPACES_ONLY.test(trimmedValue)
+    ) {
+      return 'Only letters and spaces are allowed.';
+    }
+
+    return '';
+  }
+
+  function getEditFieldStyle(field) {
+    return {
+      ...styles.formInput,
+      ...(isEditFieldInvalid(field)
+        ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+        : {}),
+    };
+  }
+
+  function renderEditRequiredLabel(label) {
+    return (
+      <span style={styles.formLabel}>
+        {label} <span style={{ color: '#dc2626' }}>*</span>
+      </span>
+    );
+  }
+
+  function renderEditFieldError(field) {
+    const message = editTouchedFields[field] ? getEditFieldError(field) : '';
+    if (!message) return null;
+
+    return (
+      <span
+        style={{
+          color: '#dc2626',
+          fontSize: 12,
+          fontWeight: 700,
+          fontFamily: 'Arial, sans-serif',
+          lineHeight: 1.25,
+        }}
+      >
+        {message}
+      </span>
+    );
   }
 
   function buildEditPayload() {
@@ -1013,24 +1096,24 @@ export default function InventoryPage() {
 
     return type === 'medicine'
       ? {
-          generic_name: editForm.genericName,
-          category: editForm.category,
-          form: editForm.form,
-          dosage: editForm.dosage,
-          unit: editForm.unit,
+          generic_name: editForm.genericName.trim(),
+          category: editForm.category.trim(),
+          form: editForm.form.trim(),
+          dosage: editForm.dosage.trim(),
+          unit: editForm.unit.trim(),
           ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
           ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
         }
       : type === 'supplies'
       ? {
-          brand: editForm.brand,
-          category: editForm.category,
-          unit: editForm.unit,
+          brand: editForm.brand.trim(),
+          category: editForm.category.trim(),
+          unit: editForm.unit.trim(),
           ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
           ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
         }
       : {
-          category: editForm.category,
+          category: editForm.category.trim(),
           maintenance_status: editForm.maintenanceStatus,
           ...(typeof thresholdValue === 'number' ? { low_stock_threshold: thresholdValue } : {}),
           ...(typeof maxStockValue === 'number' ? { maximum_stock: maxStockValue } : {}),
@@ -1079,6 +1162,23 @@ export default function InventoryPage() {
     if (!selectedInventoryItem) return;
 
     setEditError('');
+    const requiredFields = getRequiredEditFields();
+    const hasMissingRequiredField = requiredFields.some(
+      (field) => String(editForm[field] ?? '').trim() === ''
+    );
+    const invalidCharacterFields = editLettersOnlyFields.filter(
+      (field) => String(editForm[field] ?? '').trim() !== '' && getEditFieldError(field)
+    );
+
+    if (hasMissingRequiredField || invalidCharacterFields.length) {
+      const invalidFields = Array.from(new Set([...requiredFields, ...invalidCharacterFields]));
+      setEditTouchedFields((prev) => ({
+        ...prev,
+        ...Object.fromEntries(invalidFields.map((field) => [field, true])),
+      }));
+      return;
+    }
+
     const payload = buildEditPayload();
     if (!payload) return;
 
@@ -1929,71 +2029,81 @@ export default function InventoryPage() {
           {selectedInventoryItem.type === 'medicine' && (
             <>
               <label style={styles.formGroup}>
-                <span style={styles.formLabel}>Generic Name</span>
+                {renderEditRequiredLabel('Generic Name')}
                 <input
                   type="text"
                   value={editForm.genericName}
                   onChange={(event) =>
                     handleEditFormChange('genericName', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleEditFieldBlur('genericName')}
+                  style={getEditFieldStyle('genericName')}
                 />
+                {renderEditFieldError('genericName')}
               </label>
 
               <label style={styles.formGroup}>
-                <span style={styles.formLabel}>Form</span>
+                {renderEditRequiredLabel('Form')}
                 <input
                   type="text"
                   value={editForm.form}
                   onChange={(event) =>
                     handleEditFormChange('form', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleEditFieldBlur('form')}
+                  style={getEditFieldStyle('form')}
                 />
+                {renderEditFieldError('form')}
               </label>
 
               <label style={styles.formGroup}>
-                <span style={styles.formLabel}>Dosage</span>
+                {renderEditRequiredLabel('Dosage')}
                 <input
                   type="text"
                   value={editForm.dosage}
                   onChange={(event) =>
                     handleEditFormChange('dosage', event.target.value)
                   }
-                  style={styles.formInput}
+                  onBlur={() => handleEditFieldBlur('dosage')}
+                  style={getEditFieldStyle('dosage')}
                 />
+                {renderEditFieldError('dosage')}
               </label>
             </>
           )}
 
           {selectedInventoryItem.type === 'supplies' && (
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Brand</span>
+              {renderEditRequiredLabel('Brand')}
               <input
                 type="text"
                 value={editForm.brand}
                 onChange={(event) =>
                   handleEditFormChange('brand', event.target.value)
                 }
-                style={styles.formInput}
+                onBlur={() => handleEditFieldBlur('brand')}
+                style={getEditFieldStyle('brand')}
               />
+              {renderEditFieldError('brand')}
             </label>
           )}
 
           <label style={styles.formGroup}>
-            <span style={styles.formLabel}>Category</span>
+            {renderEditRequiredLabel('Category')}
             <input
               type="text"
               value={editForm.category}
               onChange={(event) =>
                 handleEditFormChange('category', event.target.value)
               }
-              style={styles.formInput}
+              onBlur={() => handleEditFieldBlur('category')}
+              style={getEditFieldStyle('category')}
             />
+            {renderEditFieldError('category')}
           </label>
 
           <label style={styles.formGroup}>
-            <span style={styles.formLabel}>Critical Stock Level</span>
+            {renderEditRequiredLabel('Critical Stock Level')}
             <input
               type="number"
               inputMode="numeric"
@@ -2003,8 +2113,10 @@ export default function InventoryPage() {
               onChange={(event) =>
                 handleEditFormChange('threshold', event.target.value)
               }
-              style={styles.formInput}
+              onBlur={() => handleEditFieldBlur('threshold')}
+              style={getEditFieldStyle('threshold')}
             />
+            {renderEditFieldError('threshold')}
           </label>
 
           <label style={styles.formGroup}>
@@ -2024,36 +2136,45 @@ export default function InventoryPage() {
 
           {selectedInventoryItem.type !== 'equipment' && (
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Unit</span>
+              {renderEditRequiredLabel('Unit')}
               <input
                 type="text"
                 value={editForm.unit}
                 onChange={(event) =>
                   handleEditFormChange('unit', event.target.value)
                 }
-                style={styles.formInput}
+                onBlur={() => handleEditFieldBlur('unit')}
+                style={getEditFieldStyle('unit')}
               />
+              {renderEditFieldError('unit')}
             </label>
           )}
 
           {selectedInventoryItem.type === 'equipment' && (
             <label style={styles.formGroup}>
-              <span style={styles.formLabel}>Maintenance Status</span>
+              {renderEditRequiredLabel('Maintenance Status')}
               <select
                 value={editForm.maintenanceStatus}
                 onChange={(event) =>
                   handleEditFormChange('maintenanceStatus', event.target.value)
                 }
-                style={styles.formInput}
+                onBlur={() => handleEditFieldBlur('maintenanceStatus')}
+                style={getEditFieldStyle('maintenanceStatus')}
               >
                 <option value="Available">Available</option>
                 <option value="Under Maintenance">Under Maintenance</option>
                 <option value="Needs Repair">Needs Repair</option>
                 <option value="Retired">Retired</option>
               </select>
+              {renderEditFieldError('maintenanceStatus')}
             </label>
           )}
         </div>
+
+        <p style={styles.helperText}>
+          Item name, branch, supplier, quantity, and price are managed through
+          expense input.
+        </p>
 
         {editError && (
           <p
@@ -2755,21 +2876,24 @@ export default function InventoryPage() {
                 <div
                   key={change.label}
                   style={{
-                    border: `1px solid ${expenseGoldBorder}`,
-                    borderRadius: 10,
-                    background: '#fffdf7',
-                    padding: '10px 12px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '7px 0',
+                    borderBottom: '1px solid #f1f5f9',
+                    fontSize: 13,
                     textAlign: 'left',
                   }}
                 >
-                  <strong style={{ display: 'block', color: '#3f2f08', fontSize: 13, marginBottom: 6 }}>
+                  <span style={{ color: '#64748b' }}>
                     {change.label}
+                    <small style={{ display: 'block', color: '#94a3b8', marginTop: 2 }}>
+                      {change.before === 'N/A' ? 'Added' : 'Changed'}
+                    </small>
+                  </span>
+                  <strong style={{ color: '#0f172a', textAlign: 'right', maxWidth: 260, overflowWrap: 'anywhere' }}>
+                    {change.after}
                   </strong>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center', fontSize: 12, color: '#64748b' }}>
-                    <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{change.before}</span>
-                    <span style={{ color: expenseGoldDark, fontWeight: 800 }}>to</span>
-                    <span style={{ minWidth: 0, overflowWrap: 'anywhere', color: '#3f2f08', fontWeight: 800 }}>{change.after}</span>
-                  </div>
                 </div>
               ))}
             </div>
