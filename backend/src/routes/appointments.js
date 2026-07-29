@@ -8,7 +8,7 @@ const {
   addMinutes,
   startOfUTCDay,
 } = require('../utils/scheduling');
-const { clinicDateKeyFromUtcDate } = require('../utils/clinic');
+const { CLINIC_TIMEZONE_OFFSET_MINUTES, clinicDateKeyFromUtcDate } = require('../utils/clinic');
 const { getApprovedLeaveForDentistOnDate } = require('../utils/leaves');
 const { sendPushToUser } = require('../services/push');
 const { suggestSlots } = require('../services/scheduler');
@@ -33,10 +33,11 @@ const PATIENT_CANCELLATION_LOCK_HOURS = 24;
 let appointmentSettingsTableReady = false;
 
 function formatScheduleStampForNote(dateValue) {
-  const stamp = toMySQLDateTime(new Date(dateValue));
-  const [datePart, timePart = '00:00:00'] = stamp.split(' ');
-  const [hourText = '0', minuteText = '00'] = timePart.split(':');
-  const hour24 = Number(hourText);
+  const date = new Date(dateValue);
+  const shifted = new Date(date.getTime() + CLINIC_TIMEZONE_OFFSET_MINUTES * 60 * 1000);
+  const datePart = `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
+  const hour24 = shifted.getUTCHours();
+  const minuteText = String(shifted.getUTCMinutes()).padStart(2, '0');
   const period = hour24 >= 12 ? 'PM' : 'AM';
   const hour12 = hour24 % 12 || 12;
 

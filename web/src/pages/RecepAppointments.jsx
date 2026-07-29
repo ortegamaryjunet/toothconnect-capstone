@@ -2623,7 +2623,10 @@ function normalizeAppointments(items) {
       item.note ||
       item.notes ||
       '';
-    const scheduleMeta = extractRescheduleScheduleMeta(unifiedNote);
+    const scheduleMeta = normalizeRescheduleScheduleMeta(
+      extractRescheduleScheduleMeta(unifiedNote),
+      displayDate
+    );
     const hasRescheduleText = /reschedul/i.test(unifiedNote);
     const isRescheduledPending =
       String(item.status || '').toLowerCase() === 'scheduled' &&
@@ -3077,6 +3080,71 @@ function extractRescheduleScheduleMeta(noteText) {
     originalSchedule: originalMatch?.[1]?.trim() || '',
     rescheduledSchedule: rescheduledMatch?.[1]?.trim() || legacyMatch?.[1]?.trim() || '',
     rescheduleReason: reasonMatch?.[1]?.trim() || '',
+  };
+}
+
+function normalizeRescheduleScheduleMeta(scheduleMeta, displayDate) {
+  if (!scheduleMeta?.rescheduledSchedule || !displayDate?.fullDate || !displayDate?.time) {
+    return scheduleMeta;
+  }
+
+  const expectedCurrentSchedule = formatScheduleStamp(displayDate.fullDate, displayDate.time);
+  const shiftedRescheduled = shiftScheduleStampByMinutes(scheduleMeta.rescheduledSchedule, 8 * 60);
+
+  if (!shiftedRescheduled || !scheduleStampsMatch(shiftedRescheduled, expectedCurrentSchedule)) {
+    return scheduleMeta;
+  }
+
+  return {
+    ...scheduleMeta,
+    originalSchedule:
+      shiftScheduleStampByMinutes(scheduleMeta.originalSchedule, 8 * 60) ||
+      scheduleMeta.originalSchedule,
+    rescheduledSchedule: expectedCurrentSchedule,
+  };
+}
+
+function shiftScheduleStampByMinutes(scheduleStamp, minutesToAdd) {
+  const parsed = parseScheduleStamp(scheduleStamp);
+  if (!parsed) return '';
+
+  const date = new Date(
+    parsed.year,
+    parsed.month - 1,
+    parsed.day,
+    0,
+    parsed.minutes + minutesToAdd,
+    0,
+    0
+  );
+
+  return formatScheduleStamp(toDateKey(date), formatMinutesToTime(date.getHours() * 60 + date.getMinutes()));
+}
+
+function scheduleStampsMatch(left, right) {
+  const leftParsed = parseScheduleStamp(left);
+  const rightParsed = parseScheduleStamp(right);
+
+  return Boolean(leftParsed && rightParsed) &&
+    leftParsed.year === rightParsed.year &&
+    leftParsed.month === rightParsed.month &&
+    leftParsed.day === rightParsed.day &&
+    leftParsed.minutes === rightParsed.minutes;
+}
+
+function parseScheduleStamp(scheduleStamp) {
+  const value = String(scheduleStamp || '').trim();
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})\s+(.+)$/);
+  if (!match) return null;
+
+  const minutes = parseTimeToMinutes(match[4]);
+  if (!Number.isFinite(minutes)) return null;
+
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    minutes,
   };
 }
 
