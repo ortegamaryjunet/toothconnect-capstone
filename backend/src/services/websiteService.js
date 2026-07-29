@@ -206,6 +206,15 @@ async function listClinicServices() {
           if (branch.name) names.push(branch.name);
           return names;
         }),
+        available_branch_keys: availableBranchIds.flatMap((branchId) => {
+          const branch = branchById.get(Number(branchId));
+          if (!branch) return [];
+          return [branch.address, branch.name]
+            .filter(Boolean)
+            .flatMap((value) => [value, `${value} Branch`])
+            .map(canonicalizeBranchText)
+            .filter(Boolean);
+        }),
       });
     }
   }

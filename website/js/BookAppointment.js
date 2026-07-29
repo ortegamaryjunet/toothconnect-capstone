@@ -39,9 +39,15 @@ function getBookingServiceName(service) {
 function serviceMatchesSelectedBranch(service, branch) {
     if (!branch || typeof service === "string") return true;
     const selected = normalizeBookingBranch(branch);
+    const branchKeys = Array.isArray(service.available_branch_keys) ? service.available_branch_keys : [];
     const branchNames = Array.isArray(service.available_branch_names) ? service.available_branch_names : [];
-    return branchNames.some(function (branchName) {
-        return normalizeBookingBranch(branchName) === selected;
+    const candidates = branchKeys.length > 0
+        ? branchKeys
+        : branchNames.map(normalizeBookingBranch);
+    if (candidates.length === 0) return true;
+    return candidates.some(function (branchName) {
+        const candidate = normalizeBookingBranch(branchName);
+        return candidate === selected || candidate.includes(selected) || selected.includes(candidate);
     });
 }
 
