@@ -1314,7 +1314,7 @@ setWebsiteContentSaveConfirmModal({
     let newValue = value;
 
     if (name === 'name' || name === 'category') {
-      newValue = allowLettersOnly(value);
+      newValue = allowServiceNameText(value);
     }
 
     if (name === 'price') {
