@@ -814,6 +814,10 @@ function splitName(name = '') {
   };
 }
 
+function formatPatientDisplayId(index = 0) {
+  return `PI-${String(Number(index) + 1).padStart(4, '0')}`;
+}
+
 function mapPatientRow(row, index = 0) {
   const fullName = row.full_name || row.fullName || row.name || '';
   const nameParts = splitName(fullName);
@@ -824,7 +828,7 @@ function mapPatientRow(row, index = 0) {
   const userId = row.user_id || row.userId || row.id;
 
   return {
-    id: String(index + 1),
+    id: formatPatientDisplayId(index),
     rawId: row.id,
     userId,
     lastName,

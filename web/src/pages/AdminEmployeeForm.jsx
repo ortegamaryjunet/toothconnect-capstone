@@ -424,6 +424,7 @@ export default function AdminEmployeeForm() {
   const [specializationsLoading, setSpecializationsLoading] = useState(false);
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
   const [selectedDentistSpecializations, setSelectedDentistSpecializations] = useState([]);
+  const [additionalDentistBranchIds, setAdditionalDentistBranchIds] = useState([]);
   const [formErrors, setFormErrors] = useState(new Set());
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
@@ -475,6 +476,9 @@ export default function AdminEmployeeForm() {
   const dentistOptions = dentists.length > 0 ? dentists : [];
   const specializationOptions =
     serviceCategories.length > 0 ? serviceCategories : DENTIST_SPECIALIZATIONS;
+  const additionalBranchOptions = branchOptions.filter(
+    (option) => String(option.value) !== String(selectedBranchId)
+  );
 
   function createDentistScheduleBlock(day, overrides = {}) {
     return {
@@ -652,6 +656,7 @@ export default function AdminEmployeeForm() {
     setSelectedBranchId('');
     setSelectedSpecialization('');
     setSelectedDentistSpecializations([]);
+    setAdditionalDentistBranchIds([]);
     setEnablePerDayBranch(false);
     setDentistWorkDays([]);
     setDentistScheduleBlocks({});
@@ -1002,7 +1007,10 @@ export default function AdminEmployeeForm() {
         name: fullName,
         role,
         home_branch_id: branchId,
-        branch_ids: [branchId],
+        branch_ids: [
+          branchId,
+          ...additionalDentistBranchIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0),
+        ],
         phone: payload[`${prefix}Contact`],
         password: payload.accessPassword,
         department: isDentist ? (dentistSpecializationText || null) : null,
@@ -1331,6 +1339,9 @@ export default function AdminEmployeeForm() {
           value={selectedBranchId}
           onChange={(e) => {
             setSelectedBranchId(e.target.value);
+            setAdditionalDentistBranchIds((prev) =>
+              (Array.isArray(prev) ? prev : []).filter((branchId) => String(branchId) !== String(e.target.value))
+            );
             if (e.target.value) setFormErrors((prev) => { const n = new Set(prev); n.delete('branchId'); return n; });
           }}
           style={{ ...styles.input, ...(hasError ? { borderColor: '#dc2626', borderWidth: '2px' } : {}) }}
@@ -1342,6 +1353,49 @@ export default function AdminEmployeeForm() {
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
+      </div>
+    );
+  }
+
+  function toggleAdditionalDentistBranch(value, checked) {
+    setAdditionalDentistBranchIds((prev) => {
+      const next = new Set(Array.isArray(prev) ? prev : []);
+      if (checked) next.add(String(value));
+      else next.delete(String(value));
+      return Array.from(next);
+    });
+  }
+
+  function renderAdditionalDentistBranches() {
+    if (employeeType !== 'dentist') return null;
+
+    return (
+      <div style={styles.field}>
+        <label style={styles.label}>Also Dentist In Branches (Optional)</label>
+        <div style={styles.scheduleGrid}>
+          {!selectedBranchId ? (
+            <span style={{ color: '#64748b', fontSize: 14 }}>Select assigned branch first</span>
+          ) : additionalBranchOptions.length === 0 ? (
+            <span style={{ color: '#64748b', fontSize: 14 }}>No other branches available</span>
+          ) : (
+            additionalBranchOptions.map((option) => (
+              <label key={option.value} style={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={additionalDentistBranchIds.includes(String(option.value))}
+                  onChange={(event) =>
+                    toggleAdditionalDentistBranch(option.value, event.target.checked)
+                  }
+                  style={styles.checkboxInput}
+                />
+                {option.label}
+              </label>
+            ))
+          )}
+        </div>
+        <p style={{ margin: '6px 0 0', color: '#6f675b', fontSize: 12 }}>
+          These branches show the dentist as part of the branch, but do not create appointment availability.
+        </p>
       </div>
     );
   }
@@ -1500,6 +1554,9 @@ export default function AdminEmployeeForm() {
           <>
             <div style={styles.rowTwo}>
               {renderBranchSelect()}
+              {renderAdditionalDentistBranches()}
+            </div>
+            <div style={styles.rowTwo}>
               {renderDentistSpecializationSelect()}
               <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
             </div>

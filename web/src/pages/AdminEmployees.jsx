@@ -196,6 +196,14 @@ function parseSpecializations(value) {
     .filter(Boolean);
 }
 
+function normalizeBranchIdArray(value) {
+  return [...new Set(
+    (Array.isArray(value) ? value : String(value || '').split(','))
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+  )];
+}
+
 function formatScheduleEntries(entries = []) {
   if (!Array.isArray(entries) || entries.length === 0) {
     return [];
@@ -1230,6 +1238,10 @@ export default function AdminEmployees() {
       return branch?.address ? `${branch.name} - ${branch.address}` : branch?.name || employee?.branchAddress || value || 'Not selected';
     }
 
+    if (name === 'additionalBranchIds' || name === 'branchIds') {
+      return formatBranchList(value) || 'None';
+    }
+
     if (name === 'workDays') {
       const days = parseWorkDays(value);
       return days.length ? days.join(', ') : 'Not selected';
@@ -1269,6 +1281,7 @@ export default function AdminEmployees() {
       ['assignedDentist', 'Assigned Dentist'],
       ['startDate', 'Start Date'],
       ['branchId', 'Assigned Branch'],
+      ['additionalBranchIds', 'Also Dentist In Branches'],
       ['employmentType', 'Employment Type'],
       ['shiftType', 'Shift Type'],
       ['workDays', 'Work Days'],
@@ -1632,6 +1645,13 @@ export default function AdminEmployees() {
               branchAddress: selected?.address
                 ? `${selected.name} - ${selected.address}`
                 : selected?.name || '',
+              additionalBranchIds: (Array.isArray(prev?.additionalBranchIds) ? prev.additionalBranchIds : [])
+                .filter((branchId) => String(branchId) !== String(event.target.value)),
+              branchIds: [
+                event.target.value,
+                ...(Array.isArray(prev?.additionalBranchIds) ? prev.additionalBranchIds : [])
+                  .filter((branchId) => String(branchId) !== String(event.target.value)),
+              ].filter(Boolean),
             }));
 
             if (event.target.value) {
@@ -1670,6 +1690,107 @@ export default function AdminEmployees() {
             Assigned Branch is locked until active appointments in this branch are completed.
           </span>
         )}
+      </div>
+    );
+  }
+
+  function toggleEditedAdditionalBranch(value, checked) {
+    setEditedEmployee((prev) => {
+      const homeBranchId = String(prev?.branchId || '');
+      const next = new Set((Array.isArray(prev?.additionalBranchIds) ? prev.additionalBranchIds : []).map(String));
+
+      if (checked && String(value) !== homeBranchId) next.add(String(value));
+      else next.delete(String(value));
+
+      const additionalBranchIds = Array.from(next);
+      return {
+        ...prev,
+        additionalBranchIds,
+        branchIds: Array.from(new Set([homeBranchId, ...additionalBranchIds].filter(Boolean))),
+      };
+    });
+  }
+
+  function formatBranchList(branchIds = []) {
+    const labels = normalizeBranchIdArray(branchIds)
+      .map((branchId) => {
+        const branch = branches.find((item) => String(item.id) === String(branchId));
+        return branch?.address ? `${branch.name} - ${branch.address}` : branch?.name || '';
+      })
+      .filter(Boolean);
+    return labels.join(', ');
+  }
+
+  function modalAdditionalBranches() {
+    if (editedEmployee?.role !== 'Dentist') return null;
+
+    const selected = normalizeBranchIdArray(editedEmployee?.additionalBranchIds);
+    const options = branches.filter((branch) => String(branch.id) !== String(editedEmployee?.branchId || ''));
+
+    if (!isEditingEmployee) {
+      return (
+        <div style={styles.employeeModalField}>
+          <label style={styles.employeeModalLabel}>Also Dentist In Branches</label>
+          <input
+            type="text"
+            value={formatBranchList(selected) || 'None'}
+            readOnly
+            style={{
+              ...styles.employeeModalInput,
+              ...styles.employeeModalInputReadOnly,
+            }}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div style={styles.employeeModalField}>
+        <label style={styles.employeeModalLabel}>Also Dentist In Branches (Optional)</label>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '12px 20px',
+            padding: 12,
+            border: '1px solid #d9e2ef',
+            borderRadius: 12,
+            background: '#f8fafc',
+          }}
+        >
+          {options.length === 0 ? (
+            <span style={{ color: '#64748b', fontSize: 13 }}>No other branches available</span>
+          ) : (
+            options.map((branch) => {
+              const value = String(branch.id);
+              return (
+                <label
+                  key={branch.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    color: '#172554',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.map(String).includes(value)}
+                    onChange={(event) =>
+                      toggleEditedAdditionalBranch(value, event.target.checked)
+                    }
+                  />
+                  {branch.address ? `${branch.name} - ${branch.address}` : branch.name}
+                </label>
+              );
+            })
+          )}
+        </div>
+        <span style={{ color: '#6f675b', fontSize: 12, marginTop: 4 }}>
+          These branches show the dentist as part of the branch, but do not create appointment availability.
+        </span>
       </div>
     );
   }
@@ -1885,9 +2006,10 @@ export default function AdminEmployees() {
                         padding: '8px 12px',
                         minWidth: 110,
                         height: 38,
-                        background: '#eef2f7',
-                        color: '#0f172a',
+                        background: isLocked ? '#eef2f7' : '#d4af37',
+                        color: isLocked ? '#0f172a' : '#ffffff',
                         opacity: isLocked ? 0.55 : 1,
+                        boxShadow: isLocked ? 'none' : '0 8px 18px rgba(139, 101, 8, 0.18)',
                       }}
                     >
                       Add Branch
@@ -2476,8 +2598,10 @@ export default function AdminEmployees() {
                           'text',
                           filterProfTextVal
                         )}
-                    {editedEmployee?.role === 'Dental Assistant' &&
-                      modalField('Assigned Dentist', 'assignedDentist')}
+                    {editedEmployee?.role === 'Dentist'
+                      ? modalAdditionalBranches()
+                      : editedEmployee?.role === 'Dental Assistant' &&
+                        modalField('Assigned Dentist', 'assignedDentist')}
                   </div>
                 )}
 
@@ -2924,6 +3048,13 @@ function formatCSVValue(value) {
 function employeeToStaffPayload(employee) {
   const payload = {
     branchId: employee.branchId,
+    branchIds: employee.role === 'Dentist'
+      ? [
+          employee.branchId,
+          ...normalizeBranchIdArray(employee.additionalBranchIds),
+          ...normalizeBranchIdArray(employee.branchIds),
+        ]
+      : [employee.branchId].filter(Boolean),
     firstName: employee.firstName,
     middleName: employee.middleName,
     lastName: employee.lastName,

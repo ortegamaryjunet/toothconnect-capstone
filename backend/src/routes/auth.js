@@ -46,6 +46,60 @@ async function loadUserBranches(userId) {
   ])];
 }
 
+async function loadUserBranchAffiliationsByUserIds(userIds = []) {
+  const ids = (Array.isArray(userIds) ? userIds : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+
+  if (ids.length === 0) return new Map();
+
+  const placeholders = ids.map(() => '?').join(',');
+  const [rows] = await pool.query(
+    `SELECT user_id, branch_id, is_primary
+     FROM user_branches
+     WHERE user_id IN (${placeholders})
+     ORDER BY is_primary DESC, branch_id ASC`,
+    ids
+  );
+
+  const byUser = new Map();
+  for (const row of rows) {
+    const userId = Number(row.user_id);
+    if (!byUser.has(userId)) byUser.set(userId, []);
+    byUser.get(userId).push({
+      branch_id: Number(row.branch_id),
+      is_primary: Boolean(row.is_primary),
+    });
+  }
+
+  return byUser;
+}
+
+function normalizeBranchIdList(values = []) {
+  return [...new Set(
+    (Array.isArray(values) ? values : [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0)
+  )];
+}
+
+async function syncUserBranchAffiliations(conn, userId, homeBranchId, branchIds = []) {
+  const id = Number(userId);
+  const homeId = Number(homeBranchId);
+  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(homeId) || homeId <= 0) return;
+
+  const finalBranchIds = normalizeBranchIdList([homeId, ...branchIds]);
+
+  await conn.query('UPDATE users SET home_branch_id = ? WHERE id = ?', [homeId, id]);
+  await conn.query('DELETE FROM user_branches WHERE user_id = ?', [id]);
+  for (const branchId of finalBranchIds) {
+    await conn.query(
+      'INSERT INTO user_branches (user_id, branch_id, is_primary) VALUES (?, ?, ?)',
+      [id, branchId, branchId === homeId]
+    );
+  }
+}
+
 function formatMysqlDate(value) {
   if (!value) return null;
   if (value instanceof Date) {
@@ -63,6 +117,8 @@ function mapStaffProfileRow(row) {
     profileId: row.id,
     userId: row.user_id,
     branchId: row.branch_id,
+    branchIds: Array.isArray(row.branch_ids) ? row.branch_ids : [],
+    additionalBranchIds: Array.isArray(row.additional_branch_ids) ? row.additional_branch_ids : [],
     branchName: row.branch_name,
     branchAddress: row.branch_address,
     role: row.staff_type,
@@ -546,6 +602,17 @@ async function fetchStaffProfileBy(whereClause, params) {
   const mapped = mapStaffProfileRow(rows[0]);
   if (rows[0].user_role === 'dentist' && mapped.userId) {
     try {
+      const branchAffiliations = await loadUserBranchAffiliationsByUserIds([mapped.userId]);
+      const branchIds = (branchAffiliations.get(Number(mapped.userId)) || [])
+        .map((row) => row.branch_id);
+      mapped.branchIds = branchIds;
+      mapped.additionalBranchIds = branchIds.filter((branchId) => Number(branchId) !== Number(mapped.branchId));
+    } catch (_) {
+      mapped.branchIds = mapped.branchId ? [Number(mapped.branchId)] : [];
+      mapped.additionalBranchIds = [];
+    }
+
+    try {
       const schedulesByDentist = await loadDentistScheduleEntriesByDentistIds([mapped.userId]);
       mapped.scheduleEntries = schedulesByDentist.get(Number(mapped.userId)) || [];
     } catch (_) {
@@ -760,8 +827,10 @@ async function loadBranchesWithStats() {
        (
          SELECT COUNT(*)
          FROM users u
+         JOIN user_branches ub ON ub.user_id = u.id
          WHERE u.role = 'dentist'
-           AND u.home_branch_id = b.id
+           AND u.status = 'Active'
+           AND ub.branch_id = b.id
        ) AS dentist_count,
        (
          SELECT COUNT(*)
@@ -2111,11 +2180,16 @@ router.get('/staff-profiles', authenticate, requireRole('admin'), async (req, re
 
     const schedulesByDentist = await loadDentistScheduleEntriesByDentistIds(dentistUserIds);
     const specializationsByDentist = await loadDentistSpecializationsByDentistIds(dentistUserIds);
+    const branchAffiliationsByDentist = await loadUserBranchAffiliationsByUserIds(dentistUserIds);
 
     res.json({
       employees: rows.map((row) => {
         const mapped = mapStaffProfileRow(row);
         if (row.user_role === 'dentist') {
+          const branchIds = (branchAffiliationsByDentist.get(Number(row.user_id)) || [])
+            .map((branch) => branch.branch_id);
+          mapped.branchIds = branchIds;
+          mapped.additionalBranchIds = branchIds.filter((branchId) => Number(branchId) !== Number(mapped.branchId));
           mapped.scheduleEntries = schedulesByDentist.get(Number(row.user_id)) || [];
           const specializations =
             specializationsByDentist.get(Number(row.user_id)) ||
@@ -2281,6 +2355,20 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
           req.body.workDepartment ??
           req.body.work_department ??
           req.body.specialization
+      );
+    }
+
+    if (linkedUserIdForSchedule && linkedUserRole === 'dentist') {
+      const nextHomeBranchId = Number(req.body.branchId ?? req.body.branch_id ?? currentBranchIdForSchedule);
+      const requestedBranchIds = normalizeBranchIdList(req.body.branchIds ?? req.body.branch_ids ?? []);
+      const scheduleBranchIds = Array.isArray(req.body.schedule_entries)
+        ? req.body.schedule_entries.map((entry) => entry?.branch_id ?? entry?.branchId)
+        : [];
+      await syncUserBranchAffiliations(
+        pool,
+        linkedUserIdForSchedule,
+        nextHomeBranchId,
+        [...requestedBranchIds, ...scheduleBranchIds]
       );
     }
 

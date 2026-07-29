@@ -694,10 +694,12 @@ router.get('/dentists', requireRole('patient'), async (req, res) => {
         u.home_branch_id,
         b.name    AS branch_name,
         b.address AS branch_address,
+        GROUP_CONCAT(DISTINCT ub.branch_id ORDER BY ub.branch_id SEPARATOR ',') AS branch_ids,
         GROUP_CONCAT(DISTINCT svc.name  ORDER BY svc.name  SEPARATOR ', ') AS services,
         GROUP_CONCAT(DISTINCT ds.weekday ORDER BY ds.weekday SEPARATOR ',')  AS schedule_weekdays
       FROM users u
       LEFT JOIN branches b          ON b.id  = u.home_branch_id
+      LEFT JOIN user_branches ub    ON ub.user_id = u.id
       LEFT JOIN dentist_services dsvc ON dsvc.dentist_id = u.id
       LEFT JOIN services svc          ON svc.id = dsvc.service_id AND svc.status = 'Active'
       LEFT JOIN dentist_schedules ds  ON ds.dentist_id  = u.id
