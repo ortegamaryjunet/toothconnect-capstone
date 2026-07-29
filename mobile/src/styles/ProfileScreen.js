@@ -211,6 +211,43 @@ const styles = StyleSheet.create({
         borderWidth: 1.2,
     },
 
+    phoneRow: {
+        flexDirection: "row",
+        columnGap: 8,
+        alignItems: "center",
+    },
+
+    phoneCountryButton: {
+        minHeight: 43,
+        width: 112,
+        backgroundColor: "#FFFFFF",
+        borderWidth: 1,
+        borderColor: "#CFCFCF",
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+    },
+
+    phoneCountryText: {
+        fontSize: 13,
+        color: "#222222",
+        fontWeight: "700",
+    },
+
+    phoneCountryChevron: {
+        fontSize: 12,
+        color: "#B77A00",
+        fontWeight: "900",
+        marginLeft: 4,
+    },
+
+    phoneNumberInput: {
+        flex: 1,
+        minWidth: 0,
+    },
+
     errorText: {
         color: "#D9534F",
         fontSize: 11,

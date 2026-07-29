@@ -46,6 +46,74 @@ const NATIONALITIES = [
   "Other",
 ];
 
+const PHONE_COUNTRIES = [
+  { country: "PH", callingCode: "63", min: 10, max: 10, placeholder: "9123456789" },
+  { country: "US", callingCode: "1", min: 10, max: 10, placeholder: "2015550123" },
+  { country: "CA", callingCode: "1", min: 10, max: 10, placeholder: "4165550123" },
+  { country: "GB", callingCode: "44", min: 10, max: 10, placeholder: "7123456789" },
+  { country: "AU", callingCode: "61", min: 9, max: 9, placeholder: "412345678" },
+  { country: "SG", callingCode: "65", min: 8, max: 8, placeholder: "81234567" },
+  { country: "MY", callingCode: "60", min: 9, max: 10, placeholder: "123456789" },
+  { country: "JP", callingCode: "81", min: 10, max: 10, placeholder: "9012345678" },
+  { country: "KR", callingCode: "82", min: 9, max: 10, placeholder: "1012345678" },
+];
+
+function getPhoneCountry(country) {
+  return PHONE_COUNTRIES.find((item) => item.country === country) || PHONE_COUNTRIES[0];
+}
+
+function parsePhoneForForm(value) {
+  const raw = String(value || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) {
+    return { country: "PH", number: "" };
+  }
+
+  if (raw.startsWith("+")) {
+    const matched = PHONE_COUNTRIES
+      .filter((item) => digits.startsWith(item.callingCode))
+      .sort((a, b) => b.callingCode.length - a.callingCode.length)[0];
+
+    if (matched) {
+      return {
+        country: matched.country,
+        number: digits.slice(matched.callingCode.length),
+      };
+    }
+  }
+
+  if (digits.startsWith("0")) {
+    return { country: "PH", number: digits.slice(1) };
+  }
+
+  return { country: "PH", number: digits };
+}
+
+function formatPhoneForApi(value, country) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+
+  const selected = getPhoneCountry(country);
+  const nationalNumber =
+    selected.country === "PH" && digits.startsWith("0") ? digits.slice(1) : digits;
+
+  return `+${selected.callingCode}${nationalNumber}`;
+}
+
+function validatePhoneValue(value, country, required = true) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) {
+    return required ? "Contact number is required." : "";
+  }
+
+  const selected = getPhoneCountry(country);
+  if (digits.length < selected.min || digits.length > selected.max) {
+    return `Enter ${selected.min === selected.max ? selected.min : `${selected.min}-${selected.max}`} digits for +${selected.callingCode}.`;
+  }
+
+  return "";
+}
+
 function formatDisplayDate(value) {
   if (!value) return "";
   const raw = String(value).slice(0, 10);
@@ -83,10 +151,12 @@ export default function ProfileScreen({ navigation }) {
     occupation: "",
     sex: "",
     contact: "",
+    contactCountry: "PH",
     email: "",
     civilStatus: "",
     emergencyContactName: "",
     emergencyContactNumber: "",
+    emergencyContactCountry: "PH",
     medicalConditions: "",
     allergies: "",
     medications: "",
@@ -96,9 +166,15 @@ export default function ProfileScreen({ navigation }) {
   const originalFormRef = useRef(null);
 
   const [errors, setErrors] = useState({});
+  const [phoneCountryModal, setPhoneCountryModal] = useState({
+    visible: false,
+    field: "",
+  });
 
   const profileToForm = (profile = {}) => {
     const birthday = formatDisplayDate(profile.birthday);
+    const contactPhone = parsePhoneForForm(profile.contact_number);
+    const emergencyPhone = parsePhoneForForm(profile.emergency_contact_number);
 
     return {
       fullName: profile.full_name || user?.name || "",
@@ -108,11 +184,13 @@ export default function ProfileScreen({ navigation }) {
       homeAddress: profile.address || "",
       occupation: profile.occupation || "",
       sex: profile.sex || "",
-      contact: profile.contact_number || "",
+      contact: contactPhone.number,
+      contactCountry: contactPhone.country,
       email: profile.email || user?.email || "",
       civilStatus: profile.civil_status || "",
       emergencyContactName: profile.emergency_contact_name || "",
-      emergencyContactNumber: profile.emergency_contact_number || "",
+      emergencyContactNumber: emergencyPhone.number,
+      emergencyContactCountry: emergencyPhone.country,
       medicalConditions: profile.medical_conditions || "",
       allergies: profile.allergies || "",
       medications: profile.medications || "",
@@ -128,11 +206,13 @@ export default function ProfileScreen({ navigation }) {
     address: form.homeAddress.trim(),
     occupation: form.occupation.trim() || null,
     sex: form.sex.trim() || null,
-    contact_number: form.contact.trim(),
+    contact_number: formatPhoneForApi(form.contact, form.contactCountry),
     email: form.email.trim().toLowerCase(),
     civil_status: form.civilStatus.trim() || null,
     emergency_contact_name: form.emergencyContactName.trim() || null,
-    emergency_contact_number: form.emergencyContactNumber.trim() || null,
+    emergency_contact_number: form.emergencyContactNumber.trim()
+      ? formatPhoneForApi(form.emergencyContactNumber, form.emergencyContactCountry)
+      : null,
     medical_conditions: form.medicalConditions.trim() || null,
     allergies: form.allergies.trim() || null,
     medications: form.medications.trim() || null,
@@ -257,6 +337,45 @@ export default function ProfileScreen({ navigation }) {
     setErrors((prev) => ({
       ...prev,
       [field]: "",
+    }));
+  };
+
+  const updatePhoneField = (field, value) => {
+    const digits = String(value || "").replace(/\D/g, "");
+    const countryField =
+      field === "emergencyContactNumber"
+        ? "emergencyContactCountry"
+        : "contactCountry";
+    const required = field === "contact";
+    const country = form[countryField] || "PH";
+    const error = validatePhoneValue(digits, country, required);
+
+    setForm((prev) => ({
+      ...prev,
+      [field]: digits,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: error,
+    }));
+  };
+
+  const updatePhoneCountry = (field, country) => {
+    const phoneField =
+      field === "emergencyContactCountry"
+        ? "emergencyContactNumber"
+        : "contact";
+    const required = phoneField === "contact";
+
+    setForm((prev) => ({
+      ...prev,
+      [field]: country,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [phoneField]: validatePhoneValue(form[phoneField], country, required),
     }));
   };
 
@@ -385,12 +504,9 @@ export default function ProfileScreen({ navigation }) {
       newErrors.homeAddress = "Home address is required.";
     }
 
-    const phoneRegex = /^[0-9+\-\s()]{7,30}$/;
-
-    if (!form.contact.trim()) {
-      newErrors.contact = "Contact number is required.";
-    } else if (!phoneRegex.test(form.contact.trim())) {
-      newErrors.contact = "Please enter a valid contact number.";
+    const contactError = validatePhoneValue(form.contact, form.contactCountry, true);
+    if (contactError) {
+      newErrors.contact = contactError;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -401,12 +517,13 @@ export default function ProfileScreen({ navigation }) {
       newErrors.email = "Please enter a valid email address.";
     }
 
-    if (
-      form.emergencyContactNumber.trim() &&
-      !phoneRegex.test(form.emergencyContactNumber.trim())
-    ) {
-      newErrors.emergencyContactNumber =
-        "Please enter a valid emergency contact number.";
+    const emergencyContactError = validatePhoneValue(
+      form.emergencyContactNumber,
+      form.emergencyContactCountry,
+      false
+    );
+    if (emergencyContactError) {
+      newErrors.emergencyContactNumber = emergencyContactError;
     }
 
     setErrors(newErrors);
@@ -475,6 +592,59 @@ export default function ProfileScreen({ navigation }) {
     if (!errors[field]) return null;
 
     return <Text style={styles.errorText}>{errors[field]}</Text>;
+  };
+
+  const renderPhoneField = ({
+    label,
+    field,
+    countryField,
+    placeholderLabel = "Optional",
+    required = false,
+  }) => {
+    const selectedCountry = getPhoneCountry(form[countryField]);
+    const hasError = Boolean(errors[field]);
+
+    return (
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>{label}</Text>
+        <View style={styles.phoneRow}>
+          <TouchableOpacity
+            style={[
+              styles.phoneCountryButton,
+              !isEditing && styles.disabledInput,
+              hasError && styles.inputError,
+            ]}
+            activeOpacity={0.8}
+            disabled={!isEditing}
+            onPress={() =>
+              setPhoneCountryModal({ visible: true, field: countryField })
+            }
+          >
+            <Text style={styles.phoneCountryText}>
+              {selectedCountry.country} +{selectedCountry.callingCode}
+            </Text>
+            <Text style={styles.phoneCountryChevron}>v</Text>
+          </TouchableOpacity>
+
+          <TextInput
+            style={[
+              styles.input,
+              styles.phoneNumberInput,
+              !isEditing && styles.disabledInput,
+              hasError && styles.inputError,
+            ]}
+            value={form[field]}
+            onChangeText={(value) => updatePhoneField(field, value)}
+            placeholder={required ? selectedCountry.placeholder : placeholderLabel}
+            placeholderTextColor="#A8A8A8"
+            editable={isEditing}
+            keyboardType="phone-pad"
+            maxLength={selectedCountry.max}
+          />
+        </View>
+        {renderError(field)}
+      </View>
+    );
   };
 
   return (
@@ -709,24 +879,12 @@ export default function ProfileScreen({ navigation }) {
                   </View>
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Contact</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      !isEditing && styles.disabledInput,
-                      errors.contact && styles.inputError,
-                    ]}
-                    value={form.contact}
-                    onChangeText={(value) => updateField("contact", value)}
-                    placeholder="09XXXXXXXXX"
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                    keyboardType="phone-pad"
-                    maxLength={13}
-                  />
-                  {renderError("contact")}
-                </View>
+                {renderPhoneField({
+                  label: "Contact",
+                  field: "contact",
+                  countryField: "contactCountry",
+                  required: true,
+                })}
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email</Text>
@@ -783,26 +941,11 @@ export default function ProfileScreen({ navigation }) {
                   {renderError("emergencyContactName")}
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Emergency Contact Number</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      !isEditing && styles.disabledInput,
-                      errors.emergencyContactNumber && styles.inputError,
-                    ]}
-                    value={form.emergencyContactNumber}
-                    onChangeText={(value) =>
-                      updateField("emergencyContactNumber", value)
-                    }
-                    placeholder="Optional"
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                    keyboardType="phone-pad"
-                    maxLength={30}
-                  />
-                  {renderError("emergencyContactNumber")}
-                </View>
+                {renderPhoneField({
+                  label: "Emergency Contact Number",
+                  field: "emergencyContactNumber",
+                  countryField: "emergencyContactCountry",
+                })}
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Medical Conditions</Text>
@@ -1050,6 +1193,49 @@ export default function ProfileScreen({ navigation }) {
                 style={styles.modalCloseButton}
                 activeOpacity={0.8}
                 onPress={() => setNationalityModalVisible(false)}
+              >
+                <Text style={styles.modalCloseButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={phoneCountryModal.visible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPhoneCountryModal({ visible: false, field: "" })}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Select Country Code</Text>
+
+              <FlatList
+                data={PHONE_COUNTRIES}
+                keyExtractor={(item) => item.country}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.nationalityOption}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      if (phoneCountryModal.field) {
+                        updatePhoneCountry(phoneCountryModal.field, item.country);
+                      }
+                      setPhoneCountryModal({ visible: false, field: "" });
+                    }}
+                  >
+                    <Text style={styles.nationalityOptionText}>
+                      {item.country} +{item.callingCode}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                activeOpacity={0.8}
+                onPress={() => setPhoneCountryModal({ visible: false, field: "" })}
               >
                 <Text style={styles.modalCloseButtonText}>Cancel</Text>
               </TouchableOpacity>

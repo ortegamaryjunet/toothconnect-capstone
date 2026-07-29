@@ -87,6 +87,18 @@ export default function RecepAppointments() {
   });
   const [cancelReasonModal, setCancelReasonModal] = useState({ show: false, appointmentId: null });
   const [cancelReasonText, setCancelReasonText] = useState('');
+  const [cancelReasonError, setCancelReasonError] = useState('');
+  const [confirmActionModal, setConfirmActionModal] = useState({
+    show: false,
+    type: '',
+    appointmentId: null,
+    title: '',
+    message: '',
+    rows: [],
+    confirmText: '',
+    confirmStyle: 'gold',
+  });
+  const [rescheduleCancelConfirm, setRescheduleCancelConfirm] = useState(false);
   const [rescheduleModal, setRescheduleModal] = useState({
     show: false,
     appointment: null,
@@ -546,6 +558,25 @@ export default function RecepAppointments() {
       saving: false,
     });
     setRescheduleReasonText('');
+    setRescheduleCancelConfirm(false);
+  }
+
+  function requestCloseRescheduleModal() {
+    if (rescheduleModal.saving) return;
+    setRescheduleCancelConfirm(true);
+  }
+
+  function closeConfirmActionModal() {
+    setConfirmActionModal({
+      show: false,
+      type: '',
+      appointmentId: null,
+      title: '',
+      message: '',
+      rows: [],
+      confirmText: '',
+      confirmStyle: 'gold',
+    });
   }
 
   async function openCalendarServiceKitModal(appointment) {
@@ -760,7 +791,39 @@ export default function RecepAppointments() {
       return;
     }
 
+    const appointment = rescheduleModal.appointment;
+    const newTime = formatTimePickerValue(rescheduleModal.selectedTime);
+    const durationMinutes = getServiceDurationMinutes(
+      treatmentOptions,
+      appointment.serviceId
+    );
+
     setAppointmentsError('');
+    setConfirmActionModal({
+      show: true,
+      type: 'reschedule',
+      appointmentId: appointment.id,
+      title: 'Confirm Reschedule',
+      message: 'Please review the updated appointment details before rescheduling.',
+      confirmText: 'Reschedule',
+      confirmStyle: 'gold',
+      rows: [
+        { label: 'Patient', value: appointment.name || 'Not recorded' },
+        { label: 'Service', value: appointment.treatment || 'Not recorded' },
+        { label: 'Dentist', value: appointment.doctor || 'Not recorded' },
+        { label: 'Original Schedule', value: `${appointment.fullDate || '-'} ${appointment.time || '-'}` },
+        { label: 'New Schedule', value: `${rescheduleModal.selectedDate} ${newTime}` },
+        { label: 'Estimated Duration', value: getEstimatedTimeRange(newTime, durationMinutes) },
+        { label: 'Reason', value: rescheduleReasonText.trim() || 'Not provided' },
+      ],
+    });
+  }
+
+  async function submitRescheduleAfterConfirm() {
+    if (!rescheduleModal.appointment) return;
+
+    setAppointmentsError('');
+    closeConfirmActionModal();
     setRescheduleModal((current) => ({ ...current, saving: true }));
 
     try {
@@ -874,22 +937,63 @@ export default function RecepAppointments() {
     if (action === 'cancel') {
       setCancelReasonModal({ show: true, appointmentId: id });
       setCancelReasonText('');
+      setCancelReasonError('');
       return;
     }
 
-    setUpdatingId(id);
+    const appointment = pendingAppointments.find((item) => String(item.id) === String(id));
+
+    if (action === 'arrived') {
+      setConfirmActionModal({
+        show: true,
+        type: 'arrived',
+        appointmentId: id,
+        title: 'Mark as Arrived',
+        message: 'Are you sure you want to mark this appointment as arrived?',
+        rows: getActionSummaryRows(appointment),
+        confirmText: 'Mark as Arrived',
+        confirmStyle: 'gold',
+      });
+      return;
+    }
+
+    if (action === 'no_show') {
+      setConfirmActionModal({
+        show: true,
+        type: 'no_show',
+        appointmentId: id,
+        title: 'Mark as No-Show',
+        message: 'Are you sure you want to mark this appointment as no-show?',
+        rows: getActionSummaryRows(appointment),
+        confirmText: 'Mark as No-Show',
+        confirmStyle: 'gold',
+      });
+      return;
+    }
+  }
+
+  async function executeConfirmedAction() {
+    const { type, appointmentId } = confirmActionModal;
+    if (type === 'reschedule') {
+      await submitRescheduleAfterConfirm();
+      return;
+    }
+
+    if (!appointmentId) return;
+    setUpdatingId(appointmentId);
     setAppointmentsError('');
 
     try {
-      if (action === 'arrived') {
-        await setAppointmentStatus(id, 'arrived');
+      if (type === 'arrived') {
+        await setAppointmentStatus(appointmentId, 'arrived');
         await fetchUpcomingAppointments();
         await fetchCalendarAppointments(currentDate);
-      } else if (action === 'no_show') {
-        await setAppointmentStatus(id, 'no_show');
+      } else if (type === 'no_show') {
+        await setAppointmentStatus(appointmentId, 'no_show');
         await fetchUpcomingAppointments();
         await fetchCalendarAppointments(currentDate);
       }
+      closeConfirmActionModal();
     } catch (err) {
       setAppointmentsError(
         err.response?.data?.message || 'Failed to update appointment.'
@@ -902,16 +1006,19 @@ export default function RecepAppointments() {
   async function handleConfirmCancelWithReason() {
     const { appointmentId } = cancelReasonModal;
     if (!appointmentId) return;
+    const reason = cancelReasonText.trim();
+
+    if (!reason) {
+      setCancelReasonError('Cancellation reason is required.');
+      return;
+    }
 
     setCancelReasonModal({ show: false, appointmentId: null });
     setUpdatingId(appointmentId);
     setAppointmentsError('');
 
     try {
-      await cancelAppointmentRequest(
-        appointmentId,
-        cancelReasonText.trim() ? { reason: cancelReasonText.trim() } : {}
-      );
+      await cancelAppointmentRequest(appointmentId, { reason });
       await fetchUpcomingAppointments();
       await fetchCalendarAppointments(currentDate);
     } catch (err) {
@@ -921,6 +1028,7 @@ export default function RecepAppointments() {
     } finally {
       setUpdatingId(null);
       setCancelReasonText('');
+      setCancelReasonError('');
     }
   }
 
@@ -1823,28 +1931,34 @@ export default function RecepAppointments() {
 
             <h2 style={styles.modalTitle}>Cancel Appointment</h2>
             <p style={styles.modalText}>
-              Provide a reason for cancellation (optional). This will be sent to the patient.
+              Please confirm this cancellation and provide a reason. This will be sent to the patient.
             </p>
 
             <textarea
               value={cancelReasonText}
-              onChange={(e) => setCancelReasonText(e.target.value)}
+              onChange={(e) => {
+                setCancelReasonText(e.target.value);
+                if (e.target.value.trim()) setCancelReasonError('');
+              }}
               placeholder="e.g. Dentist unavailable, clinic emergency..."
               rows={3}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
-                border: '1px solid #dbe3ef',
+                border: cancelReasonError ? '1px solid #dc2626' : '1px solid #dbe3ef',
                 borderRadius: 10,
                 padding: '10px 13px',
                 fontSize: 14,
                 resize: 'vertical',
-                marginBottom: 16,
+                marginBottom: cancelReasonError ? 6 : 16,
                 fontFamily: 'inherit',
                 color: '#1a202c',
                 outline: 'none',
               }}
             />
+            {cancelReasonError && (
+              <p style={styles.modalErrorText}>{cancelReasonError}</p>
+            )}
 
             <div style={styles.modalActions}>
               <button
@@ -1861,6 +1975,7 @@ export default function RecepAppointments() {
                 onClick={() => {
                   setCancelReasonModal({ show: false, appointmentId: null });
                   setCancelReasonText('');
+                  setCancelReasonError('');
                 }}
               >
                 Keep Appointment
@@ -1874,7 +1989,7 @@ export default function RecepAppointments() {
         <div
           style={styles.modal}
           onClick={(event) => {
-            if (event.target === event.currentTarget) closeRescheduleModal();
+            if (event.target === event.currentTarget) requestCloseRescheduleModal();
           }}
         >
           <div style={styles.modalContentReschedule}>
@@ -1886,7 +2001,7 @@ export default function RecepAppointments() {
                 </p>
               </div>
 
-              <button type="button" style={styles.modalCloseBtn} onClick={closeRescheduleModal}>
+              <button type="button" style={styles.modalCloseBtn} onClick={requestCloseRescheduleModal}>
                 <i className="fi fi-rr-cross"></i>
               </button>
             </div>
@@ -2115,8 +2230,8 @@ export default function RecepAppointments() {
               <div style={styles.rescheduleActions}>
                 <button
                   type="button"
-                  style={styles.modalSecondaryBtn}
-                  onClick={closeRescheduleModal}
+                  style={styles.modalDangerBtn}
+                  onClick={requestCloseRescheduleModal}
                   disabled={rescheduleModal.saving}
                 >
                   Cancel
@@ -2134,6 +2249,100 @@ export default function RecepAppointments() {
                   {rescheduleModal.saving ? 'Rescheduling...' : 'Reschedule'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmActionModal.show && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget && !rescheduleModal.saving && !updatingId) {
+            closeConfirmActionModal();
+          }
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIconGold}>
+              <i className="fi fi-rr-calendar-check" style={styles.modalIconTextGold}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>{confirmActionModal.title}</h2>
+            <p style={styles.modalText}>{confirmActionModal.message}</p>
+
+            {confirmActionModal.rows?.length > 0 && (
+              <div style={styles.modalDetailList}>
+                {confirmActionModal.rows.map((row) => (
+                  <div key={row.label} style={styles.modalDetailRow}>
+                    <span style={styles.modalDetailLabel}>{row.label}</span>
+                    <strong style={styles.modalDetailValue}>{row.value}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{
+                  ...styles.modalButton,
+                  ...(confirmActionModal.type === 'reschedule'
+                    ? styles.logoutBtn
+                    : styles.cancelBtn),
+                }}
+                onClick={closeConfirmActionModal}
+                disabled={rescheduleModal.saving || Boolean(updatingId)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  ...styles.modalButton,
+                  ...styles.modalGoldBtn,
+                  ...((rescheduleModal.saving || Boolean(updatingId)) ? styles.pageBtnDisabled : {}),
+                }}
+                onClick={executeConfirmedAction}
+                disabled={rescheduleModal.saving || Boolean(updatingId)}
+              >
+                {rescheduleModal.saving || Boolean(updatingId)
+                  ? 'Saving...'
+                  : confirmActionModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rescheduleCancelConfirm && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) setRescheduleCancelConfirm(false);
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-triangle-warning" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Reschedule?</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel this reschedule? The selected date, time, and reason will not be saved.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setRescheduleCancelConfirm(false)}
+              >
+                Continue Editing
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={closeRescheduleModal}
+              >
+                Cancel Reschedule
+              </button>
             </div>
           </div>
         </div>
@@ -2593,6 +2802,17 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
 
 function EmptyState({ styles, message }) {
   return <div style={styles.emptyState}>{message}</div>;
+}
+
+function getActionSummaryRows(appointment) {
+  if (!appointment) return [];
+
+  return [
+    { label: 'Patient', value: appointment.name || 'Not recorded' },
+    { label: 'Service', value: appointment.treatment || 'Not recorded' },
+    { label: 'Dentist', value: appointment.doctor || 'Not recorded' },
+    { label: 'Schedule', value: `${appointment.fullDate || '-'} ${appointment.time || '-'}` },
+  ];
 }
 
 function normalizeAppointments(items) {
