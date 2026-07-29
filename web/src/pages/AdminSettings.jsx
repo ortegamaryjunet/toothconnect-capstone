@@ -115,6 +115,10 @@ const branchRequiredFields = [
   'status',
 ];
 
+const BRANCH_OPERATING_HOURS_FORMAT = 'Mon - Sat, 10:00 AM - 7:00 PM';
+const BRANCH_OPERATING_HOURS_REGEX =
+  /^[A-Za-z]{3}(?:\s*-\s*[A-Za-z]{3})?,\s*(?:0?[1-9]|1[0-2]):[0-5]\d\s*(?:AM|PM)\s*-\s*(?:0?[1-9]|1[0-2]):[0-5]\d\s*(?:AM|PM)$/i;
+
 const initialServiceForm = {
   id: '',
   name: '',
@@ -453,7 +457,9 @@ export default function AdminSettings() {
 
   const isBranchFormComplete = branchRequiredFields.every(
     (field) => String(branchForm[field] ?? '').trim() !== ''
-  ) && !validatePhoneNumber(branchForm.phone, branchPhoneCountry);
+  ) &&
+    !validatePhoneNumber(branchForm.phone, branchPhoneCountry) &&
+    BRANCH_OPERATING_HOURS_REGEX.test(String(branchForm.operating_hours || '').trim());
 
   const serviceCategoryOptions = useMemo(() => {
     return [
@@ -1277,6 +1283,14 @@ setWebsiteContentSaveConfirmModal({
       );
     }
 
+    if (name === 'operating_hours') {
+      const value = String(branchForm.operating_hours || '').trim();
+      return (
+        branchTouchedFields[name] &&
+        (!value || !BRANCH_OPERATING_HOURS_REGEX.test(value))
+      );
+    }
+
     return (
       branchTouchedFields[name] &&
       String(branchForm[name] ?? '').trim() === ''
@@ -1306,6 +1320,23 @@ setWebsiteContentSaveConfirmModal({
     }
 
     return validatePhoneNumber(branchForm.phone, branchPhoneCountry);
+  }
+
+  function getBranchOperatingHoursError() {
+    if (!branchTouchedFields.operating_hours) {
+      return '';
+    }
+
+    const value = String(branchForm.operating_hours || '').trim();
+    if (!value) {
+      return 'This field is required.';
+    }
+
+    if (!BRANCH_OPERATING_HOURS_REGEX.test(value)) {
+      return `Follow this format: ${BRANCH_OPERATING_HOURS_FORMAT}`;
+    }
+
+    return '';
   }
 
   function handleServiceChange(name, value) {
@@ -3963,8 +3994,13 @@ setWebsiteContentSaveConfirmModal({
                   }
                   onBlur={() => handleBranchFieldBlur('operating_hours')}
                   style={getBranchFieldStyle('operating_hours')}
-                  placeholder="Mon - Sat, 9:00 AM - 5:00 PM"
+                  placeholder={BRANCH_OPERATING_HOURS_FORMAT}
                 />
+                {getBranchOperatingHoursError() && (
+                  <span style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>
+                    {getBranchOperatingHoursError()}
+                  </span>
+                )}
               </Field>
 
               <Field label="Years Active" styles={styles}>
