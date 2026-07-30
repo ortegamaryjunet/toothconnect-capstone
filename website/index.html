@@ -467,29 +467,27 @@
     <form class="inquiry-form" id="inquiryForm">
         <div class="form-row">
             <div class="form-group">
-                <label for="inquiryName">Full Name</label>
+                <label for="inquiryName">Full Name <span class="required">*</span></label>
 
                 <input
                     id="inquiryName"
                     name="fullName"
                     type="text"
                     placeholder="Enter your full name"
-                    autocomplete="name"
-                    required>
+                    autocomplete="name">
 
                 <small class="input-error"></small>
             </div>
 
             <div class="form-group">
-                <label for="inquiryEmail">Email Address</label>
+                <label for="emailAddress">Email Address <span class="required">*</span></label>
 
                 <input
                     id="inquiryEmail"
                     name="emailAddress"
                     type="email"
                     placeholder="Enter your email address"
-                    autocomplete="email"
-                    required>
+                    autocomplete="email">
 
                 <small class="input-error"></small>
             </div>
@@ -497,25 +495,26 @@
 
         <div class="form-row">
             <div class="form-group">
-                <label for="phoneNumber">Phone Number</label>
+                <label for="phoneNumber">Phone Number <span class="required">*</span></label>
 
                 <div class="phone-field">
+                    <select id="phoneCountry" name="phoneCountry"></select>
+
                     <input
                         id="phoneNumber"
                         name="phoneNumber"
                         type="tel"
-                        placeholder="09XXXXXXXXX"
-                        autocomplete="tel"
-                        required>
-
-                    <small class="input-error"></small>
+                        placeholder="XXXXXXXXXX"
+                        autocomplete="tel">
                 </div>
+
+                <small class="input-error"></small>
             </div>
 
             <div class="form-group">
-                <label for="inquiryConcern">Concern</label>
+                <label for="concern">Concern <span class="required">*</span></label>
 
-                <select id="inquiryConcern" name="concern" required>
+                <select id="inquiryConcern" name="concern">
                     <option value="">Select concern</option>
                     <option value="Appointment Booking">Appointment Booking</option>
                     <option value="Dental Services">Dental Services</option>
@@ -526,11 +525,13 @@
                     <option value="General Question">General Question</option>
                     <option value="Others">Others</option>
                 </select>
+
+                <small class="input-error"></small>
             </div>
         </div>
 
         <div class="form-group full">
-            <label>Preferred Branch</label>
+            <label>Preferred Branch <span class="required">*</span></label>
 
             <div class="location-grid">
 
@@ -538,8 +539,7 @@
                     <input
                         type="radio"
                         name="branch"
-                        value="Makati"
-                        required>
+                        value="Makati">
 
                     <span class="radio-design"></span>
 
@@ -552,8 +552,7 @@
                     <input
                         type="radio"
                         name="branch"
-                        value="Las Piñas"
-                        required>
+                        value="Las Piñas">
 
                     <span class="radio-design"></span>
 
@@ -563,16 +562,17 @@
                 </label>
 
             </div>
+
+            <small class="input-error"></small>
         </div>
 
         <div class="form-group full">
-            <label for="inquiryMessage">Message</label>
+            <label for="inquiryMessage">Message <span class="required">*</span></label>
 
             <textarea
                 id="inquiryMessage"
                 name="message"
-                placeholder="Tell us about your inquiry..."
-                required></textarea>
+                placeholder="Tell us about your inquiry..."></textarea>
             
             <small class="input-error"></small>
         </div>
@@ -1027,6 +1027,7 @@
     </div>
 </div>
 
-<script src="./js/HomePage.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.12.11/bundle/libphonenumber-max.js"></script>
+<script src="./js/HomePage.js"></script>
 </body>
 </html>
