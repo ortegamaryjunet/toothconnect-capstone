@@ -471,25 +471,33 @@ document.addEventListener("DOMContentLoaded", function () {
     if (fullNameInput) {
         fullNameInput.addEventListener("input", function () {
             this.value = this.value.replace(/[^a-zA-Z\s]/g, "");
+            validateName();
         });
     }
 
     if (phoneInput) {
         phoneInput.addEventListener("input", function () {
             this.value = this.value.replace(/[^0-9]/g, "").slice(0, 11);
+            validatePhone();
         });
     }
 
     if (messageInput) {
         messageInput.addEventListener("input", function () {
             this.value = this.value.replace(/[^a-zA-Z0-9\s.,!?'"()\-]/g, "");
+            validateMessage();
         });
     }
 
     if (emailInput) {
         emailInput.addEventListener("input", function () {
             this.value = this.value.replace(/\s/g, "");
+            validateEmail();
         });
+    }
+
+    if (concernInput) {
+        concernInput.addEventListener("change", validateConcern);
     }
 
     if (closeMessageModal) {
@@ -507,6 +515,77 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+
+function setFieldState(input, valid, message = "") {
+    const group = input.closest(".form-group");
+    const error = group.querySelector(".input-error");
+
+    input.classList.remove("error", "valid");
+
+    if (valid) {
+        input.classList.add("valid");
+        if (error) error.textContent = "";
+    } else {
+        input.classList.add("error");
+        if (error) error.textContent = message;
+    }
+}
+
+function validateName() {
+    const input = document.getElementById("inquiryName");
+    const value = input.value.trim();
+
+    const words = value.split(/\s+/).filter(Boolean);
+
+    if (words.length < 2) {
+        setFieldState(input, false, "Please enter both your first and last name.");
+    } else {
+        setFieldState(input, true);
+    }
+}
+
+function validateEmail() {
+    const input = document.getElementById("inquiryEmail");
+    const value = input.value.trim();
+
+    if (!isValidEmail(value)) {
+        setFieldState(input, false, "Enter a valid email address.");
+    } else {
+        setFieldState(input, true);
+    }
+}
+
+function validatePhone() {
+    const input = document.getElementById("phoneNumber");
+    const value = input.value.trim();
+
+    if (!/^09\d{9}$/.test(value)) {
+        setFieldState(input, false, "Enter a valid 11-digit Philippine mobile number.");
+    } else {
+        setFieldState(input, true);
+    }
+}
+
+function validateConcern() {
+    const input = document.getElementById("inquiryConcern");
+
+    if (!input.value) {
+        setFieldState(input, false, "Please select a concern.");
+    } else {
+        setFieldState(input, true);
+    }
+}
+
+function validateMessage() {
+    const input = document.getElementById("inquiryMessage");
+    const value = input.value.trim();
+
+    if (value.length < 10) {
+        setFieldState(input, false, "Message must be at least 10 characters.");
+    } else {
+        setFieldState(input, true);
+    }
+}
 
     window.addEventListener("scroll", function () {
         if (header) {
