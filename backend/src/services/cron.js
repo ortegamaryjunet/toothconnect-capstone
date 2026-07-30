@@ -10,8 +10,33 @@ async function createNotification(userId, type, title, body, relatedType, relate
   );
 }
 
+let appointmentReminderColumnsReady = false;
+
+async function ensureAppointmentReminderColumns() {
+  if (appointmentReminderColumnsReady) return;
+
+  const [columns] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'appointments'
+       AND COLUMN_NAME = 'reminder_sent_2h'`
+  );
+
+  if (columns.length === 0) {
+    await pool.query(
+      `ALTER TABLE appointments
+       ADD COLUMN reminder_sent_2h BOOLEAN DEFAULT FALSE AFTER reminder_sent_24h`
+    );
+  }
+
+  appointmentReminderColumnsReady = true;
+}
+
 async function sendAppointmentReminders() {
   try {
+    await ensureAppointmentReminderColumns();
+
     const [appts24] = await pool.query(
       `SELECT a.id, a.patient_id, a.start_time, a.dentist_id,
               s.name AS service_name, d.name AS dentist_name, b.name AS branch_name
@@ -51,30 +76,61 @@ async function sendAppointmentReminders() {
        JOIN users d ON d.id = a.dentist_id
        JOIN branches b ON b.id = a.branch_id
        WHERE a.status = 'scheduled'
-         AND a.reminder_sent_1h = FALSE
-         AND a.start_time > DATE_ADD(UTC_TIMESTAMP(), INTERVAL 50 MINUTE)
-         AND a.start_time < DATE_ADD(UTC_TIMESTAMP(), INTERVAL 70 MINUTE)`
+         AND a.reminder_sent_2h = FALSE
+         AND a.start_time > DATE_ADD(UTC_TIMESTAMP(), INTERVAL 110 MINUTE)
+         AND a.start_time < DATE_ADD(UTC_TIMESTAMP(), INTERVAL 130 MINUTE)`
     );
 
     for (const a of appts2) {
       const localTime = new Date(a.start_time).toLocaleString('en-PH', {
         hour: 'numeric', minute: '2-digit', hour12: true,
       });
-      const body1h = `Reminder: your ${a.service_name} with ${a.dentist_name} is at ${localTime}.`;
+      const body2h = `Warning: you have a ${a.service_name} appointment with ${a.dentist_name} at ${a.branch_name} in about 2 hours, at ${localTime}. Please prepare and arrive on time.`;
       await createNotification(
         a.patient_id,
         'appointment_reminder',
-        'Appointment in 1 hour',
+        'Appointment warning',
+        body2h,
+        'appointment',
+        a.id
+      );
+      sendPushToUser(a.patient_id, { title: 'Appointment warning', body: body2h, data: { type: 'appointment_reminder_2h', appointment_id: a.id } }).catch(() => {});
+      await pool.query('UPDATE appointments SET reminder_sent_2h = TRUE WHERE id = ?', [a.id]);
+    }
+    if (appts2.length > 0) console.log(`[cron] Sent ${appts2.length} 2-hour reminders`);
+
+    const [appts1] = await pool.query(
+      `SELECT a.id, a.patient_id, a.start_time, a.dentist_id,
+              s.name AS service_name, d.name AS dentist_name, b.name AS branch_name
+       FROM appointments a
+       JOIN services s ON s.id = a.service_id
+       JOIN users d ON d.id = a.dentist_id
+       JOIN branches b ON b.id = a.branch_id
+       WHERE a.status = 'scheduled'
+         AND a.reminder_sent_1h = FALSE
+         AND a.start_time > DATE_ADD(UTC_TIMESTAMP(), INTERVAL 50 MINUTE)
+         AND a.start_time < DATE_ADD(UTC_TIMESTAMP(), INTERVAL 70 MINUTE)`
+    );
+
+    for (const a of appts1) {
+      const localTime = new Date(a.start_time).toLocaleString('en-PH', {
+        hour: 'numeric', minute: '2-digit', hour12: true,
+      });
+      const body1h = `Final warning: your ${a.service_name} appointment with ${a.dentist_name} at ${a.branch_name} is in about 1 hour, at ${localTime}. Please be ready and arrive on time.`;
+      await createNotification(
+        a.patient_id,
+        'appointment_reminder',
+        'Final appointment warning',
         body1h,
         'appointment',
         a.id
       );
-      sendPushToUser(a.patient_id, { title: 'Appointment in 1 hour', body: body1h, data: { type: 'appointment_reminder', appointment_id: a.id } }).catch(() => {});
+      sendPushToUser(a.patient_id, { title: 'Final appointment warning', body: body1h, data: { type: 'appointment_reminder_1h', appointment_id: a.id } }).catch(() => {});
       await pool.query('UPDATE appointments SET reminder_sent_1h = TRUE WHERE id = ?', [a.id]);
     }
-    if (appts2.length > 0) console.log(`[cron] Sent ${appts2.length} 1-hour reminders`);
+    if (appts1.length > 0) console.log(`[cron] Sent ${appts1.length} 1-hour reminders`);
 
-    return { sent_24h: appts24.length, sent_1h: appts2.length };
+    return { sent_24h: appts24.length, sent_2h: appts2.length, sent_1h: appts1.length };
   } catch (err) {
     console.error('[cron] Appointment reminder error:', err);
     return { error: err.message };
