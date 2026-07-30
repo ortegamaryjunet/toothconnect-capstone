@@ -164,7 +164,7 @@
                     </p>
 
                     <div class="input-group">
-                        <label for="patientName">Full Name</label>
+                        <label for="patientName">Full Name <span class="required">*</span></label>
 
                         <input
                             type="text"
@@ -178,7 +178,7 @@
                     </div>
 
                     <div class="input-group">
-                        <label for="email">Email Address</label>
+                        <label for="email">Email Address <span class="required">*</span></label>
 
                         <input
                             type="email"
@@ -192,17 +192,27 @@
                     </div>
 
                     <div class="input-group">
-                        <label for="phoneNumber">Phone Number</label>
+                        <label for="phoneNumber">Phone Number <span class="required">*</span></label>
 
-                        <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="09XXXXXXXXX" maxlength="11" autocomplete="tel" required>
+                        <div class="phone-input-wrapper">
+                            <select id="phoneCountry" name="phoneCountry" autocomplete="tel-country-code"></select>
 
-                        <input id="fullPhoneNumber" type="hidden" name="fullPhoneNumber">
+                            <input
+                                type="tel"
+                                id="phoneNumber"
+                                name="phoneNumber"
+                                placeholder="XXXXXXXXXX"
+                                autocomplete="tel"
+                                required>
+                        </div>
+
+                        <input type="hidden" id="fullPhoneNumber" name="fullPhoneNumber">
 
                         <span class="field-error-text" id="phoneError"></span>
                     </div>
 
                     <div class="input-group">
-                        <label>Location</label>
+                        <label>Location <span class="required">*</span></label>
 
                         <div class="location-grid">
                             <label class="location-option">
@@ -230,7 +240,7 @@
                     </div>
 
                     <div class="input-group">
-                        <label>Reason for Booking</label>
+                        <label>Reason for Booking <span class="required">*</span></label>
 
                         <div class="custom-select">
 
@@ -276,7 +286,7 @@
     </div>
 </div>
 
-<script src="./js/BookAppointment.js" defer></script>
-
+<script src="https://unpkg.com/libphonenumber-js@1.11.10/bundle/libphonenumber-max.js"></script>
+<script src="./js/BookAppointment.js"></script>
 </body>
 </html>
