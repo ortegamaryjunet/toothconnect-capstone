@@ -578,7 +578,10 @@ export default function RecepInquiries() {
                             >
                               <i
                                 className="fi fi-rr-paper-plane"
-                                style={{ marginRight: 5 }}
+                                style={{
+                                  fontSize: 12,
+                                  marginRight: 2,
+                                }}
                               ></i>
                               Reply
                               {inq.reply_count > 0 && (
@@ -663,47 +666,151 @@ export default function RecepInquiries() {
             </div>
 
             <div style={s.replyModalBody}>
-              <div style={s.replyOriginalBox}>
-                <div style={s.replyOriginalLabel}>Original Inquiry</div>
-                <div style={s.replyOriginalConcern}>
-                  {replyModal.concern}
+              <div style={s.replyCard}>
+                <div style={s.replyCardHeader}>
+                  <div style={s.replyCardIcon}>
+                    <i className="fi fi-rr-user"></i>
+                  </div>
+
+                  <div>
+                    <div style={s.replyCardTitle}>Patient Information</div>
+                    <div style={s.replyCardSubtitle}>
+                      Review the inquiry details before replying.
+                    </div>
+                  </div>
                 </div>
-                <div style={s.replyOriginalMsg}>{replyModal.message}</div>
+
+                <div style={s.replyInfoGrid}>
+                  <div style={s.replyInfoItem}>
+                    <div style={s.replyInfoLabel}>Full Name</div>
+                    <div style={s.replyInfoValue}>
+                      {replyModal.full_name || "-"}
+                    </div>
+                  </div>
+
+                  <div style={s.replyInfoItem}>
+                    <div style={s.replyInfoLabel}>Email Address</div>
+                    <div style={s.replyInfoValue}>
+                      {replyModal.email_address || "-"}
+                    </div>
+                  </div>
+
+                  <div style={s.replyInfoItem}>
+                    <div style={s.replyInfoLabel}>Phone Number</div>
+                    <div style={s.replyInfoValue}>
+                      {replyModal.phone_number || "-"}
+                    </div>
+                  </div>
+
+                  <div style={s.replyInfoItem}>
+                    <div style={s.replyInfoLabel}>Branch</div>
+                    <div style={s.replyInfoValue}>
+                      {replyModal.branch || "-"}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      ...s.replyInfoItem,
+                      gridColumn: "1 / -1",
+                    }}
+                  >
+                    <div style={s.replyInfoLabel}>Concern</div>
+
+                    <div>
+                      <span style={s.replyConcernBadge}>
+                        {replyModal.concern}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={s.replyMessageBox}>
+                  <div style={s.replyMessageLabel}>
+                    Patient Message
+                  </div>
+
+                  <div style={s.replyOriginalMsg}>
+                    {replyModal.message}
+                  </div>
+                </div>
               </div>
 
               {replyHistoryLoading ? (
-                <p style={s.replyHistoryLoading}>Loading reply history...</p>
+                <div style={s.replyLoadingCard}>
+                  <i
+                    className="fi fi-rr-spinner"
+                    style={{ marginRight: 8 }}
+                  ></i>
+
+                  Loading conversation...
+                </div>
               ) : replyHistory.length > 0 ? (
-                <div style={s.replyHistoryBox}>
-                  <div style={s.replyHistoryLabel}>
-                    Previous Replies ({replyHistory.length})
+                <div style={s.replyCard}>
+                  <div style={s.replyHistoryHeader}>
+                    <span>Conversation History</span>
+
+                    <span style={s.replyHistoryCount}>
+                      {replyHistory.length} Replies
+                    </span>
                   </div>
 
-                  {replyHistory.map((r) => (
-                    <div key={r.id} style={s.replyHistoryItem}>
-                      <div style={s.replyHistoryMeta}>
-                        {r.replied_by_name} ·{' '}
-                        {String(r.created_at || '')
-                          .slice(0, 16)
-                          .replace('T', ' ')}
-                      </div>
+                  <div style={s.replyHistoryList}>
+                    {replyHistory.map((r) => (
+                      <div key={r.id} style={s.replyBubble}>
+                        <div style={s.replyBubbleHeader}>
+                          <div style={s.replyAvatar}>
+                            <i className="fi fi-rr-user"></i>
+                          </div>
 
-                      <div style={s.replyHistoryText}>{r.reply_message}</div>
-                    </div>
-                  ))}
+                          <div>
+                            <div style={s.replySender}>
+                              {r.replied_by_name}
+                            </div>
+
+                            <div style={s.replyDate}>
+                              {String(r.created_at || "")
+                                .slice(0, 16)
+                                .replace("T", " ")}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={s.replyBubbleText}>
+                          {r.reply_message}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 
-              <textarea
-                style={s.replyTextarea}
-                placeholder="Type your reply here..."
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                rows={5}
-                disabled={replySending}
-              />
+              <div style={s.replyCard}>
+                <div style={s.replyEditorHeader}>
+                  <i className="fi fi-rr-edit"></i>
+                  <span>Write Reply</span>
+                </div>
 
-              {replyError && <div style={s.replyErrorText}>{replyError}</div>}
+                <textarea
+                  style={s.replyTextarea}
+                  placeholder="Type your reply to the patient..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  rows={6}
+                  disabled={replySending}
+                />
+
+                {replyError && (
+                  <div style={s.replyErrorText}>
+                    <i
+                      className="fi fi-rr-cross-circle"
+                      style={{ marginRight: 6 }}
+                    ></i>
+
+                    {replyError}
+                  </div>
+                )}
+              </div>
 
               <div style={s.replyModalActions}>
                 <button
@@ -722,13 +829,14 @@ export default function RecepInquiries() {
                   disabled={replySending}
                 >
                   {replySending ? (
-                    'Sending...'
+                    "Sending..."
                   ) : (
                     <>
                       <i
                         className="fi fi-rr-paper-plane"
-                        style={{ marginRight: 6 }}
+                        style={{ marginRight: 8 }}
                       ></i>
+
                       Send Reply
                     </>
                   )}
