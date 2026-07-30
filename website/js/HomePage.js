@@ -421,6 +421,22 @@ document.addEventListener("DOMContentLoaded", function () {
     const stepModals = document.querySelectorAll(".step-modal");
     const stepCloseButtons = document.querySelectorAll(".step-modal-close");
 
+    const phoneCountry = document.getElementById("phoneCountry");
+
+    libphonenumber.getCountries().forEach((country) => {
+        const option = document.createElement("option");
+
+        option.value = country;
+        option.textContent =
+            `${country} +${libphonenumber.getCountryCallingCode(country)}`;
+
+        if (country === "PH") {
+            option.selected = true;
+        }
+
+        phoneCountry.appendChild(option);
+    });
+
     function showMessage(title, text, type = "error") {
         if (!messageModal || !messageTitle || !messageText || !messageIcon) {
             alert(text || title);
@@ -477,7 +493,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (phoneInput) {
         phoneInput.addEventListener("input", function () {
-            this.value = this.value.replace(/[^0-9]/g, "").slice(0, 11);
+            this.value = this.value.replace(/\D/g, "");
             validatePhone();
         });
     }
@@ -533,15 +549,15 @@ function setFieldState(input, valid, message = "") {
 
 function validateName() {
     const input = document.getElementById("inquiryName");
-    const value = input.value.trim();
-
-    const words = value.split(/\s+/).filter(Boolean);
+    const words = input.value.trim().split(/\s+/).filter(Boolean);
 
     if (words.length < 2) {
         setFieldState(input, false, "Please enter both your first and last name.");
-    } else {
-        setFieldState(input, true);
+        return false;
     }
+
+    setFieldState(input, true);
+    return true;
 }
 
 function validateEmail() {
@@ -550,31 +566,74 @@ function validateEmail() {
 
     if (!isValidEmail(value)) {
         setFieldState(input, false, "Enter a valid email address.");
-    } else {
-        setFieldState(input, true);
+        return false;
     }
+
+    setFieldState(input, true);
+    return true;
 }
 
 function validatePhone() {
     const input = document.getElementById("phoneNumber");
-    const value = input.value.trim();
+    const country = document.getElementById("phoneCountry").value;
 
-    if (!/^09\d{9}$/.test(value)) {
-        setFieldState(input, false, "Enter a valid 11-digit Philippine mobile number.");
-    } else {
-        setFieldState(input, true);
+    const phone = libphonenumber.parsePhoneNumberFromString(
+        input.value.trim(),
+        country
+    );
+
+    if (!phone || !phone.isValid()) {
+        setFieldState(input, false, "Please enter a valid phone number.");
+        return false;
     }
+
+    setFieldState(input, true);
+    return true;
 }
 
 function validateConcern() {
     const input = document.getElementById("inquiryConcern");
+    const value = input.value.trim();
 
-    if (!input.value) {
+    if (!value) {
         setFieldState(input, false, "Please select a concern.");
-    } else {
-        setFieldState(input, true);
+        return false;
     }
+
+    setFieldState(input, true);
+    return true;
 }
+
+function validateBranch() {
+    const radios = document.querySelectorAll('input[name="branch"]');
+    const selected = document.querySelector('input[name="branch"]:checked');
+    const group = document.querySelector(".location-grid");
+    const error = group.parentElement.querySelector(".input-error");
+
+    radios.forEach((radio) => {
+        radio.closest(".location-option").classList.remove("valid", "error");
+    });
+
+    if (!selected) {
+        error.textContent = "Please select a preferred branch.";
+
+        radios.forEach((radio) => {
+            radio.closest(".location-option").classList.add("error");
+        });
+
+        return false;
+    }
+
+    error.textContent = "";
+
+    selected.closest(".location-option").classList.add("valid");
+
+    return true;
+}
+
+document.querySelectorAll('input[name="branch"]').forEach((radio) => {
+    radio.addEventListener("change", validateBranch);
+});
 
 function validateMessage() {
     const input = document.getElementById("inquiryMessage");
@@ -582,9 +641,11 @@ function validateMessage() {
 
     if (value.length < 10) {
         setFieldState(input, false, "Message must be at least 10 characters.");
-    } else {
-        setFieldState(input, true);
+        return false;
     }
+
+    setFieldState(input, true);
+    return true;
 }
 
     window.addEventListener("scroll", function () {
@@ -749,17 +810,38 @@ function validateMessage() {
 
             const fullName = fullNameInput ? fullNameInput.value.trim() : "";
             const emailAddress = emailInput ? emailInput.value.trim() : "";
+            const country = document.getElementById("phoneCountry").value;
             const phoneNumber = phoneInput ? phoneInput.value.trim() : "";
             const branchInput = inquiryForm.querySelector("input[name='branch']:checked");
             const branch = branchInput ? branchInput.value : "";
             const concern = concernInput ? concernInput.value.trim() : "";
             const message = messageInput ? messageInput.value.trim() : "";
 
-            if (!fullName || !emailAddress || !phoneNumber || !branch || !concern || !message) {
+            const allFieldsEmpty =
+                !fullName &&
+                !emailAddress &&
+                !phoneNumber &&
+                !branch &&
+                !concern &&
+                !message;
+
+            const isValid =
+                validateName() &&
+                validateEmail() &&
+                validatePhone() &&
+                validateConcern() &&
+                validateBranch() &&
+                validateMessage();
+
+            if (allFieldsEmpty) {
                 showMessage(
                     "Incomplete Information",
                     "Please complete all required fields."
                 );
+                return;
+            }
+
+            if (!isValid) {
                 return;
             }
 
@@ -779,13 +861,20 @@ function validateMessage() {
                 return;
             }
 
-            if (!/^09\d{9}$/.test(phoneNumber)) {
+            const parsedPhone = libphonenumber.parsePhoneNumberFromString(
+                phoneNumber,
+                country
+            );
+
+            if (!parsedPhone || !parsedPhone.isValid()) {
                 showMessage(
                     "Invalid Phone Number",
-                    "Phone number must start with 09 and contain 11 digits only."
+                    "Please enter a valid phone number."
                 );
                 return;
             }
+
+            const internationalPhone = parsedPhone.number;
 
             if (message.length < 5) {
                 showMessage(
@@ -804,7 +893,7 @@ function validateMessage() {
                     body: JSON.stringify({
                         fullName,
                         emailAddress,
-                        phoneNumber,
+                        phoneNumber: internationalPhone,
                         branch,
                         concern,
                         message
