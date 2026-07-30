@@ -6,6 +6,16 @@
     box-sizing: border-box;
 }
 
+.required {
+    display: inline !important;
+    color: #dc2626 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin-left: 2px;
+    border-radius: 0 !important;
+    font-weight: 700;
+}
+
 :root {
     --gold: #d4af37;
     --gold-dark: #8b6508;
@@ -66,6 +76,10 @@ section {
     color: #dc2626;
     min-height: 18px;
     font-weight: 500;
+}
+
+.invalid {
+    border-color: #dc2626 !important;
 }
 
 .form-group input.error,
@@ -1486,9 +1500,9 @@ section {
 
 .radio-design {
     position: relative;
-    width: 10px;
-    height: 10px;
-    min-width: 10px;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
     border: 2px solid var(--gold);
     border-radius: 50%;
     background: #ffffff;
@@ -1506,7 +1520,7 @@ section {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0);
-    transition: 0.25s ease;
+    transition: transform .25s ease;
 }
 
 .location-option div {
@@ -1527,24 +1541,39 @@ section {
     background: var(--gold-soft);
 }
 
-.location-option:has(input:checked) {
-    border-color: var(--gold);
-    background: var(--gold-soft);
-    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
-}
-
-.location-option:has(input:checked) .radio-design::after {
+.location-option input:checked + .radio-design::after {
     transform: translate(-50%, -50%) scale(1);
 }
 
+.location-option.valid {
+    border: 2px solid #16a34a;
+}
+
+.location-option.error {
+    border: 2px solid #ef4444;
+}
+
 .phone-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: 100%;
 }
 
+.phone-field select {
+    flex: 0 0 140px;
+    width: 140px;
+    height: 54px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    font-size: 15px;
+}
+
 .phone-field input {
-    width: 100%;
-    height: 52px;
-    padding-left: 95px !important;
+    flex: 1;
+    min-width: 0;
 }
 
 .inquiry-form button {
