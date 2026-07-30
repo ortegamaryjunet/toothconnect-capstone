@@ -584,6 +584,31 @@ body {
     display: block;
 }
 
+/* NOTE */
+.step1-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 15px 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fff8e6;
+    border: 1px solid #f3d98b;
+    color: #8b6508;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.step1-note i {
+    margin-top: 2px;
+    color: #d4af37;
+    flex-shrink: 0;
+}
+
+.step1-note strong {
+    color: #6f4f05;
+}
+
 /* STEP LOCK STATES */
 .step-lock-notice {
     display: none;
