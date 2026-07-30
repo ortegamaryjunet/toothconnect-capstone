@@ -229,6 +229,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   start_time DATETIME NOT NULL,
   duration_min INT NOT NULL,
   reminder_sent_24h BOOLEAN DEFAULT FALSE,
+  reminder_sent_2h BOOLEAN DEFAULT FALSE,
   reminder_sent_1h BOOLEAN DEFAULT FALSE,
   status ENUM('scheduled','arrived','completed','cancelled','no_show') DEFAULT 'scheduled',
   dentist_note TEXT NULL,

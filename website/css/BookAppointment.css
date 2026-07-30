@@ -7,6 +7,11 @@
     font-family: 'Poppins', sans-serif;
 }
 
+.required {
+    color: #dc2626;
+    font-weight: 700;
+}
+
 :root {
     --gold: #d4af37;
     --gold-dark: #8b6508;
@@ -417,6 +422,27 @@ body {
     padding-left: 92px !important;
 }
 
+.phone-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#phoneCountry {
+    width: 120px;
+    height: 48px;
+    padding: 0 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 14px;
+    outline: none;
+}
+
+#phoneNumber {
+    flex: 1;
+}
+
 .location-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -582,6 +608,31 @@ body {
 
 .field-error-text.active {
     display: block;
+}
+
+/* NOTE */
+.step1-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 15px 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fff8e6;
+    border: 1px solid #f3d98b;
+    color: #8b6508;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.step1-note i {
+    margin-top: 2px;
+    color: #d4af37;
+    flex-shrink: 0;
+}
+
+.step1-note strong {
+    color: #6f4f05;
 }
 
 /* STEP LOCK STATES */

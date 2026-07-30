@@ -2,6 +2,7 @@ const createRecepInquiriesStyles = ({
   isMobile = false,
   isVerySmall = false,
   isSmallScreen = false,
+  isTablet = false,
 } = {}) => {
   const sidebarWidth = isVerySmall ? 70 : isMobile ? 80 : 250;
 
@@ -95,6 +96,8 @@ const createRecepInquiriesStyles = ({
 
     logoutItem: {
       color: '#dc2626',
+      transition: '0.2s ease',
+      cursor: 'pointer',
     },
 
     mainContainer: {
@@ -228,16 +231,18 @@ const createRecepInquiriesStyles = ({
     },
 
     heroSection: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: isSmallScreen ? 'flex-start' : 'center',
-      gap: 20,
-      marginBottom: isVerySmall ? 18 : 22,
-      padding: isVerySmall ? 18 : isMobile ? 20 : isSmallScreen ? 24 : 28,
-      borderRadius: isVerySmall ? 20 : 26,
+      position: 'relative',
+      width: '100%',
+      minHeight: isMobile ? 'auto' : 190,
+      borderRadius: isVerySmall ? 22 : isTablet ? 24 : 28,
       background: 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)',
-      color: '#ffffff',
-      boxShadow: '0 18px 38px rgba(37, 99, 235, 0.22)',
+      padding: isVerySmall ? 20 : isTablet ? 22 : isSmallScreen ? 26 : 30,
+      marginBottom: 22,
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: isMobile ? 'flex-start' : 'center',
+      justifyContent: 'space-between',
+      gap: isMobile ? 18 : 24,
       flexDirection: isMobile ? 'column' : 'row',
       boxSizing: 'border-box',
     },
@@ -249,44 +254,46 @@ const createRecepInquiriesStyles = ({
     heroBadge: {
       display: 'inline-flex',
       alignItems: 'center',
-      padding: '7px 13px',
-      borderRadius: 999,
-      background: 'rgba(255, 255, 255, 0.18)',
+      padding: isTablet ? '5px 12px' : '6px 14px',
+      borderRadius: 50,
+      background: 'rgba(255, 255, 255, 0.16)',
       color: '#ffffff',
-      fontSize: isVerySmall ? 12 : 13,
-      fontWeight: 700,
-      marginBottom: 12,
+      fontSize: isTablet ? 11 : 12,
+      fontWeight: 600,
+      marginBottom: 16,
     },
 
     heroTitle: {
-      fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: isVerySmall ? 19 : isMobile ? 21 : isSmallScreen ? 24 : 26,
-      marginBottom: 8,
+      maxWidth: 760,
+      fontSize: isVerySmall ? 20 : isTablet ? 22 : isMobile ? 24 : isSmallScreen ? 28 : 31,
+      color: '#ffffff',
+      marginBottom: 12,
       marginTop: 0,
-      lineHeight: 1.3,
+      lineHeight: isSmallScreen ? 1.4 : 1.2,
     },
 
     heroText: {
-      maxWidth: 620,
-      fontSize: isVerySmall ? 13 : 14,
-      lineHeight: 1.6,
+      marginTop: 10,
+      marginBottom: 0,
       color: '#ffffff',
-      margin: 0,
+      fontSize: isVerySmall ? 12 : isMobile ? 13 : 14,
+      lineHeight: isMobile ? 1.6 : 1.5,
     },
 
     heroIcon: {
-      width: isMobile ? 64 : 82,
-      height: isMobile ? 64 : 82,
-      borderRadius: isMobile ? 20 : 24,
+      width: isSmallScreen ? 78 : 90,
+      height: isSmallScreen ? 78 : 90,
+      minWidth: isSmallScreen ? 78 : 90,
+      borderRadius: 24,
       background: 'rgba(255, 255, 255, 0.18)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      flexShrink: 0,
     },
 
     heroIconText: {
-      fontSize: isMobile ? 28 : 36,
+      fontSize: isSmallScreen ? 36 : 42,
+      color: '#ffffff',
     },
 
     summaryGrid: {
@@ -533,13 +540,14 @@ const createRecepInquiriesStyles = ({
     },
 
     td: {
-      padding: isVerySmall ? '12px 10px' : '14px 12px',
-      textAlign: 'left',
-      borderBottom: '1px solid #edf0f5',
-      fontFamily: 'Arial, sans-serif',
-      fontSize: isVerySmall ? 13 : 14,
-      color: '#172033',
-      verticalAlign: 'top',
+      padding: "8px 20px",
+      height: 46,
+      textAlign: "left",
+      verticalAlign: "middle",
+      borderBottom: "1px solid #edf0f5",
+      fontFamily: "Arial, sans-serif",
+      fontSize: 14,
+      color: "#172033",
     },
 
     emptyCell: {
@@ -584,6 +592,190 @@ const createRecepInquiriesStyles = ({
       fontSize: 14,
       color: '#475569',
       fontFamily: 'Arial, sans-serif',
+    },
+
+    replyCard: {
+      background: "#ffffff",
+      border: "1px solid #e5e7eb",
+      borderRadius: 18,
+      padding: 20,
+      boxShadow: "0 10px 28px rgba(15,23,42,.05)",
+    },
+
+    replyCardHeader: {
+      display: "flex",
+      alignItems: "center",
+      gap: 15,
+      marginBottom: 20,
+    },
+
+    replyCardIcon: {
+      width: 50,
+      height: 50,
+      borderRadius: 14,
+      background: "linear-gradient(135deg,#8b6508,#d4af37)",
+      color: "#fff",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 22,
+    },
+
+    replyCardTitle: {
+      fontSize: 17,
+      fontWeight: 700,
+      color: "#172033",
+    },
+
+    replyCardSubtitle: {
+      marginTop: 4,
+      fontSize: 13,
+      color: "#64748b",
+    },
+
+    replyInfoGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+      gap: 16,
+      marginBottom: 22,
+    },
+
+    replyInfoItem: {
+      padding: 14,
+      border: "1px solid #e5e7eb",
+      borderRadius: 14,
+      background: "#f8fafc",
+    },
+
+    replyInfoLabel: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: ".08em",
+      marginBottom: 6,
+    },
+
+    replyInfoValue: {
+      fontSize: 14,
+      fontWeight: 600,
+      color: "#172033",
+      wordBreak: "break-word",
+    },
+
+    replyConcernBadge: {
+      display: "inline-block",
+      padding: "6px 14px",
+      borderRadius: 999,
+      background: "#fff7df",
+      color: "#8b6508",
+      fontWeight: 700,
+      fontSize: 13,
+    },
+
+    replyMessageBox: {
+      border: "1px solid #f3e8c0",
+      background: "#fffdf8",
+      borderRadius: 14,
+      padding: 18,
+    },
+
+    replyMessageLabel: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#8b6508",
+      textTransform: "uppercase",
+      marginBottom: 10,
+    },
+
+    replyHistoryHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 18,
+      fontWeight: 700,
+      color: "#172033",
+    },
+
+    replyHistoryCount: {
+      background: "#eef2ff",
+      color: "#4338ca",
+      borderRadius: 999,
+      padding: "5px 12px",
+      fontSize: 12,
+    },
+
+    replyHistoryList: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 14,
+      maxHeight: 260,
+      overflowY: "auto",
+    },
+
+    replyBubble: {
+      background: "#fafafa",
+      border: "1px solid #ececec",
+      borderRadius: 16,
+      padding: 16,
+    },
+
+    replyBubbleHeader: {
+      display: "flex",
+      gap: 12,
+      alignItems: "center",
+      marginBottom: 10,
+    },
+
+    replyAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: "50%",
+      background: "#d4af37",
+      color: "#fff",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    replySender: {
+      fontWeight: 700,
+      fontSize: 14,
+      color: "#172033",
+    },
+
+    replyDate: {
+      fontSize: 12,
+      color: "#94a3b8",
+    },
+
+    replyBubbleText: {
+      fontSize: 14,
+      color: "#475569",
+      lineHeight: 1.7,
+      whiteSpace: "pre-wrap",
+    },
+
+    replyEditorHeader: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 14,
+      fontSize: 15,
+      fontWeight: 700,
+      color: "#172033",
+    },
+
+    replyLoadingCard: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      padding: 22,
+      borderRadius: 14,
+      border: "1px dashed #dbe3ef",
+      background: "#f8fafc",
+      color: "#64748b",
     },
 
     modal: {
@@ -672,28 +864,40 @@ const createRecepInquiriesStyles = ({
     },
 
     replyBtn: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 4,
-      padding: '7px 14px',
-      border: 'none',
-      borderRadius: 10,
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
-      color: '#fff',
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      height: 34,
+      padding: "0 14px",
+      border: "none",
+      borderRadius: 9,
+      background: "linear-gradient(135deg, #8b6508, #d4af37)",
+      color: "#ffffff",
       fontSize: 13,
       fontWeight: 600,
-      fontFamily: 'Arial, sans-serif',
-      cursor: 'pointer',
-      whiteSpace: 'nowrap',
+      fontFamily: "Arial, sans-serif",
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      boxSizing: "border-box",
+      transition: "0.2s ease",
     },
 
     replyCountBadge: {
-      marginLeft: 6,
-      background: 'rgba(255,255,255,0.3)',
-      borderRadius: 999,
-      padding: '1px 7px',
-      fontSize: 11,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: 18,
+      height: 18,
+      marginLeft: 2,
+      borderRadius: "50%",
+      background: "rgba(255,255,255,0.25)",
+      border: "1px solid rgba(255,255,255,0.45)",
+      color: "#ffffff",
+      fontSize: 10,
       fontWeight: 700,
+      lineHeight: 1,
+      flexShrink: 0,
     },
 
     replyOverlay: {
@@ -889,17 +1093,25 @@ const createRecepInquiriesStyles = ({
     },
 
     replySendBtn: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      padding: '10px 22px',
-      border: 'none',
-      borderRadius: 12,
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
-      color: '#fff',
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      minWidth: 150,
+      height: 46,
+      padding: "0 24px",
+      border: "none",
+      borderRadius: 14,
+      background: "linear-gradient(135deg, #8b6508, #d4af37)",
+      color: "#ffffff",
       fontSize: 14,
       fontWeight: 700,
-      fontFamily: 'Arial, sans-serif',
-      cursor: 'pointer',
+      fontFamily: "Arial, sans-serif",
+      cursor: "pointer",
+      boxShadow: "0 10px 24px rgba(139, 101, 8, 0.25)",
+      transition: "all .2s ease",
+      userSelect: "none",
+      whiteSpace: "nowrap",
     },
   };
 };

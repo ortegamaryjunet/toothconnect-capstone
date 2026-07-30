@@ -6,6 +6,16 @@
     box-sizing: border-box;
 }
 
+.required {
+    display: inline !important;
+    color: #dc2626 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin-left: 2px;
+    border-radius: 0 !important;
+    font-weight: 700;
+}
+
 :root {
     --gold: #d4af37;
     --gold-dark: #8b6508;
@@ -57,6 +67,31 @@ img {
 
 section {
     scroll-margin-top: 110px;
+}
+
+.input-error {
+    display: block;
+    margin-top: 6px;
+    font-size: 13px;
+    color: #dc2626;
+    min-height: 18px;
+    font-weight: 500;
+}
+
+.invalid {
+    border-color: #dc2626 !important;
+}
+
+.form-group input.error,
+.form-group select.error,
+.form-group textarea.error {
+    border: 2px solid #dc2626;
+}
+
+.form-group input.valid,
+.form-group select.valid,
+.form-group textarea.valid {
+    border: 2px solid #16a34a;
 }
 
 /* HEADER SECTION */
@@ -1401,13 +1436,14 @@ section {
 .form-group select,
 .form-group textarea {
     width: 100%;
+    height: 50px;
     border: 1px solid var(--line);
-    border-radius: 16px;
-    outline: none;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 0 14px;
     color: var(--dark);
     font-size: 14px;
-    background: #fffaf2;
-    transition: .3s ease;
+    outline: none;
 }
 
 .form-group input,
@@ -1428,6 +1464,11 @@ section {
     border-color: var(--gold);
     background: #ffffff;
     box-shadow: 0 0 0 4px rgba(212, 175, 55, .15);
+}
+
+.form-group textarea::placeholder {
+    color: #9ca3af;
+    opacity: 1;
 }
 
 .location-grid {
@@ -1459,9 +1500,9 @@ section {
 
 .radio-design {
     position: relative;
-    width: 10px;
-    height: 10px;
-    min-width: 10px;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
     border: 2px solid var(--gold);
     border-radius: 50%;
     background: #ffffff;
@@ -1479,7 +1520,7 @@ section {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0);
-    transition: 0.25s ease;
+    transition: transform .25s ease;
 }
 
 .location-option div {
@@ -1500,24 +1541,39 @@ section {
     background: var(--gold-soft);
 }
 
-.location-option:has(input:checked) {
-    border-color: var(--gold);
-    background: var(--gold-soft);
-    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
-}
-
-.location-option:has(input:checked) .radio-design::after {
+.location-option input:checked + .radio-design::after {
     transform: translate(-50%, -50%) scale(1);
 }
 
+.location-option.valid {
+    border: 2px solid #16a34a;
+}
+
+.location-option.error {
+    border: 2px solid #ef4444;
+}
+
 .phone-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: 100%;
 }
 
+.phone-field select {
+    flex: 0 0 140px;
+    width: 140px;
+    height: 54px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    font-size: 15px;
+}
+
 .phone-field input {
-    width: 100%;
-    height: 52px;
-    padding-left: 95px !important;
+    flex: 1;
+    min-width: 0;
 }
 
 .inquiry-form button {
