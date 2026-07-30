@@ -41,17 +41,23 @@ const createRecepProfileStyles = ({
     },
 
     backButton: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 8,
-      border: 'none',
+      minWidth: 72,
+      height: 42,
+      padding: '0 16px',
+      border: '1px solid #d4af37',
+      borderRadius: 12,
       background: '#d4af37',
       color: '#ffffff',
-      borderRadius: 14,
-      padding: isMobile ? '13px 18px' : '14px 22px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      textDecoration: 'none',
       cursor: 'pointer',
-      fontFamily: 'Arial, sans-serif',
-      fontWeight: 800,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      whiteSpace: 'nowrap',
       boxSizing: 'border-box',
       boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
@@ -63,6 +69,7 @@ const createRecepProfileStyles = ({
     backButtonText: {
       fontSize: 14,
       lineHeight: 1,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
     },
 
     mainContent: {
@@ -273,6 +280,16 @@ const createRecepProfileStyles = ({
       fontFamily: 'Arial, sans-serif',
     },
 
+    profileActions: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: isSmallScreen ? 'stretch' : 'flex-end',
+      gap: 10,
+      width: isSmallScreen ? '100%' : 'auto',
+      flexDirection: isMobile ? 'column' : 'row',
+      flexWrap: isMobile ? 'nowrap' : 'wrap',
+    },
+
     editBtn: {
       border: 'none',
       background: '#d4af37',
@@ -289,6 +306,36 @@ const createRecepProfileStyles = ({
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
       boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
+    },
+
+    pdfBtn: {
+      border: 'none',
+      background: 'linear-gradient(135deg, #f87171, #dc2626)',
+      color: '#ffffff',
+      padding: '13px 18px',
+      borderRadius: 14,
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      width: isMobile ? '100%' : 'auto',
+      fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 8px 18px rgba(220, 38, 38, 0.24)',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
+    },
+
+    pdfBtnIcon: {
+      fontSize: 14,
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     disabledBtn: {
@@ -494,6 +541,12 @@ const createRecepProfileStyles = ({
       fontFamily: 'Arial, sans-serif',
     },
 
+    requiredMark: {
+      color: '#dc2626',
+      marginLeft: 3,
+      fontWeight: 800,
+    },
+
     formInput: {
       width: '100%',
       border: '1px solid #cbd5e1',
@@ -512,6 +565,62 @@ const createRecepProfileStyles = ({
       background: '#fff1f2',
     },
 
+    phoneInputContainer: {
+      width: '100%',
+      fontFamily: 'Arial, sans-serif',
+      position: 'relative',
+      zIndex: 20,
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : '132px minmax(0, 1fr)',
+      gap: 10,
+      boxSizing: 'border-box',
+    },
+
+    phoneCountrySelect: {
+      width: '100%',
+      minWidth: 0,
+      minHeight: 43,
+      height: 43,
+      border: '1px solid #cbd5e1',
+      borderRadius: 12,
+      padding: '0 10px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      color: '#0f172a',
+      background: '#f8fafc',
+      outline: 'none',
+      boxSizing: 'border-box',
+    },
+
+    phoneInput: {
+      width: '100%',
+      minWidth: 0,
+      minHeight: 43,
+      height: 43,
+      border: '1px solid #cbd5e1',
+      borderRadius: 12,
+      padding: '0 13px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      color: '#0f172a',
+      background: '#ffffff',
+      outline: 'none',
+      boxSizing: 'border-box',
+    },
+
+    phoneInputError: {
+      borderColor: '#dc2626',
+      borderWidth: 2,
+    },
+
+    fieldErrorText: {
+      color: '#dc2626',
+      fontSize: 12,
+      marginTop: 5,
+      fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.35,
+    },
+
     formTextarea: {
       minHeight: 90,
       resize: 'vertical',
@@ -519,23 +628,25 @@ const createRecepProfileStyles = ({
 
     editModalActions: {
       display: 'flex',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       gap: 12,
       marginTop: 24,
       flexDirection: isMobile ? 'column' : 'row',
     },
 
     saveBtn: {
+      height: 40,
       border: 'none',
-      padding: '13px 18px',
-      borderRadius: 14,
-      fontSize: 14,
+      borderRadius: 10,
+      padding: '0 18px',
       cursor: 'pointer',
       background: '#d4af37',
       color: '#ffffff',
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
       fontWeight: 800,
+      whiteSpace: 'nowrap',
+      fontSize: 14,
       boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
@@ -642,6 +753,73 @@ const createRecepProfileStyles = ({
       background: '#f1f5f9',
       color: '#334155',
       fontWeight: 'bold',
+    },
+
+    backModalContent: {
+      width: '100%',
+      maxWidth: 410,
+      background: '#ffffff',
+      padding: isMobile ? '26px 20px' : '30px 25px',
+      borderRadius: 22,
+      textAlign: 'center',
+      boxShadow: '0 20px 50px rgba(15, 23, 42, 0.2)',
+      boxSizing: 'border-box',
+    },
+
+    backModalIcon: {
+      width: 82,
+      height: 82,
+      margin: '0 auto 16px',
+      background: '#fee2e2',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#dc2626',
+    },
+
+    backModalTitle: {
+      margin: '0 0 10px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 21,
+      color: '#0f172a',
+      fontWeight: 600,
+    },
+
+    backModalText: {
+      margin: '0 0 24px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 15,
+      color: '#64748b',
+      lineHeight: 1.5,
+    },
+
+    backModalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    backModalButton: {
+      minWidth: isMobile ? '100%' : 100,
+      border: 'none',
+      borderRadius: 12,
+      padding: '12px 18px',
+      cursor: 'pointer',
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
+      fontSize: 14,
+    },
+
+    backCancelBtn: {
+      background: '#e5e7eb',
+      color: '#0f172a',
+    },
+
+    backConfirmBtn: {
+      background: '#dc2626',
+      color: '#ffffff',
     },
 
     confirmDetailsList: {

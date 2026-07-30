@@ -1,8 +1,22 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  getCountries,
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+} from 'libphonenumber-js';
 
 import api from '../api/axios';
 import createRecepProfileStyles from '../styles/RecepProfile';
+
+async function loadPdfTools() {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+
+  return { jsPDF, autoTable };
+}
 
 const initialProfile = {
   fullName: 'Receptionist Name',
@@ -32,6 +46,26 @@ const initialProfile = {
 };
 
 const SUFFIX_OPTIONS = ['Jr', 'Sr', 'II', 'III', 'IV'];
+const NATIONALITY_OPTIONS = [
+  'Afghan', 'Albanian', 'Algerian', 'American', 'Andorran', 'Angolan',
+  'Argentine', 'Armenian', 'Australian', 'Austrian', 'Bangladeshi',
+  'Belgian', 'Brazilian', 'British', 'Bulgarian', 'Cambodian', 'Canadian',
+  'Chilean', 'Chinese', 'Colombian', 'Croatian', 'Czech', 'Danish', 'Dutch',
+  'Egyptian', 'Emirati', 'Filipino', 'Finnish', 'French', 'German', 'Greek',
+  'Hungarian', 'Icelandic', 'Indian', 'Indonesian', 'Irish', 'Israeli',
+  'Italian', 'Japanese', 'Jordanian', 'Kenyan', 'Korean', 'Kuwaiti',
+  'Malaysian', 'Mexican', 'Moroccan', 'Nepalese', 'New Zealander',
+  'Nigerian', 'Norwegian', 'Pakistani', 'Peruvian', 'Polish', 'Portuguese',
+  'Qatari', 'Romanian', 'Russian', 'Saudi', 'Singaporean', 'South African',
+  'Spanish', 'Swedish', 'Swiss', 'Thai', 'Turkish', 'Ukrainian', 'Vietnamese',
+];
+const RELIGION_OPTIONS = [
+  'Catholic', 'Christian', 'Islam', 'Iglesia ni Cristo', 'Buddhism', 'Hinduism',
+];
+const phoneCountryOptions = getCountries().map((country) => ({
+  country,
+  callingCode: getCountryCallingCode(country),
+}));
 const PROFILE_REQUIRED_FIELDS = [
   'fullName',
   'birthday',
@@ -54,6 +88,166 @@ const PROFILE_FIELD_LABELS = {
   homeAddress: 'Home Address',
 };
 
+function filterProfileFieldValue(name, value) {
+  const rawValue = String(value || '');
+
+  if (name === 'fullName') {
+    return rawValue.replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
+  }
+
+  if (name === 'contactNumber') {
+    let nextValue = rawValue.replace(/[^0-9+]/g, '');
+    nextValue = nextValue.replace(/(.)\+/g, '$1');
+    return nextValue.slice(0, nextValue.startsWith('+') ? 13 : 11);
+  }
+
+  if (name === 'emailAddress') {
+    return rawValue.replace(/\s/g, '');
+  }
+
+  return rawValue;
+}
+
+function isValidProfileContactNumber(value) {
+  return !validateProfilePhoneNumber(value);
+}
+
+function isValidProfileEmail(value) {
+  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(
+    String(value || '').trim()
+  );
+}
+
+function isValidProfileDate(value) {
+  if (!value) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime());
+}
+
+function getProfileFieldError(field, value) {
+  const fieldValue = String(value || '').trim();
+
+  if (PROFILE_REQUIRED_FIELDS.includes(field) && (!fieldValue || fieldValue === 'N/A')) {
+    return 'This field is required.';
+  }
+
+  if (!fieldValue) return '';
+
+  if (field === 'contactNumber' && !isValidProfileContactNumber(fieldValue)) {
+    return 'Contact number does not match the selected country code.';
+  }
+
+  if (field === 'emailAddress' && !isValidProfileEmail(fieldValue)) {
+    return 'Email address format is invalid';
+  }
+
+  if (field === 'birthday' && !isValidProfileDate(fieldValue)) {
+    return 'Enter a valid date.';
+  }
+
+  return '';
+}
+
+function getProfileFormErrors(form) {
+  return PROFILE_REQUIRED_FIELDS.reduce((errors, field) => {
+    const error = getProfileFieldError(field, form[field]);
+    if (error) errors[field] = error;
+    return errors;
+  }, {});
+}
+
+function parseProfileContactNumber(value, country = 'PH') {
+  const rawValue = String(value || '').trim();
+  const digits = rawValue.replace(/\D/g, '');
+
+  if (!digits) return null;
+  if (rawValue.startsWith('+')) return parsePhoneNumberFromString(rawValue);
+  if (digits.startsWith('00')) return parsePhoneNumberFromString(`+${digits.slice(2)}`);
+  return parsePhoneNumberFromString(digits, country);
+}
+
+function isProfileDialCodeOnly(digits, country = 'PH') {
+  try {
+    return digits === getCountryCallingCode(country);
+  } catch {
+    return false;
+  }
+}
+
+function getProfilePhoneFormValue(value, fallbackCountry = 'PH') {
+  const phoneNumber = parseProfileContactNumber(value, fallbackCountry);
+
+  if (!phoneNumber) {
+    return {
+      country: fallbackCountry,
+      number: String(value || '').replace(/\D/g, '').slice(0, 15),
+    };
+  }
+
+  return {
+    country: phoneNumber.country || fallbackCountry,
+    number: phoneNumber.nationalNumber || String(value || '').replace(/\D/g, '').slice(0, 15),
+  };
+}
+
+function normalizeProfilePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isProfileDialCodeOnly(digits, country)) return '';
+
+  const phoneNumber = parseProfileContactNumber(value, country);
+  return phoneNumber?.number || `+${digits}`;
+}
+
+function validateProfilePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isProfileDialCodeOnly(digits, country)) {
+    return 'This field is required.';
+  }
+
+  const phoneNumber = parseProfileContactNumber(value, country);
+  return phoneNumber?.isValid()
+    ? ''
+    : 'Contact number does not match the selected country code.';
+}
+
+function getProfileFieldErrorNext(field, value, phoneCountry = 'PH') {
+  const fieldValue = String(value || '').trim();
+
+  if (PROFILE_REQUIRED_FIELDS.includes(field) && (!fieldValue || fieldValue === 'N/A')) {
+    return 'This field is required.';
+  }
+
+  if (!fieldValue) return '';
+
+  if (field === 'fullName' && !/^[a-zA-ZÀ-ÿ\s]+$/.test(fieldValue)) {
+    return 'Full name must contain letters and spaces only.';
+  }
+
+  if (field === 'contactNumber') {
+    return validateProfilePhoneNumber(fieldValue, phoneCountry);
+  }
+
+  if (field === 'emailAddress' && !isValidProfileEmail(fieldValue)) {
+    return 'Email address format is invalid';
+  }
+
+  if (field === 'birthday' && !isValidProfileDate(fieldValue)) {
+    return 'Enter a valid date.';
+  }
+
+  return '';
+}
+
+function getProfileFormErrorsNext(form, phoneCountry = 'PH') {
+  return PROFILE_REQUIRED_FIELDS.reduce((errors, field) => {
+    const error = getProfileFieldErrorNext(field, form[field], phoneCountry);
+    if (error) errors[field] = error;
+    return errors;
+  }, {});
+}
+
 const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png'];
 const SUPPORTING_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_PROFILE_FILE_SIZE = 5 * 1024 * 1024;
@@ -61,6 +255,7 @@ const MAX_PROFILE_FILE_SIZE = 5 * 1024 * 1024;
 export default function RecepProfile() {
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showBackModal, setShowBackModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
   const [profile, setProfile] = useState(initialProfile);
@@ -71,6 +266,8 @@ export default function RecepProfile() {
   const [profileError, setProfileError] = useState('');
   const [profileEditError, setProfileEditError] = useState('');
   const [profileTouchedFields, setProfileTouchedFields] = useState({});
+  const [editPhoneCountry, setEditPhoneCountry] = useState('PH');
+  const [editPhoneNumber, setEditPhoneNumber] = useState('');
   const [showProfileCloseConfirmModal, setShowProfileCloseConfirmModal] = useState(false);
   const [profileSaveConfirmModal, setProfileSaveConfirmModal] = useState(null);
   const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
@@ -97,6 +294,10 @@ export default function RecepProfile() {
   const age = useMemo(() => {
     return calculateAge(profile.birthday);
   }, [profile.birthday]);
+
+  const editAge = useMemo(() => {
+    return calculateAge(editForm.birthday);
+  }, [editForm.birthday]);
 
   const displaySuffix = String(profile.suffix || '').trim() || 'N/A';
 
@@ -163,6 +364,7 @@ export default function RecepProfile() {
   useEffect(() => {
     if (
       showLogoutModal ||
+      showBackModal ||
       showEditModal ||
       showProfileCloseConfirmModal ||
       profileSaveConfirmModal ||
@@ -179,6 +381,7 @@ export default function RecepProfile() {
     };
   }, [
     showLogoutModal,
+    showBackModal,
     showEditModal,
     showProfileCloseConfirmModal,
     profileSaveConfirmModal,
@@ -189,6 +392,7 @@ export default function RecepProfile() {
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
+        closeBackModal();
         closeLogoutModal();
         setDocumentDeleteConfirm(null);
         setPhotoRemoveConfirm(false);
@@ -219,7 +423,15 @@ export default function RecepProfile() {
     window.location.href = '/login';
   }
 
-  function handleBack() {
+  function openBackModal() {
+    setShowBackModal(true);
+  }
+
+  function closeBackModal() {
+    setShowBackModal(false);
+  }
+
+  function confirmBack() {
     if (window.history.length > 1) {
       navigate(-1);
       return;
@@ -228,15 +440,27 @@ export default function RecepProfile() {
     navigate('/receptionist');
   }
 
+  function handleBackModalOverlayClick(event) {
+    if (event.target === event.currentTarget) {
+      closeBackModal();
+    }
+  }
+
   function openEditModal() {
+    const phoneValue = getProfilePhoneFormValue(profile.contactNumber, 'PH');
     setEditForm(profile);
+    setEditPhoneCountry(phoneValue.country);
+    setEditPhoneNumber(phoneValue.number);
     setProfileEditError('');
     setProfileTouchedFields({});
     setShowEditModal(true);
   }
 
   function closeEditModal() {
+    const phoneValue = getProfilePhoneFormValue(profile.contactNumber, 'PH');
     setEditForm(profile);
+    setEditPhoneCountry(phoneValue.country);
+    setEditPhoneNumber(phoneValue.number);
     setProfileEditError('');
     setProfileTouchedFields({});
     setShowProfileCloseConfirmModal(false);
@@ -269,21 +493,81 @@ export default function RecepProfile() {
   }
 
   function handleEditChange(name, value) {
+    const nextValue =
+      name === 'fullName'
+        ? String(value || '').replace(/[^a-zA-ZÀ-ÿ\s]/g, '')
+        : filterProfileFieldValue(name, value);
+
     setEditForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
     setProfileTouchedFields((prev) => ({
       ...prev,
       [name]: true,
     }));
-    setProfileEditError('');
+    const nextError = getProfileFieldErrorNext(name, nextValue, editPhoneCountry);
+    if (!nextError) {
+      setProfileEditError('');
+    }
+  }
+
+  function handleProfilePhoneChange(value) {
+    const nextNumber = String(value || '').replace(/\D/g, '').slice(0, 15);
+    const normalizedContact = normalizeProfilePhoneNumber(nextNumber, editPhoneCountry);
+
+    setEditPhoneNumber(nextNumber);
+    setEditForm((prev) => ({
+      ...prev,
+      contactNumber: normalizedContact,
+    }));
+    setProfileTouchedFields((prev) => ({
+      ...prev,
+      contactNumber: true,
+    }));
+
+    if (!validateProfilePhoneNumber(nextNumber, editPhoneCountry)) {
+      setProfileEditError('');
+    }
+  }
+
+  function handleProfilePhoneCountryChange(country) {
+    const normalizedContact = normalizeProfilePhoneNumber(editPhoneNumber, country);
+
+    setEditPhoneCountry(country);
+    setEditForm((prev) => ({
+      ...prev,
+      contactNumber: normalizedContact,
+    }));
+    setProfileTouchedFields((prev) => ({
+      ...prev,
+      contactNumber: true,
+    }));
+
+    if (!validateProfilePhoneNumber(editPhoneNumber, country)) {
+      setProfileEditError('');
+    }
   }
 
   function isProfileFormComplete(form = editForm) {
-    return PROFILE_REQUIRED_FIELDS.every(
-      (field) => String(form[field] ?? '').trim() !== ''
-    );
+    return Object.keys(getProfileFormErrorsNext(form, editPhoneCountry)).length === 0;
+  }
+
+  function getVisibleProfileFieldError(field) {
+    if (!profileTouchedFields[field]) return '';
+    if (field === 'contactNumber') {
+      return validateProfilePhoneNumber(editPhoneNumber, editPhoneCountry);
+    }
+    return getProfileFieldErrorNext(field, editForm[field], editPhoneCountry);
+  }
+
+  function getProfileInputStyle(field, extraStyle = {}) {
+    const error = getVisibleProfileFieldError(field);
+    return {
+      ...styles.formInput,
+      ...extraStyle,
+      ...(error ? styles.formInputInvalid : {}),
+    };
   }
 
   function getProfileSaveDetails(nextProfile) {
@@ -308,17 +592,22 @@ export default function RecepProfile() {
 
     const nextProfile = {
       ...editForm,
+      contactNumber: normalizeProfilePhoneNumber(editPhoneNumber, editPhoneCountry),
       suffix: String(editForm.suffix || '').trim(),
     };
 
-    if (!isProfileFormComplete(nextProfile)) {
-      setProfileTouchedFields(
-        PROFILE_REQUIRED_FIELDS.reduce((fields, field) => {
+    const formErrors = getProfileFormErrorsNext(nextProfile, editPhoneCountry);
+    if (Object.keys(formErrors).length > 0) {
+      setProfileTouchedFields((prev) => ({
+        ...prev,
+        ...Object.keys(formErrors).reduce((fields, field) => {
           fields[field] = true;
           return fields;
-        }, {})
+        }, {}),
+      }));
+      setProfileEditError(
+        Object.values(formErrors)[0] || 'Please complete all required profile details before saving.'
       );
-      setProfileEditError('Please complete all required profile details before saving.');
       return;
     }
 
@@ -351,9 +640,12 @@ export default function RecepProfile() {
       );
 
       const mappedProfile = staffProfileToRecepProfile(res.data.profile);
+      const phoneValue = getProfilePhoneFormValue(mappedProfile.contactNumber, editPhoneCountry);
       setProfileId(res.data.profile.profileId || profileId);
       setProfile(mappedProfile);
       setEditForm(mappedProfile);
+      setEditPhoneCountry(phoneValue.country);
+      setEditPhoneNumber(phoneValue.number);
       setProfileTouchedFields({});
       setShowEditModal(false);
     } catch (err) {
@@ -466,13 +758,312 @@ export default function RecepProfile() {
     }
   }
 
+  async function exportProfileToPDF() {
+    const { jsPDF, autoTable } = await loadPdfTools();
+    const doc = new jsPDF('p', 'mm', 'a4');
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const generatedDate = new Date().toLocaleString('en-PH');
+
+    function safeValue(value) {
+      if (value === null || value === undefined || value === '') {
+        return 'N/A';
+      }
+
+      return String(value);
+    }
+
+    function drawHeader() {
+      doc.setFillColor(255, 248, 220);
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      doc.setFillColor(139, 101, 8);
+      doc.rect(0, 0, pageWidth, 28, 'F');
+
+      doc.setFillColor(212, 175, 55);
+      doc.rect(0, 28, pageWidth, 3, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('Smile Empress Dental Hub', 14, 12);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Receptionist Profile Report', 14, 20);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('ToothConnect', pageWidth - 14, 12, {
+        align: 'right',
+      });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`Generated: ${generatedDate}`, pageWidth - 14, 20, {
+        align: 'right',
+      });
+    }
+
+    function drawFooter() {
+      doc.setDrawColor(212, 175, 55);
+      doc.setLineWidth(0.3);
+      doc.line(14, pageHeight - 15, pageWidth - 14, pageHeight - 15);
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.text('Generated by ToothConnect', 14, pageHeight - 9);
+      doc.text(
+        `Page ${doc.internal.getCurrentPageInfo().pageNumber}`,
+        pageWidth - 14,
+        pageHeight - 9,
+        { align: 'right' }
+      );
+    }
+
+    function drawSectionTitle(title, yPosition) {
+      doc.setFillColor(254, 243, 199);
+      doc.roundedRect(14, yPosition, pageWidth - 28, 9, 2, 2, 'F');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(title, 18, yPosition + 6);
+
+      return yPosition + 13;
+    }
+
+    function addSection(title, rows, startY) {
+      let yPosition = startY;
+
+      if (yPosition > pageHeight - 45) {
+        doc.addPage();
+        drawHeader();
+        yPosition = 40;
+      }
+
+      yPosition = drawSectionTitle(title, yPosition);
+
+      autoTable(doc, {
+        startY: yPosition,
+        theme: 'grid',
+        head: [['Field', 'Details']],
+        body: rows,
+        margin: { left: 14, right: 14 },
+        styles: {
+          font: 'helvetica',
+          fontSize: 9,
+          cellPadding: 3,
+          textColor: [15, 23, 42],
+          lineColor: [229, 231, 235],
+          lineWidth: 0.25,
+          valign: 'middle',
+        },
+        headStyles: {
+          fillColor: [212, 175, 55],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [255, 253, 242],
+        },
+        columnStyles: {
+          0: {
+            cellWidth: 60,
+            fontStyle: 'bold',
+            textColor: [51, 65, 85],
+          },
+          1: {
+            cellWidth: 'auto',
+          },
+        },
+        didDrawPage() {
+          drawFooter();
+        },
+      });
+
+      return doc.lastAutoTable.finalY + 8;
+    }
+
+    async function addAttachmentsSection(startY) {
+      const documents = Array.isArray(profile.supportingDocuments)
+        ? profile.supportingDocuments
+        : [];
+      if (documents.length === 0) {
+        return addSection('Attachments', [['Attachments', 'No attachments uploaded.']], startY);
+      }
+
+      let yPosition = startY;
+      if (yPosition > pageHeight - 55) {
+        doc.addPage();
+        drawHeader();
+        yPosition = 40;
+      }
+      yPosition = drawSectionTitle('Attachments', yPosition);
+
+      for (const document of documents) {
+        if (yPosition > pageHeight - 45) {
+          doc.addPage();
+          drawHeader();
+          yPosition = 40;
+        }
+
+        const label = document.file_name || 'Attachment';
+        const fileUrl = profileFileUrl(document.file_url);
+        const isImage = String(document.mime_type || '').startsWith('image/');
+
+        if (isImage) {
+          try {
+            const dataUrl = await fileUrlToDataUrl(fileUrl);
+            const format = String(document.mime_type || '').includes('png') ? 'PNG' : 'JPEG';
+            doc.addImage(dataUrl, format, 20, yPosition, 44, 34, undefined, 'FAST');
+            doc.setTextColor(51, 65, 85);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text(label, 68, yPosition + 8, { maxWidth: pageWidth - 88 });
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(formatProfileFileSize(document.file_size), 68, yPosition + 14);
+            yPosition += 40;
+            continue;
+          } catch (_) {}
+        }
+
+        autoTable(doc, {
+          startY: yPosition,
+          theme: 'grid',
+          body: [['Attachment', `${label}\n${formatProfileFileSize(document.file_size)}`]],
+          margin: { left: 14, right: 14 },
+          styles: {
+            font: 'helvetica',
+            fontSize: 9,
+            cellPadding: 3,
+            lineColor: [229, 231, 235],
+            lineWidth: 0.25,
+          },
+          columnStyles: { 0: { cellWidth: 60, fontStyle: 'bold' } },
+          didDrawPage() {
+            drawFooter();
+          },
+        });
+        yPosition = doc.lastAutoTable.finalY + 5;
+      }
+
+      return yPosition + 4;
+    }
+
+    drawHeader();
+
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(14, 39, pageWidth - 28, 29, 3, 3, 'F');
+
+    doc.setFillColor(212, 175, 55);
+    doc.circle(26, 53.5, 9, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text(avatarLetter, 26, 57, { align: 'center' });
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text(safeValue(profile.fullName), 40, 50);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Receptionist Profile', 40, 58);
+    doc.text(`Profile ID: ${safeValue(profileId)}`, 40, 64);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(139, 101, 8);
+    doc.text(`Role: ${safeValue(profile.role)}`, pageWidth - 20, 58, {
+      align: 'right',
+    });
+    doc.text(`Experience: ${safeValue(profile.yearsOfExperience)}`, pageWidth - 20, 64, {
+      align: 'right',
+    });
+
+    let nextY = 76;
+
+    nextY = addSection(
+      'Profile Summary',
+      [
+        ['Full Name', safeValue(profile.fullName)],
+        ['Role', safeValue(profile.role)],
+        ['Employment Type', safeValue(profile.employmentType)],
+        ['Shift Type', safeValue(profile.shiftType)],
+        ['Years of Experience', safeValue(profile.yearsOfExperience)],
+        ['Skills', safeValue(profile.skills)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Personal Information',
+      [
+        ['Full Name', safeValue(profile.fullName)],
+        ['Preferred Nickname', safeValue(profile.preferredNickname)],
+        ['Suffix', safeValue(displaySuffix)],
+        ['Birthday', safeValue(profile.birthday)],
+        ['Age', safeValue(age)],
+        ['Religion', safeValue(profile.religion)],
+        ['Nationality', safeValue(profile.nationality)],
+        ['Home Address', safeValue(profile.homeAddress)],
+        ['Contact Number', safeValue(profile.contactNumber)],
+        ['Email Address', safeValue(profile.emailAddress)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Work Details',
+      [
+        ['Role', safeValue(profile.role)],
+        ['Start Date', safeValue(profile.startDate)],
+        ['Employment Type', safeValue(profile.employmentType)],
+        ['Shift Type', safeValue(profile.shiftType)],
+        ['Work Schedule Days', safeValue(profile.workScheduleDays)],
+        ['Work Hours', safeValue(profile.workHours)],
+      ],
+      nextY
+    );
+
+    nextY = addSection(
+      'Professional Information',
+      [
+        ['Position', safeValue(profile.role)],
+        ['Access Role', safeValue(profile.role)],
+        ['Skills', safeValue(profile.skills)],
+        ['Years of Experience', safeValue(profile.yearsOfExperience)],
+      ],
+      nextY
+    );
+
+    await addAttachmentsSection(nextY);
+
+    const totalPdfPages = doc.internal.getNumberOfPages();
+    for (let page = 1; page <= totalPdfPages; page += 1) {
+      doc.setPage(page);
+      drawFooter();
+    }
+
+    doc.save('receptionist_profile_report.pdf');
+  }
+
   return (
     <div style={styles.page}>
       <div style={styles.mainContainer}>
         <header style={styles.topHeader}>
           <button
             type="button"
-            onClick={handleBack}
+            onClick={openBackModal}
             style={styles.backButton}
           >
             <span style={styles.backButtonText}>Back</span>
@@ -549,14 +1140,25 @@ export default function RecepProfile() {
               </div>
             </div>
 
-            <button
-              type="button"
-              style={styles.editBtn}
-              onClick={openEditModal}
-            >
-              <i className="fi fi-rr-edit"></i>
-              Edit Profile
-            </button>
+            <div style={styles.profileActions}>
+              <button
+                type="button"
+                style={styles.editBtn}
+                onClick={openEditModal}
+              >
+                <i className="fi fi-rr-edit"></i>
+                Edit Profile
+              </button>
+
+              <button
+                type="button"
+                style={styles.pdfBtn}
+                onClick={exportProfileToPDF}
+              >
+                <i className="fi fi-rr-file-pdf" style={styles.pdfBtnIcon}></i>
+                PDF
+              </button>
+            </div>
           </section>
 
           <section style={styles.profileGrid}>
@@ -742,7 +1344,12 @@ export default function RecepProfile() {
               )}
 
               <div style={styles.formGrid}>
-                <FormGroup styles={styles} label="Full Name">
+                <FormGroup
+                  styles={styles}
+                  label="Full Name"
+                  required
+                  error={getVisibleProfileFieldError('fullName')}
+                >
                   <input
                     type="text"
                     name="fullName"
@@ -753,12 +1360,7 @@ export default function RecepProfile() {
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, fullName: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.fullName && !String(editForm.fullName || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
+                    style={getProfileInputStyle('fullName')}
                   />
                 </FormGroup>
 
@@ -793,7 +1395,12 @@ export default function RecepProfile() {
                   </select>
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Birthday">
+                <FormGroup
+                  styles={styles}
+                  label="Birthday"
+                  required
+                  error={getVisibleProfileFieldError('birthday')}
+                >
                   <input
                     type="date"
                     name="birthday"
@@ -804,76 +1411,134 @@ export default function RecepProfile() {
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, birthday: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.birthday && !String(editForm.birthday || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
+                    style={getProfileInputStyle('birthday')}
                   />
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Religion">
+                <FormGroup styles={styles} label="Age">
                   <input
                     type="text"
+                    name="age"
+                    value={editAge === 'N/A' ? '' : editAge}
+                    readOnly
+                    style={disabledInputStyle}
+                  />
+                </FormGroup>
+
+                <FormGroup
+                  styles={styles}
+                  label="Religion"
+                  required
+                  error={getVisibleProfileFieldError('religion')}
+                >
+                  <select
                     name="religion"
-                    value={editForm.religion}
+                    value={
+                      RELIGION_OPTIONS.includes(editForm.religion)
+                        ? editForm.religion
+                        : ''
+                    }
                     onChange={(event) =>
                       handleEditChange('religion', event.target.value)
                     }
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, religion: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.religion && !String(editForm.religion || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
-                  />
+                    style={getProfileInputStyle('religion')}
+                  >
+                    <option value="">Select Religion</option>
+                    {RELIGION_OPTIONS.map((religion) => (
+                      <option key={religion} value={religion}>
+                        {religion}
+                      </option>
+                    ))}
+                  </select>
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Nationality">
-                  <input
-                    type="text"
+                <FormGroup
+                  styles={styles}
+                  label="Nationality"
+                  required
+                  error={getVisibleProfileFieldError('nationality')}
+                >
+                  <select
                     name="nationality"
-                    value={editForm.nationality}
+                    value={
+                      NATIONALITY_OPTIONS.includes(editForm.nationality)
+                        ? editForm.nationality
+                        : ''
+                    }
                     onChange={(event) =>
                       handleEditChange('nationality', event.target.value)
                     }
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, nationality: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.nationality && !String(editForm.nationality || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
-                  />
+                    style={getProfileInputStyle('nationality')}
+                  >
+                    <option value="">Select Nationality</option>
+                    {NATIONALITY_OPTIONS.map((nationality) => (
+                      <option key={nationality} value={nationality}>
+                        {nationality}
+                      </option>
+                    ))}
+                  </select>
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Contact Number">
-                  <input
-                    type="text"
-                    name="contactNumber"
-                    value={editForm.contactNumber}
-                    onChange={(event) =>
-                      handleEditChange('contactNumber', event.target.value)
-                    }
-                    onBlur={() =>
-                      setProfileTouchedFields((prev) => ({ ...prev, contactNumber: true }))
-                    }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.contactNumber && !String(editForm.contactNumber || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
-                  />
+                <FormGroup
+                  styles={styles}
+                  label="Contact Number"
+                  required
+                  error={getVisibleProfileFieldError('contactNumber')}
+                >
+                  <div style={styles.phoneInputContainer}>
+                    <select
+                      value={editPhoneCountry}
+                      onChange={(event) =>
+                        handleProfilePhoneCountryChange(event.target.value)
+                      }
+                      style={{
+                        ...styles.phoneCountrySelect,
+                        ...(getVisibleProfileFieldError('contactNumber')
+                          ? styles.phoneInputError
+                          : {}),
+                      }}
+                      aria-label="Country code"
+                    >
+                      {phoneCountryOptions.map((option) => (
+                        <option key={option.country} value={option.country}>
+                          {option.country} +{option.callingCode}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      name="contactNumber"
+                      value={editPhoneNumber}
+                      onChange={(event) => handleProfilePhoneChange(event.target.value)}
+                      onBlur={() =>
+                        setProfileTouchedFields((prev) => ({ ...prev, contactNumber: true }))
+                      }
+                      placeholder="9123456789"
+                      autoComplete="tel"
+                      inputMode="tel"
+                      maxLength={15}
+                      style={{
+                        ...styles.phoneInput,
+                        ...(getVisibleProfileFieldError('contactNumber')
+                          ? styles.phoneInputError
+                          : {}),
+                      }}
+                    />
+                  </div>
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Email Address">
+                <FormGroup
+                  styles={styles}
+                  label="Email Address"
+                  required
+                  error={getVisibleProfileFieldError('emailAddress')}
+                >
                   <input
                     type="email"
                     name="emailAddress"
@@ -884,16 +1549,17 @@ export default function RecepProfile() {
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, emailAddress: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.emailAddress && !String(editForm.emailAddress || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
+                    style={getProfileInputStyle('emailAddress')}
                   />
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Home Address" full>
+                <FormGroup
+                  styles={styles}
+                  label="Home Address"
+                  full
+                  required
+                  error={getVisibleProfileFieldError('homeAddress')}
+                >
                   <textarea
                     name="homeAddress"
                     value={editForm.homeAddress}
@@ -903,13 +1569,7 @@ export default function RecepProfile() {
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, homeAddress: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...styles.formTextarea,
-                      ...(profileTouchedFields.homeAddress && !String(editForm.homeAddress || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
+                    style={getProfileInputStyle('homeAddress', styles.formTextarea)}
                   />
                 </FormGroup>
 
@@ -1030,15 +1690,6 @@ export default function RecepProfile() {
 
               <div style={styles.editModalActions}>
                 <button
-                  type="button"
-                  style={styles.cancelEditBtn}
-                  onClick={closeEditModal}
-                  disabled={savingProfile}
-                >
-                  Cancel
-                </button>
-
-                <button
                   type="submit"
                   style={{
                     ...styles.saveBtn,
@@ -1052,6 +1703,39 @@ export default function RecepProfile() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showBackModal && (
+        <div style={styles.modal} onClick={handleBackModalOverlayClick}>
+          <div style={styles.backModalContent}>
+            <div style={styles.backModalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.backModalTitle}>Leave Profile</h2>
+            <p style={styles.backModalText}>
+              Are you sure you want to go back? Any unsaved changes will be lost.
+            </p>
+
+            <div style={styles.backModalActions}>
+              <button
+                type="button"
+                style={{ ...styles.backModalButton, ...styles.backCancelBtn }}
+                onClick={closeBackModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.backModalButton, ...styles.backConfirmBtn }}
+                onClick={confirmBack}
+              >
+                Yes
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1354,6 +2038,18 @@ function formatProfileFileSize(value) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+async function fileUrlToDataUrl(url) {
+  const response = await fetch(url);
+  const blob = await response.blob();
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 function splitFullName(profile) {
   const parts = String(profile.fullName || '').trim().split(/\s+/).filter(Boolean);
 
@@ -1553,11 +2249,15 @@ function RecepAttachments({
   );
 }
 
-function FormGroup({ styles, label, children, full = false }) {
+function FormGroup({ styles, label, children, full = false, required = false, error = '' }) {
   return (
     <div style={{ ...styles.formGroup, ...(full ? styles.formGroupFull : {}) }}>
-      <label style={styles.formLabel}>{label}</label>
+      <label style={styles.formLabel}>
+        {label}
+        {required && <span style={styles.requiredMark}>*</span>}
+      </label>
       {children}
+      {error && <span style={styles.fieldErrorText}>{error}</span>}
     </div>
   );
 }

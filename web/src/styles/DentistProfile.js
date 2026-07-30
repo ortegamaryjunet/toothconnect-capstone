@@ -839,6 +839,12 @@
       fontFamily: 'Arial, sans-serif',
     },
 
+    requiredMark: {
+      color: '#dc2626',
+      marginLeft: 3,
+      fontWeight: 800,
+    },
+
     formInput: {
       width: '100%',
       border: '1px solid #cbd5e1',
@@ -856,6 +862,62 @@
     formInputInvalid: {
       borderColor: '#dc2626',
       background: '#fff1f2',
+    },
+
+    phoneInputContainer: {
+      width: '100%',
+      fontFamily: 'Arial, sans-serif',
+      position: 'relative',
+      zIndex: 20,
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : '132px minmax(0, 1fr)',
+      gap: 10,
+      boxSizing: 'border-box',
+    },
+
+    phoneCountrySelect: {
+      width: '100%',
+      minWidth: 0,
+      minHeight: 43,
+      height: 43,
+      border: '1px solid #cbd5e1',
+      borderRadius: 12,
+      padding: '0 10px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      color: '#0f172a',
+      background: '#f8fafc',
+      outline: 'none',
+      boxSizing: 'border-box',
+    },
+
+    phoneInput: {
+      width: '100%',
+      minWidth: 0,
+      minHeight: 43,
+      height: 43,
+      border: '1px solid #cbd5e1',
+      borderRadius: 12,
+      padding: '0 13px',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      color: '#0f172a',
+      background: '#ffffff',
+      outline: 'none',
+      boxSizing: 'border-box',
+    },
+
+    phoneInputError: {
+      borderColor: '#dc2626',
+      borderWidth: 2,
+    },
+
+    fieldErrorText: {
+      color: '#dc2626',
+      fontSize: 12,
+      marginTop: 5,
+      fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.35,
     },
 
     formTextarea: {

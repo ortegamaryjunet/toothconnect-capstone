@@ -6,12 +6,16 @@ import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 const styles = createLoginStyles({ isMobile: window.innerWidth < 520 });
 
+function sanitizeLoginEmail(value) {
+  return String(value || '').replace(/[^a-zA-Z0-9@.-]/g, '');
+}
+
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const prefillEmail = String(location.state?.email ?? '').trim();
+  const prefillEmail = sanitizeLoginEmail(location.state?.email).trim();
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState('');
   const [touched, setTouched] = useState({ email: false, password: false });
@@ -179,6 +183,9 @@ export default function Login() {
   function validateEmail(value) {
     const trimmedEmail = String(value || '').trim();
     if (!trimmedEmail) return 'This field is required';
+    if (/[^a-zA-Z0-9@.-]/.test(trimmedEmail)) {
+      return 'Special characters are not allowed except . and -';
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       return 'Enter a valid email address';
     }
@@ -203,16 +210,17 @@ export default function Login() {
 
   function handleFieldChange(name, value) {
     const previousValue = name === 'email' ? email : password;
+    const nextValue = name === 'email' ? sanitizeLoginEmail(value) : value;
 
     if (name === 'email') {
-      setEmail(value);
+      setEmail(nextValue);
     } else {
-      setPassword(value);
+      setPassword(nextValue);
     }
 
     const shouldShowRequiredError =
-      !String(value || '').trim() &&
-      (String(value || '').length > 0 || String(previousValue || '').length > 0);
+      !String(nextValue || '').trim() &&
+      (String(nextValue || '').length > 0 || String(previousValue || '').length > 0);
 
     if (shouldShowRequiredError) {
       setTouched((current) => ({ ...current, [name]: true }));
@@ -221,7 +229,7 @@ export default function Login() {
     if (touched[name] || submittedOnce || shouldShowRequiredError) {
       setFieldErrors((current) => ({
         ...current,
-        [name]: validateField(name, value),
+        [name]: validateField(name, nextValue),
       }));
     }
   }

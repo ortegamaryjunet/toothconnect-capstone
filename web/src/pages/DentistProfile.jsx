@@ -1,5 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  getCountries,
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+} from 'libphonenumber-js';
 
 import api from '../api/axios';
 import DentistProfileMenu from '../components/DentistProfileMenu';
@@ -42,6 +47,26 @@ const initialProfile = {
 };
 
 const SUFFIX_OPTIONS = ['Jr', 'Sr', 'II', 'III', 'IV'];
+const NATIONALITY_OPTIONS = [
+  'Afghan', 'Albanian', 'Algerian', 'American', 'Andorran', 'Angolan',
+  'Argentine', 'Armenian', 'Australian', 'Austrian', 'Bangladeshi',
+  'Belgian', 'Brazilian', 'British', 'Bulgarian', 'Cambodian', 'Canadian',
+  'Chilean', 'Chinese', 'Colombian', 'Croatian', 'Czech', 'Danish', 'Dutch',
+  'Egyptian', 'Emirati', 'Filipino', 'Finnish', 'French', 'German', 'Greek',
+  'Hungarian', 'Icelandic', 'Indian', 'Indonesian', 'Irish', 'Israeli',
+  'Italian', 'Japanese', 'Jordanian', 'Kenyan', 'Korean', 'Kuwaiti',
+  'Malaysian', 'Mexican', 'Moroccan', 'Nepalese', 'New Zealander',
+  'Nigerian', 'Norwegian', 'Pakistani', 'Peruvian', 'Polish', 'Portuguese',
+  'Qatari', 'Romanian', 'Russian', 'Saudi', 'Singaporean', 'South African',
+  'Spanish', 'Swedish', 'Swiss', 'Thai', 'Turkish', 'Ukrainian', 'Vietnamese',
+];
+const RELIGION_OPTIONS = [
+  'Catholic', 'Christian', 'Islam', 'Iglesia ni Cristo', 'Buddhism', 'Hinduism',
+];
+const phoneCountryOptions = getCountries().map((country) => ({
+  country,
+  callingCode: getCountryCallingCode(country),
+}));
 const PROFILE_REQUIRED_FIELDS = [
   'fullName',
   'birthday',
@@ -64,6 +89,166 @@ const PROFILE_FIELD_LABELS = {
   homeAddress: 'Home Address',
 };
 
+function filterProfileFieldValue(name, value) {
+  const rawValue = String(value || '');
+
+  if (name === 'fullName') {
+    return rawValue.replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
+  }
+
+  if (name === 'contactNumber') {
+    let nextValue = rawValue.replace(/[^0-9+]/g, '');
+    nextValue = nextValue.replace(/(.)\+/g, '$1');
+    return nextValue.slice(0, nextValue.startsWith('+') ? 13 : 11);
+  }
+
+  if (name === 'emailAddress') {
+    return rawValue.replace(/\s/g, '');
+  }
+
+  return rawValue;
+}
+
+function isValidProfileContactNumber(value) {
+  return !validateProfilePhoneNumber(value);
+}
+
+function isValidProfileEmail(value) {
+  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(
+    String(value || '').trim()
+  );
+}
+
+function isValidProfileDate(value) {
+  if (!value) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime());
+}
+
+function getProfileFieldError(field, value) {
+  const fieldValue = String(value || '').trim();
+
+  if (PROFILE_REQUIRED_FIELDS.includes(field) && (!fieldValue || fieldValue === 'N/A')) {
+    return 'This field is required.';
+  }
+
+  if (!fieldValue) return '';
+
+  if (field === 'contactNumber' && !isValidProfileContactNumber(fieldValue)) {
+    return 'Contact number does not match the selected country code.';
+  }
+
+  if (field === 'emailAddress' && !isValidProfileEmail(fieldValue)) {
+    return 'Email address format is invalid';
+  }
+
+  if (field === 'birthday' && !isValidProfileDate(fieldValue)) {
+    return 'Enter a valid date.';
+  }
+
+  return '';
+}
+
+function getProfileFormErrors(form) {
+  return PROFILE_REQUIRED_FIELDS.reduce((errors, field) => {
+    const error = getProfileFieldError(field, form[field]);
+    if (error) errors[field] = error;
+    return errors;
+  }, {});
+}
+
+function parseProfileContactNumber(value, country = 'PH') {
+  const rawValue = String(value || '').trim();
+  const digits = rawValue.replace(/\D/g, '');
+
+  if (!digits) return null;
+  if (rawValue.startsWith('+')) return parsePhoneNumberFromString(rawValue);
+  if (digits.startsWith('00')) return parsePhoneNumberFromString(`+${digits.slice(2)}`);
+  return parsePhoneNumberFromString(digits, country);
+}
+
+function isProfileDialCodeOnly(digits, country = 'PH') {
+  try {
+    return digits === getCountryCallingCode(country);
+  } catch {
+    return false;
+  }
+}
+
+function getProfilePhoneFormValue(value, fallbackCountry = 'PH') {
+  const phoneNumber = parseProfileContactNumber(value, fallbackCountry);
+
+  if (!phoneNumber) {
+    return {
+      country: fallbackCountry,
+      number: String(value || '').replace(/\D/g, '').slice(0, 15),
+    };
+  }
+
+  return {
+    country: phoneNumber.country || fallbackCountry,
+    number: phoneNumber.nationalNumber || String(value || '').replace(/\D/g, '').slice(0, 15),
+  };
+}
+
+function normalizeProfilePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isProfileDialCodeOnly(digits, country)) return '';
+
+  const phoneNumber = parseProfileContactNumber(value, country);
+  return phoneNumber?.number || `+${digits}`;
+}
+
+function validateProfilePhoneNumber(value, country = 'PH') {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || isProfileDialCodeOnly(digits, country)) {
+    return 'This field is required.';
+  }
+
+  const phoneNumber = parseProfileContactNumber(value, country);
+  return phoneNumber?.isValid()
+    ? ''
+    : 'Contact number does not match the selected country code.';
+}
+
+function getProfileFieldErrorNext(field, value, phoneCountry = 'PH') {
+  const fieldValue = String(value || '').trim();
+
+  if (PROFILE_REQUIRED_FIELDS.includes(field) && (!fieldValue || fieldValue === 'N/A')) {
+    return 'This field is required.';
+  }
+
+  if (!fieldValue) return '';
+
+  if (field === 'fullName' && !/^[a-zA-ZÀ-ÿ\s]+$/.test(fieldValue)) {
+    return 'Full name must contain letters and spaces only.';
+  }
+
+  if (field === 'contactNumber') {
+    return validateProfilePhoneNumber(fieldValue, phoneCountry);
+  }
+
+  if (field === 'emailAddress' && !isValidProfileEmail(fieldValue)) {
+    return 'Email address format is invalid';
+  }
+
+  if (field === 'birthday' && !isValidProfileDate(fieldValue)) {
+    return 'Enter a valid date.';
+  }
+
+  return '';
+}
+
+function getProfileFormErrorsNext(form, phoneCountry = 'PH') {
+  return PROFILE_REQUIRED_FIELDS.reduce((errors, field) => {
+    const error = getProfileFieldErrorNext(field, form[field], phoneCountry);
+    if (error) errors[field] = error;
+    return errors;
+  }, {});
+}
+
 const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png'];
 const SUPPORTING_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_PROFILE_FILE_SIZE = 5 * 1024 * 1024;
@@ -83,6 +268,8 @@ export default function DentistProfile() {
   const [profileError, setProfileError] = useState('');
   const [profileEditError, setProfileEditError] = useState('');
   const [profileTouchedFields, setProfileTouchedFields] = useState({});
+  const [editPhoneCountry, setEditPhoneCountry] = useState('PH');
+  const [editPhoneNumber, setEditPhoneNumber] = useState('');
   const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
   const [uploadingDocuments, setUploadingDocuments] = useState(false);
   const [documentDeleteConfirm, setDocumentDeleteConfirm] = useState(null);
@@ -118,6 +305,10 @@ export default function DentistProfile() {
   const age = useMemo(() => {
     return calculateAge(profile.birthday);
   }, [profile.birthday]);
+
+  const editAge = useMemo(() => {
+    return calculateAge(editForm.birthday);
+  }, [editForm.birthday]);
 
   const displaySuffix = String(profile.suffix || '').trim() || 'N/A';
 
@@ -256,14 +447,20 @@ export default function DentistProfile() {
   }
 
   function openEditModal() {
+    const phoneValue = getProfilePhoneFormValue(profile.contactNumber, 'PH');
     setEditForm(profile);
+    setEditPhoneCountry(phoneValue.country);
+    setEditPhoneNumber(phoneValue.number);
     setProfileEditError('');
     setProfileTouchedFields({});
     setShowEditModal(true);
   }
 
   function closeEditModal() {
+    const phoneValue = getProfilePhoneFormValue(profile.contactNumber, 'PH');
     setEditForm(profile);
+    setEditPhoneCountry(phoneValue.country);
+    setEditPhoneNumber(phoneValue.number);
     setProfileEditError('');
     setProfileTouchedFields({});
     setShowProfileCloseConfirmModal(false);
@@ -370,21 +567,81 @@ export default function DentistProfile() {
   }
 
   function handleEditChange(name, value) {
+    const nextValue =
+      name === 'fullName'
+        ? String(value || '').replace(/[^a-zA-ZÀ-ÿ\s]/g, '')
+        : filterProfileFieldValue(name, value);
+
     setEditForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
     setProfileTouchedFields((prev) => ({
       ...prev,
       [name]: true,
     }));
-    setProfileEditError('');
+    const nextError = getProfileFieldErrorNext(name, nextValue, editPhoneCountry);
+    if (!nextError) {
+      setProfileEditError('');
+    }
+  }
+
+  function handleProfilePhoneChange(value) {
+    const nextNumber = String(value || '').replace(/\D/g, '').slice(0, 15);
+    const normalizedContact = normalizeProfilePhoneNumber(nextNumber, editPhoneCountry);
+
+    setEditPhoneNumber(nextNumber);
+    setEditForm((prev) => ({
+      ...prev,
+      contactNumber: normalizedContact,
+    }));
+    setProfileTouchedFields((prev) => ({
+      ...prev,
+      contactNumber: true,
+    }));
+
+    if (!validateProfilePhoneNumber(nextNumber, editPhoneCountry)) {
+      setProfileEditError('');
+    }
+  }
+
+  function handleProfilePhoneCountryChange(country) {
+    const normalizedContact = normalizeProfilePhoneNumber(editPhoneNumber, country);
+
+    setEditPhoneCountry(country);
+    setEditForm((prev) => ({
+      ...prev,
+      contactNumber: normalizedContact,
+    }));
+    setProfileTouchedFields((prev) => ({
+      ...prev,
+      contactNumber: true,
+    }));
+
+    if (!validateProfilePhoneNumber(editPhoneNumber, country)) {
+      setProfileEditError('');
+    }
   }
 
   function isProfileFormComplete(form = editForm) {
-    return PROFILE_REQUIRED_FIELDS.every(
-      (field) => String(form[field] ?? '').trim() !== ''
-    );
+    return Object.keys(getProfileFormErrorsNext(form, editPhoneCountry)).length === 0;
+  }
+
+  function getVisibleProfileFieldError(field) {
+    if (!profileTouchedFields[field]) return '';
+    if (field === 'contactNumber') {
+      return validateProfilePhoneNumber(editPhoneNumber, editPhoneCountry);
+    }
+    return getProfileFieldErrorNext(field, editForm[field], editPhoneCountry);
+  }
+
+  function getProfileInputStyle(field, extraStyle = {}) {
+    const error = getVisibleProfileFieldError(field);
+    return {
+      ...styles.formInput,
+      ...extraStyle,
+      ...(error ? styles.formInputInvalid : {}),
+    };
   }
 
   function getProfileSaveDetails(nextProfile) {
@@ -409,17 +666,22 @@ export default function DentistProfile() {
 
     const nextProfile = {
       ...editForm,
+      contactNumber: normalizeProfilePhoneNumber(editPhoneNumber, editPhoneCountry),
       suffix: String(editForm.suffix || '').trim(),
     };
 
-    if (!isProfileFormComplete(nextProfile)) {
-      setProfileTouchedFields(
-        PROFILE_REQUIRED_FIELDS.reduce((fields, field) => {
+    const formErrors = getProfileFormErrorsNext(nextProfile, editPhoneCountry);
+    if (Object.keys(formErrors).length > 0) {
+      setProfileTouchedFields((prev) => ({
+        ...prev,
+        ...Object.keys(formErrors).reduce((fields, field) => {
           fields[field] = true;
           return fields;
-        }, {})
+        }, {}),
+      }));
+      setProfileEditError(
+        Object.values(formErrors)[0] || 'Please complete all required profile details before saving.'
       );
-      setProfileEditError('Please complete all required profile details before saving.');
       return;
     }
 
@@ -452,10 +714,13 @@ export default function DentistProfile() {
       );
 
       const mappedProfile = staffProfileToDentistProfile(res.data.profile);
+      const phoneValue = getProfilePhoneFormValue(mappedProfile.contactNumber, editPhoneCountry);
 
       setProfileId(res.data.profile.profileId || profileId);
       setProfile(mappedProfile);
       setEditForm(mappedProfile);
+      setEditPhoneCountry(phoneValue.country);
+      setEditPhoneNumber(phoneValue.number);
       setProfileTouchedFields({});
       setShowEditModal(false);
     } catch (err) {
@@ -1368,7 +1633,12 @@ export default function DentistProfile() {
               )}
 
               <div style={styles.formGrid}>
-                <FormGroup styles={styles} label="Full Name">
+                <FormGroup
+                  styles={styles}
+                  label="Full Name"
+                  required
+                  error={getVisibleProfileFieldError('fullName')}
+                >
                   <input
                     type="text"
                     name="fullName"
@@ -1379,12 +1649,7 @@ export default function DentistProfile() {
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, fullName: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.fullName && !String(editForm.fullName || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
+                    style={getProfileInputStyle('fullName')}
                   />
                 </FormGroup>
 
@@ -1419,7 +1684,12 @@ export default function DentistProfile() {
                   </select>
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Birthday">
+                <FormGroup
+                  styles={styles}
+                  label="Birthday"
+                  required
+                  error={getVisibleProfileFieldError('birthday')}
+                >
                   <input
                     type="date"
                     name="birthday"
@@ -1430,76 +1700,134 @@ export default function DentistProfile() {
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, birthday: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.birthday && !String(editForm.birthday || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
+                    style={getProfileInputStyle('birthday')}
                   />
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Religion">
+                <FormGroup styles={styles} label="Age">
                   <input
                     type="text"
+                    name="age"
+                    value={editAge === 'N/A' ? '' : editAge}
+                    readOnly
+                    style={disabledInputStyle}
+                  />
+                </FormGroup>
+
+                <FormGroup
+                  styles={styles}
+                  label="Religion"
+                  required
+                  error={getVisibleProfileFieldError('religion')}
+                >
+                  <select
                     name="religion"
-                    value={editForm.religion}
+                    value={
+                      RELIGION_OPTIONS.includes(editForm.religion)
+                        ? editForm.religion
+                        : ''
+                    }
                     onChange={(event) =>
                       handleEditChange('religion', event.target.value)
                     }
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, religion: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.religion && !String(editForm.religion || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
-                  />
+                    style={getProfileInputStyle('religion')}
+                  >
+                    <option value="">Select Religion</option>
+                    {RELIGION_OPTIONS.map((religion) => (
+                      <option key={religion} value={religion}>
+                        {religion}
+                      </option>
+                    ))}
+                  </select>
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Nationality">
-                  <input
-                    type="text"
+                <FormGroup
+                  styles={styles}
+                  label="Nationality"
+                  required
+                  error={getVisibleProfileFieldError('nationality')}
+                >
+                  <select
                     name="nationality"
-                    value={editForm.nationality}
+                    value={
+                      NATIONALITY_OPTIONS.includes(editForm.nationality)
+                        ? editForm.nationality
+                        : ''
+                    }
                     onChange={(event) =>
                       handleEditChange('nationality', event.target.value)
                     }
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, nationality: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.nationality && !String(editForm.nationality || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
-                  />
+                    style={getProfileInputStyle('nationality')}
+                  >
+                    <option value="">Select Nationality</option>
+                    {NATIONALITY_OPTIONS.map((nationality) => (
+                      <option key={nationality} value={nationality}>
+                        {nationality}
+                      </option>
+                    ))}
+                  </select>
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Contact Number">
-                  <input
-                    type="text"
-                    name="contactNumber"
-                    value={editForm.contactNumber}
-                    onChange={(event) =>
-                      handleEditChange('contactNumber', event.target.value)
-                    }
-                    onBlur={() =>
-                      setProfileTouchedFields((prev) => ({ ...prev, contactNumber: true }))
-                    }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.contactNumber && !String(editForm.contactNumber || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
-                  />
+                <FormGroup
+                  styles={styles}
+                  label="Contact Number"
+                  required
+                  error={getVisibleProfileFieldError('contactNumber')}
+                >
+                  <div style={styles.phoneInputContainer}>
+                    <select
+                      value={editPhoneCountry}
+                      onChange={(event) =>
+                        handleProfilePhoneCountryChange(event.target.value)
+                      }
+                      style={{
+                        ...styles.phoneCountrySelect,
+                        ...(getVisibleProfileFieldError('contactNumber')
+                          ? styles.phoneInputError
+                          : {}),
+                      }}
+                      aria-label="Country code"
+                    >
+                      {phoneCountryOptions.map((option) => (
+                        <option key={option.country} value={option.country}>
+                          {option.country} +{option.callingCode}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      name="contactNumber"
+                      value={editPhoneNumber}
+                      onChange={(event) => handleProfilePhoneChange(event.target.value)}
+                      onBlur={() =>
+                        setProfileTouchedFields((prev) => ({ ...prev, contactNumber: true }))
+                      }
+                      placeholder="9123456789"
+                      autoComplete="tel"
+                      inputMode="tel"
+                      maxLength={15}
+                      style={{
+                        ...styles.phoneInput,
+                        ...(getVisibleProfileFieldError('contactNumber')
+                          ? styles.phoneInputError
+                          : {}),
+                      }}
+                    />
+                  </div>
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Email Address">
+                <FormGroup
+                  styles={styles}
+                  label="Email Address"
+                  required
+                  error={getVisibleProfileFieldError('emailAddress')}
+                >
                   <input
                     type="email"
                     name="emailAddress"
@@ -1510,16 +1838,17 @@ export default function DentistProfile() {
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, emailAddress: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...(profileTouchedFields.emailAddress && !String(editForm.emailAddress || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
+                    style={getProfileInputStyle('emailAddress')}
                   />
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Home Address" full>
+                <FormGroup
+                  styles={styles}
+                  label="Home Address"
+                  full
+                  required
+                  error={getVisibleProfileFieldError('homeAddress')}
+                >
                   <textarea
                     name="homeAddress"
                     value={editForm.homeAddress}
@@ -1529,13 +1858,7 @@ export default function DentistProfile() {
                     onBlur={() =>
                       setProfileTouchedFields((prev) => ({ ...prev, homeAddress: true }))
                     }
-                    style={{
-                      ...styles.formInput,
-                      ...styles.formTextarea,
-                      ...(profileTouchedFields.homeAddress && !String(editForm.homeAddress || '').trim()
-                        ? styles.formInputInvalid
-                        : {}),
-                    }}
+                    style={getProfileInputStyle('homeAddress', styles.formTextarea)}
                   />
                 </FormGroup>
 
@@ -2316,11 +2639,15 @@ function InfoItem({ styles, label, value, full = false }) {
   );
 }
 
-function FormGroup({ styles, label, children, full = false }) {
+function FormGroup({ styles, label, children, full = false, required = false, error = '' }) {
   return (
     <div style={{ ...styles.formGroup, ...(full ? styles.formGroupFull : {}) }}>
-      <label style={styles.formLabel}>{label}</label>
+      <label style={styles.formLabel}>
+        {label}
+        {required && <span style={styles.requiredMark}>*</span>}
+      </label>
       {children}
+      {error && <span style={styles.fieldErrorText}>{error}</span>}
     </div>
   );
 }
