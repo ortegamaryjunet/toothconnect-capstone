@@ -1156,13 +1156,18 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
       });
 
       if (isReschedule) {
-        await notifyDentist(assignedDentistId, {
+        const rescheduleNotification = {
           type: 'appointment_rescheduled',
           title: 'Appointment rescheduled',
           body: `${detail.patient_name} rescheduled their ${detail.service_name} appointment to ${schedule}.`,
           relatedType: 'appointment',
           relatedId: result.insertId,
-        });
+        };
+
+        await Promise.all([
+          notifyDentist(assignedDentistId, rescheduleNotification),
+          notifyBranchReceptionists(effectiveBranchId, rescheduleNotification),
+        ]);
       } else {
         await notifyDentist(assignedDentistId, {
           type: 'appointment_new',
@@ -1177,7 +1182,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
         const receptionistTitle =
           role === 'patient' ? 'New Mobile Appointment' : 'New Web Appointment';
         await notifyBranchReceptionists(effectiveBranchId, {
-          type: 'Appointment',
+          type: 'appointment_new',
           title: receptionistTitle,
           body: `${detail.patient_name} booked ${detail.service_name} for ${schedule}.`,
           relatedType: 'appointment',
