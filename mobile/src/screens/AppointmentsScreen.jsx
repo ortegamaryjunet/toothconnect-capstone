@@ -10,6 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import AppSidebar from '../components/AppSidebar';
 import * as ImagePicker from 'expo-image-picker';

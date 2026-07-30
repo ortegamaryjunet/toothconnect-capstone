@@ -2023,7 +2023,7 @@ export default function RecepAppointments() {
                       style={scheduleStyles.calendarNav}
                       onClick={handleReschedulePreviousMonth}
                     >
-                      <i className="fi fi-rr-angle-left"></i>
+                      Prev
                     </button>
 
                     <div style={scheduleStyles.calendarDropdowns}>
@@ -2067,7 +2067,7 @@ export default function RecepAppointments() {
                       style={scheduleStyles.calendarNav}
                       onClick={handleRescheduleNextMonth}
                     >
-                      <i className="fi fi-rr-angle-right"></i>
+                      Next
                     </button>
                   </div>
 
