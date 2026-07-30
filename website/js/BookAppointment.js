@@ -131,6 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const emailInput = document.getElementById("email");
     const phoneInput = document.getElementById("phoneNumber");
     const fullPhoneNumber = document.getElementById("fullPhoneNumber");
+    const phoneCountry = document.getElementById("phoneCountry");
 
     const step2Notice = document.getElementById("step2Notice");
     const step2Content = document.getElementById("step2Content");
@@ -153,7 +154,10 @@ document.addEventListener("DOMContentLoaded", function () {
     function isStep1DetailsComplete() {
         const nameOk = !validateFullName(patientName.value);
         const emailOk = !validateEmail(emailInput.value);
-        const phoneOk = !validatePhone(phoneInput.value);
+        const phoneOk = !validatePhone(
+            phoneInput.value,
+            phoneCountry.value
+        );
 
         const selectedLocation = document.querySelector("input[name='location']:checked");
         const locationOk = Boolean(selectedLocation && selectedLocation.value);
@@ -221,12 +225,22 @@ document.addEventListener("DOMContentLoaded", function () {
         return "";
     }
 
-    function validatePhone(value) {
-        const digits = value.replace(/\D/g, "");
-        if (!digits) return "Phone number is required.";
-        if (!/^09\d{9}$/.test(digits)) {
-            return "Enter a valid Philippine number (09XXXXXXXXX).";
+    function validatePhone(number, country) {
+        const value = number.trim();
+
+        if (!value) {
+            return "Phone number is required.";
         }
+
+        const phone = libphonenumber.parsePhoneNumberFromString(
+            value,
+            country
+        );
+
+        if (!phone || !phone.isValid()) {
+            return "Please enter a valid phone number.";
+        }
+
         return "";
     }
 
@@ -293,7 +307,11 @@ document.addEventListener("DOMContentLoaded", function () {
             fullPhoneNumber.value = toPhInternational(value);
 
             if (this.classList.contains("input-error")) {
-                const error = validatePhone(value);
+                const error = validatePhone(
+                    this.value,
+                    phoneCountry.value
+                );
+
                 if (!error) {
                     setInputError(this, false);
                     clearFieldError("phoneError");
@@ -304,12 +322,31 @@ document.addEventListener("DOMContentLoaded", function () {
 
         phoneInput.addEventListener("blur", function () {
             if (!this.value.trim()) return;
-            const error = validatePhone(this.value);
+
+            const error = validatePhone(
+                this.value,
+                phoneCountry.value
+            );
+
             setInputError(this, Boolean(error));
             if (error) showFieldError("phoneError", error);
             else clearFieldError("phoneError");
             updateStepLocks();
         });
+    }
+
+    if (phoneCountry) {
+        libphonenumber.getCountries().forEach((country) => {
+            const option = document.createElement("option");
+
+            option.value = country;
+            option.textContent =
+                `${country} (+${libphonenumber.getCountryCallingCode(country)})`;
+
+            phoneCountry.appendChild(option);
+        });
+
+        phoneCountry.value = "PH";
     }
 
     // ---- Services from DB ----
@@ -399,6 +436,12 @@ document.addEventListener("DOMContentLoaded", function () {
         radio.addEventListener("change", function () {
             selectedBranch = this.value;
             clearFieldError("locationError");
+
+            if (this.checked) {
+                document
+                    .querySelectorAll(".location-option")
+                    .forEach(el => el.classList.remove("input-error"));
+            }
 
             // Reset reason when branch changes
             if (reasonText) reasonText.textContent = "Select reason";
@@ -823,7 +866,23 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             // Validate Phone
-            const phoneError = validatePhone(phoneInput.value);
+            const phoneError = validatePhone(
+                phoneInput.value,
+                phoneCountry.value
+            );
+
+            const parsedPhone =
+                libphonenumber.parsePhoneNumberFromString(
+                    phoneInput.value.trim(),
+                    phoneCountry.value
+                );
+
+            const internationalPhoneNumber = parsedPhone
+                ? parsedPhone.number
+                : phoneInput.value.trim();
+
+            fullPhoneNumber.value = internationalPhoneNumber;
+
             setInputError(phoneInput, Boolean(phoneError));
             if (phoneError) {
                 showFieldError("phoneError", phoneError);
@@ -871,7 +930,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 clearFieldError("timeSubmitError");
             }
 
-            if (hasError) return;
+            if (hasError) {
+                showMessage(
+                    "Required Fields",
+                    "Please complete all required fields before scheduling your appointment.",
+                    "error"
+                );
+                return;
+            }
 
             const appointmentData = {
                 appointmentDate: appointmentDateInput.value,
@@ -879,7 +945,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 durationMinutes: Number(durationMinutesInput.value) || 30,
                 fullName: patientName.value.trim(),
                 email: emailInput.value.trim(),
-                phoneNumber: fullPhoneNumber.value || phoneInput.value.trim(),
+                phoneNumber: fullPhoneNumber.value,
                 location: selectedLocation.value,
                 reasonForBooking: selectedReason.value
             };
