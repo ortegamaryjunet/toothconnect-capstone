@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import api from '../api/axios';
 import { useAuth } from '../auth/AuthContext';
@@ -64,6 +64,10 @@ const DENTIST_SPECIALIZATIONS = [
   'Implant Dentistry',
   'Radiology',
 ];
+
+const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png'];
+const SUPPORTING_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const MAX_EMPLOYEE_FILE_SIZE = 5 * 1024 * 1024;
 
 function filterNameVal(val) {
   return val.replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
@@ -300,6 +304,14 @@ export default function AdminEmployees() {
   const [liveEditErrors, setLiveEditErrors] = useState({});
   const [showEditErrorModal, setShowEditErrorModal] = useState(false);
   const [editErrorMessage, setEditErrorMessage] = useState('');
+  const [editProfilePhotoFile, setEditProfilePhotoFile] = useState(null);
+  const [editProfilePhotoPreview, setEditProfilePhotoPreview] = useState('');
+  const [editRemoveProfilePhoto, setEditRemoveProfilePhoto] = useState(false);
+  const [editNewDocuments, setEditNewDocuments] = useState([]);
+  const [editRemovedDocumentIds, setEditRemovedDocumentIds] = useState([]);
+  const [documentDeleteConfirm, setDocumentDeleteConfirm] = useState(null);
+  const [photoRemoveConfirm, setPhotoRemoveConfirm] = useState(false);
+  const [scheduleTouched, setScheduleTouched] = useState(false);
   const [usePerDayBranchSchedule, setUsePerDayBranchSchedule] =
     useState(false);
   const [scheduleDraft, setScheduleDraft] = useState({});
@@ -326,6 +338,8 @@ export default function AdminEmployees() {
   const [employees, setEmployees] = useState([]);
   const [branches, setBranches] = useState([]);
   const [serviceCategories, setServiceCategories] = useState([]);
+  const editPhotoInputRef = useRef(null);
+  const editDocumentInputRef = useRef(null);
 
   const isMobile = screenWidth <= 850;
   const isTablet = screenWidth > 850 && screenWidth <= 1200;
@@ -430,6 +444,8 @@ export default function AdminEmployees() {
       showEmployeeEditConfirmModal ||
       showEmployeeEditCancelConfirmModal ||
       employeeSaveConfirmModal ||
+      documentDeleteConfirm ||
+      photoRemoveConfirm ||
       showEditErrorModal ||
       showExportModal
     ) {
@@ -448,18 +464,38 @@ export default function AdminEmployees() {
     showEmployeeEditConfirmModal,
     showEmployeeEditCancelConfirmModal,
     employeeSaveConfirmModal,
+    documentDeleteConfirm,
+    photoRemoveConfirm,
     showEditErrorModal,
     showExportModal,
   ]);
 
   useEffect(() => {
+    return () => {
+      if (editProfilePhotoPreview) {
+        URL.revokeObjectURL(editProfilePhotoPreview);
+      }
+    };
+  }, [editProfilePhotoPreview]);
+
+  useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
+        if (documentDeleteConfirm) {
+          setDocumentDeleteConfirm(null);
+          return;
+        }
+        if (photoRemoveConfirm) {
+          setPhotoRemoveConfirm(false);
+          return;
+        }
+
         closeLogoutModal();
         setShowEmployeeCloseConfirmModal(false);
         setShowEmployeeEditConfirmModal(false);
         setShowEmployeeEditCancelConfirmModal(false);
         setEmployeeSaveConfirmModal(null);
+        setDocumentDeleteConfirm(null);
         if (showEmployeeModal) {
           if (isEditingEmployee) {
             setShowEmployeeEditCancelConfirmModal(true);
@@ -476,7 +512,7 @@ export default function AdminEmployees() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showEmployeeModal, isEditingEmployee]);
+  }, [showEmployeeModal, isEditingEmployee, documentDeleteConfirm, photoRemoveConfirm]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
@@ -737,6 +773,73 @@ export default function AdminEmployees() {
       return doc.lastAutoTable.finalY + 8;
     }
 
+    async function addAttachmentsSection(startY) {
+      const documents = Array.isArray(employee.supportingDocuments)
+        ? employee.supportingDocuments
+        : [];
+      if (documents.length === 0) {
+        return addSection('Attachments', [['Attachments', 'No attachments uploaded.']], startY);
+      }
+
+      let yPosition = startY;
+      if (yPosition > pageHeight - 55) {
+        doc.addPage();
+        drawHeader();
+        yPosition = 40;
+      }
+      yPosition = drawSectionTitle('Attachments', yPosition);
+
+      for (const document of documents) {
+        if (yPosition > pageHeight - 45) {
+          doc.addPage();
+          drawHeader();
+          yPosition = 40;
+        }
+
+        const label = document.file_name || 'Attachment';
+        const fileUrl = employeeFileUrl(document.file_url);
+        const isImage = String(document.mime_type || '').startsWith('image/');
+
+        if (isImage) {
+          try {
+            const dataUrl = await fileUrlToDataUrl(fileUrl);
+            const format = String(document.mime_type || '').includes('png') ? 'PNG' : 'JPEG';
+            doc.addImage(dataUrl, format, 20, yPosition, 44, 34, undefined, 'FAST');
+            doc.setTextColor(51, 65, 85);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text(label, 68, yPosition + 8, { maxWidth: pageWidth - 88 });
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(formatEmployeeFileSize(document.file_size), 68, yPosition + 14);
+            yPosition += 40;
+            continue;
+          } catch (_) {}
+        }
+
+        autoTable(doc, {
+          startY: yPosition,
+          theme: 'grid',
+          body: [['Attachment', `${label}\n${formatEmployeeFileSize(document.file_size)}`]],
+          margin: { left: 14, right: 14 },
+          styles: {
+            font: 'helvetica',
+            fontSize: 9,
+            cellPadding: 3,
+            lineColor: [229, 231, 235],
+            lineWidth: 0.25,
+          },
+          columnStyles: { 0: { cellWidth: 55, fontStyle: 'bold' } },
+          didDrawPage() {
+            drawFooter();
+          },
+        });
+        yPosition = doc.lastAutoTable.finalY + 5;
+      }
+
+      return yPosition + 4;
+    }
+
     drawHeader();
 
     doc.setFillColor(255, 255, 255);
@@ -849,6 +952,8 @@ export default function AdminEmployees() {
       nextY
     );
 
+    nextY = await addAttachmentsSection(nextY);
+
     const totalPages = doc.internal.getNumberOfPages();
 
     for (let page = 1; page <= totalPages; page += 1) {
@@ -871,7 +976,115 @@ export default function AdminEmployees() {
     }
   }
 
+  function resetEmployeeEditFiles() {
+    if (editProfilePhotoPreview) {
+      URL.revokeObjectURL(editProfilePhotoPreview);
+    }
+    setEditProfilePhotoFile(null);
+    setEditProfilePhotoPreview('');
+    setEditRemoveProfilePhoto(false);
+    setEditNewDocuments([]);
+    setEditRemovedDocumentIds([]);
+    setDocumentDeleteConfirm(null);
+    setScheduleTouched(false);
+    if (editPhotoInputRef.current) editPhotoInputRef.current.value = '';
+    if (editDocumentInputRef.current) editDocumentInputRef.current.value = '';
+  }
+
+  function handleEditPhotoSelect(file) {
+    if (!file) return;
+    if (!PROFILE_PHOTO_TYPES.includes(file.type)) {
+      setEditErrorMessage('Profile photo must be a JPG or PNG file.');
+      setShowEditErrorModal(true);
+      return;
+    }
+    if (file.size > MAX_EMPLOYEE_FILE_SIZE) {
+      setEditErrorMessage('Profile photo must be 5MB or smaller.');
+      setShowEditErrorModal(true);
+      return;
+    }
+    if (editProfilePhotoPreview) {
+      URL.revokeObjectURL(editProfilePhotoPreview);
+    }
+    setEditProfilePhotoFile(file);
+    setEditProfilePhotoPreview(URL.createObjectURL(file));
+    setEditRemoveProfilePhoto(false);
+  }
+
+  function confirmRemoveEmployeePhoto() {
+    if (editProfilePhotoPreview) {
+      URL.revokeObjectURL(editProfilePhotoPreview);
+    }
+    setEditProfilePhotoFile(null);
+    setEditProfilePhotoPreview('');
+    setEditRemoveProfilePhoto(true);
+    setPhotoRemoveConfirm(false);
+    if (editPhotoInputRef.current) editPhotoInputRef.current.value = '';
+  }
+
+  function handleEditDocumentFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+
+    const invalid = files.find((file) =>
+      !SUPPORTING_DOCUMENT_TYPES.includes(file.type) ||
+      file.size > MAX_EMPLOYEE_FILE_SIZE
+    );
+
+    if (invalid) {
+      setEditErrorMessage('Supporting documents must be PDF, JPG, or PNG files up to 5MB each.');
+      setShowEditErrorModal(true);
+      return;
+    }
+
+    setEditNewDocuments((prev) => [...prev, ...files]);
+    if (editDocumentInputRef.current) editDocumentInputRef.current.value = '';
+  }
+
+  function removeExistingEmployeeDocument(documentId) {
+    setEditRemovedDocumentIds((prev) => [...new Set([...prev, documentId])]);
+  }
+
+  function removeNewEmployeeDocument(index) {
+    setEditNewDocuments((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function markScheduleTouched() {
+    setScheduleTouched(true);
+  }
+
+  function requestRemoveExistingEmployeeDocument(document) {
+    setDocumentDeleteConfirm({
+      type: 'existing',
+      documentId: document?.id,
+      fileName: document?.file_name || 'Document',
+    });
+  }
+
+  function requestRemoveNewEmployeeDocument(file, index) {
+    setDocumentDeleteConfirm({
+      type: 'new',
+      index,
+      fileName: file?.name || 'Document',
+    });
+  }
+
+  function confirmRemoveEmployeeDocument() {
+    if (!documentDeleteConfirm) return;
+
+    if (documentDeleteConfirm.type === 'existing') {
+      removeExistingEmployeeDocument(documentDeleteConfirm.documentId);
+    }
+
+    if (documentDeleteConfirm.type === 'new') {
+      removeNewEmployeeDocument(documentDeleteConfirm.index);
+    }
+
+    setDocumentDeleteConfirm(null);
+  }
+
   function openEmployeeModal(employee) {
+    resetEmployeeEditFiles();
     const normalizedEmployee =
       employee?.role === 'Dentist'
         ? {
@@ -923,6 +1136,7 @@ export default function AdminEmployees() {
     setEditErrors(new Set());
     setLiveEditErrors({});
     setUsePerDayBranchSchedule(false);
+    resetEmployeeEditFiles();
     setScheduleDraft({});
     setScheduleLocks({
       hasLocks: false,
@@ -1037,9 +1251,11 @@ export default function AdminEmployees() {
     setShowScheduleLockWarningModal(false);
     setEditedEmployee({ ...selectedEmployee });
     setScheduleDraft(buildScheduleDraft(selectedEmployee));
+    setScheduleTouched(false);
     setIsEditingEmployee(false);
     setEditErrors(new Set());
     setLiveEditErrors({});
+    resetEmployeeEditFiles();
   }
 
   function handleEmployeeInputChange(event) {
@@ -1073,6 +1289,7 @@ export default function AdminEmployees() {
   }
 
   function ensureModalScheduleDay(weekday) {
+    markScheduleTouched();
     setScheduleDraft((prev) => {
       if (Array.isArray(prev?.[weekday]) && prev[weekday].length > 0) {
         return prev;
@@ -1086,6 +1303,7 @@ export default function AdminEmployees() {
   }
 
   function removeModalScheduleDay(weekday) {
+    markScheduleTouched();
     setScheduleDraft((prev) => {
       const next = { ...prev };
       delete next[weekday];
@@ -1094,6 +1312,7 @@ export default function AdminEmployees() {
   }
 
   function addModalScheduleBlock(weekday) {
+    markScheduleTouched();
     setScheduleDraft((prev) => ({
       ...prev,
       [weekday]: [
@@ -1104,6 +1323,7 @@ export default function AdminEmployees() {
   }
 
   function updateModalScheduleBlock(weekday, blockId, field, value) {
+    markScheduleTouched();
     setScheduleDraft((prev) => ({
       ...prev,
       [weekday]: (Array.isArray(prev?.[weekday]) ? prev[weekday] : []).map((block) =>
@@ -1113,6 +1333,7 @@ export default function AdminEmployees() {
   }
 
   function updateModalScheduleBlockTime(field, value) {
+    markScheduleTouched();
     setScheduleDraft((prev) => {
       const next = {};
 
@@ -1128,6 +1349,7 @@ export default function AdminEmployees() {
   }
 
   function removeModalScheduleBlock(weekday, blockId) {
+    markScheduleTouched();
     setScheduleDraft((prev) => {
       const current = Array.isArray(prev?.[weekday]) ? prev[weekday] : [];
       const nextBlocks = current.filter((block) => block.id !== blockId);
@@ -1196,18 +1418,20 @@ export default function AdminEmployees() {
       errors.add('branchId');
     }
 
-    if (editedEmployee?.role === 'Dentist') {
-      if (!editedEmployee?.workStartTime) {
+    if (editedEmployee?.role === 'Dentist' && scheduleTouched) {
+      const skipLockedScheduleValidation = hasLockedScheduleDays() && !scheduleTouched;
+
+      if (!skipLockedScheduleValidation && !editedEmployee?.workStartTime) {
         errors.add('workStartTime');
       }
 
-      if (!editedEmployee?.workEndTime) {
+      if (!skipLockedScheduleValidation && !editedEmployee?.workEndTime) {
         errors.add('workEndTime');
       }
 
       const days = parseWorkDays(editedEmployee?.workDays);
 
-      if (days.length === 0) {
+      if (!skipLockedScheduleValidation && days.length === 0) {
         errors.add('workDays');
       }
     } else if (editedEmployee?.role === 'Receptionist' || editedEmployee?.role === 'Dental Assistant') {
@@ -1257,12 +1481,21 @@ export default function AdminEmployees() {
       editedEmployee?.role === 'Receptionist' ||
       editedEmployee?.role === 'Dental Assistant'
     ) {
+      const skipLockedDentistTimeValidation =
+        editedEmployee?.role === 'Dentist' &&
+        hasLockedScheduleDays() &&
+        !scheduleTouched;
+
       if (!isValidTimeValue(editedEmployee?.workStartTime)) {
-        errors.add('workStartTime');
+        if (!skipLockedDentistTimeValidation) {
+          errors.add('workStartTime');
+        }
       }
 
       if (!isValidTimeValue(editedEmployee?.workEndTime)) {
-        errors.add('workEndTime');
+        if (!skipLockedDentistTimeValidation) {
+          errors.add('workEndTime');
+        }
       }
     }
 
@@ -1272,7 +1505,7 @@ export default function AdminEmployees() {
   function getPreparedEmployeeForSave() {
     let nextEmployee = editedEmployee;
 
-    if (editedEmployee?.role === 'Dentist') {
+    if (editedEmployee?.role === 'Dentist' && scheduleTouched) {
       const checkedDays = parseWorkDays(editedEmployee?.workDays);
       const assignedBranchId = Number(editedEmployee?.branchId);
 
@@ -1378,15 +1611,19 @@ export default function AdminEmployees() {
       ['additionalBranchIds', 'Also Dentist In Branches'],
       ['employmentType', 'Employment Type'],
       ['shiftType', 'Shift Type'],
-      ['workDays', 'Work Days'],
-      ['workStartTime', 'Work Start Time'],
-      ['workEndTime', 'Work End Time'],
-      ['scheduleEntries', 'Branch Schedule'],
+      ...(scheduleTouched
+        ? [
+            ['workDays', 'Work Days'],
+            ['workStartTime', 'Work Start Time'],
+            ['workEndTime', 'Work End Time'],
+            ['scheduleEntries', 'Branch Schedule'],
+          ]
+        : []),
       ['status', 'Status'],
       ['accessRole', 'Access Role'],
     ];
 
-    return fields
+    const fieldDetails = fields
       .map(([key, label]) => {
         const nextValue = key === 'scheduleEntries' ? nextEmployee?.scheduleEntries : nextEmployee?.[key];
         const previousValue = key === 'scheduleEntries' ? selectedEmployee?.scheduleEntries : selectedEmployee?.[key];
@@ -1402,6 +1639,46 @@ export default function AdminEmployees() {
         };
       })
       .filter((detail) => detail.changed);
+
+    const fileDetails = [];
+    if (editProfilePhotoFile) {
+      fileDetails.push({
+        key: 'profilePhoto',
+        label: 'Profile Photo',
+        value: editProfilePhotoFile.name,
+        previousValue: selectedEmployee?.profilePhotoUrl ? 'Existing photo' : 'Not entered',
+        changed: true,
+      });
+    }
+    if (editRemoveProfilePhoto) {
+      fileDetails.push({
+        key: 'profilePhotoRemoved',
+        label: 'Profile Photo',
+        value: 'Removed',
+        previousValue: selectedEmployee?.profilePhotoUrl ? 'Existing photo' : 'Not entered',
+        changed: true,
+      });
+    }
+    if (editNewDocuments.length > 0) {
+      fileDetails.push({
+        key: 'supportingDocumentsAdded',
+        label: 'Documents Added',
+        value: editNewDocuments.map((file) => file.name).join(', '),
+        previousValue: 'Not entered',
+        changed: true,
+      });
+    }
+    if (editRemovedDocumentIds.length > 0) {
+      fileDetails.push({
+        key: 'supportingDocumentsRemoved',
+        label: 'Documents Removed',
+        value: `${editRemovedDocumentIds.length} document(s)`,
+        previousValue: 'Existing documents',
+        changed: true,
+      });
+    }
+
+    return [...fieldDetails, ...fileDetails];
   }
 
   function handleSaveEmployeeChangesRequest() {
@@ -1446,10 +1723,14 @@ export default function AdminEmployees() {
   async function handleSaveEmployeeChanges() {
     try {
       const nextEmployee = employeeSaveConfirmModal?.nextEmployee || getPreparedEmployeeForSave();
+      const updatePayload = employeeToStaffPayload(nextEmployee, {
+        includeScheduleEntries: scheduleTouched,
+      });
+      const requestData = buildEmployeeUpdateFormData(updatePayload);
 
       const res = await api.patch(
         `/auth/staff-profiles/${editedEmployee.profileId}`,
-        employeeToStaffPayload(nextEmployee)
+        requestData
       );
 
       const savedEmployee = res.data.profile;
@@ -1466,6 +1747,7 @@ export default function AdminEmployees() {
       setEditedEmployee(savedEmployee);
       setIsEditingEmployee(false);
       setLiveEditErrors({});
+      resetEmployeeEditFiles();
       setEmployeeSaveConfirmModal(null);
       setUsePerDayBranchSchedule(
         Array.isArray(savedEmployee?.scheduleEntries) &&
@@ -1521,21 +1803,29 @@ export default function AdminEmployees() {
               [name]: val,
             }));
 
-            if (
-              editedEmployee?.role === 'Dentist' &&
-              name === 'workStartTime' &&
-              !hasLockedScheduleDays()
-            ) {
-              updateModalScheduleBlockTime('start_time', val);
-            }
+          if (
+            editedEmployee?.role === 'Dentist' &&
+            name === 'workStartTime' &&
+            !hasLockedScheduleDays()
+          ) {
+            updateModalScheduleBlockTime('start_time', val);
+          }
 
-            if (
-              editedEmployee?.role === 'Dentist' &&
-              name === 'workEndTime' &&
-              !hasLockedScheduleDays()
-            ) {
-              updateModalScheduleBlockTime('end_time', val);
-            }
+          if (
+            editedEmployee?.role === 'Dentist' &&
+            name === 'workEndTime' &&
+            !hasLockedScheduleDays()
+          ) {
+            updateModalScheduleBlockTime('end_time', val);
+          }
+
+          if (
+            editedEmployee?.role === 'Dentist' &&
+            ['workStartTime', 'workEndTime'].includes(name) &&
+            !hasLockedScheduleDays()
+          ) {
+            markScheduleTouched();
+          }
 
             validateLiveEmployeeField(name, val);
           }}
@@ -1614,6 +1904,36 @@ export default function AdminEmployees() {
         </select>
       </div>
     );
+  }
+
+  function buildEmployeeUpdateFormData(payload) {
+    const data = new FormData();
+
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      if (Array.isArray(value) || typeof value === 'object') {
+        data.append(key, JSON.stringify(value));
+      } else {
+        data.append(key, value);
+      }
+    });
+
+    if (editProfilePhotoFile) {
+      data.append('profilePhoto', editProfilePhotoFile);
+    }
+    if (editRemoveProfilePhoto) {
+      data.append('removeProfilePhoto', JSON.stringify(true));
+    }
+
+    editNewDocuments.forEach((file) => {
+      data.append('supportingDocuments', file);
+    });
+
+    if (editRemovedDocumentIds.length > 0) {
+      data.append('removeDocumentIds', JSON.stringify(editRemovedDocumentIds));
+    }
+
+    return data;
   }
 
   function toggleEditedDentistSpecialization(value, checked) {
@@ -1754,6 +2074,10 @@ export default function AdminEmployees() {
             const selected = branches.find(
               (branch) => String(branch.id) === event.target.value
             );
+
+            if (editedEmployee?.role === 'Dentist') {
+              markScheduleTouched();
+            }
 
             setEditedEmployee((prev) => {
               const nextAdditionalBranchIds = (Array.isArray(prev?.additionalBranchIds) ? prev.additionalBranchIds : [])
@@ -1970,6 +2294,8 @@ export default function AdminEmployees() {
                   onChange={(event) => {
                     if (isLocked) return;
 
+                    markScheduleTouched();
+
                     const newDays = event.target.checked
                       ? [...checkedDays, day]
                       : checkedDays.filter((d) => d !== day);
@@ -2071,6 +2397,7 @@ export default function AdminEmployees() {
             disabled={!canUsePerDayBranchSchedule}
             onChange={(event) => {
               if (!canUsePerDayBranchSchedule) return;
+              markScheduleTouched();
               setUsePerDayBranchSchedule(event.target.checked);
               if (event.target.checked) {
                 checkedDays.forEach((day) => ensureModalScheduleDay(DAY_TO_WEEKDAY[day]));
@@ -2476,6 +2803,7 @@ export default function AdminEmployees() {
               <table style={styles.employeeTable}>
                 <thead>
                   <tr>
+                    <th style={styles.tableHead}>Photo</th>
                     <th style={styles.tableHead}>Employee ID</th>
                     <th style={styles.tableHead}>Clinic Position</th>
                     <th style={styles.tableHead}>Last Name</th>
@@ -2491,13 +2819,16 @@ export default function AdminEmployees() {
                 <tbody>
                   {paginatedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan="9" style={styles.emptyRow}>
+                      <td colSpan="10" style={styles.emptyRow}>
                         No employee records found.
                       </td>
                     </tr>
                   ) : (
                     paginatedEmployees.map((employee) => (
                       <tr key={employee.id} style={styles.tableRow}>
+                        <td style={styles.tableCell}>
+                          <EmployeeAvatar employee={employee} styles={styles} size="small" />
+                        </td>
                         <td style={styles.tableCell}>{employee.id}</td>
                         <td style={styles.tableCell}>{employee.role}</td>
                         <td style={styles.tableCell}>{employee.lastName}</td>
@@ -2581,13 +2912,25 @@ export default function AdminEmployees() {
         >
           <div style={styles.employeeModalContent}>
             <div style={styles.employeeModalHeader}>
-              <div>
+              <div style={styles.employeeModalHeaderProfile}>
+                <EmployeeAvatar
+                  employee={{
+                    ...editedEmployee,
+                    profilePhotoUrl: editRemoveProfilePhoto
+                      ? ''
+                      : editProfilePhotoPreview || editedEmployee.profilePhotoUrl,
+                  }}
+                  styles={styles}
+                  size="large"
+                />
+                <div>
                 <h2 style={styles.employeeModalTitle}>
                   Clinic Employee Form
                 </h2>
                 <p style={styles.employeeModalSubtitle}>
                   {editedEmployee.id} • {editedEmployee.role}
                 </p>
+                </div>
               </div>
 
               <button
@@ -2607,6 +2950,42 @@ export default function AdminEmployees() {
                 <h3 style={styles.employeeModalSectionTitle}>
                   Section 1 - Personal Information
                 </h3>
+
+                {isEditingEmployee && (
+                  <div style={styles.employeePhotoEditRow}>
+                    <button
+                      type="button"
+                      style={styles.employeePhotoReplaceBtn}
+                      onClick={() => editPhotoInputRef.current?.click()}
+                    >
+                      <i className="fi fi-rr-camera"></i>
+                      Replace Photo
+                    </button>
+                    {(editProfilePhotoPreview || editedEmployee.profilePhotoUrl) && !editRemoveProfilePhoto && (
+                      <button
+                        type="button"
+                        style={{
+                          ...styles.employeePhotoReplaceBtn,
+                          background: '#fee2e2',
+                          color: '#dc2626',
+                          boxShadow: 'none',
+                        }}
+                        onClick={() => setPhotoRemoveConfirm(true)}
+                      >
+                        <i className="fi fi-rr-trash"></i>
+                        Remove Photo
+                      </button>
+                    )}
+                    <span style={styles.employeePhotoHint}>JPG or PNG, max 5MB</span>
+                    <input
+                      ref={editPhotoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      style={{ display: 'none' }}
+                      onChange={(event) => handleEditPhotoSelect(event.target.files?.[0])}
+                    />
+                  </div>
+                )}
 
                 <div style={styles.employeeModalGridThree}>
                   {modalField('First Name', 'firstName', 'text', filterNameVal)}
@@ -2726,6 +3105,18 @@ export default function AdminEmployees() {
                       : modalField('Access Role', 'accessRole')}
                   </div>
                 )}
+
+                <EmployeeDocumentsList
+                  employee={editedEmployee}
+                  styles={styles}
+                  isEditing={isEditingEmployee}
+                  newDocuments={editNewDocuments}
+                  removedDocumentIds={editRemovedDocumentIds}
+                  inputRef={editDocumentInputRef}
+                  onAddFiles={handleEditDocumentFiles}
+                  onRemoveExisting={requestRemoveExistingEmployeeDocument}
+                  onRemoveNew={requestRemoveNewEmployeeDocument}
+                />
               </div>
 
               <div style={styles.employeeModalSection}>
@@ -3092,6 +3483,97 @@ export default function AdminEmployees() {
         </div>
       )}
 
+      {documentDeleteConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setDocumentDeleteConfirm(null);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                background: '#fee2e2',
+                color: '#dc2626',
+              }}
+            >
+              <i className="fi fi-rr-trash" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Delete Document</h2>
+            <p style={styles.modalText}>
+              {documentDeleteConfirm.type === 'new'
+                ? `Are you sure you want to remove ${documentDeleteConfirm.fileName} from the upload list?`
+                : `Are you sure you want to remove ${documentDeleteConfirm.fileName}? This will be applied when you save changes.`}
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setDocumentDeleteConfirm(null)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmRemoveEmployeeDocument}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {photoRemoveConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setPhotoRemoveConfirm(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                background: '#fee2e2',
+                color: '#dc2626',
+              }}
+            >
+              <i className="fi fi-rr-trash" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Remove Photo</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to remove this employee profile photo?
+            </p>
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setPhotoRemoveConfirm(false)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmRemoveEmployeePhoto}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showEditErrorModal && (
         <div style={styles.modal}>
           <div style={styles.modalContent}>
@@ -3191,12 +3673,168 @@ export default function AdminEmployees() {
   );
 }
 
+function EmployeeAvatar({ employee, styles, size = 'small' }) {
+  const photoUrl = employeeFileUrl(employee?.profilePhotoUrl);
+  const isLarge = size === 'large';
+
+  return (
+    <div style={isLarge ? styles.employeePhotoLarge : styles.employeePhotoSmall}>
+      {photoUrl ? (
+        <img
+          src={photoUrl}
+          alt=""
+          style={isLarge ? styles.employeePhotoLargeImg : styles.employeePhotoSmallImg}
+        />
+      ) : (
+        <i className="fi fi-rr-user" style={isLarge ? styles.employeePhotoLargeIcon : styles.employeePhotoSmallIcon}></i>
+      )}
+    </div>
+  );
+}
+
+function EmployeeDocumentsList({
+  employee,
+  styles,
+  isEditing = false,
+  newDocuments = [],
+  removedDocumentIds = [],
+  inputRef,
+  onAddFiles,
+  onRemoveExisting,
+  onRemoveNew,
+}) {
+  const removedIds = new Set(removedDocumentIds);
+  const documents = (employee?.supportingDocuments || []).filter((document) =>
+    !removedIds.has(document.id)
+  );
+
+  return (
+    <div style={styles.employeeDocumentsBlock}>
+      <h4 style={styles.employeeDocumentsTitle}>Supporting Documents</h4>
+
+      {isEditing && (
+        <div
+          style={styles.employeeDocumentDropzone}
+          onClick={() => inputRef?.current?.click()}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            onAddFiles(event.dataTransfer.files);
+          }}
+        >
+          <i className="fi fi-rr-upload" style={styles.employeeDocumentUploadIcon}></i>
+          <strong>Drop files here or click to upload</strong>
+          <span>PDF, JPG, PNG up to 5MB each</span>
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept="application/pdf,image/jpeg,image/png"
+            style={{ display: 'none' }}
+            onChange={(event) => onAddFiles(event.target.files)}
+          />
+        </div>
+      )}
+
+      {documents.length === 0 && newDocuments.length === 0 ? (
+        <div style={styles.employeeDocumentsEmpty}>No supporting documents uploaded.</div>
+      ) : (
+        <div style={styles.employeeDocumentsList}>
+          {documents.map((document) => (
+            <div
+              key={document.id || document.file_url}
+              style={styles.employeeDocumentItem}
+            >
+              <a
+                href={employeeFileUrl(document.file_url)}
+                target="_blank"
+                rel="noreferrer"
+                style={styles.employeeDocumentLink}
+              >
+                <i className="fi fi-rr-document" style={styles.employeeDocumentIcon}></i>
+              </a>
+              <span style={styles.employeeDocumentInfo}>
+                <strong style={styles.employeeDocumentName}>
+                  {document.file_name || 'Document'}
+                </strong>
+                <span style={styles.employeeDocumentMeta}>
+                  {formatEmployeeFileSize(document.file_size)}
+                </span>
+              </span>
+              {isEditing && (
+                <button
+                  type="button"
+                  style={styles.employeeDocumentDeleteBtn}
+                  onClick={() => onRemoveExisting(document)}
+                  title="Remove document"
+                >
+                  <i className="fi fi-rr-trash"></i>
+                </button>
+              )}
+            </div>
+          ))}
+
+          {newDocuments.map((file, index) => (
+            <div key={`${file.name}-${file.size}-${index}`} style={styles.employeeDocumentItem}>
+              <i className="fi fi-rr-document" style={styles.employeeDocumentIcon}></i>
+              <span style={styles.employeeDocumentInfo}>
+                <strong style={styles.employeeDocumentName}>{file.name}</strong>
+                <span style={styles.employeeDocumentMeta}>
+                  New upload - {formatEmployeeFileSize(file.size)}
+                </span>
+              </span>
+              {isEditing && (
+                <button
+                  type="button"
+                  style={styles.employeeDocumentDeleteBtn}
+                  onClick={() => onRemoveNew(file, index)}
+                  title="Remove document"
+                >
+                  <i className="fi fi-rr-trash"></i>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function employeeFileUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^(https?:|blob:|data:)/i.test(fileUrl)) return fileUrl;
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+function formatEmployeeFileSize(value) {
+  const size = Number(value || 0);
+  if (!size) return 'Unknown size';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function fileUrlToDataUrl(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to load file');
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 function formatCSVValue(value) {
   const stringValue = value === null || value === undefined ? '' : String(value);
   return `"${stringValue.replace(/"/g, '""')}"`;
 }
 
-function employeeToStaffPayload(employee) {
+function employeeToStaffPayload(employee, options = {}) {
+  const includeScheduleEntries = Boolean(options.includeScheduleEntries);
   const payload = {
     branchId: employee.branchId,
     branchIds: employee.role === 'Dentist'
@@ -3240,6 +3878,7 @@ function employeeToStaffPayload(employee) {
   };
 
   if (
+    includeScheduleEntries &&
     employee?.role === 'Dentist' &&
     Array.isArray(employee?.scheduleEntries) &&
     employee.scheduleEntries.length > 0

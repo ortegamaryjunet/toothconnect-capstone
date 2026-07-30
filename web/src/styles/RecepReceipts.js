@@ -872,6 +872,31 @@
       fontFamily: 'Arial, sans-serif',
     },
 
+    manualPaymentInputInvalid: {
+      borderColor: '#dc2626',
+      background: '#fff1f2',
+    },
+
+    manualPaymentInputDisabled: {
+      background: '#f1f5f9',
+      color: '#64748b',
+      cursor: 'not-allowed',
+      fontWeight: 700,
+    },
+
+    manualPaymentRequired: {
+      color: '#dc2626',
+      fontWeight: 800,
+    },
+
+    manualPaymentErrorText: {
+      margin: '6px 0 0',
+      color: '#dc2626',
+      fontSize: 12,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+    },
+
     manualPaymentUpload: {
       minHeight: 72,
       border: '1px dashed #cbd5e1',
@@ -888,6 +913,12 @@
       padding: 14,
       boxSizing: 'border-box',
       fontSize: 13,
+    },
+
+    manualPaymentUploadInvalid: {
+      borderColor: '#dc2626',
+      background: '#fff1f2',
+      color: '#dc2626',
     },
 
     manualPaymentFileInput: {
@@ -931,6 +962,12 @@
       fontSize: 14,
       cursor: 'pointer',
       boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+    },
+
+    manualPaymentSubmitDisabled: {
+      opacity: 0.55,
+      cursor: 'not-allowed',
+      boxShadow: 'none',
     },
 
     messageBox: {
@@ -1066,10 +1103,52 @@
       fontWeight: 'bold',
     },
 
+    modalGoldBtn: {
+      background: '#d4af37',
+      color: '#ffffff',
+      fontWeight: 'bold',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+    },
+
+    modalIconGold: {
+      background: '#fff8df',
+      color: '#d4af37',
+    },
+
     cancelBtn: {
       background: '#f1f5f9',
       color: '#334155',
       fontWeight: 'bold',
+    },
+
+    paymentConfirmList: {
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'Arial, sans-serif',
+      marginBottom: 12,
+    },
+
+    paymentConfirmRow: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 12,
+      padding: '7px 0',
+      borderBottom: '1px solid #f1f5f9',
+      fontSize: 13,
+      textAlign: 'left',
+    },
+
+    paymentConfirmLabel: {
+      color: '#64748b',
+      flexShrink: 0,
+    },
+
+    paymentConfirmValue: {
+      color: '#0f172a',
+      textAlign: 'right',
+      maxWidth: 220,
+      overflowWrap: 'anywhere',
     },
 
     profileDropdownWrapper: {

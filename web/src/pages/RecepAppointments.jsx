@@ -14,6 +14,7 @@ import { createStaffPayment } from '../api/payments';
 import { getConsumption, getServiceKit, submitConsumption, updateConsumption } from '../api/inventory';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
+import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepAppointmentsStyles from '../styles/RecepAppointments';
 import createRecepAppointmentFormStyles from '../styles/RecepAppointmentForm';
 
@@ -1220,9 +1221,7 @@ export default function RecepAppointments() {
                 style={styles.receptProfile}
                 onClick={() => setShowProfileMenu((prev) => !prev)}
               >
-                <div style={styles.avatar}>
-                  <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-                </div>
+                <StaffHeaderAvatar styles={styles} />
 
                 <div style={styles.receptInfo}>
                   <div style={styles.receptName}>{receptionistName}</div>
@@ -1903,11 +1902,11 @@ export default function RecepAppointments() {
 
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                style={{ ...styles.modalButton, ...styles.modalGoldBtn }}
                 onClick={savePaymentMode}
                 disabled={paymentModal.saving}
               >
-                {paymentModal.saving ? 'Saving...' : 'Save'}
+                {paymentModal.saving ? 'Saving...' : 'Save Payment'}
               </button>
             </div>
           </div>

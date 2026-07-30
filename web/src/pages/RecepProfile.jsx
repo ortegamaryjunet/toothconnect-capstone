@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import api from '../api/axios';
 import createRecepProfileStyles from '../styles/RecepProfile';
@@ -14,6 +14,7 @@ const initialProfile = {
   homeAddress: 'N/A',
   contactNumber: 'N/A',
   emailAddress: 'N/A',
+  role: 'Receptionist',
 
   specialization: 'Receptionist',
   startDate: 'N/A',
@@ -25,7 +26,37 @@ const initialProfile = {
   medicalDegree: 'N/A',
   medicalLicenseNumber: 'N/A',
   yearsOfExperience: 'N/A',
+  skills: 'N/A',
+  profilePhotoUrl: '',
+  supportingDocuments: [],
 };
+
+const SUFFIX_OPTIONS = ['Jr', 'Sr', 'II', 'III', 'IV'];
+const PROFILE_REQUIRED_FIELDS = [
+  'fullName',
+  'birthday',
+  'religion',
+  'nationality',
+  'contactNumber',
+  'emailAddress',
+  'homeAddress',
+];
+
+const PROFILE_FIELD_LABELS = {
+  fullName: 'Full Name',
+  preferredNickname: 'Preferred Nickname',
+  suffix: 'Suffix',
+  birthday: 'Birthday',
+  religion: 'Religion',
+  nationality: 'Nationality',
+  contactNumber: 'Contact Number',
+  emailAddress: 'Email Address',
+  homeAddress: 'Home Address',
+};
+
+const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png'];
+const SUPPORTING_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const MAX_PROFILE_FILE_SIZE = 5 * 1024 * 1024;
 
 export default function RecepProfile() {
   const navigate = useNavigate();
@@ -38,10 +69,20 @@ export default function RecepProfile() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState('');
+  const [profileEditError, setProfileEditError] = useState('');
+  const [profileTouchedFields, setProfileTouchedFields] = useState({});
+  const [showProfileCloseConfirmModal, setShowProfileCloseConfirmModal] = useState(false);
+  const [profileSaveConfirmModal, setProfileSaveConfirmModal] = useState(null);
+  const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
+  const [uploadingDocuments, setUploadingDocuments] = useState(false);
+  const [documentDeleteConfirm, setDocumentDeleteConfirm] = useState(null);
+  const [photoRemoveConfirm, setPhotoRemoveConfirm] = useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
+  const profilePhotoInputRef = useRef(null);
+  const documentInputRef = useRef(null);
 
   const isMobile = screenWidth <= 768;
   const isTablet = screenWidth > 768 && screenWidth <= 1200;
@@ -61,6 +102,11 @@ export default function RecepProfile() {
 
   const avatarLetter =
     String(profile.fullName || 'R').trim().charAt(0).toUpperCase() || 'R';
+  const profilePhotoUrl = profileFileUrl(profile.profilePhotoUrl);
+
+  const disabledInputStyle = useMemo(() => {
+    return { ...styles.formInput, opacity: 0.65, cursor: 'not-allowed' };
+  }, [styles.formInput]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -115,7 +161,14 @@ export default function RecepProfile() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showEditModal) {
+    if (
+      showLogoutModal ||
+      showEditModal ||
+      showProfileCloseConfirmModal ||
+      profileSaveConfirmModal ||
+      documentDeleteConfirm ||
+      photoRemoveConfirm
+    ) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -124,13 +177,26 @@ export default function RecepProfile() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showEditModal]);
+  }, [
+    showLogoutModal,
+    showEditModal,
+    showProfileCloseConfirmModal,
+    profileSaveConfirmModal,
+    documentDeleteConfirm,
+    photoRemoveConfirm,
+  ]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
-        closeEditModal();
+        setDocumentDeleteConfirm(null);
+        setPhotoRemoveConfirm(false);
+        setProfileSaveConfirmModal(null);
+        setShowProfileCloseConfirmModal(false);
+        if (showEditModal) {
+          requestCloseEditModal();
+        }
       }
     }
 
@@ -139,7 +205,7 @@ export default function RecepProfile() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, []);
+  }, [showEditModal, editForm, profile]);
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -164,12 +230,30 @@ export default function RecepProfile() {
 
   function openEditModal() {
     setEditForm(profile);
+    setProfileEditError('');
+    setProfileTouchedFields({});
     setShowEditModal(true);
   }
 
   function closeEditModal() {
     setEditForm(profile);
+    setProfileEditError('');
+    setProfileTouchedFields({});
+    setShowProfileCloseConfirmModal(false);
+    setProfileSaveConfirmModal(null);
     setShowEditModal(false);
+  }
+
+  function requestCloseEditModal() {
+    setShowProfileCloseConfirmModal(true);
+  }
+
+  function closeProfileCloseConfirmModal() {
+    setShowProfileCloseConfirmModal(false);
+  }
+
+  function confirmCloseProfileDetails() {
+    closeEditModal();
   }
 
   function handleLogoutOverlayClick(event) {
@@ -180,7 +264,7 @@ export default function RecepProfile() {
 
   function handleEditOverlayClick(event) {
     if (event.target === event.currentTarget) {
-      closeEditModal();
+      requestCloseEditModal();
     }
   }
 
@@ -189,19 +273,76 @@ export default function RecepProfile() {
       ...prev,
       [name]: value,
     }));
+    setProfileTouchedFields((prev) => ({
+      ...prev,
+      [name]: true,
+    }));
+    setProfileEditError('');
   }
 
-  async function handleSaveProfile(event) {
+  function isProfileFormComplete(form = editForm) {
+    return PROFILE_REQUIRED_FIELDS.every(
+      (field) => String(form[field] ?? '').trim() !== ''
+    );
+  }
+
+  function getProfileSaveDetails(nextProfile) {
+    return [
+      'fullName',
+      'preferredNickname',
+      'suffix',
+      'birthday',
+      'religion',
+      'nationality',
+      'contactNumber',
+      'emailAddress',
+      'homeAddress',
+    ].map((field) => ({
+      label: PROFILE_FIELD_LABELS[field],
+      value: String(nextProfile[field] || '').trim() || 'Not entered',
+    }));
+  }
+
+  function handleSaveProfileRequest(event) {
     event.preventDefault();
 
     const nextProfile = {
-      ...profile,
       ...editForm,
       suffix: String(editForm.suffix || '').trim(),
     };
 
+    if (!isProfileFormComplete(nextProfile)) {
+      setProfileTouchedFields(
+        PROFILE_REQUIRED_FIELDS.reduce((fields, field) => {
+          fields[field] = true;
+          return fields;
+        }, {})
+      );
+      setProfileEditError('Please complete all required profile details before saving.');
+      return;
+    }
+
+    setProfileSaveConfirmModal({
+      nextProfile,
+      details: getProfileSaveDetails(nextProfile),
+    });
+  }
+
+  function closeProfileSaveConfirmModal() {
+    setProfileSaveConfirmModal(null);
+  }
+
+  async function confirmSaveProfile() {
+    if (!profileSaveConfirmModal?.nextProfile) {
+      return;
+    }
+
+    const nextProfile = profileSaveConfirmModal.nextProfile;
+
     setSavingProfile(true);
     setProfileError('');
+    setProfileEditError('');
+    setProfileSaveConfirmModal(null);
 
     try {
       const res = await api.patch(
@@ -213,14 +354,115 @@ export default function RecepProfile() {
       setProfileId(res.data.profile.profileId || profileId);
       setProfile(mappedProfile);
       setEditForm(mappedProfile);
+      setProfileTouchedFields({});
       setShowEditModal(false);
     } catch (err) {
-      setProfileError(
-        err.response?.data?.message || 'Failed to save receptionist profile.'
-      );
-      alert(err.response?.data?.message || 'Failed to save receptionist profile.');
+      const message = err.response?.data?.message || 'Failed to save receptionist profile.';
+      setProfileError(message);
+      setProfileEditError(message);
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function patchSelfProfile(data) {
+    const res = await api.patch('/auth/staff-profile/me', data);
+    const mappedProfile = staffProfileToRecepProfile(res.data.profile);
+    setProfileId(res.data.profile.profileId || profileId);
+    setProfile(mappedProfile);
+    setEditForm(mappedProfile);
+    publishReceptionistProfilePhoto(profileFileUrl(mappedProfile.profilePhotoUrl));
+    return mappedProfile;
+  }
+
+  async function handleProfilePhotoFile(file) {
+    if (!file) return;
+
+    if (!PROFILE_PHOTO_TYPES.includes(file.type)) {
+      setProfileError('Profile photo must be a JPG or PNG file.');
+      return;
+    }
+
+    if (file.size > MAX_PROFILE_FILE_SIZE) {
+      setProfileError('Profile photo must be 5MB or smaller.');
+      return;
+    }
+
+    const data = new FormData();
+    data.append('profilePhoto', file);
+    setUploadingProfilePhoto(true);
+    setProfileError('');
+
+    try {
+      await patchSelfProfile(data);
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Failed to upload profile photo.');
+    } finally {
+      setUploadingProfilePhoto(false);
+      if (profilePhotoInputRef.current) profilePhotoInputRef.current.value = '';
+    }
+  }
+
+  async function confirmRemoveProfilePhoto() {
+    const data = new FormData();
+    data.append('removeProfilePhoto', JSON.stringify(true));
+    setUploadingProfilePhoto(true);
+    setProfileError('');
+
+    try {
+      await patchSelfProfile(data);
+      setPhotoRemoveConfirm(false);
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Failed to remove profile photo.');
+    } finally {
+      setUploadingProfilePhoto(false);
+    }
+  }
+
+  async function handleDocumentFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+
+    const invalid = files.find((file) =>
+      !SUPPORTING_DOCUMENT_TYPES.includes(file.type) ||
+      file.size > MAX_PROFILE_FILE_SIZE
+    );
+
+    if (invalid) {
+      setProfileError('Attachments must be PDF, JPG, or PNG files up to 5MB each.');
+      return;
+    }
+
+    const data = new FormData();
+    files.forEach((file) => data.append('supportingDocuments', file));
+    setUploadingDocuments(true);
+    setProfileError('');
+
+    try {
+      await patchSelfProfile(data);
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Failed to upload attachments.');
+    } finally {
+      setUploadingDocuments(false);
+      if (documentInputRef.current) documentInputRef.current.value = '';
+    }
+  }
+
+  async function confirmDeleteDocument() {
+    if (!documentDeleteConfirm?.id) return;
+
+    const data = new FormData();
+    data.append('removeDocumentIds', JSON.stringify([documentDeleteConfirm.id]));
+    setUploadingDocuments(true);
+    setProfileError('');
+
+    try {
+      await patchSelfProfile(data);
+      setDocumentDeleteConfirm(null);
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Failed to delete attachment.');
+    } finally {
+      setUploadingDocuments(false);
     }
   }
 
@@ -233,7 +475,6 @@ export default function RecepProfile() {
             onClick={handleBack}
             style={styles.backButton}
           >
-            <i className="fi fi-rr-angle-left" style={styles.backButtonIcon}></i>
             <span style={styles.backButtonText}>Back</span>
           </button>
         </header>
@@ -267,11 +508,44 @@ export default function RecepProfile() {
             <>
           <section style={styles.profileHeader}>
             <div style={styles.profileLeft}>
-              <div style={styles.profileAvatar}>{avatarLetter}</div>
+              <button
+                type="button"
+                style={styles.profileAvatarButton}
+                onClick={() => profilePhotoInputRef.current?.click()}
+                title="Change profile photo"
+                disabled={uploadingProfilePhoto}
+              >
+                {profilePhotoUrl ? (
+                  <img src={profilePhotoUrl} alt="" style={styles.profileAvatarImg} />
+                ) : (
+                  <span>{avatarLetter}</span>
+                )}
+                <span style={styles.profileAvatarCamera}>
+                  <i className={uploadingProfilePhoto ? 'fi fi-rr-spinner' : 'fi fi-rr-camera'}></i>
+                </span>
+              </button>
+              <input
+                ref={profilePhotoInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                style={{ display: 'none' }}
+                onChange={(event) => handleProfilePhotoFile(event.target.files?.[0])}
+              />
 
               <div>
                 <h1 style={styles.profileName}>{profile.fullName}</h1>
-                <p style={styles.profileSubtext}>Receptionist Profile</p>
+                <p style={styles.profileSubtext}>{profile.role}</p>
+                {profilePhotoUrl && (
+                  <button
+                    type="button"
+                    style={styles.removePhotoBtn}
+                    onClick={() => setPhotoRemoveConfirm(true)}
+                    disabled={uploadingProfilePhoto}
+                  >
+                    <i className="fi fi-rr-trash"></i>
+                    Remove Photo
+                  </button>
+                )}
               </div>
             </div>
 
@@ -286,7 +560,7 @@ export default function RecepProfile() {
           </section>
 
           <section style={styles.profileGrid}>
-            <div style={{ ...styles.card, ...styles.personalInfoCard }}>
+            <div style={styles.card}>
               <CardTitle
                 styles={styles}
                 icon="fi fi-rr-user"
@@ -348,9 +622,98 @@ export default function RecepProfile() {
                   styles={styles}
                   label="Email Address"
                   value={profile.emailAddress}
-                  wide
                 />
               </div>
+            </div>
+
+            <div style={styles.card}>
+              <CardTitle
+                styles={styles}
+                icon="fi fi-rr-calendar-clock"
+                title="Work Details"
+              />
+
+              <div style={styles.infoGrid}>
+                <InfoItem
+                  styles={styles}
+                  label="Role"
+                  value={profile.role}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Start Date"
+                  value={profile.startDate}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Employment Type"
+                  value={profile.employmentType}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Shift Type"
+                  value={profile.shiftType}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Work Schedule Days"
+                  value={profile.workScheduleDays}
+                  full
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Work Hours"
+                  value={profile.workHours}
+                />
+              </div>
+            </div>
+
+            <div style={{ ...styles.card, ...styles.fullCard }}>
+              <CardTitle
+                styles={styles}
+                icon="fi fi-rr-briefcase"
+                title="Professional Information"
+              />
+
+              <div style={styles.infoGridFour}>
+                <InfoItem
+                  styles={styles}
+                  label="Position"
+                  value={profile.role}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Access Role"
+                  value={profile.role}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Skills"
+                  value={profile.skills}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Years of Experience"
+                  value={profile.yearsOfExperience}
+                />
+              </div>
+
+              <RecepAttachments
+                styles={styles}
+                documents={profile.supportingDocuments}
+                inputRef={documentInputRef}
+                uploading={uploadingDocuments}
+                onAddFiles={handleDocumentFiles}
+                onDelete={setDocumentDeleteConfirm}
+              />
             </div>
           </section>
             </>
@@ -367,13 +730,17 @@ export default function RecepProfile() {
               <button
                 type="button"
                 style={styles.modalClose}
-                onClick={closeEditModal}
+                onClick={requestCloseEditModal}
               >
                 <i className="fi fi-rr-cross-small"></i>
               </button>
             </div>
 
-            <form style={styles.editForm} onSubmit={handleSaveProfile}>
+            <form style={styles.editForm} onSubmit={handleSaveProfileRequest}>
+              {profileEditError && (
+                <p style={styles.editErrorText}>{profileEditError}</p>
+              )}
+
               <div style={styles.formGrid}>
                 <FormGroup styles={styles} label="Full Name">
                   <input
@@ -383,7 +750,15 @@ export default function RecepProfile() {
                     onChange={(event) =>
                       handleEditChange('fullName', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, fullName: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.fullName && !String(editForm.fullName || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -400,16 +775,22 @@ export default function RecepProfile() {
                 </FormGroup>
 
                 <FormGroup styles={styles} label="Suffix">
-                  <input
-                    type="text"
+                  <select
                     name="suffix"
-                    placeholder="N/A"
-                    value={editForm.suffix}
+                    value={String(editForm.suffix || '')}
                     onChange={(event) =>
                       handleEditChange('suffix', event.target.value)
                     }
                     style={styles.formInput}
-                  />
+                  >
+                    <option value="">None</option>
+
+                    {SUFFIX_OPTIONS.map((suffix) => (
+                      <option key={suffix} value={suffix}>
+                        {suffix}
+                      </option>
+                    ))}
+                  </select>
                 </FormGroup>
 
                 <FormGroup styles={styles} label="Birthday">
@@ -420,7 +801,15 @@ export default function RecepProfile() {
                     onChange={(event) =>
                       handleEditChange('birthday', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, birthday: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.birthday && !String(editForm.birthday || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -432,7 +821,15 @@ export default function RecepProfile() {
                     onChange={(event) =>
                       handleEditChange('religion', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, religion: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.religion && !String(editForm.religion || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -444,7 +841,15 @@ export default function RecepProfile() {
                     onChange={(event) =>
                       handleEditChange('nationality', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, nationality: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.nationality && !String(editForm.nationality || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -456,7 +861,15 @@ export default function RecepProfile() {
                     onChange={(event) =>
                       handleEditChange('contactNumber', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, contactNumber: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.contactNumber && !String(editForm.contactNumber || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -468,7 +881,15 @@ export default function RecepProfile() {
                     onChange={(event) =>
                       handleEditChange('emailAddress', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, emailAddress: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...(profileTouchedFields.emailAddress && !String(editForm.emailAddress || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
                   />
                 </FormGroup>
 
@@ -479,23 +900,135 @@ export default function RecepProfile() {
                     onChange={(event) =>
                       handleEditChange('homeAddress', event.target.value)
                     }
-                    style={{ ...styles.formInput, ...styles.formTextarea }}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({ ...prev, homeAddress: true }))
+                    }
+                    style={{
+                      ...styles.formInput,
+                      ...styles.formTextarea,
+                      ...(profileTouchedFields.homeAddress && !String(editForm.homeAddress || '').trim()
+                        ? styles.formInputInvalid
+                        : {}),
+                    }}
+                  />
+                </FormGroup>
+
+                <FormGroup styles={styles} label="Position">
+                  <input
+                    type="text"
+                    name="role"
+                    value={editForm.role}
+                    onChange={(event) =>
+                      handleEditChange('role', event.target.value)
+                    }
+                    style={disabledInputStyle}
+                    disabled
+                  />
+                </FormGroup>
+
+                <FormGroup styles={styles} label="Access Role">
+                  <input
+                    type="text"
+                    name="accessRole"
+                    value={editForm.role}
+                    style={disabledInputStyle}
+                    disabled
+                  />
+                </FormGroup>
+
+                <FormGroup styles={styles} label="Skills">
+                  <input
+                    type="text"
+                    name="skills"
+                    value={editForm.skills}
+                    onChange={(event) =>
+                      handleEditChange('skills', event.target.value)
+                    }
+                    style={disabledInputStyle}
+                    disabled
+                  />
+                </FormGroup>
+
+                <FormGroup styles={styles} label="Years of Experience">
+                  <input
+                    type="number"
+                    name="yearsOfExperience"
+                    value={editForm.yearsOfExperience}
+                    onChange={(event) =>
+                      handleEditChange('yearsOfExperience', event.target.value)
+                    }
+                    style={disabledInputStyle}
+                    disabled
+                  />
+                </FormGroup>
+
+                <FormGroup styles={styles} label="Start Date">
+                  <input
+                    type="date"
+                    name="startDate"
+                    value={editForm.startDate === 'N/A' ? '' : editForm.startDate}
+                    onChange={(event) =>
+                      handleEditChange('startDate', event.target.value)
+                    }
+                    style={disabledInputStyle}
+                    disabled
+                  />
+                </FormGroup>
+
+                <FormGroup styles={styles} label="Employment Type">
+                  <input
+                    type="text"
+                    name="employmentType"
+                    value={editForm.employmentType}
+                    onChange={(event) =>
+                      handleEditChange('employmentType', event.target.value)
+                    }
+                    style={disabledInputStyle}
+                    disabled
+                  />
+                </FormGroup>
+
+                <FormGroup styles={styles} label="Shift Type">
+                  <input
+                    type="text"
+                    name="shiftType"
+                    value={editForm.shiftType}
+                    onChange={(event) =>
+                      handleEditChange('shiftType', event.target.value)
+                    }
+                    style={disabledInputStyle}
+                    disabled
+                  />
+                </FormGroup>
+
+                <FormGroup styles={styles} label="Work Hours">
+                  <input
+                    type="text"
+                    name="workHours"
+                    value={editForm.workHours}
+                    onChange={(event) =>
+                      handleEditChange('workHours', event.target.value)
+                    }
+                    style={disabledInputStyle}
+                    disabled
+                  />
+                </FormGroup>
+
+                <FormGroup styles={styles} label="Work Schedule Days" full>
+                  <input
+                    type="text"
+                    name="workScheduleDays"
+                    value={editForm.workScheduleDays}
+                    onChange={(event) =>
+                      handleEditChange('workScheduleDays', event.target.value)
+                    }
+                    style={disabledInputStyle}
+                    disabled
                   />
                 </FormGroup>
               </div>
 
               <div style={styles.editModalActions}>
-                <button
-                  type="submit"
-                  style={{
-                    ...styles.saveBtn,
-                    ...(savingProfile ? styles.disabledBtn : {}),
-                  }}
-                  disabled={savingProfile}
-                >
-                  {savingProfile ? 'Saving...' : 'Save Changes'}
-                </button>
-
                 <button
                   type="button"
                   style={styles.cancelEditBtn}
@@ -504,8 +1037,198 @@ export default function RecepProfile() {
                 >
                   Cancel
                 </button>
+
+                <button
+                  type="submit"
+                  style={{
+                    ...styles.saveBtn,
+                    ...(!isProfileFormComplete(editForm) || savingProfile
+                      ? styles.disabledBtn
+                      : {}),
+                  }}
+                  disabled={!isProfileFormComplete(editForm) || savingProfile}
+                >
+                  {savingProfile ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {profileSaveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeProfileSaveConfirmModal();
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={{ ...styles.modalIcon, background: '#fff8df', color: '#d4af37' }}>
+              <i className="fi fi-rr-user-pen" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Profile Changes</h2>
+            <p style={styles.modalText}>Please review the details before saving this profile.</p>
+
+            <div style={styles.confirmDetailsList}>
+              {profileSaveConfirmModal.details.map((detail) => (
+                <div key={detail.label} style={styles.confirmDetailRow}>
+                  <span style={styles.confirmDetailLabel}>{detail.label}</span>
+                  <strong style={styles.confirmDetailValue}>{detail.value}</strong>
+                </div>
+              ))}
+            </div>
+
+            {profileEditError && (
+              <p style={{ ...styles.modalText, color: '#dc2626' }}>{profileEditError}</p>
+            )}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                disabled={savingProfile}
+                onClick={closeProfileSaveConfirmModal}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                disabled={savingProfile}
+                onClick={confirmSaveProfile}
+              >
+                {savingProfile ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProfileCloseConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeProfileCloseConfirmModal();
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Close Profile Details</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to close? Any unsaved profile details will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeProfileCloseConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCloseProfileDetails}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {documentDeleteConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setDocumentDeleteConfirm(null);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-trash" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Delete Attachment</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to delete {documentDeleteConfirm.file_name || 'this attachment'}?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setDocumentDeleteConfirm(null)}
+                disabled={uploadingDocuments}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmDeleteDocument}
+                disabled={uploadingDocuments}
+              >
+                {uploadingDocuments ? 'Deleting...' : 'Yes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {photoRemoveConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setPhotoRemoveConfirm(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-trash" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Remove Photo</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to remove your profile photo?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setPhotoRemoveConfirm(false)}
+                disabled={uploadingProfilePhoto}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmRemoveProfilePhoto}
+                disabled={uploadingProfilePhoto}
+              >
+                {uploadingProfilePhoto ? 'Removing...' : 'Yes'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -582,6 +1305,7 @@ function staffProfileToRecepProfile(staffProfile = {}) {
     homeAddress: staffProfile.homeAddress || 'N/A',
     contactNumber: staffProfile.contactNumber || 'N/A',
     emailAddress: staffProfile.email || 'N/A',
+    role: 'Receptionist',
 
     specialization: 'Receptionist',
     startDate: toDateInputValue(staffProfile.startDate) || 'N/A',
@@ -595,7 +1319,39 @@ function staffProfileToRecepProfile(staffProfile = {}) {
     medicalDegree: staffProfile.medicalDegree || 'N/A',
     medicalLicenseNumber: staffProfile.licenseNumber || 'N/A',
     yearsOfExperience: staffProfile.yearsExperience ?? 'N/A',
+    skills: staffProfile.skills || 'N/A',
+    profilePhotoUrl: staffProfile.profilePhotoUrl || '',
+    supportingDocuments: Array.isArray(staffProfile.supportingDocuments)
+      ? staffProfile.supportingDocuments
+      : [],
   };
+}
+
+function profileFileUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^(https?:|blob:|data:)/i.test(fileUrl)) return fileUrl;
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+function publishReceptionistProfilePhoto(profilePhotoUrl) {
+  if (profilePhotoUrl) {
+    localStorage.setItem('toothconnect_receptionist_profile_photo_url', profilePhotoUrl);
+  } else {
+    localStorage.removeItem('toothconnect_receptionist_profile_photo_url');
+  }
+
+  window.dispatchEvent(new CustomEvent('receptionist-profile-photo-updated', {
+    detail: { profilePhotoUrl },
+  }));
+}
+
+function formatProfileFileSize(value) {
+  const size = Number(value || 0);
+  if (!size) return 'Unknown size';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function splitFullName(profile) {
@@ -645,6 +1401,7 @@ function recepProfileToStaffPayload(profile) {
 
     position: 'Receptionist',
     specialization: 'Receptionist',
+    skills: emptyIfNa(profile.skills),
     medicalDegree: emptyIfNa(profile.medicalDegree),
     licenseNumber: emptyIfNa(profile.medicalLicenseNumber),
     yearsExperience: emptyIfNa(profile.yearsOfExperience) || 0,
@@ -699,6 +1456,99 @@ function InfoItem({ styles, label, value, full = false, wide = false }) {
     >
       <span style={styles.infoLabel}>{label}</span>
       <strong style={styles.infoValue}>{value || 'N/A'}</strong>
+    </div>
+  );
+}
+
+function RecepAttachments({
+  styles,
+  documents = [],
+  inputRef,
+  uploading = false,
+  onAddFiles,
+  onDelete,
+}) {
+  const files = Array.isArray(documents) ? documents : [];
+
+  return (
+    <div style={styles.attachmentsBlock}>
+      <div style={styles.attachmentsHeader}>
+        <div>
+          <h3 style={styles.attachmentsTitle}>Attachments</h3>
+          <p style={styles.attachmentsHint}>License, certifications, resume</p>
+        </div>
+      </div>
+
+      <div
+        style={styles.attachmentDropzone}
+        onClick={() => inputRef?.current?.click()}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          onAddFiles(event.dataTransfer.files);
+        }}
+      >
+        <i className="fi fi-rr-upload" style={styles.attachmentUploadIcon}></i>
+        <strong>{uploading ? 'Uploading...' : 'Drop files here or click to upload'}</strong>
+        <span>PDF, JPG, PNG up to 5MB each</span>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept="application/pdf,image/jpeg,image/png"
+          style={{ display: 'none' }}
+          onChange={(event) => onAddFiles(event.target.files)}
+        />
+      </div>
+
+      {files.length === 0 ? (
+        <div style={styles.attachmentEmpty}>No attachments uploaded.</div>
+      ) : (
+        <div style={styles.attachmentList}>
+          {files.map((document) => {
+            const fileUrl = profileFileUrl(document.file_url);
+
+            return (
+              <div
+                key={document.id || document.file_url}
+                style={styles.attachmentItem}
+              >
+                <div style={styles.attachmentFileIcon}>
+                  <i className="fi fi-rr-document"></i>
+                </div>
+
+                <div style={styles.attachmentInfo}>
+                  <strong style={styles.attachmentName}>
+                    {document.file_name || 'Attachment'}
+                  </strong>
+                  <span style={styles.attachmentMeta}>
+                    {formatProfileFileSize(document.file_size)}
+                  </span>
+                </div>
+
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={styles.attachmentActionBtn}
+                  title="View attachment"
+                >
+                  <i className="fi fi-rr-eye"></i>
+                </a>
+
+                <button
+                  type="button"
+                  style={{ ...styles.attachmentActionBtn, ...styles.attachmentDeleteBtn }}
+                  onClick={() => onDelete(document)}
+                  title="Delete attachment"
+                >
+                  <i className="fi fi-rr-trash"></i>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
+import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepReceiptsStyles from '../styles/RecepReceipts';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
@@ -172,6 +173,38 @@ function formatPaymentMethod(value, provider) {
   return labels[value] || 'Payment';
 }
 
+function getManualPaymentMethodLabel(value) {
+  const labels = {
+    cash: 'Cash',
+    gcash_qr: 'GCash (QR, in person)',
+    card: 'Card',
+    bank_transfer: 'Bank transfer',
+  };
+
+  return labels[value] || 'Cash';
+}
+
+function getManualPaymentErrors(form = {}) {
+  const errors = {};
+  const amountText = String(form.amount ?? '').trim();
+  const amount = Number(amountText);
+  const isCash = form.method === 'cash';
+
+  if (!amountText || !Number.isFinite(amount) || amount <= 0) {
+    errors.amount = 'Enter the amount paid by the patient.';
+  }
+
+  if (!isCash && !String(form.reference || '').trim()) {
+    errors.reference = 'This field is required.';
+  }
+
+  if (!form.proofFile) {
+    errors.proofFile = 'This field is required.';
+  }
+
+  return errors;
+}
+
 function formatDate(value) {
   if (!value) return '-';
   return new Date(value).toLocaleDateString('en-US', {
@@ -226,6 +259,9 @@ export default function RecepReceipts() {
     proofFile: null,
     saving: false,
   });
+  const [manualPaymentTouched, setManualPaymentTouched] = useState({});
+  const [manualPaymentCancelConfirm, setManualPaymentCancelConfirm] = useState(false);
+  const [manualPaymentConfirm, setManualPaymentConfirm] = useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -331,7 +367,13 @@ export default function RecepReceipts() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || messageModal.show || manualPaymentModal.show) {
+    if (
+      showLogoutModal ||
+      messageModal.show ||
+      manualPaymentModal.show ||
+      manualPaymentCancelConfirm ||
+      manualPaymentConfirm
+    ) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -340,14 +382,26 @@ export default function RecepReceipts() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, messageModal.show, manualPaymentModal.show]);
+  }, [
+    showLogoutModal,
+    messageModal.show,
+    manualPaymentModal.show,
+    manualPaymentCancelConfirm,
+    manualPaymentConfirm,
+  ]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
         closeMessageModal();
-        closeManualPaymentModal();
+        if (manualPaymentConfirm) {
+          setManualPaymentConfirm(false);
+        } else if (manualPaymentCancelConfirm) {
+          setManualPaymentCancelConfirm(false);
+        } else if (manualPaymentModal.show) {
+          requestCancelManualPaymentModal();
+        }
       }
     }
 
@@ -356,7 +410,7 @@ export default function RecepReceipts() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, []);
+  }, [manualPaymentModal.show, manualPaymentCancelConfirm, manualPaymentConfirm]);
 
   const filteredReceipts = useMemo(() => {
     const searchValue = searchText.trim().toLowerCase();
@@ -376,6 +430,8 @@ export default function RecepReceipts() {
   }, [receipts, searchText, statusFilter]);
 
   const receptionistName = user?.name || user?.email || 'Receptionist';
+  const manualPaymentErrors = getManualPaymentErrors(manualPaymentModal);
+  const isManualPaymentValid = Object.keys(manualPaymentErrors).length === 0;
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -510,10 +566,13 @@ export default function RecepReceipts() {
       receipt,
       method: 'cash',
       amount: String(receipt.amountValue || ''),
-      reference: '',
+      reference: 'Cash',
       proofFile: null,
       saving: false,
     });
+    setManualPaymentTouched({});
+    setManualPaymentCancelConfirm(false);
+    setManualPaymentConfirm(false);
   }
 
   function closeManualPaymentModal() {
@@ -522,20 +581,71 @@ export default function RecepReceipts() {
       receipt: null,
       method: 'cash',
       amount: '',
-      reference: '',
+      reference: 'Cash',
       proofFile: null,
       saving: false,
     });
+    setManualPaymentTouched({});
+    setManualPaymentCancelConfirm(false);
+    setManualPaymentConfirm(false);
+  }
+
+  function requestCancelManualPaymentModal() {
+    setManualPaymentCancelConfirm(true);
+  }
+
+  function closeManualPaymentCancelConfirm() {
+    setManualPaymentCancelConfirm(false);
+  }
+
+  function confirmCancelManualPaymentModal() {
+    closeManualPaymentModal();
+  }
+
+  function updateManualPaymentField(field, value) {
+    setManualPaymentModal((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setManualPaymentTouched((current) => ({
+      ...current,
+      [field]: true,
+    }));
+  }
+
+  function touchManualPaymentField(field) {
+    setManualPaymentTouched((current) => ({
+      ...current,
+      [field]: true,
+    }));
   }
 
   async function submitManualPayment(event) {
     event.preventDefault();
 
+    if (!isManualPaymentValid) {
+      setManualPaymentTouched({
+        amount: true,
+        reference: true,
+        proofFile: true,
+      });
+      return;
+    }
+
+    setManualPaymentConfirm(true);
+  }
+
+  async function confirmManualPaymentSave() {
     const receipt = manualPaymentModal.receipt;
     const amount = Number(manualPaymentModal.amount);
 
-    if (!receipt || !Number.isFinite(amount) || amount <= 0) {
-      showMessage('Invalid Amount', 'Please enter an amount greater than zero.', 'error');
+    if (!receipt || !isManualPaymentValid) {
+      setManualPaymentConfirm(false);
+      setManualPaymentTouched({
+        amount: true,
+        reference: true,
+        proofFile: true,
+      });
       return;
     }
 
@@ -560,6 +670,7 @@ export default function RecepReceipts() {
     }
 
     setManualPaymentModal((current) => ({ ...current, saving: true }));
+    setManualPaymentConfirm(false);
 
     try {
       const saved = await createStaffPayment(formData);
@@ -731,9 +842,7 @@ export default function RecepReceipts() {
                 style={styles.receptProfile}
                 onClick={() => setShowProfileMenu((prev) => !prev)}
               >
-                <div style={styles.avatar}>
-                  <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-                </div>
+                <StaffHeaderAvatar styles={styles} />
 
                 <div style={styles.receptInfo}>
                   <div style={styles.receptName}>{receptionistName}</div>
@@ -849,7 +958,7 @@ export default function RecepReceipts() {
       {manualPaymentModal.show && (
         <div
           style={styles.manualPaymentModal}
-          onClick={(event) => handleModalOverlayClick(event, closeManualPaymentModal)}
+          onClick={(event) => handleModalOverlayClick(event, requestCancelManualPaymentModal)}
         >
           <form style={styles.manualPaymentBox} onSubmit={submitManualPayment}>
             <div style={styles.manualPaymentHeader}>
@@ -863,7 +972,7 @@ export default function RecepReceipts() {
               <button
                 type="button"
                 style={styles.manualPaymentClose}
-                onClick={closeManualPaymentModal}
+                onClick={requestCancelManualPaymentModal}
                 aria-label="Close"
               >
                 x
@@ -873,12 +982,18 @@ export default function RecepReceipts() {
             <label style={styles.manualPaymentLabel}>Payment method</label>
             <select
               value={manualPaymentModal.method}
-              onChange={(event) =>
+              onChange={(event) => {
+                const nextMethod = event.target.value;
                 setManualPaymentModal((current) => ({
                   ...current,
-                  method: event.target.value,
-                }))
-              }
+                  method: nextMethod,
+                  reference: nextMethod === 'cash' ? 'Cash' : '',
+                }));
+                setManualPaymentTouched((current) => ({
+                  ...current,
+                  reference: false,
+                }));
+              }}
               style={styles.manualPaymentInput}
             >
               <option value="cash">Cash</option>
@@ -887,46 +1002,73 @@ export default function RecepReceipts() {
               <option value="bank_transfer">Bank transfer</option>
             </select>
 
-            <label style={styles.manualPaymentLabel}>Amount received</label>
+            <label style={styles.manualPaymentLabel}>
+              Amount received <span style={styles.manualPaymentRequired}>*</span>
+            </label>
             <input
               type="number"
               min="1"
               step="0.01"
               value={manualPaymentModal.amount}
               onChange={(event) =>
-                setManualPaymentModal((current) => ({
-                  ...current,
-                  amount: event.target.value,
-                }))
+                updateManualPaymentField('amount', event.target.value)
               }
-              style={styles.manualPaymentInput}
+              onBlur={() => touchManualPaymentField('amount')}
+              style={{
+                ...styles.manualPaymentInput,
+                ...(manualPaymentTouched.amount && manualPaymentErrors.amount
+                  ? styles.manualPaymentInputInvalid
+                  : {}),
+              }}
             />
+            {manualPaymentTouched.amount && manualPaymentErrors.amount && (
+              <p style={styles.manualPaymentErrorText}>{manualPaymentErrors.amount}</p>
+            )}
 
-            <label style={styles.manualPaymentLabel}>Reference / OR number (optional)</label>
+            <label style={styles.manualPaymentLabel}>
+              Reference / OR number <span style={styles.manualPaymentRequired}>*</span>
+            </label>
             <input
               type="text"
               value={manualPaymentModal.reference}
               onChange={(event) =>
-                setManualPaymentModal((current) => ({
-                  ...current,
-                  reference: event.target.value,
-                }))
+                updateManualPaymentField('reference', event.target.value)
               }
-              placeholder="e.g. OR-10231"
-              style={styles.manualPaymentInput}
+              onBlur={() => touchManualPaymentField('reference')}
+              placeholder={manualPaymentModal.method === 'cash' ? 'Cash' : 'e.g. OR-10231'}
+              disabled={manualPaymentModal.method === 'cash'}
+              style={{
+                ...styles.manualPaymentInput,
+                ...(manualPaymentModal.method === 'cash'
+                  ? styles.manualPaymentInputDisabled
+                  : {}),
+                ...(manualPaymentTouched.reference && manualPaymentErrors.reference
+                  ? styles.manualPaymentInputInvalid
+                  : {}),
+              }}
             />
+            {manualPaymentTouched.reference && manualPaymentErrors.reference && (
+              <p style={styles.manualPaymentErrorText}>{manualPaymentErrors.reference}</p>
+            )}
 
-            <label style={styles.manualPaymentLabel}>Proof of payment (optional)</label>
-            <label style={styles.manualPaymentUpload}>
+            <label style={styles.manualPaymentLabel}>
+              Proof of payment <span style={styles.manualPaymentRequired}>*</span>
+            </label>
+            <label
+              style={{
+                ...styles.manualPaymentUpload,
+                ...(manualPaymentTouched.proofFile && manualPaymentErrors.proofFile
+                  ? styles.manualPaymentUploadInvalid
+                  : {}),
+              }}
+              onClick={() => touchManualPaymentField('proofFile')}
+            >
               <input
                 type="file"
                 accept="image/*"
-                onChange={(event) =>
-                  setManualPaymentModal((current) => ({
-                    ...current,
-                    proofFile: event.target.files?.[0] || null,
-                  }))
-                }
+                onChange={(event) => {
+                  updateManualPaymentField('proofFile', event.target.files?.[0] || null);
+                }}
                 style={styles.manualPaymentFileInput}
               />
               <i className="fi fi-rr-upload"></i>
@@ -936,6 +1078,9 @@ export default function RecepReceipts() {
                   : 'Attach screenshot or photo'}
               </span>
             </label>
+            {manualPaymentTouched.proofFile && manualPaymentErrors.proofFile && (
+              <p style={styles.manualPaymentErrorText}>{manualPaymentErrors.proofFile}</p>
+            )}
 
             <div style={styles.recordedByRow}>
               <i className="fi fi-rr-user"></i>
@@ -946,7 +1091,7 @@ export default function RecepReceipts() {
               <button
                 type="button"
                 style={styles.manualPaymentCancel}
-                onClick={closeManualPaymentModal}
+                onClick={requestCancelManualPaymentModal}
                 disabled={manualPaymentModal.saving}
               >
                 Cancel
@@ -954,13 +1099,110 @@ export default function RecepReceipts() {
 
               <button
                 type="submit"
-                style={styles.manualPaymentSubmit}
-                disabled={manualPaymentModal.saving}
+                style={{
+                  ...styles.manualPaymentSubmit,
+                  ...(!isManualPaymentValid || manualPaymentModal.saving
+                    ? styles.manualPaymentSubmitDisabled
+                    : {}),
+                }}
+                disabled={!isManualPaymentValid || manualPaymentModal.saving}
               >
                 {manualPaymentModal.saving ? 'Recording...' : 'Mark as paid'}
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {manualPaymentCancelConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => handleModalOverlayClick(event, closeManualPaymentCancelConfirm)}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Manual Payment</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Unsaved payment information will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeManualPaymentCancelConfirm}
+                disabled={manualPaymentModal.saving}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCancelManualPaymentModal}
+                disabled={manualPaymentModal.saving}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {manualPaymentConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => handleModalOverlayClick(event, () => setManualPaymentConfirm(false))}
+        >
+          <div style={styles.modalContent}>
+            <div style={{ ...styles.modalIcon, ...styles.modalIconGold }}>
+              <i className="fi fi-rr-money-check" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Manual Payment</h2>
+            <p style={styles.modalText}>Please review the payment details before marking this appointment as paid.</p>
+
+            <div style={styles.paymentConfirmList}>
+              {[
+                ['Appointment', manualPaymentModal.receipt?.id || 'Not recorded'],
+                ['Patient', manualPaymentModal.receipt?.patientName || 'Not recorded'],
+                ['Service', manualPaymentModal.receipt?.service || 'Not recorded'],
+                ['Payment Method', getManualPaymentMethodLabel(manualPaymentModal.method)],
+                ['Amount Received', formatPeso(manualPaymentModal.amount)],
+                ['Reference / OR Number', manualPaymentModal.reference || 'Not entered'],
+                ['Proof of Payment', manualPaymentModal.proofFile?.name || 'Not attached'],
+                ['Recorded By', receptionistName],
+              ].map(([label, value]) => (
+                <div key={label} style={styles.paymentConfirmRow}>
+                  <span style={styles.paymentConfirmLabel}>{label}</span>
+                  <strong style={styles.paymentConfirmValue}>{value}</strong>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setManualPaymentConfirm(false)}
+                disabled={manualPaymentModal.saving}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.modalGoldBtn }}
+                onClick={confirmManualPaymentSave}
+                disabled={manualPaymentModal.saving}
+              >
+                {manualPaymentModal.saving ? 'Saving...' : 'Mark as Paid'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

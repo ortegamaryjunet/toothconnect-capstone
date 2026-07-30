@@ -470,8 +470,8 @@
     },
 
     actionBtn: {
-      minWidth: 78,
-      height: 40,
+      minWidth: 70,
+      height: 36,
       padding: '0 14px',
       borderRadius: 12,
       border: 'none',
@@ -481,7 +481,7 @@
       gap: 6,
       cursor: 'pointer',
       transition: '0.2s ease',
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
       whiteSpace: 'nowrap',
@@ -491,11 +491,13 @@
     viewBtn: {
       background: '#eff6ff',
       color: '#2563eb',
+      border: 'none',
     },
 
     editBtn: {
-      background: '#fff8e1',
-      color: '#b8860b',
+      background: '#eff6ff',
+      color: '#2563eb',
+      border: 'none',
     },
 
     pdfBtn: {

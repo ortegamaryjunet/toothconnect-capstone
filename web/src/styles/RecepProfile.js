@@ -45,14 +45,15 @@ const createRecepProfileStyles = ({
       alignItems: 'center',
       gap: 8,
       border: 'none',
-      background: '#eff6ff',
-      color: '#2563eb',
-      borderRadius: 12,
-      padding: isMobile ? '10px 12px' : '10px 14px',
+      background: '#d4af37',
+      color: '#ffffff',
+      borderRadius: 14,
+      padding: isMobile ? '13px 18px' : '14px 22px',
       cursor: 'pointer',
       fontFamily: 'Arial, sans-serif',
-      fontWeight: 700,
+      fontWeight: 800,
       boxSizing: 'border-box',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     backButtonIcon: {
@@ -182,7 +183,7 @@ const createRecepProfileStyles = ({
       width: isMobile ? 60 : 72,
       height: isMobile ? 60 : 72,
       borderRadius: isMobile ? 18 : 20,
-      background: '#2563eb',
+      background: 'linear-gradient(135deg, #b8860b, #d4af37)',
       color: '#ffffff',
       display: 'flex',
       alignItems: 'center',
@@ -191,6 +192,70 @@ const createRecepProfileStyles = ({
       fontWeight: 700,
       flexShrink: 0,
       fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 10px 24px rgba(212, 175, 55, 0.35)',
+    },
+
+    profileAvatarButton: {
+      position: 'relative',
+      width: isMobile ? 60 : 72,
+      height: isMobile ? 60 : 72,
+      borderRadius: isMobile ? 18 : 20,
+      background: 'linear-gradient(135deg, #b8860b, #d4af37)',
+      color: '#ffffff',
+      border: 'none',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 700,
+      flexShrink: 0,
+      fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 10px 24px rgba(212, 175, 55, 0.35)',
+      cursor: 'pointer',
+      overflow: 'hidden',
+      padding: 0,
+    },
+
+    profileAvatarImg: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
+    },
+
+    profileAvatarCamera: {
+      position: 'absolute',
+      right: -1,
+      bottom: -1,
+      width: 28,
+      height: 28,
+      borderRadius: '50%',
+      background: '#d4af37',
+      color: '#ffffff',
+      border: '2px solid #ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 13,
+      boxShadow: '0 8px 18px rgba(139, 101, 8, 0.22)',
+    },
+
+    removePhotoBtn: {
+      border: '1px solid #fecaca',
+      background: '#fee2e2',
+      color: '#dc2626',
+      borderRadius: 10,
+      padding: '6px 9px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 5,
+      cursor: 'pointer',
+      fontSize: 12,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+      whiteSpace: 'nowrap',
+      marginTop: 7,
     },
 
     profileName: {
@@ -210,11 +275,12 @@ const createRecepProfileStyles = ({
 
     editBtn: {
       border: 'none',
-      background: '#2563eb',
+      background: '#d4af37',
       color: '#ffffff',
       padding: '13px 18px',
       borderRadius: 14,
       fontSize: 14,
+      fontWeight: 800,
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
@@ -222,6 +288,7 @@ const createRecepProfileStyles = ({
       gap: 8,
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     disabledBtn: {
@@ -231,9 +298,10 @@ const createRecepProfileStyles = ({
 
     profileGrid: {
       display: 'grid',
-      gridTemplateColumns: '1fr',
-      gap: 24,
+      gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr',
+      gap: isMobile ? 16 : 24,
       width: '100%',
+      minWidth: 0,
     },
 
     card: {
@@ -245,6 +313,11 @@ const createRecepProfileStyles = ({
       boxSizing: 'border-box',
       minWidth: 0,
       width: '100%',
+      overflow: 'hidden',
+    },
+
+    fullCard: {
+      gridColumn: isSmallScreen ? 'span 1' : '1 / 3',
     },
 
     personalInfoCard: {
@@ -263,8 +336,8 @@ const createRecepProfileStyles = ({
     cardTitleIcon: {
       width: 42,
       height: 42,
-      background: '#dbeafe',
-      color: '#2563eb',
+      background: '#fff8e1',
+      color: '#b8860b',
       borderRadius: 14,
       display: 'flex',
       alignItems: 'center',
@@ -282,12 +355,27 @@ const createRecepProfileStyles = ({
 
     personalInfoGrid: {
       display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+      gap: isMobile ? 12 : 16,
+      minWidth: 0,
+    },
+
+    infoGrid: {
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+      gap: isMobile ? 12 : 16,
+      minWidth: 0,
+    },
+
+    infoGridFour: {
+      display: 'grid',
       gridTemplateColumns: isMobile
         ? '1fr'
         : isSmallScreen
-          ? '1fr 1fr'
-          : 'repeat(4, 1fr)',
-      gap: 16,
+          ? 'repeat(2, minmax(0, 1fr))'
+          : 'repeat(4, minmax(0, 1fr))',
+      gap: isMobile ? 12 : 16,
+      minWidth: 0,
     },
 
     infoItem: {
@@ -368,14 +456,15 @@ const createRecepProfileStyles = ({
 
     modalClose: {
       border: 'none',
-      background: '#eff6ff',
-      color: '#2563eb',
+      background: '#fff8df',
+      color: '#8b6508',
       width: 38,
       height: 38,
       borderRadius: 12,
       cursor: 'pointer',
       fontSize: 20,
       flexShrink: 0,
+      boxShadow: '0 8px 18px rgba(139, 101, 8, 0.14)',
     },
 
     editForm: {
@@ -418,6 +507,11 @@ const createRecepProfileStyles = ({
       boxSizing: 'border-box',
     },
 
+    formInputInvalid: {
+      borderColor: '#dc2626',
+      background: '#fff1f2',
+    },
+
     formTextarea: {
       minHeight: 90,
       resize: 'vertical',
@@ -425,7 +519,7 @@ const createRecepProfileStyles = ({
 
     editModalActions: {
       display: 'flex',
-      justifyContent: 'flex-end',
+      justifyContent: 'space-between',
       gap: 12,
       marginTop: 24,
       flexDirection: isMobile ? 'column' : 'row',
@@ -437,10 +531,12 @@ const createRecepProfileStyles = ({
       borderRadius: 14,
       fontSize: 14,
       cursor: 'pointer',
-      background: '#2563eb',
+      background: '#d4af37',
       color: '#ffffff',
       width: isMobile ? '100%' : 'auto',
       fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     cancelEditBtn: {
@@ -455,27 +551,35 @@ const createRecepProfileStyles = ({
       fontFamily: 'Arial, sans-serif',
     },
 
+    editErrorText: {
+      margin: '0 0 16px',
+      fontSize: 16,
+      fontWeight: 800,
+      color: '#b91c1c',
+      fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.45,
+    },
+
     modal: {
       display: 'flex',
       position: 'fixed',
       inset: 0,
       zIndex: 9999,
-      background: 'rgba(15, 23, 42, 0.55)',
-      backdropFilter: 'blur(4px)',
+      background: 'rgba(15, 23, 42, 0.45)',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: isMobile ? 18 : 20,
+      padding: 16,
       boxSizing: 'border-box',
     },
 
     modalContent: {
-      width: isMobile ? '92%' : 380,
-      maxWidth: 380,
+      width: isMobile ? '100%' : 390,
+      maxWidth: 390,
       background: '#ffffff',
-      borderRadius: isMobile ? 20 : 22,
-      padding: isMobile ? '24px 18px' : 30,
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.2)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
     },
 
@@ -496,11 +600,11 @@ const createRecepProfileStyles = ({
     },
 
     modalTitle: {
-      fontSize: 21,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 22,
       color: '#0f172a',
-      marginBottom: 8,
+      marginBottom: 10,
       marginTop: 0,
-      fontFamily: 'Arial, sans-serif',
     },
 
     modalText: {
@@ -508,23 +612,24 @@ const createRecepProfileStyles = ({
       color: '#64748b',
       marginBottom: 24,
       marginTop: 0,
-      fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.5,
     },
 
     modalActions: {
       display: 'flex',
+      justifyContent: 'center',
       gap: 12,
       flexDirection: isMobile ? 'column' : 'row',
     },
 
     modalButton: {
-      flex: 1,
+      minWidth: 120,
+      height: 44,
       border: 'none',
       borderRadius: 12,
-      padding: 12,
       cursor: 'pointer',
-      fontSize: 15,
-      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
     },
 
     logoutBtn: {
@@ -535,9 +640,182 @@ const createRecepProfileStyles = ({
 
     cancelBtn: {
       background: '#f1f5f9',
-      color: 'black',
+      color: '#334155',
       fontWeight: 'bold',
     },
+
+    confirmDetailsList: {
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'Arial, sans-serif',
+      marginBottom: 8,
+    },
+
+    confirmDetailRow: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 12,
+      padding: '6px 0',
+      borderBottom: '1px solid #f1f5f9',
+      fontSize: 13,
+      textAlign: 'left',
+    },
+
+    confirmDetailLabel: {
+      color: '#64748b',
+    },
+
+    confirmDetailValue: {
+      color: '#0f172a',
+      textAlign: 'right',
+      maxWidth: 220,
+      overflowWrap: 'anywhere',
+    },
+
+    attachmentsBlock: {
+      marginTop: 22,
+      borderTop: '1px solid #edf0f5',
+      paddingTop: 18,
+    },
+
+    attachmentsHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 12,
+    },
+
+    attachmentsTitle: {
+      margin: 0,
+      color: '#8b6508',
+      fontSize: 15,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    attachmentsHint: {
+      margin: '3px 0 0',
+      color: '#64748b',
+      fontSize: 12,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    attachmentDropzone: {
+      border: '1px dashed #d4af37',
+      background: '#fff8df',
+      borderRadius: 14,
+      padding: isMobile ? '18px 14px' : '22px 18px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      color: '#8b6508',
+      cursor: 'pointer',
+      textAlign: 'center',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+    },
+
+    attachmentUploadIcon: {
+      fontSize: 24,
+      marginBottom: 2,
+    },
+
+    attachmentEmpty: {
+      marginTop: 12,
+      background: '#f8fafc',
+      border: '1px dashed #dbe3ef',
+      color: '#64748b',
+      padding: 14,
+      borderRadius: 14,
+      fontSize: 13,
+      textAlign: 'center',
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    attachmentList: {
+      display: 'grid',
+      gap: 10,
+      marginTop: 12,
+      maxHeight: 356,
+      overflowY: 'auto',
+      paddingRight: 4,
+    },
+
+    attachmentItem: {
+      display: 'grid',
+      gridTemplateColumns: '44px minmax(0, 1fr) 38px 38px',
+      alignItems: 'center',
+      gap: 10,
+      border: '1px solid #f3d879',
+      background: '#fffdf7',
+      borderRadius: 14,
+      padding: '10px 12px',
+      boxSizing: 'border-box',
+      minWidth: 0,
+    },
+
+    attachmentFileIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      background: '#fff8df',
+      color: '#b8860b',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 18,
+      flexShrink: 0,
+    },
+
+    attachmentInfo: {
+      display: 'flex',
+      flexDirection: 'column',
+      minWidth: 0,
+    },
+
+    attachmentName: {
+      color: '#0f172a',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+
+    attachmentMeta: {
+      color: '#64748b',
+      fontSize: 12,
+      marginTop: 3,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    attachmentActionBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      border: '1px solid #f3d879',
+      background: '#fff8df',
+      color: '#b8860b',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      textDecoration: 'none',
+      cursor: 'pointer',
+      fontSize: 15,
+      boxSizing: 'border-box',
+    },
+
+    attachmentDeleteBtn: {
+      background: '#fee2e2',
+      borderColor: '#fecaca',
+      color: '#dc2626',
+    },
+
     receptProfile: {
       display: 'inline-flex',
       alignItems: 'center',

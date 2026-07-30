@@ -321,7 +321,7 @@ export default function DentistNotifications() {
             <DentistProfileMenu
               styles={styles}
               dentistName={user?.name || 'Dentist'}
-              specialization={serviceNames || 'Dentist'}
+              specialization="Dentist"
             />
           </div>
         </header>

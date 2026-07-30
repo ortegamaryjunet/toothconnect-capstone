@@ -218,6 +218,39 @@ pool.query(`ALTER TABLE patient_profile MODIFY COLUMN address VARCHAR(255) NULL`
   });
 });
 
+pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo_url VARCHAR(500) NULL AFTER status`)
+  .catch(() => {
+    pool.query(`SHOW COLUMNS FROM users LIKE 'profile_photo_url'`).then(([rows]) => {
+      if (rows.length === 0) {
+        pool.query(`ALTER TABLE users ADD COLUMN profile_photo_url VARCHAR(500) NULL AFTER status`)
+          .catch((err) => console.error('[migration] Failed to add profile_photo_url to users:', err.message));
+      }
+    });
+  });
+
+pool.query(`ALTER TABLE staff_profile ADD COLUMN profile_photo_url VARCHAR(500) NULL`)
+  .catch(err => {
+    if (err.errno !== 1060) {
+      console.error('[migration] staff_profile profile_photo_url:', err.message);
+    }
+  });
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS staff_profile_documents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    staff_profile_id INT NOT NULL,
+    uploaded_by INT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_url VARCHAR(500) NOT NULL,
+    mime_type VARCHAR(100) NULL,
+    file_size INT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (staff_profile_id) REFERENCES staff_profile(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_spd_profile (staff_profile_id)
+  )
+`).catch(err => console.error('[migration] staff_profile_documents:', err.message));
+
 pool.query(`
   CREATE TABLE IF NOT EXISTS treatment_plans (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -236,6 +269,22 @@ pool.query(`
     INDEX idx_tp_dentist (dentist_id)
   )
 `).catch(err => console.error('[migration] treatment_plans:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS treatment_plan_attachments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    treatment_plan_id INT NOT NULL,
+    uploaded_by INT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_url VARCHAR(500) NOT NULL,
+    mime_type VARCHAR(100) NULL,
+    file_size INT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (treatment_plan_id) REFERENCES treatment_plans(id) ON DELETE CASCADE,
+    FOREIGN KEY (uploaded_by) REFERENCES users(id),
+    INDEX idx_tpa_plan (treatment_plan_id)
+  )
+`).catch(err => console.error('[migration] treatment_plan_attachments:', err.message));
 
 pool.query(`
   CREATE TABLE IF NOT EXISTS schedule_requests (

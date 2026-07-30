@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import api from '../api/axios';
 import DentistProfileMenu from '../components/DentistProfileMenu';
@@ -27,6 +27,7 @@ const initialProfile = {
   homeAddress: 'N/A',
   contactNumber: 'N/A',
   emailAddress: 'N/A',
+  role: 'Dentist',
 
   specialization: 'Specialization',
   startDate: 'N/A',
@@ -63,6 +64,10 @@ const PROFILE_FIELD_LABELS = {
   homeAddress: 'Home Address',
 };
 
+const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png'];
+const SUPPORTING_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const MAX_PROFILE_FILE_SIZE = 5 * 1024 * 1024;
+
 export default function DentistProfile() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -78,6 +83,10 @@ export default function DentistProfile() {
   const [profileError, setProfileError] = useState('');
   const [profileEditError, setProfileEditError] = useState('');
   const [profileTouchedFields, setProfileTouchedFields] = useState({});
+  const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
+  const [uploadingDocuments, setUploadingDocuments] = useState(false);
+  const [documentDeleteConfirm, setDocumentDeleteConfirm] = useState(null);
+  const [photoRemoveConfirm, setPhotoRemoveConfirm] = useState(false);
 
   const [previousWork, setPreviousWork] = useState([]);
   const [showWorkModal, setShowWorkModal] = useState(false);
@@ -93,6 +102,8 @@ export default function DentistProfile() {
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
+  const profilePhotoInputRef = useRef(null);
+  const documentInputRef = useRef(null);
 
   const isMobile = screenWidth <= 768;
   const isTablet = screenWidth > 768 && screenWidth <= 1200;
@@ -112,6 +123,7 @@ export default function DentistProfile() {
 
   const avatarLetter =
     String(profile.fullName || 'D').trim().charAt(0).toUpperCase() || 'D';
+  const profilePhotoUrl = profileFileUrl(profile.profilePhotoUrl);
 
   const disabledInputStyle = useMemo(() => {
     return { ...styles.formInput, opacity: 0.65, cursor: 'not-allowed' };
@@ -188,6 +200,8 @@ export default function DentistProfile() {
       showWorkModal ||
       showProfileCloseConfirmModal ||
       profileSaveConfirmModal
+      || documentDeleteConfirm ||
+      photoRemoveConfirm
     ) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -203,6 +217,8 @@ export default function DentistProfile() {
     showWorkModal,
     showProfileCloseConfirmModal,
     profileSaveConfirmModal,
+    documentDeleteConfirm,
+    photoRemoveConfirm,
   ]);
 
   useEffect(() => {
@@ -215,6 +231,8 @@ export default function DentistProfile() {
         closeWorkModal();
         setShowProfileCloseConfirmModal(false);
         setProfileSaveConfirmModal(null);
+        setDocumentDeleteConfirm(null);
+        setPhotoRemoveConfirm(false);
       }
     }
 
@@ -451,6 +469,105 @@ export default function DentistProfile() {
     }
   }
 
+  async function patchSelfProfile(data) {
+    const res = await api.patch('/auth/staff-profile/me', data);
+    const mappedProfile = staffProfileToDentistProfile(res.data.profile);
+    setProfileId(res.data.profile.profileId || profileId);
+    setProfile(mappedProfile);
+    setEditForm(mappedProfile);
+    publishDentistProfilePhoto(profileFileUrl(mappedProfile.profilePhotoUrl));
+    return mappedProfile;
+  }
+
+  async function handleProfilePhotoFile(file) {
+    if (!file) return;
+    if (!PROFILE_PHOTO_TYPES.includes(file.type)) {
+      setProfileError('Profile photo must be a JPG or PNG file.');
+      return;
+    }
+    if (file.size > MAX_PROFILE_FILE_SIZE) {
+      setProfileError('Profile photo must be 5MB or smaller.');
+      return;
+    }
+
+    const data = new FormData();
+    data.append('profilePhoto', file);
+    setUploadingProfilePhoto(true);
+    setProfileError('');
+
+    try {
+      await patchSelfProfile(data);
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Failed to upload profile photo.');
+    } finally {
+      setUploadingProfilePhoto(false);
+      if (profilePhotoInputRef.current) profilePhotoInputRef.current.value = '';
+    }
+  }
+
+  async function confirmRemoveProfilePhoto() {
+    const data = new FormData();
+    data.append('removeProfilePhoto', JSON.stringify(true));
+    setUploadingProfilePhoto(true);
+    setProfileError('');
+
+    try {
+      await patchSelfProfile(data);
+      setPhotoRemoveConfirm(false);
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Failed to remove profile photo.');
+    } finally {
+      setUploadingProfilePhoto(false);
+    }
+  }
+
+  async function handleDocumentFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+
+    const invalid = files.find((file) =>
+      !SUPPORTING_DOCUMENT_TYPES.includes(file.type) ||
+      file.size > MAX_PROFILE_FILE_SIZE
+    );
+
+    if (invalid) {
+      setProfileError('Attachments must be PDF, JPG, or PNG files up to 5MB each.');
+      return;
+    }
+
+    const data = new FormData();
+    files.forEach((file) => data.append('supportingDocuments', file));
+    setUploadingDocuments(true);
+    setProfileError('');
+
+    try {
+      await patchSelfProfile(data);
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Failed to upload attachments.');
+    } finally {
+      setUploadingDocuments(false);
+      if (documentInputRef.current) documentInputRef.current.value = '';
+    }
+  }
+
+  async function confirmDeleteDocument() {
+    if (!documentDeleteConfirm?.id) return;
+
+    const data = new FormData();
+    data.append('removeDocumentIds', JSON.stringify([documentDeleteConfirm.id]));
+    setUploadingDocuments(true);
+    setProfileError('');
+
+    try {
+      await patchSelfProfile(data);
+      setDocumentDeleteConfirm(null);
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Failed to delete attachment.');
+    } finally {
+      setUploadingDocuments(false);
+    }
+  }
+
   async function exportProfileToPDF() {
     const { jsPDF, autoTable } = await loadPdfTools();
     const doc = new jsPDF('p', 'mm', 'a4');
@@ -585,6 +702,73 @@ export default function DentistProfile() {
       return doc.lastAutoTable.finalY + 8;
     }
 
+    async function addAttachmentsSection(startY) {
+      const documents = Array.isArray(profile.supportingDocuments)
+        ? profile.supportingDocuments
+        : [];
+      if (documents.length === 0) {
+        return addSection('Attachments', [['Attachments', 'No attachments uploaded.']], startY);
+      }
+
+      let yPosition = startY;
+      if (yPosition > pageHeight - 55) {
+        doc.addPage();
+        drawHeader();
+        yPosition = 40;
+      }
+      yPosition = drawSectionTitle('Attachments', yPosition);
+
+      for (const document of documents) {
+        if (yPosition > pageHeight - 45) {
+          doc.addPage();
+          drawHeader();
+          yPosition = 40;
+        }
+
+        const label = document.file_name || 'Attachment';
+        const fileUrl = profileFileUrl(document.file_url);
+        const isImage = String(document.mime_type || '').startsWith('image/');
+
+        if (isImage) {
+          try {
+            const dataUrl = await fileUrlToDataUrl(fileUrl);
+            const format = String(document.mime_type || '').includes('png') ? 'PNG' : 'JPEG';
+            doc.addImage(dataUrl, format, 20, yPosition, 44, 34, undefined, 'FAST');
+            doc.setTextColor(51, 65, 85);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text(label, 68, yPosition + 8, { maxWidth: pageWidth - 88 });
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(formatProfileFileSize(document.file_size), 68, yPosition + 14);
+            yPosition += 40;
+            continue;
+          } catch (_) {}
+        }
+
+        autoTable(doc, {
+          startY: yPosition,
+          theme: 'grid',
+          body: [['Attachment', `${label}\n${formatProfileFileSize(document.file_size)}`]],
+          margin: { left: 14, right: 14 },
+          styles: {
+            font: 'helvetica',
+            fontSize: 9,
+            cellPadding: 3,
+            lineColor: [229, 231, 235],
+            lineWidth: 0.25,
+          },
+          columnStyles: { 0: { cellWidth: 60, fontStyle: 'bold' } },
+          didDrawPage() {
+            drawFooter();
+          },
+        });
+        yPosition = doc.lastAutoTable.finalY + 5;
+      }
+
+      return yPosition + 4;
+    }
+
     drawHeader();
 
     doc.setFillColor(255, 255, 255);
@@ -696,6 +880,8 @@ export default function DentistProfile() {
 
     nextY = addSection('Previous Work History', previousWorkRows, nextY);
 
+    nextY = await addAttachmentsSection(nextY);
+
     const totalPdfPages = doc.internal.getNumberOfPages();
 
     for (let page = 1; page <= totalPdfPages; page += 1) {
@@ -779,7 +965,8 @@ export default function DentistProfile() {
             <DentistProfileMenu
               styles={styles}
               dentistName={loadingProfile ? '...' : profile.fullName}
-              specialization={loadingProfile ? '...' : profile.specialization}
+              specialization={loadingProfile ? '...' : profile.role}
+              profilePhotoUrl={profilePhotoUrl}
             />
           </div>
         </header>
@@ -822,11 +1009,44 @@ export default function DentistProfile() {
             <>
               <section style={styles.profileHeader}>
                 <div style={styles.profileLeft}>
-                  <div style={styles.profileAvatar}>{avatarLetter}</div>
+                  <button
+                    type="button"
+                    style={styles.profileAvatarButton}
+                    onClick={() => profilePhotoInputRef.current?.click()}
+                    title="Change profile photo"
+                    disabled={uploadingProfilePhoto}
+                  >
+                    {profilePhotoUrl ? (
+                      <img src={profilePhotoUrl} alt="" style={styles.profileAvatarImg} />
+                    ) : (
+                      <span>{avatarLetter}</span>
+                    )}
+                    <span style={styles.profileAvatarCamera}>
+                      <i className={uploadingProfilePhoto ? 'fi fi-rr-spinner' : 'fi fi-rr-camera'}></i>
+                    </span>
+                  </button>
+                  <input
+                    ref={profilePhotoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    style={{ display: 'none' }}
+                    onChange={(event) => handleProfilePhotoFile(event.target.files?.[0])}
+                  />
 
                   <div>
                     <h1 style={styles.profileName}>{profile.fullName}</h1>
-                    <p style={styles.profileSubtext}>Dentist Profile</p>
+                    <p style={styles.profileSubtext}>{profile.role}</p>
+                    {profilePhotoUrl && (
+                      <button
+                        type="button"
+                        style={styles.removePhotoBtn}
+                        onClick={() => setPhotoRemoveConfirm(true)}
+                        disabled={uploadingProfilePhoto}
+                      >
+                        <i className="fi fi-rr-trash"></i>
+                        Remove Photo
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -998,6 +1218,15 @@ export default function DentistProfile() {
                       value={profile.yearsOfExperience}
                     />
                   </div>
+
+                  <DentistAttachments
+                    styles={styles}
+                    documents={profile.supportingDocuments}
+                    inputRef={documentInputRef}
+                    uploading={uploadingDocuments}
+                    onAddFiles={handleDocumentFiles}
+                    onDelete={setDocumentDeleteConfirm}
+                  />
 
                   <div
                     style={{
@@ -1517,7 +1746,7 @@ export default function DentistProfile() {
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Close Profile Details?</h2>
+            <h2 style={styles.modalTitle}>Close Profile Details</h2>
             <p style={styles.modalText}>
               Are you sure you want to close? Any unsaved profile details will be discarded.
             </p>
@@ -1658,6 +1887,90 @@ export default function DentistProfile() {
         </div>
       )}
 
+      {documentDeleteConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setDocumentDeleteConfirm(null);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-trash" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Delete Attachment</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to delete {documentDeleteConfirm.file_name || 'this attachment'}?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setDocumentDeleteConfirm(null)}
+                disabled={uploadingDocuments}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmDeleteDocument}
+                disabled={uploadingDocuments}
+              >
+                {uploadingDocuments ? 'Deleting...' : 'Yes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {photoRemoveConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setPhotoRemoveConfirm(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-trash" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Remove Photo</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to remove your profile photo?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setPhotoRemoveConfirm(false)}
+                disabled={uploadingProfilePhoto}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmRemoveProfilePhoto}
+                disabled={uploadingProfilePhoto}
+              >
+                {uploadingProfilePhoto ? 'Removing...' : 'Yes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showLogoutModal && (
         <div style={styles.modal} onClick={handleLogoutOverlayClick}>
           <div style={styles.modalContent}>
@@ -1689,6 +2002,99 @@ export default function DentistProfile() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DentistAttachments({
+  styles,
+  documents = [],
+  inputRef,
+  uploading = false,
+  onAddFiles,
+  onDelete,
+}) {
+  const files = Array.isArray(documents) ? documents : [];
+
+  return (
+    <div style={styles.attachmentsBlock}>
+      <div style={styles.attachmentsHeader}>
+        <div>
+          <h3 style={styles.attachmentsTitle}>Attachments</h3>
+          <p style={styles.attachmentsHint}>License, certifications, resume</p>
+        </div>
+      </div>
+
+      <div
+        style={styles.attachmentDropzone}
+        onClick={() => inputRef?.current?.click()}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          onAddFiles(event.dataTransfer.files);
+        }}
+      >
+        <i className="fi fi-rr-upload" style={styles.attachmentUploadIcon}></i>
+        <strong>{uploading ? 'Uploading...' : 'Drop files here or click to upload'}</strong>
+        <span>PDF, JPG, PNG up to 5MB each</span>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept="application/pdf,image/jpeg,image/png"
+          style={{ display: 'none' }}
+          onChange={(event) => onAddFiles(event.target.files)}
+        />
+      </div>
+
+      {files.length === 0 ? (
+        <div style={styles.attachmentEmpty}>No attachments uploaded.</div>
+      ) : (
+        <div style={styles.attachmentList}>
+          {files.map((document) => {
+            const fileUrl = profileFileUrl(document.file_url);
+
+            return (
+              <div
+                key={document.id || document.file_url}
+                style={styles.attachmentItem}
+              >
+                <div style={styles.attachmentFileIcon}>
+                  <i className="fi fi-rr-document"></i>
+                </div>
+
+                <div style={styles.attachmentInfo}>
+                  <strong style={styles.attachmentName}>
+                    {document.file_name || 'Attachment'}
+                  </strong>
+                  <span style={styles.attachmentMeta}>
+                    {formatProfileFileSize(document.file_size)}
+                  </span>
+                </div>
+
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={styles.attachmentActionBtn}
+                  title="View attachment"
+                >
+                  <i className="fi fi-rr-eye"></i>
+                </a>
+
+                <button
+                  type="button"
+                  style={{ ...styles.attachmentActionBtn, ...styles.attachmentDeleteBtn }}
+                  onClick={() => onDelete(document)}
+                  title="Delete attachment"
+                >
+                  <i className="fi fi-rr-trash"></i>
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -1739,10 +2145,11 @@ function staffProfileToDentistProfile(staffProfile = {}) {
     homeAddress: staffProfile.homeAddress || 'N/A',
     contactNumber: staffProfile.contactNumber || 'N/A',
     emailAddress: staffProfile.email || 'N/A',
+    role: 'Dentist',
 
     specialization:
-      staffProfile.serviceNames ||
       staffProfile.specialization ||
+      staffProfile.workDepartment ||
       'Specialization',
     startDate: toDateInputValue(staffProfile.startDate) || 'N/A',
     employmentType: staffProfile.employmentType || 'N/A',
@@ -1755,7 +2162,50 @@ function staffProfileToDentistProfile(staffProfile = {}) {
     medicalDegree: staffProfile.medicalDegree || 'N/A',
     medicalLicenseNumber: staffProfile.licenseNumber || 'N/A',
     yearsOfExperience: staffProfile.yearsExperience ?? 'N/A',
+    profilePhotoUrl: staffProfile.profilePhotoUrl || '',
+    supportingDocuments: Array.isArray(staffProfile.supportingDocuments)
+      ? staffProfile.supportingDocuments
+      : [],
   };
+}
+
+function profileFileUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^(https?:|blob:|data:)/i.test(fileUrl)) return fileUrl;
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+function publishDentistProfilePhoto(profilePhotoUrl) {
+  if (profilePhotoUrl) {
+    localStorage.setItem('toothconnect_dentist_profile_photo_url', profilePhotoUrl);
+  } else {
+    localStorage.removeItem('toothconnect_dentist_profile_photo_url');
+  }
+
+  window.dispatchEvent(new CustomEvent('dentist-profile-photo-updated', {
+    detail: { profilePhotoUrl },
+  }));
+}
+
+function formatProfileFileSize(value) {
+  const size = Number(value || 0);
+  if (!size) return 'Unknown size';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function fileUrlToDataUrl(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to load file');
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 function splitFullName(profile) {

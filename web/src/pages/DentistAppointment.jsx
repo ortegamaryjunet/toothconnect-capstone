@@ -586,7 +586,7 @@ export default function DentistAppointment() {
             <DentistProfileMenu
               styles={styles}
               dentistName={user?.name || 'Dentist'}
-              specialization={serviceNames || 'Dentist'}
+              specialization="Dentist"
             />
           </div>
         </header>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getCountries,
   getCountryCallingCode,
@@ -183,7 +183,13 @@ const initialAdminAccountForm = {
   role: 'admin',
   status: 'Active',
   created_at: '',
+  profilePhotoUrl: '',
 };
+
+const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png'];
+const MAX_PROFILE_PHOTO_SIZE = 5 * 1024 * 1024;
+const ADMIN_PROFILE_PHOTO_STORAGE_KEY = 'toothconnect_admin_profile_photo_url';
+const ADMIN_PROFILE_PHOTO_EVENT = 'admin-profile-photo-updated';
 
 function parseContactNumber(value, country = 'PH') {
   const rawValue = String(value || '').trim();
@@ -374,6 +380,8 @@ export default function AdminSettings() {
     useState(false);
   const [adminAccountSaveConfirmModal, setAdminAccountSaveConfirmModal] =
     useState(null);
+  const [adminProfilePhotoUploading, setAdminProfilePhotoUploading] = useState(false);
+  const [adminPhotoRemoveConfirm, setAdminPhotoRemoveConfirm] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [showAdminConfirmPassword, setShowAdminConfirmPassword] =
     useState(false);
@@ -409,6 +417,7 @@ export default function AdminSettings() {
   const [serviceKitHistoryLoading, setServiceKitHistoryLoading] = useState(false);
   const [serviceKitHistoryError, setServiceKitHistoryError] = useState('');
   const [serviceKitHistoryFilters, setServiceKitHistoryFilters] = useState({ startDate: '', endDate: '', branchId: '' });
+  const adminProfilePhotoInputRef = useRef(null);
 
   const [userForm, setUserForm] = useState(initialUserForm);
   const [userTouchedFields, setUserTouchedFields] = useState({});
@@ -917,9 +926,11 @@ setWebsiteContentSaveConfirmModal({
         role: res.data.role || 'admin',
         status: res.data.status || 'Active',
         created_at: res.data.created_at || '',
+        profilePhotoUrl: res.data.profile_photo_url || '',
       };
       setAdminAccountForm(loadedAdminAccount);
       setAdminAccountOriginal(loadedAdminAccount);
+      publishAdminProfilePhoto(profileFileUrl(loadedAdminAccount.profilePhotoUrl));
       setAdminAccountPhoneCountry(phoneFormValue.country);
       setAdminAccountOriginalPhoneCountry(phoneFormValue.country);
       setAdminAccountTouchedFields({});
@@ -2129,6 +2140,7 @@ setWebsiteContentSaveConfirmModal({
         role: updated.role || 'admin',
         status: updated.status || adminAccountForm.status,
         created_at: updated.created_at || adminAccountForm.created_at,
+        profilePhotoUrl: updated.profile_photo_url || adminAccountForm.profilePhotoUrl || '',
       });
       setAdminAccountOriginal({
         id: updated.id || adminAccountForm.id,
@@ -2140,6 +2152,7 @@ setWebsiteContentSaveConfirmModal({
         role: updated.role || 'admin',
         status: updated.status || adminAccountForm.status,
         created_at: updated.created_at || adminAccountForm.created_at,
+        profilePhotoUrl: updated.profile_photo_url || adminAccountForm.profilePhotoUrl || '',
       });
       setAdminAccountPhoneCountry(updatedPhone.country);
       setAdminAccountOriginalPhoneCountry(updatedPhone.country);
@@ -2154,6 +2167,56 @@ setWebsiteContentSaveConfirmModal({
       console.error('Failed to update admin account', err);
       setAdminAccountError(err.response?.data?.message || 'Failed to update admin account.');
     }
+  }
+
+  async function patchAdminProfilePhoto(data, fallbackMessage) {
+    setAdminProfilePhotoUploading(true);
+    setAdminAccountError('');
+    setAdminAccountMessage('');
+
+    try {
+      const res = await api.patch('/auth/me', data);
+      const updated = res.data.user || {};
+      const nextPhotoUrl = profileFileUrl(updated.profile_photo_url || '');
+      publishAdminProfilePhoto(nextPhotoUrl);
+      setAdminAccountForm((prev) => ({
+        ...prev,
+        profilePhotoUrl: updated.profile_photo_url || '',
+      }));
+      setAdminAccountOriginal((prev) => ({
+        ...prev,
+        profilePhotoUrl: updated.profile_photo_url || '',
+      }));
+      setAdminAccountMessage(res.data.message || fallbackMessage);
+      setAdminPhotoRemoveConfirm(false);
+    } catch (err) {
+      setAdminAccountError(err.response?.data?.message || fallbackMessage);
+    } finally {
+      setAdminProfilePhotoUploading(false);
+      if (adminProfilePhotoInputRef.current) adminProfilePhotoInputRef.current.value = '';
+    }
+  }
+
+  function handleAdminProfilePhotoFile(file) {
+    if (!file) return;
+    if (!PROFILE_PHOTO_TYPES.includes(file.type)) {
+      setAdminAccountError('Profile photo must be a JPG or PNG file.');
+      return;
+    }
+    if (file.size > MAX_PROFILE_PHOTO_SIZE) {
+      setAdminAccountError('Profile photo must be 5MB or smaller.');
+      return;
+    }
+
+    const data = new FormData();
+    data.append('profilePhoto', file);
+    patchAdminProfilePhoto(data, 'Admin profile photo updated.');
+  }
+
+  function confirmRemoveAdminPhoto() {
+    const data = new FormData();
+    data.append('removeProfilePhoto', JSON.stringify(true));
+    patchAdminProfilePhoto(data, 'Admin profile photo removed.');
   }
 
   function nextPage() {
@@ -2985,11 +3048,48 @@ setWebsiteContentSaveConfirmModal({
       <>
       <section style={styles.accountCard}>
         <div style={styles.accountHeader}>
-          <div>
-            <h3 style={styles.accountTitle}>Admin Account Information</h3>
-            <p style={styles.accountSubtitle}>
-              Update the logged-in admin account saved in the users table.
-            </p>
+          <div style={styles.accountHeaderProfile}>
+            <button
+              type="button"
+              style={styles.profileAvatarButton}
+              onClick={() => adminProfilePhotoInputRef.current?.click()}
+              disabled={adminProfilePhotoUploading}
+              title="Change profile photo"
+            >
+              {adminAccountForm.profilePhotoUrl ? (
+                <img
+                  src={profileFileUrl(adminAccountForm.profilePhotoUrl)}
+                  alt=""
+                  style={styles.profileAvatarImg}
+                />
+              ) : (
+                <i className="fi fi-rr-user" style={styles.profileAvatarIcon}></i>
+              )}
+              <span style={styles.profileAvatarCamera}>
+                <i className={adminProfilePhotoUploading ? 'fi fi-rr-spinner' : 'fi fi-rr-camera'}></i>
+              </span>
+            </button>
+            <input
+              ref={adminProfilePhotoInputRef}
+              type="file"
+              accept="image/jpeg,image/png"
+              style={{ display: 'none' }}
+              onChange={(event) => handleAdminProfilePhotoFile(event.target.files?.[0])}
+            />
+            <div>
+              <h3 style={styles.accountTitle}>Admin Account Information</h3>
+              {adminAccountForm.profilePhotoUrl && (
+                <button
+                  type="button"
+                  style={styles.removePhotoBtn}
+                  onClick={() => setAdminPhotoRemoveConfirm(true)}
+                  disabled={adminProfilePhotoUploading}
+                >
+                  <i className="fi fi-rr-trash"></i>
+                  Remove Photo
+                </button>
+              )}
+            </div>
           </div>
           <span style={getStatusStyle(adminAccountForm.status)}>
             {adminAccountForm.status}
@@ -3312,6 +3412,45 @@ setWebsiteContentSaveConfirmModal({
                 }}
               >
                 Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {adminPhotoRemoveConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setAdminPhotoRemoveConfirm(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-trash" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Remove Photo</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to remove your admin profile photo?
+            </p>
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setAdminPhotoRemoveConfirm(false)}
+                disabled={adminProfilePhotoUploading}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmRemoveAdminPhoto}
+                disabled={adminProfilePhotoUploading}
+              >
+                {adminProfilePhotoUploading ? 'Removing...' : 'Yes'}
               </button>
             </div>
           </div>
@@ -3694,6 +3833,7 @@ setWebsiteContentSaveConfirmModal({
             <AdminProfileMenu
               styles={styles}
               adminName={adminAccountForm.name || adminAccountForm.email || 'Admin'}
+              profilePhotoUrl={profileFileUrl(adminAccountForm.profilePhotoUrl)}
             />
           </div>
         </header>
@@ -5767,6 +5907,26 @@ function InfoItem({ styles, label, value }) {
       <span style={styles.infoLabel}>{label}</span>
       <strong style={styles.infoValue}>{value}</strong>
     </div>
+  );
+}
+
+function profileFileUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^(https?:|blob:|data:)/i.test(fileUrl)) return fileUrl;
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+function publishAdminProfilePhoto(profilePhotoUrl) {
+  if (profilePhotoUrl) {
+    localStorage.setItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY, profilePhotoUrl);
+  } else {
+    localStorage.removeItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY);
+  }
+  window.dispatchEvent(
+    new CustomEvent(ADMIN_PROFILE_PHOTO_EVENT, {
+      detail: { profilePhotoUrl },
+    })
   );
 }
 

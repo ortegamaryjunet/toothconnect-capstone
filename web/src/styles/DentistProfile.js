@@ -158,6 +158,14 @@
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
+      overflow: 'hidden',
+    },
+
+    avatarSmallImg: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
     },
 
     avatarIcon: {
@@ -318,6 +326,69 @@
       flexShrink: 0,
       fontFamily: 'Arial, sans-serif',
       boxShadow: '0 10px 24px rgba(212, 175, 55, 0.35)',
+    },
+
+    profileAvatarButton: {
+      position: 'relative',
+      width: isMobile ? 60 : 72,
+      height: isMobile ? 60 : 72,
+      borderRadius: isMobile ? 18 : 20,
+      background: 'linear-gradient(135deg, #b8860b, #d4af37)',
+      color: '#ffffff',
+      border: 'none',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: isMobile ? 22 : 24,
+      fontWeight: 700,
+      flexShrink: 0,
+      fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 10px 24px rgba(212, 175, 55, 0.35)',
+      cursor: 'pointer',
+      overflow: 'hidden',
+      padding: 0,
+    },
+
+    profileAvatarImg: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
+    },
+
+    profileAvatarCamera: {
+      position: 'absolute',
+      right: -1,
+      bottom: -1,
+      width: 28,
+      height: 28,
+      borderRadius: '50%',
+      background: '#d4af37',
+      color: '#ffffff',
+      border: '2px solid #ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 13,
+      boxShadow: '0 8px 18px rgba(139, 101, 8, 0.22)',
+    },
+
+    removePhotoBtn: {
+      border: '1px solid #fecaca',
+      background: '#fee2e2',
+      color: '#dc2626',
+      borderRadius: 10,
+      padding: '6px 9px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 5,
+      cursor: 'pointer',
+      fontSize: 12,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+      whiteSpace: 'nowrap',
+      marginTop: 7,
     },
 
     profileName: {
@@ -542,6 +613,149 @@
       fontWeight: 800,
       boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
       whiteSpace: 'nowrap',
+    },
+
+    attachmentsBlock: {
+      marginTop: 22,
+      borderTop: '1px solid #edf0f5',
+      paddingTop: 18,
+    },
+
+    attachmentsHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 12,
+    },
+
+    attachmentsTitle: {
+      margin: 0,
+      color: '#8b6508',
+      fontSize: 15,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    attachmentsHint: {
+      margin: '3px 0 0',
+      color: '#64748b',
+      fontSize: 12,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    attachmentDropzone: {
+      border: '1px dashed #d4af37',
+      background: '#fff8df',
+      borderRadius: 14,
+      padding: isMobile ? '18px 14px' : '22px 18px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      color: '#8b6508',
+      cursor: 'pointer',
+      textAlign: 'center',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+    },
+
+    attachmentUploadIcon: {
+      fontSize: 24,
+      marginBottom: 2,
+    },
+
+    attachmentEmpty: {
+      marginTop: 12,
+      background: '#f8fafc',
+      border: '1px dashed #dbe3ef',
+      color: '#64748b',
+      padding: 14,
+      borderRadius: 14,
+      fontSize: 13,
+      textAlign: 'center',
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    attachmentList: {
+      display: 'grid',
+      gap: 10,
+      marginTop: 12,
+      maxHeight: 356,
+      overflowY: 'auto',
+      paddingRight: 4,
+    },
+
+    attachmentItem: {
+      display: 'grid',
+      gridTemplateColumns: '44px minmax(0, 1fr) 38px 38px',
+      alignItems: 'center',
+      gap: 10,
+      border: '1px solid #f3d879',
+      background: '#fffdf7',
+      borderRadius: 14,
+      padding: '10px 12px',
+      boxSizing: 'border-box',
+      minWidth: 0,
+    },
+
+    attachmentFileIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      background: '#fff8df',
+      color: '#b8860b',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 18,
+      flexShrink: 0,
+    },
+
+    attachmentInfo: {
+      display: 'flex',
+      flexDirection: 'column',
+      minWidth: 0,
+    },
+
+    attachmentName: {
+      color: '#0f172a',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+
+    attachmentMeta: {
+      color: '#64748b',
+      fontSize: 12,
+      marginTop: 3,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    attachmentActionBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      border: '1px solid #f3d879',
+      background: '#fff8df',
+      color: '#b8860b',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      textDecoration: 'none',
+      cursor: 'pointer',
+      fontSize: 15,
+      boxSizing: 'border-box',
+    },
+
+    attachmentDeleteBtn: {
+      background: '#fee2e2',
+      borderColor: '#fecaca',
+      color: '#dc2626',
     },
 
     editOverlay: {

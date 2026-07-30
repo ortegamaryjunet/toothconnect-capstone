@@ -1,9 +1,69 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-export default function AdminProfileMenu({ styles, adminName = 'Admin' }) {
+import api from '../api/axios';
+
+const ADMIN_PROFILE_PHOTO_STORAGE_KEY = 'toothconnect_admin_profile_photo_url';
+const ADMIN_PROFILE_PHOTO_EVENT = 'admin-profile-photo-updated';
+
+export default function AdminProfileMenu({ styles, adminName = 'Admin', profilePhotoUrl = '' }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [photoVersion, setPhotoVersion] = useState(Date.now());
+  const [loadedPhotoUrl, setLoadedPhotoUrl] = useState(() =>
+    profilePhotoUrl || localStorage.getItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY) || ''
+  );
   const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (profilePhotoUrl) {
+      localStorage.setItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY, profilePhotoUrl);
+      setLoadedPhotoUrl(profilePhotoUrl);
+      setPhotoVersion(Date.now());
+      return;
+    }
+
+    const cachedPhotoUrl = localStorage.getItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY) || '';
+    setLoadedPhotoUrl(cachedPhotoUrl);
+  }, [profilePhotoUrl]);
+
+  useEffect(() => {
+    if (profilePhotoUrl) return;
+    let cancelled = false;
+    api.get('/auth/me')
+      .then((res) => {
+        if (cancelled) return;
+        const nextPhotoUrl = profileFileUrl(res.data.profile_photo_url);
+        if (nextPhotoUrl) {
+          localStorage.setItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY, nextPhotoUrl);
+        } else {
+          localStorage.removeItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY);
+        }
+        setLoadedPhotoUrl(nextPhotoUrl);
+        setPhotoVersion(Date.now());
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [profilePhotoUrl]);
+
+  useEffect(() => {
+    function handlePhotoUpdate(event) {
+      const nextPhotoUrl = event.detail?.profilePhotoUrl || '';
+      if (nextPhotoUrl) {
+        localStorage.setItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY, nextPhotoUrl);
+      } else {
+        localStorage.removeItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY);
+      }
+      setLoadedPhotoUrl(nextPhotoUrl);
+      setPhotoVersion(Date.now());
+    }
+
+    window.addEventListener(ADMIN_PROFILE_PHOTO_EVENT, handlePhotoUpdate);
+    return () => {
+      window.removeEventListener(ADMIN_PROFILE_PHOTO_EVENT, handlePhotoUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     function handleDocumentClick(event) {
@@ -76,8 +136,21 @@ export default function AdminProfileMenu({ styles, adminName = 'Admin' }) {
         }}
         onClick={() => setShowProfileMenu((current) => !current)}
       >
-        <div style={styles.avatar}>
-          <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
+        <div style={{ ...styles.avatar, overflow: 'hidden' }}>
+          {loadedPhotoUrl ? (
+            <img
+              src={withCacheBust(loadedPhotoUrl, photoVersion)}
+              alt=""
+              style={styles.avatarSmallImg || {
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+            />
+          ) : (
+            <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
+          )}
         </div>
 
         <div style={styles.adminInfo}>
@@ -99,4 +172,16 @@ export default function AdminProfileMenu({ styles, adminName = 'Admin' }) {
       )}
     </div>
   );
+}
+
+function profileFileUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^(https?:|blob:|data:)/i.test(fileUrl)) return fileUrl;
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+function withCacheBust(url, version) {
+  if (!url || /^(blob:|data:)/i.test(url)) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}v=${version}`;
 }

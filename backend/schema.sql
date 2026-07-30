@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   phone VARCHAR(30),
   status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+  profile_photo_url VARCHAR(500) NULL,
   email_verified BOOLEAN DEFAULT FALSE,
   must_change_password BOOLEAN DEFAULT FALSE,
   push_token VARCHAR(255) NULL,
@@ -97,6 +98,7 @@ CREATE TABLE IF NOT EXISTS staff_profile (
   work_start_time TIME NULL,
   work_end_time TIME NULL,
   assigned_dentist_profile_id INT NULL,
+  profile_photo_url VARCHAR(500) NULL,
   status ENUM('Active','Inactive','Archived') NOT NULL DEFAULT 'Active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -111,6 +113,22 @@ CREATE TABLE IF NOT EXISTS staff_profile (
   INDEX idx_staff_profile_staff_type (staff_type),
   INDEX idx_staff_profile_status (status),
   INDEX idx_staff_profile_assigned_dentist (assigned_dentist_profile_id)
+);
+
+CREATE TABLE IF NOT EXISTS staff_profile_documents (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  staff_profile_id INT NOT NULL,
+  uploaded_by INT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_url VARCHAR(500) NOT NULL,
+  mime_type VARCHAR(100) NULL,
+  file_size INT NULL,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_staff_documents_profile
+    FOREIGN KEY (staff_profile_id) REFERENCES staff_profile(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_staff_documents_uploaded_by
+    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  INDEX idx_staff_documents_profile_id (staff_profile_id)
 );
 
 CREATE TABLE IF NOT EXISTS staff_previous_work (

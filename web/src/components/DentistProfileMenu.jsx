@@ -1,13 +1,75 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import api from '../api/axios';
+
+const DENTIST_PROFILE_PHOTO_STORAGE_KEY = 'toothconnect_dentist_profile_photo_url';
+const DENTIST_PROFILE_PHOTO_EVENT = 'dentist-profile-photo-updated';
+
 export default function DentistProfileMenu({
   styles,
   dentistName = 'Dentist',
   specialization = 'Dentist',
+  profilePhotoUrl = '',
 }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [loadedPhotoUrl, setLoadedPhotoUrl] = useState(() =>
+    profilePhotoUrl || localStorage.getItem(DENTIST_PROFILE_PHOTO_STORAGE_KEY) || ''
+  );
+  const [photoVersion, setPhotoVersion] = useState(Date.now());
   const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (profilePhotoUrl) {
+      localStorage.setItem(DENTIST_PROFILE_PHOTO_STORAGE_KEY, profilePhotoUrl);
+      setLoadedPhotoUrl(profilePhotoUrl);
+      setPhotoVersion(Date.now());
+      return;
+    }
+
+    setLoadedPhotoUrl(localStorage.getItem(DENTIST_PROFILE_PHOTO_STORAGE_KEY) || '');
+  }, [profilePhotoUrl]);
+
+  useEffect(() => {
+    if (profilePhotoUrl) return;
+    let cancelled = false;
+
+    api.get('/auth/staff-profile/me')
+      .then((res) => {
+        if (cancelled) return;
+        const nextPhotoUrl = profileFileUrl(res.data.profile?.profilePhotoUrl);
+        if (nextPhotoUrl) {
+          localStorage.setItem(DENTIST_PROFILE_PHOTO_STORAGE_KEY, nextPhotoUrl);
+        } else {
+          localStorage.removeItem(DENTIST_PROFILE_PHOTO_STORAGE_KEY);
+        }
+        setLoadedPhotoUrl(nextPhotoUrl);
+        setPhotoVersion(Date.now());
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profilePhotoUrl]);
+
+  useEffect(() => {
+    function handlePhotoUpdate(event) {
+      const nextPhotoUrl = event.detail?.profilePhotoUrl || '';
+      if (nextPhotoUrl) {
+        localStorage.setItem(DENTIST_PROFILE_PHOTO_STORAGE_KEY, nextPhotoUrl);
+      } else {
+        localStorage.removeItem(DENTIST_PROFILE_PHOTO_STORAGE_KEY);
+      }
+      setLoadedPhotoUrl(nextPhotoUrl);
+      setPhotoVersion(Date.now());
+    }
+
+    window.addEventListener(DENTIST_PROFILE_PHOTO_EVENT, handlePhotoUpdate);
+    return () => {
+      window.removeEventListener(DENTIST_PROFILE_PHOTO_EVENT, handlePhotoUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     function handleDocumentClick(event) {
@@ -86,8 +148,21 @@ export default function DentistProfileMenu({
         style={triggerStyle}
         onClick={() => setShowProfileMenu((current) => !current)}
       >
-        <div style={styles.avatarSmall || styles.avatar}>
-          <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
+        <div style={{ ...(styles.avatarSmall || styles.avatar), overflow: 'hidden' }}>
+          {loadedPhotoUrl ? (
+            <img
+              src={withCacheBust(loadedPhotoUrl, photoVersion)}
+              alt=""
+              style={styles.avatarSmallImg || {
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+            />
+          ) : (
+            <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
+          )}
         </div>
 
         <div style={styles.doctorInfo}>
@@ -109,4 +184,16 @@ export default function DentistProfileMenu({
       )}
     </div>
   );
+}
+
+function profileFileUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^(https?:|blob:|data:)/i.test(fileUrl)) return fileUrl;
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+function withCacheBust(url, version) {
+  if (!url || /^(blob:|data:)/i.test(url)) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}v=${version}`;
 }

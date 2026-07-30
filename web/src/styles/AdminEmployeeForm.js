@@ -216,6 +216,176 @@ const createAdminEmployeeFormStyles = ({
       minHeight: 43,
     },
 
+    hiddenInput: {
+      display: 'none',
+    },
+
+    photoUploadWrap: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
+      marginBottom: 22,
+      padding: 16,
+      borderRadius: 18,
+      border: '1px solid #f3d879',
+      background: '#fffdf5',
+      boxSizing: 'border-box',
+    },
+
+    photoUploadBtn: {
+      position: 'relative',
+      width: 86,
+      height: 86,
+      borderRadius: '50%',
+      border: '2px solid #d4af37',
+      background: '#d4af37',
+      color: '#ffffff',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'visible',
+      flexShrink: 0,
+      padding: 0,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+    },
+
+    photoPreview: {
+      width: '100%',
+      height: '100%',
+      borderRadius: '50%',
+      objectFit: 'cover',
+      display: 'block',
+    },
+
+    photoPlaceholderIcon: {
+      fontSize: 34,
+    },
+
+    cameraBadge: {
+      position: 'absolute',
+      right: 0,
+      bottom: 2,
+      width: 30,
+      height: 30,
+      borderRadius: '50%',
+      border: '2px solid #ffffff',
+      background: '#8b6508',
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 14,
+      boxSizing: 'border-box',
+    },
+
+    photoUploadTitle: {
+      display: 'block',
+      color: '#0f172a',
+      fontSize: 15,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    photoUploadHint: {
+      margin: '5px 0 0',
+      color: '#64748b',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    documentsWrap: {
+      display: 'grid',
+      gap: 10,
+      marginBottom: 20,
+    },
+
+    documentDropzone: {
+      border: '1.5px dashed #d4af37',
+      borderRadius: 16,
+      padding: '22px 18px',
+      background: '#fff8df',
+      color: '#8b6508',
+      cursor: 'pointer',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 7,
+      textAlign: 'center',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+    },
+
+    documentUploadIcon: {
+      fontSize: 24,
+    },
+
+    documentList: {
+      display: 'grid',
+      gap: 10,
+      maxHeight: 292,
+      overflowY: 'auto',
+      paddingRight: 4,
+    },
+
+    documentItem: {
+      display: 'grid',
+      gridTemplateColumns: '42px minmax(0, 1fr) 36px',
+      alignItems: 'center',
+      gap: 10,
+      padding: 10,
+      borderRadius: 12,
+      border: '1px solid #f3d879',
+      background: '#ffffff',
+      boxSizing: 'border-box',
+    },
+
+    documentIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 10,
+      background: '#fff8df',
+      color: '#8b6508',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 18,
+    },
+
+    documentInfo: {
+      minWidth: 0,
+      display: 'grid',
+      gap: 3,
+    },
+
+    documentName: {
+      color: '#0f172a',
+      fontSize: 14,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+
+    documentMeta: {
+      color: '#64748b',
+      fontSize: 12,
+    },
+
+    documentDeleteBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      border: '1px solid #fecaca',
+      background: '#fee2e2',
+      color: '#dc2626',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 15,
+    },
+
     phoneInputContainer: {
       width: '100%',
       fontFamily: 'Arial, sans-serif',

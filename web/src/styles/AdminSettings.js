@@ -155,6 +155,14 @@
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      overflow: 'hidden',
+    },
+
+    avatarSmallImg: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
     },
 
     avatarIcon: {
@@ -1032,6 +1040,77 @@
       background: '#ffffff',
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+    },
+
+    accountHeaderProfile: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
+      minWidth: 0,
+    },
+
+    profileAvatarButton: {
+      position: 'relative',
+      width: isMobile ? 60 : 72,
+      height: isMobile ? 60 : 72,
+      borderRadius: isMobile ? 18 : 20,
+      background: 'linear-gradient(135deg, #b8860b, #d4af37)',
+      color: '#ffffff',
+      border: 'none',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      boxShadow: '0 10px 24px rgba(212, 175, 55, 0.35)',
+      cursor: 'pointer',
+      overflow: 'hidden',
+      padding: 0,
+    },
+
+    profileAvatarImg: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
+    },
+
+    profileAvatarIcon: {
+      fontSize: isMobile ? 22 : 24,
+    },
+
+    profileAvatarCamera: {
+      position: 'absolute',
+      right: -1,
+      bottom: -1,
+      width: 28,
+      height: 28,
+      borderRadius: '50%',
+      background: '#d4af37',
+      color: '#ffffff',
+      border: '2px solid #ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 13,
+      boxShadow: '0 8px 18px rgba(139, 101, 8, 0.22)',
+    },
+
+    removePhotoBtn: {
+      border: '1px solid #fecaca',
+      background: '#fee2e2',
+      color: '#dc2626',
+      borderRadius: 10,
+      padding: '6px 9px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 5,
+      cursor: 'pointer',
+      fontSize: 12,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+      whiteSpace: 'nowrap',
+      marginTop: 7,
     },
 
     phoneInputContainer: {

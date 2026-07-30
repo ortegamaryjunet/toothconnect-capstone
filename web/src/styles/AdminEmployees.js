@@ -715,6 +715,64 @@
       background: '#ffffff',
     },
 
+    employeeModalHeaderProfile: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 14,
+      minWidth: 0,
+    },
+
+    employeePhotoSmall: {
+      width: 42,
+      height: 42,
+      borderRadius: '50%',
+      background: '#d4af37',
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      border: '2px solid #f3d879',
+      boxSizing: 'border-box',
+      flexShrink: 0,
+    },
+
+    employeePhotoSmallImg: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+    },
+
+    employeePhotoSmallIcon: {
+      fontSize: 18,
+    },
+
+    employeePhotoLarge: {
+      width: isMobile ? 62 : 72,
+      height: isMobile ? 62 : 72,
+      borderRadius: '50%',
+      background: '#d4af37',
+      color: '#ffffff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      border: '3px solid #f3d879',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+      boxSizing: 'border-box',
+      flexShrink: 0,
+    },
+
+    employeePhotoLargeImg: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+    },
+
+    employeePhotoLargeIcon: {
+      fontSize: isMobile ? 26 : 30,
+    },
+
     employeeModalTitle: {
       margin: 0,
       fontFamily: 'Arial, sans-serif',
@@ -814,6 +872,159 @@
       background: '#f8fafc',
       color: '#475569',
       cursor: 'default',
+    },
+
+    employeePhotoEditRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      flexWrap: 'wrap',
+      marginBottom: 16,
+      padding: 12,
+      borderRadius: 14,
+      border: '1px solid #f3d879',
+      background: '#fffdf5',
+    },
+
+    employeePhotoReplaceBtn: {
+      minHeight: 38,
+      padding: '0 14px',
+      borderRadius: 12,
+      border: '1px solid #d4af37',
+      background: '#d4af37',
+      color: '#ffffff',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      cursor: 'pointer',
+      fontSize: 13,
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 8px 18px rgba(139, 101, 8, 0.18)',
+    },
+
+    employeePhotoHint: {
+      color: '#64748b',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    employeeDocumentsBlock: {
+      marginTop: 16,
+      display: 'grid',
+      gap: 10,
+    },
+
+    employeeDocumentsTitle: {
+      margin: 0,
+      fontSize: 14,
+      color: '#8b6508',
+      fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    employeeDocumentsEmpty: {
+      padding: 14,
+      borderRadius: 12,
+      border: '1px dashed #f3d879',
+      background: '#fff8df',
+      color: '#8b6508',
+      fontSize: 13,
+      fontWeight: 700,
+    },
+
+    employeeDocumentsList: {
+      display: 'grid',
+      gap: 10,
+      maxHeight: 286,
+      overflowY: 'auto',
+      paddingRight: 4,
+    },
+
+    employeeDocumentDropzone: {
+      border: '1.5px dashed #d4af37',
+      borderRadius: 16,
+      padding: '18px 16px',
+      background: '#fff8df',
+      color: '#8b6508',
+      cursor: 'pointer',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 7,
+      textAlign: 'center',
+      fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+    },
+
+    employeeDocumentUploadIcon: {
+      fontSize: 22,
+    },
+
+    employeeDocumentItem: {
+      display: 'grid',
+      gridTemplateColumns: '42px minmax(0, 1fr) 36px',
+      alignItems: 'center',
+      gap: 10,
+      padding: 10,
+      borderRadius: 12,
+      border: '1px solid #f3d879',
+      background: '#fffdf5',
+      color: '#0f172a',
+      textDecoration: 'none',
+      boxSizing: 'border-box',
+    },
+
+    employeeDocumentLink: {
+      color: 'inherit',
+      textDecoration: 'none',
+      display: 'flex',
+    },
+
+    employeeDocumentIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 10,
+      background: '#fff8df',
+      color: '#8b6508',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 18,
+    },
+
+    employeeDocumentInfo: {
+      minWidth: 0,
+      display: 'grid',
+      gap: 3,
+    },
+
+    employeeDocumentName: {
+      fontSize: 14,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+
+    employeeDocumentMeta: {
+      color: '#64748b',
+      fontSize: 12,
+    },
+
+    employeeDocumentDeleteBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      border: '1px solid #fecaca',
+      background: '#fee2e2',
+      color: '#dc2626',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 15,
     },
 
     employeeModalActions: {

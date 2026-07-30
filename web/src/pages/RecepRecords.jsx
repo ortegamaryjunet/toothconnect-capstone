@@ -12,8 +12,11 @@ import {
   listPatients,
   updateStaffPatientProfile,
 } from '../api/patients';
+import { getTreatmentPlansByPatient } from '../api/treatmentPlans';
+import api from '../api/axios';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
+import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepRecordsStyles from '../styles/RecepRecords';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
@@ -794,9 +797,14 @@ export default function RecepRecords() {
   async function exportPatientToPDF(patient) {
     const { jsPDF, autoTable } = await loadPdfTools();
     let fullPatient = patient;
+    let attachmentItems = [];
 
     try {
-      const profile = await getPatientProfile(patient.infoId);
+      const [profile, plans] = await Promise.all([
+        getPatientProfile(patient.infoId),
+        getTreatmentPlansByPatient(patient.infoId).catch(() => []),
+      ]);
+      attachmentItems = await loadPdfAttachmentItems(plans);
 
       if (profile) {
         const nameParts = splitFullName(profile.full_name || '');
@@ -830,6 +838,7 @@ export default function RecepRecords() {
       }
     } catch {
       fullPatient = patient;
+      attachmentItems = [{ label: 'Unable to load attachments', isTextOnly: true }];
     }
 
     const doc = new jsPDF('p', 'mm', 'a4');
@@ -963,6 +972,99 @@ export default function RecepRecords() {
       return doc.lastAutoTable.finalY + 8;
     }
 
+    function addAttachmentSection(startY) {
+      let yPosition = startY;
+      const left = 14;
+      const right = pageWidth - 14;
+      const fieldWidth = 58;
+      const detailsX = left + fieldWidth;
+      const tableWidth = right - left;
+      const detailsWidth = tableWidth - fieldWidth;
+      const rowHeight = 57;
+      const imageWidth = 54;
+      const imageHeight = 40;
+      const bottomLimit = pageHeight - 22;
+
+      if (yPosition > pageHeight - 70) {
+        doc.addPage();
+        drawHeader();
+        yPosition = 40;
+      }
+
+      yPosition = drawSectionTitle('Attachments', yPosition);
+
+      const imageItems = attachmentItems.filter((item) => item.dataUrl);
+      const textItems = attachmentItems.filter((item) => item.isTextOnly);
+      const rows = imageItems.length
+        ? imageItems
+        : [{ label: textItems.map((item) => item.label).join('\n') || 'No attachments uploaded', isTextOnly: true }];
+
+      function drawAttachmentTableHeader() {
+        doc.setFillColor(212, 175, 55);
+        doc.rect(left, yPosition, tableWidth, 10, 'F');
+        doc.setDrawColor(229, 231, 235);
+        doc.setLineWidth(0.25);
+        doc.rect(left, yPosition, fieldWidth, 10);
+        doc.rect(detailsX, yPosition, detailsWidth, 10);
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('Field', left + 4, yPosition + 6.5);
+        doc.text('Details', detailsX + 4, yPosition + 6.5);
+        yPosition += 10;
+      }
+
+      drawAttachmentTableHeader();
+
+      rows.forEach((item, index) => {
+        const currentRowHeight = item.dataUrl ? rowHeight : 18;
+
+        if (yPosition + currentRowHeight > bottomLimit) {
+          doc.addPage();
+          drawHeader();
+          yPosition = 40;
+          drawAttachmentTableHeader();
+        }
+
+        doc.setFillColor(255, 255, 255);
+        doc.rect(left, yPosition, fieldWidth, currentRowHeight, 'F');
+        doc.rect(detailsX, yPosition, detailsWidth, currentRowHeight, 'F');
+        doc.setDrawColor(229, 231, 235);
+        doc.rect(left, yPosition, fieldWidth, currentRowHeight);
+        doc.rect(detailsX, yPosition, detailsWidth, currentRowHeight);
+
+        if (index === 0) {
+          doc.setTextColor(51, 65, 85);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.text('Attachments', left + 4, yPosition + 9);
+        }
+
+        doc.setTextColor(15, 23, 42);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+
+        if (item.dataUrl) {
+          const imageX = detailsX + 4;
+          const imageY = yPosition + 5;
+          doc.addImage(item.dataUrl, 'PNG', imageX, imageY, imageWidth, imageHeight);
+          doc.setTextColor(71, 85, 105);
+          doc.setFontSize(7);
+          doc.text(item.label, imageX, imageY + imageHeight + 5, {
+            maxWidth: detailsWidth - 8,
+          });
+        } else {
+          doc.text(item.label, detailsX + 4, yPosition + 9, {
+            maxWidth: detailsWidth - 8,
+          });
+        }
+
+        yPosition += currentRowHeight;
+      });
+
+      return yPosition + 8;
+    }
+
     drawHeader();
 
     doc.setFillColor(255, 255, 255);
@@ -1046,6 +1148,8 @@ export default function RecepRecords() {
       ],
       nextY
     );
+
+    nextY = addAttachmentSection(nextY);
 
     const totalPdfPages = doc.internal.getNumberOfPages();
 
@@ -1155,9 +1259,7 @@ export default function RecepRecords() {
                 style={styles.receptProfile}
                 onClick={() => setShowProfileMenu((prev) => !prev)}
               >
-                <div style={styles.avatar}>
-                  <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-                </div>
+                <StaffHeaderAvatar styles={styles} />
 
                 <div style={styles.receptInfo}>
                   <div style={styles.receptName}>{receptionistName}</div>
@@ -2168,6 +2270,94 @@ function fixPage(page, totalPages) {
   }
 
   return page;
+}
+
+async function loadPdfAttachmentItems(plans) {
+  const rows = uniquePdfAttachmentRows((Array.isArray(plans) ? plans : [])
+    .flatMap((plan) => (plan.attachments || []).map((attachment) => ({
+      id: attachment.id,
+      tooth: plan.tooth_number,
+      procedure: plan.planned_treatment,
+      fileName: attachment.file_name,
+      fileUrl: attachment.file_url,
+      mimeType: attachment.mime_type,
+      fileSize: attachment.file_size,
+    }))));
+
+  if (rows.length === 0) {
+    return [{ label: 'No attachments uploaded', isTextOnly: true }];
+  }
+
+  const items = await Promise.all(rows.map(async (item) => {
+    const label = `Tooth #${item.tooth} - ${item.procedure}`;
+
+    if (!String(item.mimeType || '').startsWith('image/')) {
+      return { label: `${label}: ${item.fileName}`, isTextOnly: true };
+    }
+
+    try {
+      const dataUrl = await imageUrlToPngDataUrl(attachmentUrl(item.fileUrl));
+      return { label, dataUrl };
+    } catch (_err) {
+      return { label: `${label}: image unavailable`, isTextOnly: true };
+    }
+  }));
+
+  return items;
+}
+
+function uniquePdfAttachmentRows(rows) {
+  const seen = new Set();
+
+  return rows.filter((item) => {
+    const key =
+      item.id ||
+      item.fileUrl ||
+      `${item.fileName || ''}-${item.fileSize || ''}`;
+
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function attachmentUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+async function imageUrlToPngDataUrl(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to load attachment image');
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = objectUrl;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth || image.width;
+    canvas.height = image.naturalHeight || image.height;
+
+    const context = canvas.getContext('2d');
+    context.drawImage(image, 0, 0);
+
+    return canvas.toDataURL('image/png');
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 function formatCSVValue(value) {

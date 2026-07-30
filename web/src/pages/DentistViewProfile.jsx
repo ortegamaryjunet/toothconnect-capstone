@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { getPatientProfile } from '../api/patients';
 import { listAppointments } from '../api/appointments';
+import { getTreatmentPlansByPatient } from '../api/treatmentPlans';
+import api from '../api/axios';
 import createDentistViewProfileStyles from '../styles/DentistViewProfile';
 import TreatmentPlan from './DentistTreatmentPlan';
 
@@ -42,6 +44,10 @@ export default function DentistViewProfile() {
   const patient = mapPatientProfile(patientProfile, patientId);
 
   const [treatmentHistory, setTreatmentHistory] = useState([]);
+  const [historyPreviewAttachment, setHistoryPreviewAttachment] = useState(null);
+  const [historyAttachmentModal, setHistoryAttachmentModal] = useState(null);
+  const [historyCloseConfirmOpen, setHistoryCloseConfirmOpen] = useState(false);
+  const [historyRescheduleModal, setHistoryRescheduleModal] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState('');
 
@@ -79,11 +85,14 @@ export default function DentistViewProfile() {
       setHistoryError('');
 
       try {
-        const data = await listAppointments({
-          patient_id: patientId,
-          status: 'completed',
-        });
-        setTreatmentHistory(normalizeHistory(data));
+        const [appointments, plans] = await Promise.all([
+          listAppointments({
+            patient_id: patientId,
+            status: 'completed',
+          }),
+          getTreatmentPlansByPatient(patientId),
+        ]);
+        setTreatmentHistory(normalizeHistory(appointments, plans));
       } catch (err) {
         setHistoryError(
           err.response?.data?.message || 'Failed to load treatment history.'
@@ -207,6 +216,15 @@ export default function DentistViewProfile() {
 
   function confirmBack() {
     navigate(backPath);
+  }
+
+  function requestCloseHistoryAttachments() {
+    setHistoryCloseConfirmOpen(true);
+  }
+
+  function closeHistoryAttachments() {
+    setHistoryAttachmentModal(null);
+    setHistoryCloseConfirmOpen(false);
   }
 
   function handleBackModalOverlayClick(event) {
@@ -429,6 +447,8 @@ export default function DentistViewProfile() {
                 historyCurrentPage >= historyTotalPages
               }
               getStatusStyle={getStatusStyle}
+              onOpenAttachments={setHistoryAttachmentModal}
+              onOpenReschedules={setHistoryRescheduleModal}
             />
           </section>
         )}
@@ -477,6 +497,92 @@ export default function DentistViewProfile() {
                 Yes
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {historyAttachmentModal && (
+        <HistoryAttachmentModal
+          styles={styles}
+          row={historyAttachmentModal}
+          onRequestClose={requestCloseHistoryAttachments}
+          onPreviewAttachment={setHistoryPreviewAttachment}
+        />
+      )}
+
+      {historyCloseConfirmOpen && (
+        <div
+          style={{ ...styles.modal, zIndex: 10001 }}
+          onClick={() => setHistoryCloseConfirmOpen(false)}
+        >
+          <div style={styles.confirmModal} onClick={(event) => event.stopPropagation()}>
+            <div style={styles.confirmIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.confirmIconText}></i>
+            </div>
+            <h3 style={styles.confirmTitle}>Close Attachments</h3>
+            <p style={styles.confirmText}>
+              Close attachments for {historyAttachmentModal?.tooth || 'this treatment'}?
+            </p>
+            <div style={styles.confirmActions}>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmCancelBtn }}
+                onClick={() => setHistoryCloseConfirmOpen(false)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmDeleteBtn }}
+                onClick={closeHistoryAttachments}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historyRescheduleModal && (
+        <RescheduleHistoryModal
+          styles={styles}
+          row={historyRescheduleModal}
+          onClose={() => setHistoryRescheduleModal(null)}
+        />
+      )}
+
+      {historyPreviewAttachment && (
+        <div
+          style={styles.attachmentLightboxOverlay}
+          onClick={() => setHistoryPreviewAttachment(null)}
+        >
+          <div
+            style={styles.attachmentLightboxContent}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              style={styles.attachmentCloseBtn}
+              onClick={() => setHistoryPreviewAttachment(null)}
+            >
+              x
+            </button>
+            <h3 style={styles.attachmentPreviewTitle}>
+              {historyPreviewAttachment.file_name}
+            </h3>
+            {isImageAttachment(historyPreviewAttachment) ? (
+              <img
+                src={attachmentUrl(historyPreviewAttachment.file_url)}
+                alt={historyPreviewAttachment.file_name}
+                style={styles.attachmentPreviewImage}
+              />
+            ) : (
+              <iframe
+                src={attachmentUrl(historyPreviewAttachment.file_url)}
+                title={historyPreviewAttachment.file_name}
+                style={styles.attachmentPreviewFrame}
+              />
+            )}
           </div>
         </div>
       )}
@@ -568,25 +674,51 @@ function mapPatientProfile(profile, patientId) {
   };
 }
 
-function normalizeHistory(items) {
+function normalizeHistory(items, plans = []) {
   if (!Array.isArray(items)) return [];
 
-  return items.map((item) => {
+  const rows = items
+    .filter((item) => String(item.status || '').toLowerCase() === 'completed')
+    .map((item) => {
     const d = item.start_time ? new Date(item.start_time) : null;
     const dateStr = d && !Number.isNaN(d.getTime())
       ? d.toISOString().slice(0, 10)
       : 'N/A';
 
+    const serviceName = String(item.service_name || '').toLowerCase().trim();
+    let matchingPlans = plans.filter((plan) => {
+      const plannedTreatment = String(plan.planned_treatment || '').toLowerCase().trim();
+      if (!plannedTreatment || !serviceName) return false;
+      return (
+        plannedTreatment === serviceName ||
+        plannedTreatment.includes(serviceName) ||
+        serviceName.includes(plannedTreatment)
+      );
+    });
+
+    if (matchingPlans.length === 0 && plans.length === 1) {
+      matchingPlans = plans;
+    }
+
+    const attachments = matchingPlans.flatMap((plan) => plan.attachments || []);
+    const noteMeta = parseRescheduleNote(item.dentist_note || '');
+
     return {
       id: item.id,
+      historyKey: getCompletedVisitKey(item, dateStr),
       date: dateStr,
-      tooth: 'N/A',
+      tooth: matchingPlans.map((plan) => `#${plan.tooth_number}`).join(', ') || 'N/A',
       procedure: item.service_name || 'N/A',
       dentist: item.dentist_name || 'N/A',
-      note: item.dentist_note || '',
+      note: noteMeta.note,
+      rescheduleCount: noteMeta.count,
+      rescheduleDetails: noteMeta.details,
       status: 'Completed',
+      attachments,
     };
   });
+
+  return collapseCompletedHistoryRows(rows);
 }
 
 function TreatmentHistoryTable({
@@ -599,6 +731,8 @@ function TreatmentHistoryTable({
   prevDisabled,
   nextDisabled,
   getStatusStyle,
+  onOpenAttachments,
+  onOpenReschedules,
 }) {
   return (
     <div style={styles.tableCard}>
@@ -612,13 +746,14 @@ function TreatmentHistoryTable({
               <th style={styles.tableHead}>Dentist Name</th>
               <th style={styles.tableHead}>Note</th>
               <th style={styles.tableHead}>Status</th>
+              <th style={styles.tableHead}>Attachment</th>
             </tr>
           </thead>
 
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan="6" style={styles.emptyRow}>
+                <td colSpan="7" style={styles.emptyRow}>
                   {emptyText}
                 </td>
               </tr>
@@ -629,11 +764,24 @@ function TreatmentHistoryTable({
                   <td style={styles.tableCell}>{item.tooth || 'N/A'}</td>
                   <td style={styles.tableCell}>{item.procedure || 'N/A'}</td>
                   <td style={styles.tableCell}>{item.dentist || 'N/A'}</td>
-                  <td style={styles.tableCell}>{item.note || 'No note added.'}</td>
+                  <td style={styles.tableCell}>
+                    <TreatmentHistoryNote
+                      styles={styles}
+                      item={item}
+                      onOpenReschedules={onOpenReschedules}
+                    />
+                  </td>
                   <td style={styles.tableCell}>
                     <span style={getStatusStyle(item.status)}>
                       {item.status || 'Pending'}
                     </span>
+                  </td>
+                  <td style={styles.tableCell}>
+                    <HistoryAttachmentButton
+                      styles={styles}
+                      item={item}
+                      onOpenAttachments={onOpenAttachments}
+                    />
                   </td>
                 </tr>
               ))
@@ -652,7 +800,7 @@ function TreatmentHistoryTable({
             ...(prevDisabled ? styles.pageBtnDisabled : {}),
           }}
         >
-          <i className="fi fi-rr-angle-left"></i>
+          Prev
         </button>
 
         <span style={styles.pageInfo}>{pageInfo}</span>
@@ -666,9 +814,238 @@ function TreatmentHistoryTable({
             ...(nextDisabled ? styles.pageBtnDisabled : {}),
           }}
         >
-          <i className="fi fi-rr-angle-right"></i>
+          Next
         </button>
       </div>
     </div>
   );
+}
+
+function TreatmentHistoryNote({ styles, item, onOpenReschedules }) {
+  const hasNote = Boolean(String(item.note || '').trim());
+  const hasReschedules = Number(item.rescheduleCount || 0) > 0;
+
+  if (!hasNote && !hasReschedules) {
+    return <span>No note added.</span>;
+  }
+
+  return (
+    <div style={styles.historyNoteWrap}>
+      {hasNote && <span>{item.note}</span>}
+      {hasReschedules && (
+        <button
+          type="button"
+          style={styles.rescheduleTag}
+          onClick={() => onOpenReschedules(item)}
+          title="View reschedule history"
+        >
+          Rescheduled {item.rescheduleCount}x - click to view
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RescheduleHistoryModal({ styles, row, onClose }) {
+  return (
+    <div style={styles.attachmentLightboxOverlay} onClick={onClose}>
+      <div style={styles.rescheduleModal} onClick={(event) => event.stopPropagation()}>
+        <button type="button" style={styles.attachmentCloseBtn} onClick={onClose}>
+          x
+        </button>
+        <h3 style={styles.attachmentPreviewTitle}>Reschedule History</h3>
+        <p style={styles.historyAttachmentMeta}>
+          {row.tooth || 'N/A'} - {row.procedure || 'N/A'} - {row.date || 'N/A'}
+        </p>
+        <pre style={styles.rescheduleDetails}>
+          {row.rescheduleDetails || 'No reschedule details recorded.'}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
+function HistoryAttachmentButton({ styles, item, onOpenAttachments }) {
+  const count = item.attachments?.length || 0;
+
+  return (
+    <button
+      type="button"
+      style={{
+        ...styles.historyAttachmentBtn,
+        ...(count === 0 ? styles.historyAttachmentBtnDisabled : {}),
+      }}
+      disabled={count === 0}
+      onClick={() => onOpenAttachments(item)}
+    >
+      <i className="fi fi-rr-eye"></i>
+      Attachments
+      <span style={styles.historyAttachmentCount}>{count}</span>
+    </button>
+  );
+}
+
+function HistoryAttachmentModal({ styles, row, onRequestClose, onPreviewAttachment }) {
+  const attachments = row.attachments || [];
+
+  return (
+    <div style={styles.attachmentLightboxOverlay} onClick={onRequestClose}>
+      <div
+        style={styles.historyAttachmentModal}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div style={styles.historyAttachmentHeader}>
+          <div>
+            <h3 style={styles.attachmentPreviewTitle}>Treatment Attachments</h3>
+            <p style={styles.historyAttachmentMeta}>
+              {row.tooth || 'N/A'} - {row.procedure || 'N/A'} - {row.status || 'Pending'}
+            </p>
+          </div>
+          <button type="button" style={styles.attachmentCloseBtn} onClick={onRequestClose}>
+            x
+          </button>
+        </div>
+
+        {attachments.length === 0 ? (
+          <div style={styles.historyAttachmentEmpty}>No attachments uploaded.</div>
+        ) : (
+          <div style={styles.historyAttachmentList}>
+            {attachments.map((attachment) => (
+              <div key={attachment.id} style={styles.historyAttachmentItem}>
+                <div style={styles.historyAttachmentThumb}>
+                  {isImageAttachment(attachment) ? (
+                    <img
+                      src={attachmentUrl(attachment.file_url)}
+                      alt=""
+                      style={styles.attachmentThumbImg}
+                    />
+                  ) : (
+                    <i className="fi fi-rr-document" style={styles.attachmentFileIcon}></i>
+                  )}
+                </div>
+
+                <div style={styles.historyAttachmentInfo}>
+                  <strong style={styles.historyAttachmentName}>
+                    {attachment.file_name || 'Attachment'}
+                  </strong>
+                  <span style={styles.historyAttachmentSubtext}>
+                    {formatUploadDate(attachment.uploaded_at)} - {formatFileSize(attachment.file_size)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  style={styles.historyIconActionBtn}
+                  title="View attachment"
+                  onClick={() => onPreviewAttachment(attachment)}
+                >
+                  <i className="fi fi-rr-eye"></i>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function formatUploadDate(value) {
+  if (!value) return 'Unknown date';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function getCompletedVisitKey(item, fallbackDate) {
+  const start = item.start_time ? new Date(item.start_time) : null;
+  const startKey = start && !Number.isNaN(start.getTime())
+    ? start.toISOString()
+    : fallbackDate;
+  return [
+    startKey,
+    item.service_id || item.service_name || '',
+    item.dentist_id || item.dentist_name || '',
+  ].join('|');
+}
+
+function collapseCompletedHistoryRows(rows) {
+  const grouped = new Map();
+
+  rows.forEach((row) => {
+    const existing = grouped.get(row.historyKey);
+    if (!existing) {
+      grouped.set(row.historyKey, row);
+      return;
+    }
+
+    grouped.set(row.historyKey, {
+      ...existing,
+      note: existing.note || row.note,
+      rescheduleCount: Math.max(existing.rescheduleCount || 0, row.rescheduleCount || 0),
+      rescheduleDetails: mergeUniqueLines(existing.rescheduleDetails, row.rescheduleDetails),
+      attachments: mergeUniqueAttachments(existing.attachments, row.attachments),
+    });
+  });
+
+  return Array.from(grouped.values());
+}
+
+function parseRescheduleNote(note) {
+  const lines = String(note || '').split(/\r?\n/);
+  const rescheduleLines = lines.filter((line) =>
+    /^\s*(Original|Rescheduled|Reason)\s*:/i.test(line)
+  );
+  const cleanLines = lines.filter((line) =>
+    !/^\s*(Original|Rescheduled|Reason)\s*:/i.test(line)
+  );
+  const count = rescheduleLines.filter((line) =>
+    /^\s*Rescheduled\s*:/i.test(line)
+  ).length;
+
+  return {
+    note: cleanLines.join('\n').trim(),
+    count,
+    details: rescheduleLines.join('\n').trim(),
+  };
+}
+
+function mergeUniqueLines(...values) {
+  return [...new Set(values.flatMap((value) =>
+    String(value || '').split(/\r?\n/).filter(Boolean)
+  ))].join('\n');
+}
+
+function mergeUniqueAttachments(first = [], second = []) {
+  const seen = new Set();
+  return [...first, ...second].filter((attachment) => {
+    const key = attachment.id || attachment.file_url || attachment.file_name;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function formatFileSize(value) {
+  const size = Number(value || 0);
+  if (!size) return 'Unknown size';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+function isImageAttachment(attachment) {
+  return String(attachment.mime_type || '').startsWith('image/');
 }

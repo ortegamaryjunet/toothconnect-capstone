@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import api from '../api/axios';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
+import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
 import createRecepInquiriesStyles from '../styles/RecepInquiries';
 
@@ -328,9 +329,7 @@ export default function RecepInquiries() {
                 style={s.receptProfile}
                 onClick={() => setShowProfileMenu((prev) => !prev)}
               >
-                <div style={s.avatar}>
-                  <i className="fi fi-rr-user" style={s.avatarIcon}></i>
-                </div>
+                <StaffHeaderAvatar styles={s} />
 
                 <div style={s.receptInfo}>
                   <div style={s.receptName}>{receptionistName}</div>

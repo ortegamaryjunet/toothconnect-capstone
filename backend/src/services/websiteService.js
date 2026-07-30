@@ -1053,7 +1053,7 @@ async function autoBookAppointment(appointmentData) {
 
   await notifyBranchReceptionists(branchId, {
     type: 'Appointment',
-    title: 'New Website Appointment',
+    title: 'New Web Appointment',
     body: `${fullName} booked ${service.name} on ${appointmentDate} at ${appointmentTime}.`,
     relatedType: 'appointment',
     relatedId: result.insertId,
@@ -1151,7 +1151,7 @@ async function saveAppointment(appointmentData) {
   const branchId = await resolveBranchIdFromText(location);
   await notifyBranchReceptionists(branchId, {
     type: 'Appointment',
-    title: 'New Appointment Request',
+    title: 'New Web Appointment',
     body: `${fullName} requested an appointment on ${appointmentDate} at ${appointmentTime}.`,
     relatedType: 'appointment',
     relatedId: result.insertId,

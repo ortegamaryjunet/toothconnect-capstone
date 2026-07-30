@@ -1172,8 +1172,20 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
           relatedId: result.insertId,
         });
       }
+
+      if (!isReschedule) {
+        const receptionistTitle =
+          role === 'patient' ? 'New Mobile Appointment' : 'New Web Appointment';
+        await notifyBranchReceptionists(effectiveBranchId, {
+          type: 'Appointment',
+          title: receptionistTitle,
+          body: `${detail.patient_name} booked ${detail.service_name} for ${schedule}.`,
+          relatedType: 'appointment',
+          relatedId: result.insertId,
+        });
+      }
     } catch (notificationErr) {
-      console.error('Failed to create dentist notification:', notificationErr);
+      console.error('Failed to create appointment notification:', notificationErr);
     }
 
     res.status(201).json({ id: result.insertId, message: isReschedule ? 'Appointment rescheduled' : 'Appointment created' });

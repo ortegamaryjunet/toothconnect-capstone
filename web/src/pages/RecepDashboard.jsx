@@ -10,6 +10,7 @@ import { fetchRecepDashboard } from '../api/recepDashboard';
 import LazyChart from '../components/LazyChart';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
+import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import { useAuth } from '../auth/AuthContext';
 import createRecepDashboardStyles from '../styles/RecepDashboard';
 
@@ -419,9 +420,7 @@ export default function RecepDashboard() {
                 style={styles.receptProfile}
                 onClick={toggleProfileMenu}
               >
-                <div style={styles.avatar}>
-                  <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-                </div>
+                <StaffHeaderAvatar styles={styles} />
 
                 <div style={styles.receptInfo}>
                   <div style={styles.receptName}>{receptionistName}</div>

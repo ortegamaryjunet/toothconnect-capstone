@@ -68,6 +68,9 @@ const DAY_OPTIONS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Sa
 
 const EMPLOYMENT_TYPES = ['Full-Time', 'Part-Time', 'Contract', 'Intern'];
 const STAFF_SHIFT_TYPES = ['Full Day', 'Custom Hours'];
+const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png'];
+const SUPPORTING_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const MAX_EMPLOYEE_FILE_SIZE = 5 * 1024 * 1024;
 
 const DENTIST_SPECIALIZATIONS = [
   'General Dentistry', 'Orthodontics', 'Endodontics', 'Periodontics',
@@ -491,8 +494,13 @@ export default function AdminEmployeeForm() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [phoneValues, setPhoneValues] = useState({});
   const [phoneCountries, setPhoneCountries] = useState({});
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState('');
+  const [supportingDocuments, setSupportingDocuments] = useState([]);
 
   const accessPasswordRef = useRef('');
+  const photoInputRef = useRef(null);
+  const documentInputRef = useRef(null);
 
   const [ageValues, setAgeValues] = useState({
     dentist: '',
@@ -736,6 +744,14 @@ export default function AdminEmployeeForm() {
   }, [showBackModal, showSuccessModal, showErrorModal]);
 
   useEffect(() => {
+    return () => {
+      if (profilePhotoPreview) {
+        URL.revokeObjectURL(profilePhotoPreview);
+      }
+    };
+  }, [profilePhotoPreview]);
+
+  useEffect(() => {
     setSelectedBranchId('');
     setSelectedSpecialization('');
     setSelectedDentistSpecializations([]);
@@ -751,6 +767,9 @@ export default function AdminEmployeeForm() {
     setRecepShiftType('');
     setRecepWorkStart('');
     setRecepWorkEnd('');
+    setProfilePhoto(null);
+    setProfilePhotoPreview('');
+    setSupportingDocuments([]);
   }, [employeeType]);
 
   useEffect(() => {
@@ -832,6 +851,77 @@ export default function AdminEmployeeForm() {
   function closeBackModal() { setShowBackModal(false); }
   function confirmBack() { navigate('/adminEmployees'); }
 
+  function handleProfilePhotoSelect(file) {
+    if (!file) return;
+
+    if (!PROFILE_PHOTO_TYPES.includes(file.type)) {
+      setErrorModalMessage('Profile photo must be a JPG or PNG file.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (file.size > MAX_EMPLOYEE_FILE_SIZE) {
+      setErrorModalMessage('Profile photo must be 5MB or smaller.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (profilePhotoPreview) {
+      URL.revokeObjectURL(profilePhotoPreview);
+    }
+
+    setProfilePhoto(file);
+    setProfilePhotoPreview(URL.createObjectURL(file));
+  }
+
+  function handleSupportingDocumentFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+
+    const invalid = files.find((file) =>
+      !SUPPORTING_DOCUMENT_TYPES.includes(file.type) ||
+      file.size > MAX_EMPLOYEE_FILE_SIZE
+    );
+
+    if (invalid) {
+      setErrorModalMessage('Supporting documents must be PDF, JPG, or PNG files up to 5MB each.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setSupportingDocuments((prev) => [...prev, ...files]);
+    if (documentInputRef.current) {
+      documentInputRef.current.value = '';
+    }
+  }
+
+  function removeSupportingDocument(index) {
+    setSupportingDocuments((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function buildStaffMultipartPayload(payload) {
+    const requestData = new FormData();
+
+    Object.entries(payload).forEach(([key, value]) => {
+      if (key === 'profilePhoto' || key === 'supportingDocuments') return;
+      if (key === 'staffProfile' || key === 'branch_ids') {
+        requestData.append(key, JSON.stringify(value || (key === 'branch_ids' ? [] : {})));
+      } else if (value !== undefined && value !== null) {
+        requestData.append(key, value);
+      }
+    });
+
+    if (payload.profilePhoto) {
+      requestData.append('profilePhoto', payload.profilePhoto);
+    }
+
+    (payload.supportingDocuments || []).forEach((file) => {
+      requestData.append('supportingDocuments', file);
+    });
+
+    return requestData;
+  }
+
   function handleModalOverlayClick(event) {
     if (event.target === event.currentTarget) closeBackModal();
   }
@@ -899,6 +989,14 @@ export default function AdminEmployeeForm() {
     if (value === '' || value === null || value === undefined) return null;
     const n = Number(value);
     return isNaN(n) || n < 0 ? 'Must be 0 or greater' : null;
+  }
+
+  function formatFileSize(value) {
+    const size = Number(value || 0);
+    if (!size) return 'Unknown size';
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   function handlePhoneChange(name, phone, countryData) {
@@ -1105,15 +1203,19 @@ export default function AdminEmployeeForm() {
       };
 
       if (isDentalAssistant) {
-        await api.post('/auth/staff-profiles', {
+        const requestData = buildStaffMultipartPayload({
           branch_id: branchId,
           staffProfile: { ...commonStaffProfile, staff_type: 'Dental Assistant' },
+          profilePhoto,
+          supportingDocuments,
         });
+
+        await api.post('/auth/staff-profiles', requestData);
         setShowSuccessModal(true);
         return;
       }
 
-      await api.post('/auth/staff', {
+      const staffRequestData = buildStaffMultipartPayload({
         email: payload.accessEmail || payload[`${prefix}Email`],
         name: fullName,
         role,
@@ -1126,7 +1228,11 @@ export default function AdminEmployeeForm() {
         password: payload.accessPassword,
         department: isDentist ? (dentistSpecializationText || null) : null,
         staffProfile: commonStaffProfile,
+        profilePhoto,
+        supportingDocuments,
       });
+
+      await api.post('/auth/staff', staffRequestData);
 
       setShowSuccessModal(true);
     } catch (err) {
@@ -1158,11 +1264,97 @@ export default function AdminEmployeeForm() {
     );
   }
 
+  function renderProfilePhotoUpload() {
+    return (
+      <div style={styles.photoUploadWrap}>
+        <button
+          type="button"
+          style={styles.photoUploadBtn}
+          onClick={() => photoInputRef.current?.click()}
+          title="Upload profile photo"
+        >
+          {profilePhotoPreview ? (
+            <img src={profilePhotoPreview} alt="" style={styles.photoPreview} />
+          ) : (
+            <i className="fi fi-rr-user" style={styles.photoPlaceholderIcon}></i>
+          )}
+          <span style={styles.cameraBadge}>
+            <i className="fi fi-rr-camera"></i>
+          </span>
+        </button>
+        <div>
+          <strong style={styles.photoUploadTitle}>Profile Photo</strong>
+          <p style={styles.photoUploadHint}>JPG or PNG, max 5MB</p>
+        </div>
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/jpeg,image/png"
+          style={styles.hiddenInput}
+          onChange={(event) => handleProfilePhotoSelect(event.target.files?.[0])}
+        />
+      </div>
+    );
+  }
+
+  function renderSupportingDocumentsUpload() {
+    return (
+      <div style={styles.documentsWrap}>
+        <label style={styles.label}>Supporting Documents</label>
+        <div
+          style={styles.documentDropzone}
+          onClick={() => documentInputRef.current?.click()}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            handleSupportingDocumentFiles(event.dataTransfer.files);
+          }}
+        >
+          <i className="fi fi-rr-upload" style={styles.documentUploadIcon}></i>
+          <strong>Drop files here or click to upload</strong>
+          <span>License, resume, or ID - PDF, JPG, PNG up to 5MB each</span>
+          <input
+            ref={documentInputRef}
+            type="file"
+            multiple
+            accept="application/pdf,image/jpeg,image/png"
+            style={styles.hiddenInput}
+            onChange={(event) => handleSupportingDocumentFiles(event.target.files)}
+          />
+        </div>
+
+        {supportingDocuments.length > 0 && (
+          <div style={styles.documentList}>
+            {supportingDocuments.map((file, index) => (
+              <div key={`${file.name}-${file.size}-${index}`} style={styles.documentItem}>
+                <i className="fi fi-rr-document" style={styles.documentIcon}></i>
+                <div style={styles.documentInfo}>
+                  <strong style={styles.documentName}>{file.name}</strong>
+                  <span style={styles.documentMeta}>{formatFileSize(file.size)}</span>
+                </div>
+                <button
+                  type="button"
+                  style={styles.documentDeleteBtn}
+                  onClick={() => removeSupportingDocument(index)}
+                  title="Remove document"
+                >
+                  <i className="fi fi-rr-trash"></i>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderPersonalInfo(type, prefix) {
     const roleLabel = type === 'dentist' ? 'doctor' : type === 'dentalAssistant' ? 'da' : 'recep';
 
     return (
       <>
+        {renderProfilePhotoUpload()}
+
         <div style={styles.rowThree}>
           <FieldRaw
             label="First Name:"
@@ -1647,6 +1839,8 @@ export default function AdminEmployeeForm() {
               <div />
             </div>
 
+            {renderSupportingDocumentsUpload()}
+
             <h3 style={styles.subTitle}>Previous Work</h3>
             {doctorWorkItems.map((item, index) => (
               <Fragment key={item.id}>
@@ -1898,6 +2092,8 @@ export default function AdminEmployeeForm() {
               <FieldRaw label="Skills" name="daSkills" styles={styles} />
             </div>
 
+            {renderSupportingDocumentsUpload()}
+
             <h3 style={styles.subTitle}>Previous Work</h3>
             {assistantWorkItems.map((item, index) => (
               <Fragment key={item.id}>
@@ -1997,7 +2193,7 @@ export default function AdminEmployeeForm() {
           renderPersonalInfo('receptionist', 'recep')
         )}
 
-        {renderSection('recPosition', 'Section 2 - Position Information',
+        {renderSection('recPosition', 'Section 2 - Professional Information',
           <>
             <div style={styles.rowTwo}>
               <FieldRaw label="Position" name="recepPosition" value="Receptionist" onChange={() => {}} readOnly styles={styles} />
@@ -2018,6 +2214,8 @@ export default function AdminEmployeeForm() {
             <div style={styles.rowTwo}>
               <FieldRaw label="Skills" name="recepSkills" styles={styles} />
             </div>
+
+            {renderSupportingDocumentsUpload()}
 
             <h3 style={styles.subTitle}>Previous Work</h3>
             {receptionistWorkItems.map((item, index) => (

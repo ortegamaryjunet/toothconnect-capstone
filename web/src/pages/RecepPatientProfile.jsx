@@ -4,7 +4,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { listAppointments } from '../api/appointments';
 import { getPatientProfile } from '../api/patients';
 import { listPayments } from '../api/payments';
+import { getTreatmentPlansByPatient } from '../api/treatmentPlans';
+import api from '../api/axios';
 import createRecepPatientProfileStyles from '../styles/RecepPatientProfile';
+import TreatmentPlan from './DentistTreatmentPlan';
 
 const rowsPerPage = 10;
 
@@ -43,9 +46,15 @@ export default function RecepPatientProfile() {
   const [currentPage, setCurrentPage] = useState(1);
   const [scheduleFilter, setScheduleFilter] = useState('all');
   const [schedulePage, setSchedulePage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
   const [patientInfo, setPatientInfo] = useState(emptyPatientInfo);
   const [scheduleData, setScheduleData] = useState({ upcoming: [], past: [] });
+  const [treatmentHistory, setTreatmentHistory] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [historyPreviewAttachment, setHistoryPreviewAttachment] = useState(null);
+  const [historyAttachmentModal, setHistoryAttachmentModal] = useState(null);
+  const [historyCloseConfirmOpen, setHistoryCloseConfirmOpen] = useState(false);
+  const [historyRescheduleModal, setHistoryRescheduleModal] = useState(null);
   const [profileError, setProfileError] = useState('');
   const [showBackModal, setShowBackModal] = useState(false);
 
@@ -112,6 +121,16 @@ export default function RecepPatientProfile() {
     return filteredPastAppointments.slice(start, start + rowsPerPage);
   }, [filteredPastAppointments, schedulePage]);
 
+  const historyTotalPages =
+    treatmentHistory.length === 0
+      ? 0
+      : Math.ceil(treatmentHistory.length / rowsPerPage);
+
+  const pagedTreatmentHistory = useMemo(() => {
+    const start = historyPage > 0 ? (historyPage - 1) * rowsPerPage : 0;
+    return treatmentHistory.slice(start, start + rowsPerPage);
+  }, [treatmentHistory, historyPage]);
+
   useEffect(() => {
     function handleResize() {
       setScreenWidth(window.innerWidth);
@@ -162,6 +181,10 @@ export default function RecepPatientProfile() {
     setSchedulePage((page) => fixPage(page, scheduleTotalPages));
   }, [scheduleTotalPages]);
 
+  useEffect(() => {
+    setHistoryPage((page) => fixPage(page, historyTotalPages));
+  }, [historyTotalPages]);
+
   function showSection(section) {
     setActiveSection(section);
 
@@ -184,6 +207,15 @@ export default function RecepPatientProfile() {
     navigate('/receptionistRecords');
   }
 
+  function requestCloseHistoryAttachments() {
+    setHistoryCloseConfirmOpen(true);
+  }
+
+  function closeHistoryAttachments() {
+    setHistoryAttachmentModal(null);
+    setHistoryCloseConfirmOpen(false);
+  }
+
   function handleBackOverlayClick(event) {
     if (event.target === event.currentTarget) {
       closeBackModal();
@@ -199,14 +231,16 @@ export default function RecepPatientProfile() {
     setProfileError('');
 
     try {
-      const [profile, appointmentRows, paymentRows] = await Promise.all([
+      const [profile, appointmentRows, paymentRows, plans] = await Promise.all([
         getPatientProfile(patientId),
         listAppointments({ patient_id: patientId }),
         listPayments({ patient_id: patientId }),
+        getTreatmentPlansByPatient(patientId).catch(() => []),
       ]);
 
       setPatientInfo(mapPatientInfo(profile));
       setScheduleData(mapScheduleData(appointmentRows || []));
+      setTreatmentHistory(normalizeTreatmentHistory(appointmentRows || [], plans || []));
       setPayments((paymentRows || []).map(mapPayment));
     } catch (err) {
       setProfileError(
@@ -214,6 +248,7 @@ export default function RecepPatientProfile() {
       );
       setPatientInfo(emptyPatientInfo);
       setScheduleData({ upcoming: [], past: [] });
+      setTreatmentHistory([]);
       setPayments([]);
     }
   }
@@ -270,6 +305,30 @@ export default function RecepPatientProfile() {
             style={styles.menuItemIcon}
           ></i>
           <span style={styles.menuItemText}>Schedule</span>
+        </button>
+
+        <button
+          type="button"
+          style={{
+            ...styles.menuItem,
+            ...(activeSection === 'history' ? styles.menuItemActive : {}),
+          }}
+          onClick={() => showSection('history')}
+        >
+          <i className="fi fi-rr-time-past" style={styles.menuItemIcon}></i>
+          <span style={styles.menuItemText}>Treatment History</span>
+        </button>
+
+        <button
+          type="button"
+          style={{
+            ...styles.menuItem,
+            ...(activeSection === 'plan' ? styles.menuItemActive : {}),
+          }}
+          onClick={() => showSection('plan')}
+        >
+          <i className="fi fi-rr-tooth" style={styles.menuItemIcon}></i>
+          <span style={styles.menuItemText}>Treatment Plan</span>
         </button>
       </aside>
 
@@ -614,6 +673,96 @@ export default function RecepPatientProfile() {
             </div>
           </section>
         )}
+
+        {activeSection === 'history' && (
+          <section style={styles.contentSection}>
+            <div style={styles.sectionHeader}>
+              <div>
+                <h3 style={styles.bannerTitle}>Treatment History</h3>
+                <p style={styles.bannerText}>
+                  Completed treatments and uploaded treatment attachments.
+                </p>
+              </div>
+            </div>
+
+            <div style={styles.paymentTableContainer}>
+              <table style={{ ...styles.paymentTable, minWidth: 900 }}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Date</th>
+                    <th style={styles.th}>Tooth No/s</th>
+                    <th style={styles.th}>Procedure</th>
+                    <th style={styles.th}>Dentist</th>
+                    <th style={styles.th}>Note</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Attachment</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {pagedTreatmentHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={styles.noDataCell}>
+                        No treatment history found.
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedTreatmentHistory.map((item) => (
+                      <tr key={item.id}>
+                        <td style={styles.td}>{item.date}</td>
+                        <td style={styles.td}>{item.tooth}</td>
+                        <td style={styles.td}>{item.procedure}</td>
+                        <td style={styles.td}>{item.dentist}</td>
+                        <td style={styles.td}>
+                          <TreatmentHistoryNote
+                            styles={styles}
+                            item={item}
+                            onOpenReschedules={setHistoryRescheduleModal}
+                          />
+                        </td>
+                        <td style={styles.td}>
+                          <ScheduleStatusBadge styles={styles} status={item.status} />
+                        </td>
+                        <td style={styles.td}>
+                          <HistoryAttachmentButton
+                            styles={styles}
+                            item={item}
+                            onOpenAttachments={setHistoryAttachmentModal}
+                          />
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              <Pagination
+                styles={styles}
+                page={historyPage}
+                totalPages={historyTotalPages}
+                onPrev={() => setHistoryPage((page) => Math.max(page - 1, 1))}
+                onNext={() =>
+                  setHistoryPage((page) => Math.min(page + 1, historyTotalPages))
+                }
+              />
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'plan' && (
+          <section style={styles.contentSection}>
+            <div style={styles.sectionHeader}>
+              <div>
+                <h3 style={styles.bannerTitle}>Treatment Plan</h3>
+                <p style={styles.bannerText}>
+                  View the patient's dental chart and planned treatments.
+                </p>
+              </div>
+            </div>
+
+            <TreatmentPlan patientId={patientId} isMobile={isMobile} />
+          </section>
+        )}
       </main>
 
       {showBackModal && (
@@ -645,6 +794,92 @@ export default function RecepPatientProfile() {
                 Yes
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {historyAttachmentModal && (
+        <HistoryAttachmentModal
+          styles={styles}
+          row={historyAttachmentModal}
+          onRequestClose={requestCloseHistoryAttachments}
+          onPreviewAttachment={setHistoryPreviewAttachment}
+        />
+      )}
+
+      {historyCloseConfirmOpen && (
+        <div
+          style={{ ...styles.modal, zIndex: 10001 }}
+          onClick={() => setHistoryCloseConfirmOpen(false)}
+        >
+          <div style={styles.confirmModal} onClick={(event) => event.stopPropagation()}>
+            <div style={styles.confirmIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.confirmIconText}></i>
+            </div>
+            <h3 style={styles.confirmTitle}>Close Attachments</h3>
+            <p style={styles.confirmText}>
+              Close attachments for {historyAttachmentModal?.tooth || 'this treatment'}?
+            </p>
+            <div style={styles.confirmActions}>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmCancelBtn }}
+                onClick={() => setHistoryCloseConfirmOpen(false)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmDeleteBtn }}
+                onClick={closeHistoryAttachments}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historyRescheduleModal && (
+        <RescheduleHistoryModal
+          styles={styles}
+          row={historyRescheduleModal}
+          onClose={() => setHistoryRescheduleModal(null)}
+        />
+      )}
+
+      {historyPreviewAttachment && (
+        <div
+          style={styles.attachmentLightboxOverlay}
+          onClick={() => setHistoryPreviewAttachment(null)}
+        >
+          <div
+            style={styles.attachmentLightboxContent}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              style={styles.attachmentCloseBtn}
+              onClick={() => setHistoryPreviewAttachment(null)}
+            >
+              x
+            </button>
+            <h3 style={styles.attachmentPreviewTitle}>
+              {historyPreviewAttachment.file_name}
+            </h3>
+            {isImageAttachment(historyPreviewAttachment) ? (
+              <img
+                src={attachmentUrl(historyPreviewAttachment.file_url)}
+                alt={historyPreviewAttachment.file_name}
+                style={styles.attachmentPreviewImage}
+              />
+            ) : (
+              <iframe
+                src={attachmentUrl(historyPreviewAttachment.file_url)}
+                title={historyPreviewAttachment.file_name}
+                style={styles.attachmentPreviewFrame}
+              />
+            )}
           </div>
         </div>
       )}
@@ -700,6 +935,47 @@ function mapScheduleData(appointments) {
       .filter((item) => item.startMs < now || item.status === 'Completed')
       .sort((a, b) => b.startMs - a.startMs),
   };
+}
+
+function normalizeTreatmentHistory(appointments, plans = []) {
+  if (!Array.isArray(appointments)) return [];
+
+  const rows = appointments
+    .filter((appointment) => String(appointment.status || '').toLowerCase() === 'completed')
+    .map((appointment) => {
+      const serviceName = String(appointment.service_name || '').toLowerCase().trim();
+      let matchingPlans = plans.filter((plan) => {
+        const plannedTreatment = String(plan.planned_treatment || '').toLowerCase().trim();
+        if (!plannedTreatment || !serviceName) return false;
+        return (
+          plannedTreatment === serviceName ||
+          plannedTreatment.includes(serviceName) ||
+          serviceName.includes(plannedTreatment)
+        );
+      });
+
+      if (matchingPlans.length === 0 && plans.length === 1) {
+        matchingPlans = plans;
+      }
+
+      const noteMeta = parseRescheduleNote(appointment.dentist_note || '');
+
+      return {
+        id: appointment.id,
+        historyKey: getCompletedVisitKey(appointment),
+        date: formatDate(appointment.start_time),
+        tooth: matchingPlans.map((plan) => `#${plan.tooth_number}`).join(', ') || 'N/A',
+        procedure: appointment.service_name || 'Treatment not set',
+        dentist: appointment.dentist_name || 'Dentist not set',
+        note: noteMeta.note,
+        rescheduleCount: noteMeta.count,
+        rescheduleDetails: noteMeta.details,
+        status: 'Completed',
+        attachments: matchingPlans.flatMap((plan) => plan.attachments || []),
+      };
+    });
+
+  return collapseCompletedHistoryRows(rows);
 }
 
 function mapPayment(payment) {
@@ -769,6 +1045,135 @@ function ScheduleStatusBadge({ styles, status }) {
   );
 }
 
+function TreatmentHistoryNote({ styles, item, onOpenReschedules }) {
+  const hasNote = Boolean(String(item.note || '').trim());
+  const hasReschedules = Number(item.rescheduleCount || 0) > 0;
+
+  if (!hasNote && !hasReschedules) {
+    return <span>No note added.</span>;
+  }
+
+  return (
+    <div style={styles.historyNoteWrap}>
+      {hasNote && <span>{item.note}</span>}
+      {hasReschedules && (
+        <button
+          type="button"
+          style={styles.rescheduleTag}
+          onClick={() => onOpenReschedules(item)}
+          title="View reschedule history"
+        >
+          Rescheduled {item.rescheduleCount}x - click to view
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RescheduleHistoryModal({ styles, row, onClose }) {
+  return (
+    <div style={styles.attachmentLightboxOverlay} onClick={onClose}>
+      <div style={styles.rescheduleModal} onClick={(event) => event.stopPropagation()}>
+        <button type="button" style={styles.attachmentCloseBtn} onClick={onClose}>
+          x
+        </button>
+        <h3 style={styles.attachmentPreviewTitle}>Reschedule History</h3>
+        <p style={styles.historyAttachmentMeta}>
+          {row.tooth || 'N/A'} - {row.procedure || 'N/A'} - {row.date || 'N/A'}
+        </p>
+        <pre style={styles.rescheduleDetails}>
+          {row.rescheduleDetails || 'No reschedule details recorded.'}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
+function HistoryAttachmentButton({ styles, item, onOpenAttachments }) {
+  const count = item.attachments?.length || 0;
+
+  return (
+    <button
+      type="button"
+      style={{
+        ...styles.historyAttachmentBtn,
+        ...(count === 0 ? styles.historyAttachmentBtnDisabled : {}),
+      }}
+      disabled={count === 0}
+      onClick={() => onOpenAttachments(item)}
+    >
+      <i className="fi fi-rr-eye"></i>
+      Attachments
+      <span style={styles.historyAttachmentCount}>{count}</span>
+    </button>
+  );
+}
+
+function HistoryAttachmentModal({ styles, row, onRequestClose, onPreviewAttachment }) {
+  const attachments = row.attachments || [];
+
+  return (
+    <div style={styles.attachmentLightboxOverlay} onClick={onRequestClose}>
+      <div
+        style={styles.historyAttachmentModal}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div style={styles.historyAttachmentHeader}>
+          <div>
+            <h3 style={styles.attachmentPreviewTitle}>Treatment Attachments</h3>
+            <p style={styles.historyAttachmentMeta}>
+              {row.tooth || 'N/A'} - {row.procedure || 'N/A'} - {row.status || 'Pending'}
+            </p>
+          </div>
+          <button type="button" style={styles.attachmentCloseBtn} onClick={onRequestClose}>
+            x
+          </button>
+        </div>
+
+        {attachments.length === 0 ? (
+          <div style={styles.historyAttachmentEmpty}>No attachments uploaded.</div>
+        ) : (
+          <div style={styles.historyAttachmentList}>
+            {attachments.map((attachment) => (
+              <div key={attachment.id} style={styles.historyAttachmentItem}>
+                <div style={styles.historyAttachmentThumb}>
+                  {isImageAttachment(attachment) ? (
+                    <img
+                      src={attachmentUrl(attachment.file_url)}
+                      alt=""
+                      style={styles.attachmentThumbImg}
+                    />
+                  ) : (
+                    <i className="fi fi-rr-document" style={styles.attachmentFileIcon}></i>
+                  )}
+                </div>
+
+                <div style={styles.historyAttachmentInfo}>
+                  <strong style={styles.historyAttachmentName}>
+                    {attachment.file_name || 'Attachment'}
+                  </strong>
+                  <span style={styles.historyAttachmentSubtext}>
+                    {formatUploadDate(attachment.uploaded_at)} - {formatFileSize(attachment.file_size)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  style={styles.historyIconActionBtn}
+                  title="View attachment"
+                  onClick={() => onPreviewAttachment(attachment)}
+                >
+                  <i className="fi fi-rr-eye"></i>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Pagination({ styles, page, totalPages, onPrev, onNext }) {
   return (
     <div style={styles.pagination}>
@@ -781,7 +1186,7 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
         disabled={page <= 1}
         onClick={onPrev}
       >
-        <i className="fi fi-rr-angle-left"></i>
+        Prev
       </button>
 
       <span style={styles.pageInfo}>
@@ -799,10 +1204,110 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
         disabled={page >= totalPages || totalPages === 0}
         onClick={onNext}
       >
-        <i className="fi fi-rr-angle-right"></i>
+        Next
       </button>
     </div>
   );
+}
+
+function attachmentUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+function isImageAttachment(attachment) {
+  return String(attachment.mime_type || '').startsWith('image/');
+}
+
+function getCompletedVisitKey(item) {
+  const start = item.start_time ? new Date(item.start_time) : null;
+  const startKey = start && !Number.isNaN(start.getTime())
+    ? start.toISOString()
+    : formatDate(item.start_time);
+  return [
+    startKey,
+    item.service_id || item.service_name || '',
+    item.dentist_id || item.dentist_name || '',
+  ].join('|');
+}
+
+function collapseCompletedHistoryRows(rows) {
+  const grouped = new Map();
+
+  rows.forEach((row) => {
+    const existing = grouped.get(row.historyKey);
+    if (!existing) {
+      grouped.set(row.historyKey, row);
+      return;
+    }
+
+    grouped.set(row.historyKey, {
+      ...existing,
+      note: existing.note || row.note,
+      rescheduleCount: Math.max(existing.rescheduleCount || 0, row.rescheduleCount || 0),
+      rescheduleDetails: mergeUniqueLines(existing.rescheduleDetails, row.rescheduleDetails),
+      attachments: mergeUniqueAttachments(existing.attachments, row.attachments),
+    });
+  });
+
+  return Array.from(grouped.values());
+}
+
+function parseRescheduleNote(note) {
+  const lines = String(note || '').split(/\r?\n/);
+  const rescheduleLines = lines.filter((line) =>
+    /^\s*(Original|Rescheduled|Reason)\s*:/i.test(line)
+  );
+  const cleanLines = lines.filter((line) =>
+    !/^\s*(Original|Rescheduled|Reason)\s*:/i.test(line)
+  );
+  const count = rescheduleLines.filter((line) =>
+    /^\s*Rescheduled\s*:/i.test(line)
+  ).length;
+
+  return {
+    note: cleanLines.join('\n').trim(),
+    count,
+    details: rescheduleLines.join('\n').trim(),
+  };
+}
+
+function mergeUniqueLines(...values) {
+  return [...new Set(values.flatMap((value) =>
+    String(value || '').split(/\r?\n/).filter(Boolean)
+  ))].join('\n');
+}
+
+function mergeUniqueAttachments(first = [], second = []) {
+  const seen = new Set();
+  return [...first, ...second].filter((attachment) => {
+    const key = attachment.id || attachment.file_url || attachment.file_name;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function formatUploadDate(value) {
+  if (!value) return 'Unknown date';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatFileSize(value) {
+  const size = Number(value || 0);
+  if (!size) return 'Unknown size';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function peso(value) {

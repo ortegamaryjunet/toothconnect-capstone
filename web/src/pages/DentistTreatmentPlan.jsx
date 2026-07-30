@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import {
   getTreatmentPlansByPatient,
@@ -6,7 +6,11 @@ import {
   createTreatmentPlansBulk,
   updateTreatmentPlan,
   deleteTreatmentPlan,
+  getTreatmentPlanAttachments,
+  uploadTreatmentPlanAttachments,
+  deleteTreatmentPlanAttachment,
 } from '../api/treatmentPlans';
+import api from '../api/axios';
 import createStyles from '../styles/DentistTreatmentPlan';
 
 const UPPER_RIGHT = [18, 17, 16, 15, 14, 13, 12, 11];
@@ -15,6 +19,7 @@ const LOWER_LEFT  = [31, 32, 33, 34, 35, 36, 37, 38];
 const LOWER_RIGHT = [48, 47, 46, 45, 44, 43, 42, 41];
 
 const ALL_TEETH = [...UPPER_RIGHT, ...UPPER_LEFT, ...LOWER_LEFT, ...LOWER_RIGHT];
+const PLAN_ROWS_PER_PAGE = 10;
 
 const STATUS_OPTIONS = [
   { value: 'planned',     label: 'Planned' },
@@ -36,6 +41,7 @@ function emptyForm(toothNumber) {
 export default function TreatmentPlan({ patientId, isMobile = false }) {
   const { user } = useAuth();
   const styles = createStyles({ isMobile });
+  const uploadInputRef = useRef(null);
 
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,14 +55,31 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewPlan, setViewPlan] = useState(null);
+  const [attachmentModalOpen, setAttachmentModalOpen] = useState(false);
+  const [attachmentPlan, setAttachmentPlan] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [attachmentError, setAttachmentError] = useState('');
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [deleteAttachment, setDeleteAttachment] = useState(null);
+  const [planDeleteTarget, setPlanDeleteTarget] = useState(null);
+  const [editConfirmPlan, setEditConfirmPlan] = useState(null);
+  const [saveEditConfirmOpen, setSaveEditConfirmOpen] = useState(false);
+  const [closeConfirm, setCloseConfirm] = useState(null);
 
   const [choiceModalOpen, setChoiceModalOpen] = useState(false);
   const [choiceTooth, setChoiceTooth] = useState(null);
   const [highlightedTooth, setHighlightedTooth] = useState(null);
+  const [planPage, setPlanPage] = useState(1);
 
   useEffect(() => {
     if (patientId) loadPlans();
   }, [patientId]);
+
+  useEffect(() => {
+    setPlanPage(1);
+  }, [patientId, plans.length]);
 
   async function loadPlans() {
     setLoading(true);
@@ -142,11 +165,113 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
     setModalOpen(false);
     setEditingPlan(null);
     setFormError('');
+    setSaveEditConfirmOpen(false);
   }
 
   function closeViewModal() {
     setViewModalOpen(false);
     setViewPlan(null);
+  }
+
+  function requestCloseViewModal() {
+    if (!viewPlan) {
+      closeViewModal();
+      return;
+    }
+
+    setCloseConfirm({
+      title: 'Close Treatment Plan',
+      message: `Close this treatment plan for tooth #${viewPlan.tooth_number}?`,
+      onConfirm: closeViewModal,
+    });
+  }
+
+  async function openAttachmentModal(plan) {
+    setAttachmentPlan(plan);
+    setAttachments(plan.attachments || []);
+    setAttachmentError('');
+    setAttachmentModalOpen(true);
+    setAttachmentsLoading(true);
+    try {
+      const data = await getTreatmentPlanAttachments(plan.id);
+      setAttachments(data);
+      setPlans(prev => prev.map(item => (
+        item.id === plan.id
+          ? { ...item, attachments: data, attachment_count: data.length }
+          : item
+      )));
+    } catch (err) {
+      setAttachmentError(err.response?.data?.message || 'Failed to load attachments');
+    } finally {
+      setAttachmentsLoading(false);
+    }
+  }
+
+  function closeAttachmentModal() {
+    setAttachmentModalOpen(false);
+    setAttachmentPlan(null);
+    setAttachments([]);
+    setAttachmentError('');
+    setDeleteAttachment(null);
+  }
+
+  function requestCloseModal() {
+    setCloseConfirm({
+      title: 'Close Treatment Plan',
+      message: form.tooth_number
+        ? `Close this treatment plan for tooth #${form.tooth_number}?`
+        : 'Close this treatment plan?',
+      onConfirm: closeModal,
+    });
+  }
+
+  function requestCloseAttachmentModal() {
+    setCloseConfirm({
+      title: 'Close Attachments',
+      message: attachmentPlan
+        ? `Close attachments for tooth #${attachmentPlan.tooth_number}?`
+        : 'Close attachments?',
+      onConfirm: closeAttachmentModal,
+    });
+  }
+
+  async function handleAttachmentFiles(files) {
+    if (!canEdit || !attachmentPlan || !files || files.length === 0) return;
+
+    setUploadingAttachments(true);
+    setAttachmentError('');
+    try {
+      const data = await uploadTreatmentPlanAttachments(attachmentPlan.id, files);
+      setAttachments(data);
+      setPlans(prev => prev.map(item => (
+        item.id === attachmentPlan.id
+          ? { ...item, attachments: data, attachment_count: data.length }
+          : item
+      )));
+    } catch (err) {
+      setAttachmentError(err.response?.data?.message || 'Failed to upload attachments');
+    } finally {
+      setUploadingAttachments(false);
+      if (uploadInputRef.current) uploadInputRef.current.value = '';
+    }
+  }
+
+  async function confirmDeleteAttachment() {
+    if (!deleteAttachment) return;
+
+    try {
+      await deleteTreatmentPlanAttachment(deleteAttachment.id);
+      const nextAttachments = attachments.filter(item => item.id !== deleteAttachment.id);
+      setAttachments(nextAttachments);
+      setPlans(prev => prev.map(item => (
+        item.id === attachmentPlan.id
+          ? { ...item, attachments: nextAttachments, attachment_count: nextAttachments.length }
+          : item
+      )));
+      setDeleteAttachment(null);
+    } catch (err) {
+      setAttachmentError(err.response?.data?.message || 'Failed to delete attachment');
+    }
   }
 
   function handleFormChange(field, value) {
@@ -157,6 +282,11 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
     setFormError('');
     if (!form.planned_treatment.trim()) {
       setFormError('Planned treatment is required.');
+      return;
+    }
+
+    if (editingPlan && !saveEditConfirmOpen) {
+      setSaveEditConfirmOpen(true);
       return;
     }
 
@@ -205,17 +335,22 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
   }
 
   async function handleDeleteFromView(id) {
-    if (!window.confirm('Delete this treatment plan? This cannot be undone.')) return;
     closeViewModal();
     try {
       await deleteTreatmentPlan(id);
       await loadPlans();
+      setPlanDeleteTarget(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete plan');
+      setFormError(err.response?.data?.message || 'Failed to delete plan');
     }
   }
 
   const canEdit = user?.role === 'dentist';
+  const totalPlanPages = Math.max(1, Math.ceil(plans.length / PLAN_ROWS_PER_PAGE));
+  const paginatedPlans = plans.slice(
+    (planPage - 1) * PLAN_ROWS_PER_PAGE,
+    planPage * PLAN_ROWS_PER_PAGE
+  );
 
   if (!patientId) {
     return <div style={styles.empty}>No patient selected.</div>;
@@ -334,7 +469,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
                   </td>
                 </tr>
               ) : (
-                plans.map(plan => (
+                paginatedPlans.map(plan => (
                   <tr
                     key={plan.id}
                     id={`plan-row-${plan.id}`}
@@ -353,18 +488,62 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
                       {plan.date_completed ? plan.date_completed.slice(0, 10) : '—'}
                     </td>
                     <td style={styles.td}>
-                      <button
-                        style={styles.viewBtn}
-                        onClick={() => openViewModal(plan)}
-                      >
-                        View
-                      </button>
+                      <div style={styles.actionGroup}>
+                        <button
+                          style={styles.viewBtn}
+                          title="View treatment plan"
+                          onClick={() => openViewModal(plan)}
+                        >
+                          <i className="fi fi-rr-eye"></i>
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          style={styles.attachmentBtn}
+                          title="View attachments"
+                          onClick={() => openAttachmentModal(plan)}
+                        >
+                          <i className="fi fi-rr-eye"></i>
+                          Attachments
+                          <span style={styles.attachmentCount}>
+                            {plan.attachment_count || plan.attachments?.length || 0}
+                          </span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+        </div>
+
+        <div style={styles.pagination}>
+          <button
+            type="button"
+            onClick={() => setPlanPage(prev => Math.max(1, prev - 1))}
+            disabled={plans.length === 0 || planPage === 1}
+            style={{
+              ...styles.pageBtn,
+              ...(plans.length === 0 || planPage === 1 ? styles.pageBtnDisabled : {}),
+            }}
+          >
+            Prev
+          </button>
+          <span style={styles.pageInfo}>
+            {plans.length === 0 ? 'Page 0 of 0' : `Page ${planPage} of ${totalPlanPages}`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPlanPage(prev => Math.min(totalPlanPages, prev + 1))}
+            disabled={plans.length === 0 || planPage >= totalPlanPages}
+            style={{
+              ...styles.pageBtn,
+              ...(plans.length === 0 || planPage >= totalPlanPages ? styles.pageBtnDisabled : {}),
+            }}
+          >
+            Next
+          </button>
         </div>
       </div>
 
@@ -391,9 +570,9 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
 
       {/* Add / Edit Modal */}
       {modalOpen && (
-        <div style={styles.overlay} onClick={closeModal}>
+        <div style={styles.overlay} onClick={requestCloseModal}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={closeModal}>✕</button>
+            <button style={styles.closeIconBtn} onClick={requestCloseModal}>x</button>
             <h3 style={styles.modalTitle}>{modalTitle}</h3>
 
             <div style={styles.formGroup}>
@@ -474,7 +653,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             {formError && <div style={styles.formError}>{formError}</div>}
 
             <div style={styles.modalActions}>
-              <button style={styles.cancelBtn} onClick={closeModal} disabled={saving}>
+              <button style={styles.cancelBtn} onClick={requestCloseModal} disabled={saving}>
                 Cancel
               </button>
               <button
@@ -495,11 +674,50 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
         </div>
       )}
 
+      {saveEditConfirmOpen && editingPlan && (
+        <div style={styles.overlay} onClick={() => setSaveEditConfirmOpen(false)}>
+          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+            <div style={styles.confirmIconGold}>
+              <i className="fi fi-rr-edit" style={styles.confirmIconText}></i>
+            </div>
+            <h3 style={styles.confirmTitle}>Confirm Changes</h3>
+            <p style={styles.confirmText}>Please review the details before saving this treatment plan.</p>
+            <div style={styles.confirmRows}>
+              {getPlanChangeRows(editingPlan, form).map(([label, value]) => (
+                <div key={label} style={styles.confirmRow}>
+                  <span style={styles.confirmRowLabel}>{label}</span>
+                  <strong style={styles.confirmRowValue}>{value}</strong>
+                </div>
+              ))}
+            </div>
+            {formError && <div style={styles.formError}>{formError}</div>}
+            <div style={styles.confirmActions}>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmCancelBtn }}
+                onClick={() => setSaveEditConfirmOpen(false)}
+                disabled={saving}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.addAppointmentBtn }}
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Yes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View Modal */}
       {viewModalOpen && viewPlan && (
-        <div style={styles.overlay} onClick={closeViewModal}>
+        <div style={styles.overlay} onClick={requestCloseViewModal}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={closeViewModal}>✕</button>
+            <button style={styles.closeIconBtn} onClick={requestCloseViewModal}>x</button>
             <h3 style={styles.modalTitle}>Treatment Plan — Tooth #{viewPlan.tooth_number}</h3>
 
             <div style={styles.viewRow}>
@@ -526,21 +744,248 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             </div>
 
             {canEdit && (
-              <div style={styles.modalActions}>
-                <button
-                  style={styles.editBtn}
-                  onClick={() => { closeViewModal(); openEditModal(viewPlan); }}
-                >
-                  Edit
-                </button>
+              <div style={styles.viewModalActions}>
                 <button
                   style={styles.deleteBtn}
-                  onClick={() => handleDeleteFromView(viewPlan.id)}
+                  onClick={() => setPlanDeleteTarget(viewPlan)}
                 >
                   Delete
                 </button>
+                <button
+                  style={styles.editBtn}
+                  onClick={() => setEditConfirmPlan(viewPlan)}
+                >
+                  Edit
+                </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {editConfirmPlan && (
+        <div style={styles.overlay} onClick={() => setEditConfirmPlan(null)}>
+          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+            <div style={styles.confirmIconGold}>
+              <i className="fi fi-rr-edit" style={styles.confirmIconText}></i>
+            </div>
+            <h3 style={styles.confirmTitle}>Edit Treatment Plan</h3>
+            <p style={styles.confirmText}>Do you want to edit this information?</p>
+            <div style={styles.confirmActions}>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmCancelBtn }}
+                onClick={() => setEditConfirmPlan(null)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.addAppointmentBtn }}
+                onClick={() => {
+                  const plan = editConfirmPlan;
+                  setEditConfirmPlan(null);
+                  closeViewModal();
+                  openEditModal(plan);
+                }}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {attachmentModalOpen && attachmentPlan && (
+        <div style={styles.overlay} onClick={requestCloseAttachmentModal}>
+          <div style={styles.attachmentModal} onClick={e => e.stopPropagation()}>
+            <button style={styles.closeIconBtn} onClick={requestCloseAttachmentModal}>x</button>
+            <div style={styles.attachmentHeader}>
+              <h3 style={styles.modalTitle}>Tooth #{attachmentPlan.tooth_number}</h3>
+              <div style={styles.attachmentMeta}>
+                <span>{attachmentPlan.planned_treatment}</span>
+                <StatusBadge status={attachmentPlan.status} styles={styles} />
+              </div>
+            </div>
+
+            {canEdit && (
+              <div
+                style={styles.uploadDropzone}
+                onClick={() => uploadInputRef.current?.click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => {
+                  e.preventDefault();
+                  handleAttachmentFiles(e.dataTransfer.files);
+                }}
+              >
+                <i className="fi fi-rr-upload" style={styles.uploadIcon}></i>
+                <strong>Drop files here or click to upload</strong>
+                <span>Images or PDF files, up to 10 MB each</span>
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf"
+                  style={styles.hiddenInput}
+                  onChange={e => handleAttachmentFiles(e.target.files)}
+                />
+              </div>
+            )}
+
+            {attachmentError && <div style={styles.formError}>{attachmentError}</div>}
+            {attachmentsLoading && <div style={styles.loadingBox}>Loading attachments...</div>}
+            {uploadingAttachments && <div style={styles.loadingBox}>Uploading attachments...</div>}
+
+            <div style={styles.attachmentList}>
+              {!attachmentsLoading && attachments.length === 0 ? (
+                <div style={styles.attachmentEmpty}>No attachments uploaded.</div>
+              ) : (
+                attachments.map((attachment) => (
+                  <div key={attachment.id} style={styles.attachmentItem}>
+                    <AttachmentThumb attachment={attachment} styles={styles} />
+                    <div style={styles.attachmentInfo}>
+                      <strong style={styles.attachmentName}>{attachment.file_name}</strong>
+                      <span style={styles.attachmentSubtext}>
+                        {formatUploadDate(attachment.uploaded_at)} · {formatFileSize(attachment.file_size)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      style={styles.iconActionBtn}
+                      title="Preview attachment"
+                      onClick={() => setPreviewAttachment(attachment)}
+                    >
+                      <i className="fi fi-rr-eye"></i>
+                    </button>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        style={{ ...styles.iconActionBtn, ...styles.iconDeleteBtn }}
+                        title="Delete attachment"
+                        onClick={() => setDeleteAttachment(attachment)}
+                      >
+                        <i className="fi fi-rr-trash"></i>
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {previewAttachment && (
+        <div style={styles.lightboxOverlay} onClick={() => setPreviewAttachment(null)}>
+          <div style={styles.lightboxContent} onClick={e => e.stopPropagation()}>
+            <button style={styles.closeIconBtn} onClick={() => setPreviewAttachment(null)}>x</button>
+            <h3 style={styles.modalTitle}>{previewAttachment.file_name}</h3>
+            {isImageAttachment(previewAttachment) ? (
+              <img
+                src={attachmentUrl(previewAttachment.file_url)}
+                alt={previewAttachment.file_name}
+                style={styles.lightboxImage}
+              />
+            ) : (
+              <iframe
+                src={attachmentUrl(previewAttachment.file_url)}
+                title={previewAttachment.file_name}
+                style={styles.lightboxFrame}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {deleteAttachment && (
+        <div style={styles.overlay} onClick={() => setDeleteAttachment(null)}>
+          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+            <div style={styles.confirmIcon}>
+              <i className="fi fi-rr-trash" style={styles.confirmIconText}></i>
+            </div>
+            <h3 style={styles.confirmTitle}>Delete Attachment</h3>
+            <p style={styles.confirmText}>
+              Are you sure you want to remove {deleteAttachment.file_name}? This cannot be undone.
+            </p>
+            <div style={styles.confirmActions}>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmCancelBtn }}
+                onClick={() => setDeleteAttachment(null)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmDeleteBtn }}
+                onClick={confirmDeleteAttachment}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {planDeleteTarget && (
+        <div style={styles.overlay} onClick={() => setPlanDeleteTarget(null)}>
+          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+            <div style={styles.confirmIcon}>
+              <i className="fi fi-rr-trash" style={styles.confirmIconText}></i>
+            </div>
+            <h3 style={styles.confirmTitle}>Delete Treatment Plan</h3>
+            <p style={styles.confirmText}>
+              Are you sure you want to delete the treatment plan for tooth #{planDeleteTarget.tooth_number}? This cannot be undone.
+            </p>
+            <div style={styles.confirmActions}>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmCancelBtn }}
+                onClick={() => setPlanDeleteTarget(null)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmDeleteBtn }}
+                onClick={() => handleDeleteFromView(planDeleteTarget.id)}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {closeConfirm && (
+        <div style={styles.overlay} onClick={() => setCloseConfirm(null)}>
+          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+            <div style={styles.confirmIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.confirmIconText}></i>
+            </div>
+            <h3 style={styles.confirmTitle}>{closeConfirm.title}</h3>
+            <p style={styles.confirmText}>{closeConfirm.message}</p>
+            <div style={styles.confirmActions}>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmCancelBtn }}
+                onClick={() => setCloseConfirm(null)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.confirmButton, ...styles.confirmDeleteBtn }}
+                onClick={() => {
+                  const onConfirm = closeConfirm.onConfirm;
+                  setCloseConfirm(null);
+                  onConfirm();
+                }}
+              >
+                Yes
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -575,3 +1020,72 @@ function StatusBadge({ status, styles }) {
     </span>
   );
 }
+
+function attachmentUrl(fileUrl) {
+  if (!fileUrl) return '';
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+
+  const baseUrl = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseUrl}${fileUrl}`;
+}
+
+function isImageAttachment(attachment) {
+  return String(attachment.mime_type || '').startsWith('image/');
+}
+
+function formatUploadDate(value) {
+  if (!value) return 'No upload date';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'No upload date';
+  return date.toLocaleDateString('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function formatFileSize(value) {
+  const size = Number(value || 0);
+  if (!size) return 'Unknown size';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getPlanChangeRows(original, next) {
+  const originalDate = original.date_completed ? original.date_completed.slice(0, 10) : '';
+  const changedFields = [
+    original.planned_treatment !== next.planned_treatment ? 'Planned Treatment' : '',
+    original.status !== next.status ? 'Status' : '',
+    (original.notes || '') !== (next.notes || '') ? 'Notes' : '',
+    originalDate !== (next.date_completed || '') ? 'Date Completed' : '',
+  ].filter(Boolean);
+
+  return [
+    ['Tooth', `#${next.tooth_number}`],
+    ['Planned Treatment', next.planned_treatment || 'N/A'],
+    ['Status', STATUS_OPTIONS.find(item => item.value === next.status)?.label || next.status || 'N/A'],
+    ['Notes', next.notes || 'N/A'],
+    ['Date Completed', next.date_completed || 'N/A'],
+    ['Changed Fields', changedFields.join(', ') || 'No changes detected'],
+  ];
+}
+
+function AttachmentThumb({ attachment, styles }) {
+  if (isImageAttachment(attachment)) {
+    return (
+      <img
+        src={attachmentUrl(attachment.file_url)}
+        alt=""
+        style={styles.attachmentThumb}
+      />
+    );
+  }
+
+  return (
+    <div style={styles.fileThumb}>
+      <i className="fi fi-rr-document"></i>
+    </div>
+  );
+}
+

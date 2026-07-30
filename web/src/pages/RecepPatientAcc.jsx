@@ -14,6 +14,7 @@ import {
 } from '../api/patients';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
+import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepPatientAccStyles from '../styles/RecepPatientAcc';
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
@@ -823,9 +824,7 @@ export default function RecepPatientAcc() {
                 style={styles.receptProfile}
                 onClick={() => setShowProfileMenu((prev) => !prev)}
               >
-                <div style={styles.avatar}>
-                  <i className="fi fi-rr-user" style={styles.avatarIcon}></i>
-                </div>
+                <StaffHeaderAvatar styles={styles} />
 
                 <div style={styles.receptInfo}>
                   <div style={styles.receptName}>{receptionistName}</div>

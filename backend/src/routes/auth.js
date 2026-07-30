@@ -1,6 +1,9 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const fs = require('fs');
+const multer = require('multer');
+const path = require('path');
 const pool = require('../config/db');
 const {
   signAccessToken,
@@ -16,6 +19,29 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const { parseDeviceBrowser } = require('../utils/deviceParser');
 
 const router = express.Router();
+const staffUploadDir = path.join(__dirname, '../../uploads/staff');
+fs.mkdirSync(staffUploadDir, { recursive: true });
+
+const staffUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, staffUploadDir),
+    filename: (_req, file, cb) => {
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      cb(null, `${Date.now()}-${crypto.randomBytes(6).toString('hex')}-${safeName}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const isPhoto = file.fieldname === 'profilePhoto';
+    const allowed = isPhoto
+      ? ['image/jpeg', 'image/png']
+      : ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error(isPhoto ? 'Profile photo must be JPG or PNG.' : 'Supporting documents must be PDF, JPG, or PNG.'));
+    }
+    cb(null, true);
+  },
+});
 const RESET_PASSWORD_MAX_OTP_ATTEMPTS = 3;
 const RESET_PASSWORD_MAX_RESENDS = 3;
 const RESET_PASSWORD_COOLDOWN_MINUTES = 10;
@@ -112,6 +138,10 @@ function formatMysqlDate(value) {
 }
 
 function mapStaffProfileRow(row) {
+  const documents = Array.isArray(row.supporting_documents)
+    ? row.supporting_documents
+    : [];
+
   return {
     id: `E-${String(row.id).padStart(4, '0')}`,
     profileId: row.id,
@@ -150,6 +180,8 @@ function mapStaffProfileRow(row) {
     workDays: row.work_days || '',
     workStartTime: row.work_start_time || '',
     workEndTime: row.work_end_time || '',
+    profilePhotoUrl: row.profile_photo_url || '',
+    supportingDocuments: documents,
     accessRole: row.user_role
       ? row.user_role === 'dentist'
         ? 'Dentist'
@@ -275,9 +307,15 @@ function normalizeScheduleEntry(entry) {
   return {
     branch_id: branchId,
     weekday,
-    start_time: String(startTime).slice(0, 8),
-    end_time: String(endTime).slice(0, 8),
+    start_time: normalizeScheduleTime(startTime),
+    end_time: normalizeScheduleTime(endTime),
   };
+}
+
+function normalizeScheduleTime(value) {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return String(value || '').trim();
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
 }
 
 function timeToMinutes(value) {
@@ -637,6 +675,103 @@ async function fetchStaffProfileBy(whereClause, params) {
   return mapped;
 }
 
+async function attachSupportingDocuments(profiles) {
+  const list = Array.isArray(profiles) ? profiles : [profiles].filter(Boolean);
+  const ids = list.map((profile) => Number(profile.profileId || profile.id)).filter(Boolean);
+  if (ids.length === 0) return profiles;
+
+  const [rows] = await pool.query(
+    `SELECT id, staff_profile_id, file_name, file_url, mime_type, file_size, uploaded_at
+     FROM staff_profile_documents
+     WHERE staff_profile_id IN (${ids.map(() => '?').join(',')})
+     ORDER BY uploaded_at DESC, id DESC`,
+    ids
+  );
+
+  const byProfile = new Map();
+  rows.forEach((row) => {
+    const current = byProfile.get(row.staff_profile_id) || [];
+    current.push({
+      id: row.id,
+      file_name: row.file_name,
+      file_url: row.file_url,
+      mime_type: row.mime_type,
+      file_size: row.file_size,
+      uploaded_at: row.uploaded_at,
+    });
+    byProfile.set(row.staff_profile_id, current);
+  });
+
+  list.forEach((profile) => {
+    profile.supportingDocuments = byProfile.get(Number(profile.profileId || profile.id)) || [];
+  });
+
+  return profiles;
+}
+
+function parseMultipartJson(req, key, fallback = {}) {
+  const value = req.body?.[key];
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function staffFileUrl(file) {
+  return file ? `/uploads/staff/${file.filename}` : null;
+}
+
+async function saveStaffDocuments(staffProfileId, files = []) {
+  if (!staffProfileId || files.length === 0) return;
+
+  await pool.query(
+    `INSERT INTO staff_profile_documents
+       (staff_profile_id, file_name, file_url, mime_type, file_size, uploaded_by)
+     VALUES ${files.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`,
+    files.flatMap((file) => [
+      staffProfileId,
+      file.originalname,
+      staffFileUrl(file),
+      file.mimetype,
+      file.size,
+      file.uploadedBy || null,
+    ])
+  );
+}
+
+function parseMaybeJson(value, fallback) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeStaffBody(body = {}) {
+  const normalized = { ...body };
+  [
+    'branchIds',
+    'branch_ids',
+    'schedule_entries',
+    'specializations',
+    'work_days',
+    'removeDocumentIds',
+    'remove_document_ids',
+    'removeProfilePhoto',
+    'remove_profile_photo',
+  ].forEach((key) => {
+    if (normalized[key] !== undefined) {
+      normalized[key] = parseMaybeJson(normalized[key], normalized[key]);
+    }
+  });
+  return normalized;
+}
+
 async function updateStaffProfile(profileId, payload, { allowBranch = false, allowStatus = false } = {}) {
   const profile = staffPayloadToDb(payload, { allowStatus });
 
@@ -739,6 +874,11 @@ async function updateStaffProfile(profileId, payload, { allowBranch = false, all
   if (allowStatus && ['Active', 'Inactive', 'Archived'].includes(profile.status)) {
     fields.push('status = ?');
     values.push(profile.status);
+  }
+
+  if (payload.profile_photo_url !== undefined) {
+    fields.push('profile_photo_url = ?');
+    values.push(payload.profile_photo_url || null);
   }
 
   values.push(profileId);
@@ -2182,8 +2322,7 @@ router.get('/staff-profiles', authenticate, requireRole('admin'), async (req, re
     const specializationsByDentist = await loadDentistSpecializationsByDentistIds(dentistUserIds);
     const branchAffiliationsByDentist = await loadUserBranchAffiliationsByUserIds(dentistUserIds);
 
-    res.json({
-      employees: rows.map((row) => {
+    const employees = rows.map((row) => {
         const mapped = mapStaffProfileRow(row);
         if (row.user_role === 'dentist') {
           const branchIds = (branchAffiliationsByDentist.get(Number(row.user_id)) || [])
@@ -2201,8 +2340,11 @@ router.get('/staff-profiles', authenticate, requireRole('admin'), async (req, re
           }
         }
         return mapped;
-      }),
-    });
+      });
+
+    await attachSupportingDocuments(employees);
+
+    res.json({ employees });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -2213,6 +2355,7 @@ router.get('/staff-profile/me', authenticate, requireRole('dentist', 'receptioni
   try {
     const profile = await fetchStaffProfileBy('sp.user_id = ?', [req.user.user_id]);
     if (!profile) return res.status(404).json({ message: 'Staff profile not found' });
+    await attachSupportingDocuments(profile);
     res.json({ profile });
   } catch (err) {
     console.error(err);
@@ -2268,17 +2411,58 @@ router.get('/staff-profiles/:id/schedule-locks', authenticate, requireRole('admi
   }
 });
 
-router.patch('/staff-profile/me', authenticate, requireRole('dentist', 'receptionist'), async (req, res) => {
+router.patch(
+  '/staff-profile/me',
+  authenticate,
+  requireRole('dentist', 'receptionist'),
+  staffUpload.fields([
+    { name: 'profilePhoto', maxCount: 1 },
+    { name: 'supportingDocuments', maxCount: 10 },
+  ]),
+  async (req, res) => {
   try {
+    const body = normalizeStaffBody(req.body || {});
+    const profilePhotoFile = req.files?.profilePhoto?.[0] || null;
+    const documentFiles = (req.files?.supportingDocuments || []).map((file) => ({
+      ...file,
+      uploadedBy: req.user.user_id,
+    }));
+    const removeDocumentIds = (Array.isArray(body.removeDocumentIds)
+      ? body.removeDocumentIds
+      : Array.isArray(body.remove_document_ids)
+        ? body.remove_document_ids
+        : [])
+      .map((id) => Number(id))
+      .filter(Boolean);
+
+    if (profilePhotoFile) {
+      body.profile_photo_url = staffFileUrl(profilePhotoFile);
+    }
+    if (body.removeProfilePhoto === true || body.remove_profile_photo === true) {
+      body.profile_photo_url = null;
+    }
+
     const current = await fetchStaffProfileBy('sp.user_id = ?', [req.user.user_id]);
     if (!current) return res.status(404).json({ message: 'Staff profile not found' });
 
-    await updateStaffProfile(current.profileId, req.body, {
+    await updateStaffProfile(current.profileId, { ...current, ...body }, {
       allowBranch: false,
       allowStatus: false,
     });
 
+    if (removeDocumentIds.length > 0) {
+      await pool.query(
+        `DELETE FROM staff_profile_documents
+         WHERE staff_profile_id = ?
+           AND id IN (${removeDocumentIds.map(() => '?').join(',')})`,
+        [current.profileId, ...removeDocumentIds]
+      );
+    }
+
+    await saveStaffDocuments(current.profileId, documentFiles);
+
     const profile = await fetchStaffProfileBy('sp.id = ?', [current.profileId]);
+    await attachSupportingDocuments(profile);
     res.json({ message: 'Staff profile updated.', profile });
   } catch (err) {
     console.error(err);
@@ -2286,22 +2470,50 @@ router.patch('/staff-profile/me', authenticate, requireRole('dentist', 'receptio
   }
 });
 
-router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (req, res) => {
+router.patch(
+  '/staff-profiles/:id',
+  authenticate,
+  requireRole('admin'),
+  staffUpload.fields([
+    { name: 'profilePhoto', maxCount: 1 },
+    { name: 'supportingDocuments', maxCount: 10 },
+  ]),
+  async (req, res) => {
   const profileId = Number.parseInt(req.params.id, 10);
+  const body = normalizeStaffBody(req.body || {});
+  const profilePhotoFile = req.files?.profilePhoto?.[0] || null;
+  const documentFiles = (req.files?.supportingDocuments || []).map((file) => ({
+    ...file,
+    uploadedBy: req.user.user_id,
+  }));
+  const removeDocumentIds = (Array.isArray(body.removeDocumentIds)
+    ? body.removeDocumentIds
+    : Array.isArray(body.remove_document_ids)
+      ? body.remove_document_ids
+      : [])
+    .map((id) => Number(id))
+    .filter(Boolean);
+
+  if (profilePhotoFile) {
+    body.profile_photo_url = staffFileUrl(profilePhotoFile);
+  }
+  if (body.removeProfilePhoto === true || body.remove_profile_photo === true) {
+    body.profile_photo_url = null;
+  }
 
   if (Number.isNaN(profileId)) {
     return res.status(400).json({ message: 'Invalid staff profile id' });
   }
 
   try {
-    const wantsScheduleUpdate = Array.isArray(req.body?.schedule_entries);
+    const wantsScheduleUpdate = Array.isArray(body?.schedule_entries);
     const wantsSpecializationUpdate =
-      req.body?.specializations !== undefined ||
-      req.body?.specialization !== undefined ||
-      req.body?.workDepartment !== undefined ||
-      req.body?.work_department !== undefined;
+      body?.specializations !== undefined ||
+      body?.specialization !== undefined ||
+      body?.workDepartment !== undefined ||
+      body?.work_department !== undefined;
     const wantsBranchUpdate =
-      req.body?.branchId !== undefined || req.body?.branch_id !== undefined;
+      body?.branchId !== undefined || body?.branch_id !== undefined;
     let linkedUserIdForSchedule = null;
     let currentBranchIdForSchedule = null;
     let linkedUserRole = null;
@@ -2333,36 +2545,36 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
     if (linkedUserIdForSchedule && (wantsScheduleUpdate || wantsBranchUpdate)) {
       await assertDentistScheduleChangeAllowed(
         linkedUserIdForSchedule,
-        req.body.schedule_entries,
-        req.body.branchId ?? req.body.branch_id,
+        body.schedule_entries,
+        body.branchId ?? body.branch_id,
         currentBranchIdForSchedule
       );
     }
 
-    await updateStaffProfile(profileId, req.body, {
+    await updateStaffProfile(profileId, body, {
       allowBranch: true,
       allowStatus: true,
     });
 
     if (wantsScheduleUpdate && linkedUserIdForSchedule) {
-      await replaceDentistSchedules(linkedUserIdForSchedule, req.body.schedule_entries);
+      await replaceDentistSchedules(linkedUserIdForSchedule, body.schedule_entries);
     }
 
     if (wantsSpecializationUpdate && linkedUserIdForSchedule && linkedUserRole === 'dentist') {
       await replaceDentistSpecializationsAndServices(
         linkedUserIdForSchedule,
-        req.body.specializations ??
-          req.body.workDepartment ??
-          req.body.work_department ??
-          req.body.specialization
+        body.specializations ??
+          body.workDepartment ??
+          body.work_department ??
+          body.specialization
       );
     }
 
     if (linkedUserIdForSchedule && linkedUserRole === 'dentist') {
-      const nextHomeBranchId = Number(req.body.branchId ?? req.body.branch_id ?? currentBranchIdForSchedule);
-      const requestedBranchIds = normalizeBranchIdList(req.body.branchIds ?? req.body.branch_ids ?? []);
-      const scheduleBranchIds = Array.isArray(req.body.schedule_entries)
-        ? req.body.schedule_entries.map((entry) => entry?.branch_id ?? entry?.branchId)
+      const nextHomeBranchId = Number(body.branchId ?? body.branch_id ?? currentBranchIdForSchedule);
+      const requestedBranchIds = normalizeBranchIdList(body.branchIds ?? body.branch_ids ?? []);
+      const scheduleBranchIds = Array.isArray(body.schedule_entries)
+        ? body.schedule_entries.map((entry) => entry?.branch_id ?? entry?.branchId)
         : [];
       await syncUserBranchAffiliations(
         pool,
@@ -2372,7 +2584,19 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
       );
     }
 
+    if (removeDocumentIds.length > 0) {
+      await pool.query(
+        `DELETE FROM staff_profile_documents
+         WHERE staff_profile_id = ?
+           AND id IN (${removeDocumentIds.map(() => '?').join(',')})`,
+        [profileId, ...removeDocumentIds]
+      );
+    }
+
+    await saveStaffDocuments(profileId, documentFiles);
+
     const profile = await fetchStaffProfileBy('sp.id = ?', [profileId]);
+    await attachSupportingDocuments(profile);
     res.json({ message: 'Staff profile updated.', profile });
   } catch (err) {
     console.error(err);
@@ -2380,8 +2604,19 @@ router.patch('/staff-profiles/:id', authenticate, requireRole('admin'), async (r
   }
 });
 
-router.post('/staff-profiles', authenticate, requireRole('admin'), async (req, res) => {
-  const { branch_id, staffProfile = {} } = req.body;
+router.post(
+  '/staff-profiles',
+  authenticate,
+  requireRole('admin'),
+  staffUpload.fields([
+    { name: 'profilePhoto', maxCount: 1 },
+    { name: 'supportingDocuments', maxCount: 10 },
+  ]),
+  async (req, res) => {
+  const staffProfile = parseMultipartJson(req, 'staffProfile', req.body?.staffProfile || {});
+  const branch_id = req.body?.branch_id || req.body?.branchId;
+  const profilePhotoFile = req.files?.profilePhoto?.[0] || null;
+  const documentFiles = req.files?.supportingDocuments || [];
 
   if (!branch_id) {
     return res.status(400).json({ message: 'Assigned branch is required' });
@@ -2399,9 +2634,9 @@ router.post('/staff-profiles', authenticate, requireRole('admin'), async (req, r
          home_address, contact_number, email,
          position, specialization, work_department, medical_degree, license_number,
          years_experience, skills, start_date, employment_type, shift_type,
-         work_days, work_start_time, work_end_time, status
+         work_days, work_start_time, work_end_time, profile_photo_url, status
        )
-       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
+       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
       [
         branch_id,
         staffProfile.staff_type,
@@ -2432,8 +2667,11 @@ router.post('/staff-profiles', authenticate, requireRole('admin'), async (req, r
         Array.isArray(staffProfile.work_days) ? staffProfile.work_days.join(', ') : staffProfile.work_days || null,
         staffProfile.work_start_time || null,
         staffProfile.work_end_time || null,
+        staffFileUrl(profilePhotoFile),
       ]
     );
+
+    await saveStaffDocuments(result.insertId, documentFiles);
 
     res.status(201).json({
       message: 'Staff profile created.',
@@ -2445,18 +2683,28 @@ router.post('/staff-profiles', authenticate, requireRole('admin'), async (req, r
   }
 });
 
-router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
+router.post(
+  '/staff',
+  authenticate,
+  requireRole('admin'),
+  staffUpload.fields([
+    { name: 'profilePhoto', maxCount: 1 },
+    { name: 'supportingDocuments', maxCount: 10 },
+  ]),
+  async (req, res) => {
   const {
     email,
     name,
     role,
     home_branch_id,
-    branch_ids,
     phone,
     password,
     department,
-    staffProfile = {},
   } = req.body;
+  const branch_ids = parseMultipartJson(req, 'branch_ids', req.body?.branch_ids || []);
+  const staffProfile = parseMultipartJson(req, 'staffProfile', req.body?.staffProfile || {});
+  const profilePhotoFile = req.files?.profilePhoto?.[0] || null;
+  const documentFiles = req.files?.supportingDocuments || [];
   if (!email || !name || !role || !home_branch_id || !branch_ids?.length) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
@@ -2489,7 +2737,7 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
     const lastName = staffProfile.last_name || name.split(' ').slice(1).join(' ') || name;
     const staffType = role === 'dentist' ? 'Dentist' : 'Receptionist';
 
-    await pool.query(
+    const [staffResult] = await pool.query(
       `INSERT INTO staff_profile (
          user_id, branch_id, staff_type,
          first_name, middle_name, last_name, nickname, suffix,
@@ -2497,9 +2745,9 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
          home_address, contact_number, email,
          position, specialization, work_department, medical_degree, license_number,
          years_experience, skills, start_date, employment_type, shift_type,
-         work_days, work_start_time, work_end_time, status
+         work_days, work_start_time, work_end_time, profile_photo_url, status
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
       [
         userId,
         home_branch_id,
@@ -2531,8 +2779,12 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
         Array.isArray(staffProfile.work_days) ? staffProfile.work_days.join(', ') : staffProfile.work_days || null,
         staffProfile.work_start_time || null,
         staffProfile.work_end_time || null,
+        staffFileUrl(profilePhotoFile),
       ]
     );
+    const staffProfileId = staffResult.insertId;
+
+    await saveStaffDocuments(staffProfileId, documentFiles);
 
     if (role === 'dentist') {
       const DAY_TO_WEEKDAY = {
@@ -2629,7 +2881,7 @@ router.post('/staff', authenticate, requireRole('admin'), async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   const [users] = await pool.query(
     `SELECT u.id, u.role, u.name, u.email, u.phone, u.status, u.home_branch_id,
-            u.created_at, u.must_change_password, b.address AS home_branch_address
+            u.profile_photo_url, u.created_at, u.must_change_password, b.address AS home_branch_address
      FROM users u
      LEFT JOIN branches b ON b.id = u.home_branch_id
      WHERE u.id = ?`,
@@ -2641,11 +2893,40 @@ router.get('/me', authenticate, async (req, res) => {
   res.json({ ...u, home_branch_city: extractCity(u.home_branch_address), branches });
 });
 
-router.patch('/me', authenticate, requireRole('admin'), async (req, res) => {
-  const { name, email, phone, status = 'Active', password = '' } = req.body;
-  const trimmedName = String(name || '').trim();
-  const trimmedEmail = String(email || '').trim();
-  const trimmedPhone = String(phone || '').trim();
+router.patch(
+  '/me',
+  authenticate,
+  requireRole('admin'),
+  staffUpload.fields([{ name: 'profilePhoto', maxCount: 1 }]),
+  async (req, res) => {
+  const body = normalizeStaffBody(req.body || {});
+  const profilePhotoFile = req.files?.profilePhoto?.[0] || null;
+
+  try {
+    const [currentRows] = await pool.query(
+      `SELECT id, role, name, email, phone, status, profile_photo_url
+       FROM users
+       WHERE id = ? AND role = 'admin'
+       LIMIT 1`,
+      [req.user.user_id]
+    );
+
+    const current = currentRows[0] || null;
+    if (!current) return res.status(404).json({ message: 'User not found' });
+
+    const merged = { ...current, ...body };
+    if (profilePhotoFile) {
+      merged.profile_photo_url = staffFileUrl(profilePhotoFile);
+    }
+    if (body.removeProfilePhoto === true || body.remove_profile_photo === true) {
+      merged.profile_photo_url = null;
+    }
+
+  const { password = '' } = merged;
+  const trimmedName = String(merged.name || '').trim();
+  const trimmedEmail = String(merged.email || '').trim();
+  const trimmedPhone = String(merged.phone || '').trim();
+  const status = merged.status || 'Active';
 
   if (!trimmedName || !trimmedEmail || !trimmedPhone || !status) {
     return res.status(400).json({ message: 'This field is required' });
@@ -2679,7 +2960,6 @@ router.patch('/me', authenticate, requireRole('admin'), async (req, res) => {
     }
   }
 
-  try {
     const [existing] = await pool.query(
       'SELECT id FROM users WHERE email = ? AND id <> ?',
       [trimmedEmail, req.user.user_id]
@@ -2696,6 +2976,11 @@ router.patch('/me', authenticate, requireRole('admin'), async (req, res) => {
       'status = ?',
     ];
     const updateParams = [trimmedName, trimmedEmail, trimmedPhone, status];
+
+    if (profilePhotoFile || body.removeProfilePhoto === true || body.remove_profile_photo === true) {
+      updateFields.push('profile_photo_url = ?');
+      updateParams.push(merged.profile_photo_url || null);
+    }
 
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10);
@@ -2721,7 +3006,7 @@ router.patch('/me', authenticate, requireRole('admin'), async (req, res) => {
     }
 
     const [users] = await pool.query(
-      `SELECT id, role, name, email, phone, status, home_branch_id, created_at, must_change_password
+      `SELECT id, role, name, email, phone, status, profile_photo_url, home_branch_id, created_at, must_change_password
        FROM users
        WHERE id = ?`,
       [req.user.user_id]

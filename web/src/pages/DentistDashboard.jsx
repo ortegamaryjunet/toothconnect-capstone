@@ -351,7 +351,7 @@ export default function DentistDashboard() {
             <DentistProfileMenu
               styles={styles}
               dentistName={user?.name || 'Dentist'}
-              specialization={serviceNames || 'Dentist'}
+              specialization="Dentist"
             />
           </div>
         </header>
