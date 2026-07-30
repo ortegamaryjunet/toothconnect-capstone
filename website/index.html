@@ -476,6 +476,8 @@
                     placeholder="Enter your full name"
                     autocomplete="name"
                     required>
+
+                <small class="input-error"></small>
             </div>
 
             <div class="form-group">
@@ -488,6 +490,8 @@
                     placeholder="Enter your email address"
                     autocomplete="email"
                     required>
+
+                <small class="input-error"></small>
             </div>
         </div>
 
@@ -500,9 +504,11 @@
                         id="phoneNumber"
                         name="phoneNumber"
                         type="tel"
-                        placeholder="0912 345 6789"
+                        placeholder="09XXXXXXXXX"
                         autocomplete="tel"
                         required>
+
+                    <small class="input-error"></small>
                 </div>
             </div>
 
@@ -567,6 +573,8 @@
                 name="message"
                 placeholder="Tell us about your inquiry..."
                 required></textarea>
+            
+            <small class="input-error"></small>
         </div>
 
         <button type="submit">
