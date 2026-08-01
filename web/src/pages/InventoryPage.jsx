@@ -1066,8 +1066,14 @@ export default function InventoryPage() {
   function getEditFieldStyle(field) {
     return {
       ...styles.formInput,
-      borderColor: expenseGoldBorder,
-      color: '#3f2f08',
+      height: 48,
+      padding: '0 14px',
+      borderRadius: 15,
+      borderColor: '#dbe3ef',
+      background: '#ffffff',
+      color: '#334155',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
       ...(isEditFieldInvalid(field)
         ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
         : {}),
@@ -1076,8 +1082,8 @@ export default function InventoryPage() {
 
   function renderEditRequiredLabel(label) {
     return (
-      <span style={{ ...styles.formLabel, color: expenseGoldDark }}>
-        {label} <span style={{ color: expenseGold }}>*</span>
+      <span style={{ ...styles.formLabel, color: '#8b6508', fontWeight: 700 }}>
+        {label} <span style={{ color: '#dc2626' }}>*</span>
       </span>
     );
   }
@@ -1459,9 +1465,14 @@ export default function InventoryPage() {
   function getExpenseFieldStyle(field) {
     return {
       ...styles.formInput,
-      borderColor: expenseGoldBorder,
+      height: 48,
+      padding: '0 14px',
+      borderRadius: 15,
+      borderColor: '#dbe3ef',
       background: '#ffffff',
-      color: '#3f2f08',
+      color: '#334155',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
       ...(isExpenseFieldInvalid(field)
         ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
         : {}),
@@ -1470,8 +1481,8 @@ export default function InventoryPage() {
 
   function renderRequiredLabel(label) {
     return (
-      <span style={{ ...styles.formLabel, color: expenseGoldDark }}>
-        {label} <span style={{ color: expenseGold }}>*</span>
+      <span style={{ ...styles.formLabel, color: '#8b6508', fontWeight: 700 }}>
+        {label} <span style={{ color: '#dc2626' }}>*</span>
       </span>
     );
   }
@@ -2008,12 +2019,17 @@ export default function InventoryPage() {
 
     const readOnlyFieldStyle = {
       ...styles.formInput,
-      borderColor: expenseGoldBorder,
+      height: 48,
+      padding: '0 14px',
+      borderRadius: 15,
+      borderColor: '#dbe3ef',
       background: '#ffffff',
-      color: '#3f2f08',
+      color: '#334155',
+      fontSize: 14,
+      fontFamily: 'Arial, sans-serif',
       cursor: 'not-allowed',
     };
-    const editLabelStyle = { ...styles.formLabel, color: expenseGoldDark };
+    const editLabelStyle = { ...styles.formLabel, color: '#8b6508', fontWeight: 700 };
     const renderExpenseManagedFields = () => (
       <>
         <label style={styles.formGroup}>
@@ -3127,7 +3143,7 @@ export default function InventoryPage() {
           <div style={{ ...styles.editModalContent, border: '1px solid #e5e7eb', boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)' }}>
             <div style={styles.editModalHeader}>
               <div>
-                <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Edit Inventory Item</h2>
+                <h2 style={{ margin: 0, fontSize: isMobile ? 22 : 26, fontWeight: 800, color: '#172033', fontFamily: 'Arial, sans-serif', letterSpacing: '.3px' }}>Edit Inventory Item</h2>
                 <p style={{ ...styles.modalText, color: expenseGoldDark, fontWeight: 700 }}>
                   Only item classification fields can be updated here.
                 </p>
@@ -3271,7 +3287,7 @@ export default function InventoryPage() {
           <div style={{ background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '26px 28px 24px', boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 4 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#3f2f08', fontFamily: 'Arial, sans-serif' }}>Expense Input</h3>
+                <h3 style={{ margin: 0, fontSize: isMobile ? 22 : 26, fontWeight: 800, color: '#172033', fontFamily: 'Arial, sans-serif', letterSpacing: '.3px' }}>Expense Input</h3>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: expenseGoldDark, fontFamily: 'Arial, sans-serif', fontWeight: 700 }}>Inventory purchase expense</p>
               </div>
             </div>
