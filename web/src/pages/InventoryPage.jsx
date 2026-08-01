@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import {
   createInventoryPurchaseExpense,
   listEquipment,
+  listInventoryItemHistory,
   listInventoryUsageHistory,
   listMedicines,
   listSupplies,
@@ -116,6 +117,7 @@ function mapMedicineRow(row, index) {
     maxStock: getMaximumStock(row),
     stockPercentage: formatBackendStockPercentage(row),
     pricePerItem: Number(row.price_per_item || 0),
+    dateAdded: formatDateOnly(row.date_added || row.created_at),
     lastUpdated: formatDateOnly(row.updated_at || row.created_at),
     status: row.status,
   };
@@ -140,6 +142,7 @@ function mapEquipmentRow(row, index) {
     maxStock: getMaximumStock(row),
     stockPercentage: formatBackendStockPercentage(row),
     pricePerItem: Number(row.price_per_item || 0),
+    dateAdded: formatDateOnly(row.date_added || row.created_at),
     lastUpdated: formatDateOnly(row.updated_at || row.created_at),
     maintenanceStatus: fallback(row.maintenance_status),
     status: row.maintenance_status || row.status,
@@ -161,6 +164,7 @@ function mapSupplyRow(row, index) {
     maxStock: getMaximumStock(row),
     stockPercentage: formatBackendStockPercentage(row),
     pricePerItem: Number(row.price_per_item || 0),
+    dateAdded: formatDateOnly(row.date_added || row.created_at),
     lastUpdated: formatDateOnly(row.updated_at || row.created_at),
     status: row.status,
   };
@@ -312,6 +316,11 @@ export default function InventoryPage() {
   const [editTouchedFields, setEditTouchedFields] = useState({});
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [showItemHistory, setShowItemHistory] = useState(false);
+  const [showItemHistoryCloseConfirm, setShowItemHistoryCloseConfirm] = useState(false);
+  const [itemHistoryRows, setItemHistoryRows] = useState([]);
+  const [itemHistoryLoading, setItemHistoryLoading] = useState(false);
+  const [itemHistoryError, setItemHistoryError] = useState('');
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryError, setInventoryError] = useState('');
 
@@ -358,6 +367,8 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState('medicine');
   const [searchValue, setSearchValue] = useState('');
   const [stockStatusFilter, setStockStatusFilter] = useState('');
+  const [dateAddedFromFilter, setDateAddedFromFilter] = useState('');
+  const [dateAddedToFilter, setDateAddedToFilter] = useState('');
   const [selectedStockCategory, setSelectedStockCategory] = useState('medicine');
 
   const [currentPages, setCurrentPages] = useState({
@@ -451,8 +462,8 @@ export default function InventoryPage() {
         ? 'View medicine inventory for your assigned branch.'
         : 'View medicine inventory across clinic branches.',
       rows: medicines,
-      colspan: isReceptionist ? 14 : 15,
-      tableMinWidth: 1660,
+      colspan: isReceptionist ? 15 : 16,
+      tableMinWidth: 1760,
     },
     equipment: {
       label: 'Dental Equipment',
@@ -461,8 +472,8 @@ export default function InventoryPage() {
         ? 'View dental equipment details for your assigned branch.'
         : 'View dental equipment details, warranty, and location.',
       rows: equipment,
-      colspan: isReceptionist ? 16 : 17,
-      tableMinWidth: 1900,
+      colspan: isReceptionist ? 17 : 18,
+      tableMinWidth: 2000,
     },
     supplies: {
       label: 'Dental Supplies',
@@ -471,14 +482,15 @@ export default function InventoryPage() {
         ? 'View supplies and availability for your assigned branch.'
         : 'View supplies, units, and availability status.',
       rows: supplies,
-      colspan: isReceptionist ? 12 : 13,
-      tableMinWidth: 1500,
+      colspan: isReceptionist ? 13 : 14,
+      tableMinWidth: 1600,
     },
   };
 
   const isSearchActive = searchValue.trim().length > 0;
   const isStockFilterActive = Boolean(stockStatusFilter);
-  const isCrossCategoryActive = isSearchActive || isStockFilterActive;
+  const isDateAddedFilterActive = Boolean(dateAddedFromFilter || dateAddedToFilter);
+  const isCrossCategoryActive = isSearchActive || isStockFilterActive || isDateAddedFilterActive;
 
   const activeRows = inventoryMap[activeTab].rows;
 
@@ -493,23 +505,54 @@ export default function InventoryPage() {
     return true;
   }
 
+  function matchesDateAddedFilter(item) {
+    const dateAdded = String(item?.dateAdded || '').slice(0, 10);
+    if (!dateAddedFromFilter && !dateAddedToFilter) return true;
+    if (!dateAdded || dateAdded === 'N/A') return false;
+    if (dateAddedFromFilter && dateAdded < dateAddedFromFilter) return false;
+    if (dateAddedToFilter && dateAdded > dateAddedToFilter) return false;
+    return true;
+  }
+
+  function resetInventoryFilterPages() {
+    setCurrentPages((prev) => ({ ...prev, medicine: 1, equipment: 1, supplies: 1, search: 1 }));
+  }
+
+  function handleDateAddedFromChange(value) {
+    setDateAddedFromFilter(value);
+    if (dateAddedToFilter && value && dateAddedToFilter < value) {
+      setDateAddedToFilter('');
+    }
+    resetInventoryFilterPages();
+  }
+
+  function handleDateAddedToChange(value) {
+    if (dateAddedFromFilter && value && value < dateAddedFromFilter) {
+      return;
+    }
+    setDateAddedToFilter(value);
+    resetInventoryFilterPages();
+  }
+
   const filteredRows = useMemo(() => {
     const search = searchValue.toLowerCase().trim();
 
     return activeRows.filter((item) => {
       if (!matchesStockStatusFilter(item)) return false;
+      if (!matchesDateAddedFilter(item)) return false;
       const rowText = Object.values(item).join(' ').toLowerCase();
       const matchesSearch = rowText.includes(search);
       return matchesSearch;
     });
-  }, [activeRows, searchValue, stockStatusFilter]);
+  }, [activeRows, searchValue, stockStatusFilter, dateAddedFromFilter, dateAddedToFilter]);
 
   const crossCategoryResults = useMemo(() => {
     const search = searchValue.toLowerCase().trim();
-    if (!search && !stockStatusFilter) return [];
+    if (!search && !stockStatusFilter && !isDateAddedFilterActive) return [];
 
     function matchItem(item) {
       if (!matchesStockStatusFilter(item)) return false;
+      if (!matchesDateAddedFilter(item)) return false;
       if (!search) return true;
       return Object.values(item).join(' ').toLowerCase().includes(search);
     }
@@ -519,7 +562,7 @@ export default function InventoryPage() {
       ...equipment.filter(matchItem).map((item) => ({ ...item, _type: 'equipment', _name: item.equipmentName })),
       ...supplies.filter(matchItem).map((item) => ({ ...item, _type: 'supplies', _name: item.supplyName })),
     ];
-  }, [medicines, equipment, supplies, searchValue, stockStatusFilter]);
+  }, [medicines, equipment, supplies, searchValue, stockStatusFilter, dateAddedFromFilter, dateAddedToFilter, isDateAddedFilterActive]);
 
   const searchTotalPages = Math.ceil(crossCategoryResults.length / rowsPerPage);
 
@@ -712,6 +755,39 @@ export default function InventoryPage() {
   useEffect(() => {
     let cancelled = false;
 
+    async function loadItemHistory() {
+      if (!showItemHistory || !selectedInventoryItem?.rawId || !selectedInventoryItem?.type) {
+        return;
+      }
+
+      setItemHistoryLoading(true);
+      setItemHistoryError('');
+      try {
+        const records = await listInventoryItemHistory(
+          selectedInventoryItem.type,
+          selectedInventoryItem.rawId
+        );
+        if (!cancelled) setItemHistoryRows(records);
+      } catch (err) {
+        if (!cancelled) {
+          setItemHistoryRows([]);
+          setItemHistoryError(err.response?.data?.message || 'Failed to load item history.');
+        }
+      } finally {
+        if (!cancelled) setItemHistoryLoading(false);
+      }
+    }
+
+    loadItemHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedInventoryItem?.rawId, selectedInventoryItem?.type, showItemHistory]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function fetchUnreadNotifications() {
       try {
         const count = await getUnreadNotificationCount();
@@ -756,6 +832,8 @@ export default function InventoryPage() {
       showEditModal ||
       showEditConfirmModal ||
       showEditCancelConfirmModal ||
+      showItemHistory ||
+      showItemHistoryCloseConfirm ||
       showStockSummaryModal ||
       showUsageHistoryModal ||
       showExpenseModal ||
@@ -776,6 +854,8 @@ export default function InventoryPage() {
     showEditModal,
     showEditConfirmModal,
     showEditCancelConfirmModal,
+    showItemHistory,
+    showItemHistoryCloseConfirm,
     showStockSummaryModal,
     showUsageHistoryModal,
     showExpenseModal,
@@ -791,6 +871,8 @@ export default function InventoryPage() {
         closeEditModal();
         closeEditConfirmModal();
         closeEditCancelConfirmModal();
+        closeItemHistoryModal();
+        closeItemHistoryCloseConfirmModal();
         closeStockSummaryModal();
         closeUsageHistoryModal();
         closeExpenseModal();
@@ -975,6 +1057,10 @@ export default function InventoryPage() {
     });
     setEditError('');
     setEditTouchedFields({});
+    setShowItemHistory(false);
+    setShowItemHistoryCloseConfirm(false);
+    setItemHistoryRows([]);
+    setItemHistoryError('');
     setShowEditModal(true);
   }
 
@@ -985,6 +1071,10 @@ export default function InventoryPage() {
     setSelectedInventoryItem(null);
     setEditError('');
     setEditTouchedFields({});
+    setShowItemHistory(false);
+    setShowItemHistoryCloseConfirm(false);
+    setItemHistoryRows([]);
+    setItemHistoryError('');
   }
 
   function closeEditConfirmModal() {
@@ -1002,6 +1092,25 @@ export default function InventoryPage() {
 
   function confirmCancelEditModal() {
     closeEditModal();
+  }
+
+  function openItemHistoryModal() {
+    setItemHistoryError('');
+    setShowItemHistory(true);
+  }
+
+  function requestCloseItemHistoryModal() {
+    setShowItemHistoryCloseConfirm(true);
+  }
+
+  function closeItemHistoryCloseConfirmModal() {
+    setShowItemHistoryCloseConfirm(false);
+  }
+
+  function closeItemHistoryModal() {
+    setShowItemHistory(false);
+    setShowItemHistoryCloseConfirm(false);
+    setItemHistoryError('');
   }
 
   function handleEditFormChange(field, value) {
@@ -1317,6 +1426,11 @@ export default function InventoryPage() {
         item.maintenanceStatus === 'N/A' ? 'Available' : item.maintenanceStatus || 'Available',
     });
     setEditError('');
+    setEditTouchedFields({});
+    setShowItemHistory(false);
+    setShowItemHistoryCloseConfirm(false);
+    setItemHistoryRows([]);
+    setItemHistoryError('');
     setShowEditModal(true);
   }
 
@@ -1654,6 +1768,7 @@ export default function InventoryPage() {
         <td style={styles.tableCell}>
           <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
         </td>
+        <td style={styles.tableCell}>{item.dateAdded}</td>
         {!isReceptionist && (
           <td style={styles.tableCell}>
             <button
@@ -1697,6 +1812,7 @@ export default function InventoryPage() {
         <td style={styles.tableCell}>
           <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
         </td>
+        <td style={styles.tableCell}>{item.dateAdded}</td>
         {!isReceptionist && (
           <td style={styles.tableCell}>
             <button
@@ -1736,6 +1852,7 @@ export default function InventoryPage() {
         <td style={styles.tableCell}>
           <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
         </td>
+        <td style={styles.tableCell}>{item.dateAdded}</td>
         {!isReceptionist && (
           <td style={styles.tableCell}>
             <button
@@ -1839,7 +1956,7 @@ export default function InventoryPage() {
       </div>
 
         <div style={styles.tableWrapper}>
-          <table style={{ ...styles.inventoryTable, minWidth: 1050 }}>
+          <table style={{ ...styles.inventoryTable, minWidth: 1150 }}>
             <thead>
               <tr>
                 <th style={styles.tableHead}>ID</th>
@@ -1851,13 +1968,14 @@ export default function InventoryPage() {
                 <th style={styles.tableHead}>Maximum Stock</th>
                 <th style={styles.tableHead}>Current Stock %</th>
                 <th style={styles.tableHead}>Status</th>
+                <th style={styles.tableHead}>Date Added</th>
                 {!isReceptionist && <th style={styles.tableHead}>Action</th>}
               </tr>
             </thead>
             <tbody>
               {paginatedCrossResults.length === 0 ? (
                 <tr>
-                  <td colSpan={isReceptionist ? 7 : 9} style={styles.emptyRow}>
+                  <td colSpan={isReceptionist ? 9 : 10} style={styles.emptyRow}>
                     No inventory records found matching your search.
                   </td>
                 </tr>
@@ -1875,6 +1993,7 @@ export default function InventoryPage() {
                     <td style={styles.tableCell}>
                       <span style={getStatusBadgeStyle(getSummaryStatus(item))}>{getSummaryStatus(item) === 'Healthy' ? 'In Stock' : getSummaryStatus(item)}</span>
                     </td>
+                    <td style={styles.tableCell}>{item.dateAdded}</td>
                     {!isReceptionist && (
                       <td style={styles.tableCell}>
                         <button
@@ -1944,6 +2063,7 @@ export default function InventoryPage() {
           <th style={styles.tableHead}>Current Stock %</th>
           <th style={styles.tableHead}>Price per Item</th>
           <th style={styles.tableHead}>Status</th>
+          <th style={styles.tableHead}>Date Added</th>
           {!isReceptionist && <th style={styles.tableHead}>Action</th>}
         </tr>
       );
@@ -1968,6 +2088,7 @@ export default function InventoryPage() {
           <th style={styles.tableHead}>Current Stock %</th>
           <th style={styles.tableHead}>Price per Item</th>
           <th style={styles.tableHead}>Status</th>
+          <th style={styles.tableHead}>Date Added</th>
           {!isReceptionist && <th style={styles.tableHead}>Action</th>}
         </tr>
       );
@@ -1987,6 +2108,7 @@ export default function InventoryPage() {
         <th style={styles.tableHead}>Current Stock %</th>
         <th style={styles.tableHead}>Price per Item</th>
         <th style={styles.tableHead}>Status</th>
+        <th style={styles.tableHead}>Date Added</th>
         {!isReceptionist && <th style={styles.tableHead}>Action</th>}
       </tr>
     );
@@ -2081,6 +2203,17 @@ export default function InventoryPage() {
           <input
             type="text"
             value={formatPeso(selectedInventoryItem.pricePerItem || 0)}
+            readOnly
+            style={readOnlyFieldStyle}
+            aria-readonly="true"
+          />
+        </label>
+
+        <label style={styles.formGroup}>
+          <span style={editLabelStyle}>Date Added</span>
+          <input
+            type="text"
+            value={selectedInventoryItem.dateAdded || 'N/A'}
             readOnly
             style={readOnlyFieldStyle}
             aria-readonly="true"
@@ -2516,6 +2649,101 @@ export default function InventoryPage() {
     );
   }
 
+  function renderItemHistoryModal() {
+    return (
+      <div
+        style={{
+          ...styles.stockSummaryModalContent,
+          width: isMobile ? '100%' : 'min(860px, 94vw)',
+          maxWidth: '94vw',
+        }}
+      >
+        <div style={styles.stockSummaryModalHeader}>
+          <div>
+            <h2 style={{ ...styles.stockSummaryModalTitle, color: '#3f2f08' }}>
+              Version History
+            </h2>
+            <p style={{ ...styles.stockSummaryModalText, color: expenseGoldDark, fontWeight: 700 }}>
+              {getInventoryItemName(selectedInventoryItem)} inventory changes
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={requestCloseItemHistoryModal}
+            style={{
+              ...styles.cancelEditBtn,
+              width: 40,
+              minWidth: 40,
+              height: 40,
+              padding: 0,
+              flexShrink: 0,
+              border: 'none',
+            }}
+            aria-label="Close item history"
+          >
+            x
+          </button>
+        </div>
+
+        {itemHistoryLoading ? (
+          <p style={{ ...styles.helperText, margin: 0 }}>Loading history...</p>
+        ) : itemHistoryError ? (
+          <p style={{ ...styles.helperText, margin: 0, background: '#fef2f2', color: '#b91c1c' }}>
+            {itemHistoryError}
+          </p>
+        ) : itemHistoryRows.length === 0 ? (
+          <p style={{ ...styles.helperText, margin: 0 }}>No item history recorded yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '62vh', overflowY: 'auto', paddingRight: 4 }}>
+            {itemHistoryRows.map((history) => (
+              <div
+                key={history.id}
+                style={{
+                  border: '1px solid #f3d675',
+                  borderRadius: 14,
+                  background: '#ffffff',
+                  padding: 12,
+                  fontFamily: 'Arial, sans-serif',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                  <strong style={{ color: '#172033', fontSize: 13 }}>{history.action}</strong>
+                  <span style={{ color: '#64748b', fontSize: 11, whiteSpace: 'nowrap' }}>
+                    {formatDateTime(history.changed_at)}
+                  </span>
+                </div>
+                <p style={{ margin: '5px 0 8px', color: expenseGoldDark, fontSize: 12, fontWeight: 700 }}>
+                  {history.summary}
+                </p>
+                <p style={{ margin: '0 0 8px', color: '#64748b', fontSize: 12 }}>
+                  By {history.changed_by || 'Staff'}
+                </p>
+                {(history.changes || []).slice(0, 5).map((change) => (
+                  <div
+                    key={`${history.id}-${change.field}`}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      gap: 3,
+                      padding: '7px 0',
+                      borderTop: '1px solid #f8e7a6',
+                    }}
+                  >
+                    <span style={{ color: '#334155', fontSize: 12, fontWeight: 800 }}>{change.field}</span>
+                    <span style={{ color: '#64748b', fontSize: 12, lineHeight: 1.35 }}>
+                      {change.before || 'N/A'} to {change.after || 'N/A'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={styles.page}>
       <aside style={styles.sidebar}>
@@ -2654,22 +2882,47 @@ export default function InventoryPage() {
                 />
               </div>
 
-              <div style={styles.stockFilterBox}>
-                <i className="fi fi-rr-filter" style={styles.stockFilterIcon}></i>
-                <select
-                  value={stockStatusFilter}
-                  onChange={(event) => {
-                    setStockStatusFilter(event.target.value);
-                    setCurrentPages((prev) => ({ ...prev, medicine: 1, equipment: 1, supplies: 1, search: 1 }));
-                  }}
-                  style={styles.stockFilterSelect}
-                  aria-label="Filter inventory by stock status"
-                >
-                  <option value="">All</option>
-                  <option value="in_stock">In Stock</option>
-                  <option value="low_stock">Low Stock</option>
-                  <option value="out_of_stock">Out of Stock</option>
-                </select>
+              <div style={styles.inventoryFilterControls}>
+                <div style={styles.inventoryFilterGroup}>
+                  <label style={styles.inventoryFilterLabel}>Status</label>
+                  <select
+                    value={stockStatusFilter}
+                    onChange={(event) => {
+                      setStockStatusFilter(event.target.value);
+                      resetInventoryFilterPages();
+                    }}
+                    style={styles.inventoryFilterSelect}
+                    aria-label="Filter inventory by stock status"
+                  >
+                    <option value="">All</option>
+                    <option value="in_stock">In Stock</option>
+                    <option value="low_stock">Low Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                  </select>
+                </div>
+
+                <div style={styles.inventoryFilterGroup}>
+                  <label style={styles.inventoryFilterLabel}>From</label>
+                  <input
+                    type="date"
+                    value={dateAddedFromFilter}
+                    onChange={(event) => handleDateAddedFromChange(event.target.value)}
+                    style={styles.inventoryFilterInput}
+                    aria-label="Filter inventory date added from"
+                  />
+                </div>
+
+                <div style={styles.inventoryFilterGroup}>
+                  <label style={styles.inventoryFilterLabel}>To</label>
+                  <input
+                    type="date"
+                    value={dateAddedToFilter}
+                    min={dateAddedFromFilter || undefined}
+                    onChange={(event) => handleDateAddedToChange(event.target.value)}
+                    style={styles.inventoryFilterInput}
+                    aria-label="Filter inventory date added to"
+                  />
+                </div>
               </div>
             </div>
 
@@ -3140,9 +3393,15 @@ export default function InventoryPage() {
 
       {!isReceptionist && showEditModal && (
         <div style={styles.modal} onClick={handleEditOverlayClick}>
-          <div style={{ ...styles.editModalContent, border: '1px solid #e5e7eb', boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)' }}>
+          <div
+            style={{
+              ...styles.editModalContent,
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)',
+            }}
+          >
             <div style={styles.editModalHeader}>
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <h2 style={{ margin: 0, fontSize: isMobile ? 22 : 26, fontWeight: 800, color: '#172033', fontFamily: 'Arial, sans-serif', letterSpacing: '.3px' }}>Edit Inventory Item</h2>
                 <p style={{ ...styles.modalText, color: expenseGoldDark, fontWeight: 700 }}>
                   Only item classification fields can be updated here.
@@ -3162,22 +3421,90 @@ export default function InventoryPage() {
 
             {renderEditModalFields()}
 
-            <div style={styles.editModalActions}>
+            <div
+              style={{
+                ...styles.editModalActions,
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
               <button
                 type="button"
-                onClick={handleCancelEditModal}
-                style={styles.cancelEditBtn}
+                onClick={openItemHistoryModal}
+                style={{
+                  ...styles.stockSummaryBtn,
+                  minHeight: 40,
+                  border: 'none',
+                  boxShadow: 'none',
+                }}
+              >
+                View History
+              </button>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 12,
+                  flexDirection: isMobile ? 'column' : 'row',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleCancelEditModal}
+                  style={styles.cancelEditBtn}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  style={styles.saveBtn}
+                  disabled={editSaving}
+                >
+                  {editSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isReceptionist && showItemHistory && (
+        <div style={styles.modal} onClick={(event) => { if (event.target === event.currentTarget) requestCloseItemHistoryModal(); }}>
+          {renderItemHistoryModal()}
+        </div>
+      )}
+
+      {!isReceptionist && showItemHistoryCloseConfirm && (
+        <div style={styles.modal} onClick={(event) => { if (event.target === event.currentTarget) closeItemHistoryCloseConfirmModal(); }}>
+          <div style={styles.modalContent}>
+            <div style={{ ...styles.modalIcon, background: expenseGoldSoft, color: expenseGoldDark }}>
+              <i className="fi fi-rr-cross-small" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Close History?</h2>
+            <p style={styles.modalText}>
+              Do you want to close {getInventoryItemName(selectedInventoryItem)} history?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                onClick={closeItemHistoryCloseConfirmModal}
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
               >
                 Cancel
               </button>
 
               <button
                 type="button"
-                onClick={handleSaveEdit}
-                style={styles.saveBtn}
-                disabled={editSaving}
+                onClick={closeItemHistoryModal}
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
               >
-                {editSaving ? 'Saving...' : 'Save Changes'}
+                Close
               </button>
             </div>
           </div>

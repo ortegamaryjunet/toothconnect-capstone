@@ -12,6 +12,22 @@ const router = express.Router();
 
 router.use(authenticate);
 
+let inventoryDateAddedColumnsReady = false;
+
+async function ensureInventoryDateAddedColumns(executor = pool) {
+  if (inventoryDateAddedColumnsReady) return;
+
+  for (const table of ['supplies', 'medicines', 'equipment']) {
+    const [columns] = await executor.query(`SHOW COLUMNS FROM ${table} LIKE 'date_added'`);
+    if (columns.length === 0) {
+      await executor.query(`ALTER TABLE ${table} ADD COLUMN date_added DATE NULL AFTER low_stock_threshold`);
+      await executor.query(`UPDATE ${table} SET date_added = DATE(created_at) WHERE date_added IS NULL`);
+    }
+  }
+
+  inventoryDateAddedColumnsReady = true;
+}
+
 // ─────────────────────────────────────────────────────────────
 // SHARED HELPERS
 // ─────────────────────────────────────────────────────────────
@@ -133,6 +149,64 @@ function getInventoryConfig(category) {
   };
 
   return configs[category];
+}
+
+async function fetchInventorySnapshot(executor, category, id) {
+  const config = getInventoryConfig(category);
+  if (!config) return null;
+
+  await ensureInventoryDateAddedColumns(executor);
+
+  const [rows] = await executor.query(
+    `SELECT i.*, b.name AS branch_name, b.address AS branch_address
+     FROM ${config.table} i
+     JOIN branches b ON b.id = i.branch_id
+     WHERE i.id = ?
+     LIMIT 1`,
+    [id]
+  );
+
+  if (!rows.length) return null;
+  return rows[0];
+}
+
+function formatAuditValue(value) {
+  if (value === null || value === undefined || value === '') return 'N/A';
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'N/A';
+  const text = String(value);
+  return text.includes('T') ? text.slice(0, 10) : text;
+}
+
+function buildInventoryChangeEntries(beforeRow, afterRow, fields) {
+  return fields
+    .map(({ label, column }) => ({
+      field: label,
+      before: formatAuditValue(beforeRow?.[column]),
+      after: formatAuditValue(afterRow?.[column]),
+    }))
+    .filter((change) => change.before !== change.after);
+}
+
+async function logInventoryUpdate(executor, req, category, beforeRow, afterRow, fields) {
+  const config = getInventoryConfig(category);
+  const changes = buildInventoryChangeEntries(beforeRow, afterRow, fields);
+  if (!changes.length || !config) return;
+
+  await executor.query(
+    `INSERT INTO audit_logs (user_id, action, branch_id, details)
+     VALUES (?, 'inventory_item_updated', ?, ?)`,
+    [
+      req.user.user_id,
+      afterRow.branch_id,
+      JSON.stringify({
+        category: category === 'supplies' ? 'supply' : category,
+        item_id: afterRow.id,
+        item_name: afterRow[config.nameColumn] || beforeRow?.[config.nameColumn] || null,
+        changes,
+      }),
+    ]
+  );
 }
 
 async function fetchInventoryAlertRow(executor, category, id) {
@@ -323,12 +397,13 @@ function usageHistoryBranchFilter(req, requestedBranchId) {
 
 router.get('/supplies', async (req, res) => {
   try {
+    await ensureInventoryDateAddedColumns();
     const branch = inventoryBranchFilter(req, req.query.branch_id);
     const [rows] = await pool.query(
       `SELECT i.id, i.branch_id, b.name AS branch_name, b.address AS branch_address, i.supply_name, i.brand,
               i.supplier, i.category, i.unit, i.quantity, i.maximum_stock, i.stock_percentage,
               i.price_per_item, i.low_stock_threshold,
-              i.created_at, i.updated_at
+              i.date_added, i.created_at, i.updated_at
        FROM supplies i
        JOIN branches b ON b.id = i.branch_id
        WHERE ${branch.clause}
@@ -353,6 +428,7 @@ router.post('/supplies', requireRole('receptionist', 'admin'), async (req, res) 
   }
 
   try {
+    await ensureInventoryDateAddedColumns();
     const initialQuantity = normalizeNonnegativeInt(quantity || 0);
     const maximumStockValue = normalizeNonnegativeInt(maximum_stock ?? maxStock ?? 0);
     const stockLimitError = getInventoryStockLimitError({
@@ -366,8 +442,8 @@ router.post('/supplies', requireRole('receptionist', 'admin'), async (req, res) 
     }
 
     const [result] = await pool.query(
-      `INSERT INTO supplies (branch_id, supply_name, brand, supplier, category, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 10)`,
+      `INSERT INTO supplies (branch_id, supply_name, brand, supplier, category, unit, quantity, maximum_stock, price_per_item, low_stock_threshold, date_added)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 10, CURRENT_DATE)`,
       [branch_id, supply_name, brand || null, supplier || null, category || null, unit, initialQuantity, maximumStockValue, normalizePrice(price_per_item)]
     );
     res.status(201).json({ id: result.insertId, message: 'Supply added' });
@@ -385,6 +461,7 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
   } = req.body;
 
   try {
+    const beforeRow = await fetchInventorySnapshot(pool, 'supply', id);
     const existing = await fetchInventoryAlertRow(pool, 'supply', id);
     if (!existing) return res.status(404).json({ message: 'Supply not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
@@ -426,6 +503,18 @@ router.patch('/supplies/:id', requireRole('receptionist', 'admin'), async (req, 
         id,
       ]
     );
+    const afterRow = await fetchInventorySnapshot(pool, 'supply', id);
+    await logInventoryUpdate(pool, req, 'supply', beforeRow, afterRow, [
+      { label: 'Supply Name', column: 'supply_name' },
+      { label: 'Brand', column: 'brand' },
+      { label: 'Supplier', column: 'supplier' },
+      { label: 'Category', column: 'category' },
+      { label: 'Unit', column: 'unit' },
+      { label: 'Quantity', column: 'quantity' },
+      { label: 'Price per Item', column: 'price_per_item' },
+      { label: 'Critical Stock Level', column: 'low_stock_threshold' },
+      { label: 'Maximum Stock', column: 'maximum_stock' },
+    ]);
     const updated = await fetchInventoryAlertRow(pool, 'supply', id);
     await createInventoryStatusNotifications(pool, existing, updated);
     res.json({ message: 'Supply updated' });
@@ -495,12 +584,13 @@ router.delete('/supplies/:id', requireRole('admin'), async (req, res) => {
 
 router.get('/medicines', async (req, res) => {
   try {
+    await ensureInventoryDateAddedColumns();
     const branch = inventoryBranchFilter(req, req.query.branch_id);
     const [rows] = await pool.query(
       `SELECT i.id, i.branch_id, b.name AS branch_name, b.address AS branch_address, i.medicine_name, i.generic_name,
               i.category, i.form, i.dosage, i.brand, i.supplier, i.unit, i.quantity, i.maximum_stock, i.stock_percentage,
               i.price_per_item,
-              i.low_stock_threshold, i.created_at, i.updated_at
+              i.low_stock_threshold, i.date_added, i.created_at, i.updated_at
        FROM medicines i
        JOIN branches b ON b.id = i.branch_id
        WHERE ${branch.clause}
@@ -525,6 +615,7 @@ router.post('/medicines', requireRole('receptionist', 'admin'), async (req, res)
   }
 
   try {
+    await ensureInventoryDateAddedColumns();
     const initialQuantity = normalizeNonnegativeInt(quantity || 0);
     const maximumStockValue = normalizeNonnegativeInt(maximum_stock ?? maxStock ?? 0);
     const stockLimitError = getInventoryStockLimitError({
@@ -538,8 +629,8 @@ router.post('/medicines', requireRole('receptionist', 'admin'), async (req, res)
     }
 
     const [result] = await pool.query(
-      `INSERT INTO medicines (branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 10)`,
+      `INSERT INTO medicines (branch_id, medicine_name, generic_name, category, form, dosage, brand, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold, date_added)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 10, CURRENT_DATE)`,
       [branch_id, medicine_name, generic_name || null, category || null, form || null, dosage || null, brand || null, supplier || null, unit, initialQuantity, maximumStockValue, normalizePrice(price_per_item)]
     );
     res.status(201).json({ id: result.insertId, message: 'Medicine added' });
@@ -557,6 +648,7 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
   } = req.body;
 
   try {
+    const beforeRow = await fetchInventorySnapshot(pool, 'medicine', id);
     const existing = await fetchInventoryAlertRow(pool, 'medicine', id);
     if (!existing) return res.status(404).json({ message: 'Medicine not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
@@ -604,6 +696,21 @@ router.patch('/medicines/:id', requireRole('receptionist', 'admin'), async (req,
         id,
       ]
     );
+    const afterRow = await fetchInventorySnapshot(pool, 'medicine', id);
+    await logInventoryUpdate(pool, req, 'medicine', beforeRow, afterRow, [
+      { label: 'Medicine Name', column: 'medicine_name' },
+      { label: 'Generic Name', column: 'generic_name' },
+      { label: 'Category', column: 'category' },
+      { label: 'Form', column: 'form' },
+      { label: 'Dosage', column: 'dosage' },
+      { label: 'Brand', column: 'brand' },
+      { label: 'Supplier', column: 'supplier' },
+      { label: 'Unit', column: 'unit' },
+      { label: 'Quantity', column: 'quantity' },
+      { label: 'Price per Item', column: 'price_per_item' },
+      { label: 'Critical Stock Level', column: 'low_stock_threshold' },
+      { label: 'Maximum Stock', column: 'maximum_stock' },
+    ]);
     const updated = await fetchInventoryAlertRow(pool, 'medicine', id);
     await createInventoryStatusNotifications(pool, existing, updated);
     res.json({ message: 'Medicine updated' });
@@ -673,6 +780,7 @@ router.delete('/medicines/:id', requireRole('admin'), async (req, res) => {
 
 router.get('/equipment', async (req, res) => {
   try {
+    await ensureInventoryDateAddedColumns();
     const branch = inventoryBranchFilter(req, req.query.branch_id);
     const [rows] = await pool.query(
       `SELECT e.id, e.branch_id, b.name AS branch_name, b.address AS branch_address, e.equipment_name, e.brand, e.supplier, e.category, e.model_number,
@@ -680,7 +788,7 @@ router.get('/equipment', async (req, res) => {
               e.last_maintenance, e.next_maintenance, e.maintenance_status,
               e.assigned_to, u.name AS assigned_to_name,
               e.quantity, e.maximum_stock, e.stock_percentage,
-              e.price_per_item, e.low_stock_threshold, e.created_at, e.updated_at
+              e.price_per_item, e.low_stock_threshold, e.date_added, e.created_at, e.updated_at
        FROM equipment e
        JOIN branches b ON b.id = e.branch_id
        LEFT JOIN users u ON u.id = e.assigned_to
@@ -715,6 +823,7 @@ router.post('/equipment', requireRole('receptionist', 'admin'), async (req, res)
   }
 
   try {
+    await ensureInventoryDateAddedColumns();
     const initialQuantity = normalizeNonnegativeInt(quantity || 1);
     const maximumStockValue = normalizeNonnegativeInt(maximum_stock ?? maxStock ?? 0);
     const stockLimitError = getInventoryStockLimitError({
@@ -731,8 +840,8 @@ router.post('/equipment', requireRole('receptionist', 'admin'), async (req, res)
       `INSERT INTO equipment (branch_id, equipment_name, brand, supplier, category, model_number,
                                serial_number, location, purchase_date, warranty_date,
                                last_maintenance, next_maintenance, maintenance_status,
-                               assigned_to, quantity, maximum_stock, price_per_item, low_stock_threshold)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                               assigned_to, quantity, maximum_stock, price_per_item, low_stock_threshold, date_added)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE)`,
       [
         branch_id, equipment_name, brand || null, supplier || null, category || null, model_number || null,
         serial_number || null, location || null, purchase_date || null, warranty_date || null,
@@ -757,6 +866,7 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
   } = req.body;
 
   try {
+    const beforeRow = await fetchInventorySnapshot(pool, 'equipment', id);
     const existing = await fetchInventoryAlertRow(pool, 'equipment', id);
     if (!existing) return res.status(404).json({ message: 'Equipment not found' });
     if (!validateBranchAccess(req, existing.branch_id)) {
@@ -814,6 +924,23 @@ router.patch('/equipment/:id', requireRole('receptionist', 'admin'), async (req,
         id,
       ]
     );
+    const afterRow = await fetchInventorySnapshot(pool, 'equipment', id);
+    await logInventoryUpdate(pool, req, 'equipment', beforeRow, afterRow, [
+      { label: 'Equipment Name', column: 'equipment_name' },
+      { label: 'Brand', column: 'brand' },
+      { label: 'Supplier', column: 'supplier' },
+      { label: 'Category', column: 'category' },
+      { label: 'Model Number', column: 'model_number' },
+      { label: 'Serial Number', column: 'serial_number' },
+      { label: 'Location', column: 'location' },
+      { label: 'Purchase Date', column: 'purchase_date' },
+      { label: 'Warranty Date', column: 'warranty_date' },
+      { label: 'Maintenance Status', column: 'maintenance_status' },
+      { label: 'Quantity', column: 'quantity' },
+      { label: 'Price per Item', column: 'price_per_item' },
+      { label: 'Critical Stock Level', column: 'low_stock_threshold' },
+      { label: 'Maximum Stock', column: 'maximum_stock' },
+    ]);
     const updated = await fetchInventoryAlertRow(pool, 'equipment', id);
     await createInventoryStatusNotifications(pool, existing, updated);
     res.json({ message: 'Equipment updated' });
@@ -866,8 +993,8 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       nameColumn: 'medicine_name',
       insertSql:
         `INSERT INTO medicines
-         (branch_id, medicine_name, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
-         VALUES (?, ?, ?, 'pcs', ?, ?, ?, 10)`,
+         (branch_id, medicine_name, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold, date_added)
+         VALUES (?, ?, ?, 'pcs', ?, ?, ?, 10, ?)`,
     },
     equipment: {
       table: 'equipment',
@@ -875,8 +1002,8 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       nameColumn: 'equipment_name',
       insertSql:
         `INSERT INTO equipment
-         (branch_id, equipment_name, supplier, quantity, maximum_stock, price_per_item, low_stock_threshold)
-         VALUES (?, ?, ?, ?, ?, ?, 1)`,
+         (branch_id, equipment_name, supplier, quantity, maximum_stock, price_per_item, low_stock_threshold, date_added)
+         VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
     },
     supplies: {
       table: 'supplies',
@@ -884,8 +1011,8 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       nameColumn: 'supply_name',
       insertSql:
         `INSERT INTO supplies
-         (branch_id, supply_name, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold)
-         VALUES (?, ?, ?, 'pcs', ?, ?, ?, 10)`,
+         (branch_id, supply_name, supplier, unit, quantity, maximum_stock, price_per_item, low_stock_threshold, date_added)
+         VALUES (?, ?, ?, 'pcs', ?, ?, ?, 10, ?)`,
     },
   };
 
@@ -899,6 +1026,13 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
 
   if (!validateBranchAccess(req, branchId)) {
     return res.status(403).json({ message: 'No access to this branch' });
+  }
+
+  try {
+    await ensureInventoryDateAddedColumns();
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error' });
   }
 
   const connection = await pool.getConnection();
@@ -943,9 +1077,10 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
              supplier = COALESCE(NULLIF(?, ''), supplier),
              maximum_stock = COALESCE(NULLIF(?, 0), maximum_stock),
              price_per_item = ?,
+             date_added = ?,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
-        [quantity, supplier || '', maximumStockValue, price, inventoryId]
+        [quantity, supplier || '', maximumStockValue, price, expenseDate, inventoryId]
       );
       const updatedRow = await fetchInventoryAlertRow(connection, category, inventoryId);
       await createInventoryStatusNotifications(connection, previousRow, updatedRow);
@@ -968,6 +1103,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
         quantity,
         maximumStockValue,
         price,
+        expenseDate,
       ]);
       inventoryId = insertResult.insertId;
       newQuantity = quantity;
@@ -998,7 +1134,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       [
         req.user.user_id,
         branchId,
-        JSON.stringify({
+      JSON.stringify({
           category,
           [config.idKey]: inventoryId,
           item_name: itemNameValue,
@@ -1006,6 +1142,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
           quantity_added: quantity,
           price_per_item: price,
           total_expense: totalExpense,
+          expense_date: expenseDate,
           expense_id: expenseResult.insertId,
         }),
       ]
@@ -1203,6 +1340,135 @@ router.get('/service-kit-history', requireRole('admin'), async (req, res) => {
         changed_at: row.created_at,
       };
     });
+
+    res.json({ records });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/items/:category/:id/history', requireRole('admin', 'receptionist'), async (req, res) => {
+  const categoryParam = String(req.params.category || '').toLowerCase();
+  const category = categoryParam === 'supplies' ? 'supply' : categoryParam;
+  const id = parseInt(req.params.id, 10);
+  const config = getInventoryConfig(category);
+
+  if (!config || !id) {
+    return res.status(400).json({ message: 'Invalid inventory item.' });
+  }
+
+  try {
+    const item = await fetchInventorySnapshot(pool, category, id);
+    if (!item) return res.status(404).json({ message: 'Inventory item not found.' });
+    if (!validateBranchAccess(req, item.branch_id)) {
+      return res.status(403).json({ message: 'No access to this branch' });
+    }
+
+    const idKey = category === 'medicine' ? 'medicine_id' : category === 'equipment' ? 'equipment_id' : 'supply_id';
+    const [auditRows] = await pool.query(
+      `SELECT al.id, al.action, al.details, al.created_at,
+              u.name AS changed_by_name, u.role AS changed_by_role
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.user_id
+       WHERE (
+           al.action = 'inventory_item_updated'
+           AND JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.category')) = ?
+           AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.item_id')) AS UNSIGNED) = ?
+         )
+         OR (
+           al.action = 'inventory_purchase_expense'
+           AND JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.category')) IN (?, ?)
+           AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.${idKey}')) AS UNSIGNED) = ?
+         )
+         OR (
+           al.action = 'inventory_restock'
+           AND JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.category')) = ?
+           AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.${idKey}')) AS UNSIGNED) = ?
+         )
+       ORDER BY al.created_at DESC
+       LIMIT 300`,
+      [
+        category,
+        id,
+        category,
+        category === 'supply' ? 'supplies' : category,
+        id,
+        category,
+        id,
+      ]
+    );
+
+    const [usageRows] = await pool.query(
+      `SELECT h.id, h.quantity_deducted, h.service_name, h.appointment_start_time, h.deducted_at,
+              u.name AS changed_by_name, u.role AS changed_by_role
+       FROM inventory_usage_history h
+       LEFT JOIN users u ON u.id = h.deducted_by
+       WHERE h.inventory_type = ? AND h.item_id = ?
+       ORDER BY h.deducted_at DESC
+       LIMIT 300`,
+      [category, id]
+    );
+
+    const auditRecords = auditRows.map((row) => {
+      let details = {};
+      try {
+        details = typeof row.details === 'string' ? JSON.parse(row.details) : (row.details || {});
+      } catch {
+        details = {};
+      }
+
+      if (row.action === 'inventory_purchase_expense') {
+        return {
+          id: `audit-${row.id}`,
+          action: 'Purchase Expense',
+          changed_at: row.created_at,
+          changed_by: row.changed_by_name || row.changed_by_role || 'Admin',
+          summary: `Added ${details.quantity_added || 0} item(s) from expense input.`,
+          changes: [
+            { field: 'Quantity Added', before: 'N/A', after: formatAuditValue(details.quantity_added) },
+            { field: 'Price per Item', before: 'N/A', after: formatAuditValue(details.price_per_item) },
+            { field: 'Expense Date', before: 'N/A', after: formatAuditValue(details.expense_date) },
+          ],
+        };
+      }
+
+      if (row.action === 'inventory_restock') {
+        return {
+          id: `audit-${row.id}`,
+          action: 'Restock',
+          changed_at: row.created_at,
+          changed_by: row.changed_by_name || row.changed_by_role || 'Staff',
+          summary: `Added ${details.amount || 0} item(s).`,
+          changes: [{ field: 'Quantity Added', before: 'N/A', after: formatAuditValue(details.amount) }],
+        };
+      }
+
+      return {
+        id: `audit-${row.id}`,
+        action: 'Item Edited',
+        changed_at: row.created_at,
+        changed_by: row.changed_by_name || row.changed_by_role || 'Staff',
+        summary: `${Array.isArray(details.changes) ? details.changes.length : 0} field(s) changed.`,
+        changes: Array.isArray(details.changes) ? details.changes : [],
+      };
+    });
+
+    const usageRecords = usageRows.map((row) => ({
+      id: `usage-${row.id}`,
+      action: 'Usage Deduction',
+      changed_at: row.deducted_at,
+      changed_by: row.changed_by_name || row.changed_by_role || 'Staff',
+      summary: `Deducted ${Number(row.quantity_deducted || 0)} item(s)${row.service_name ? ` for ${row.service_name}` : ''}.`,
+      changes: [
+        { field: 'Quantity Deducted', before: 'N/A', after: formatAuditValue(row.quantity_deducted) },
+        { field: 'Appointment Date', before: 'N/A', after: formatAuditValue(row.appointment_start_time) },
+      ],
+    }));
+
+    const records = [...auditRecords, ...usageRecords]
+      .sort((a, b) => new Date(b.changed_at || 0) - new Date(a.changed_at || 0))
+      .slice(0, 500);
 
     res.json({ records });
   } catch (err) {

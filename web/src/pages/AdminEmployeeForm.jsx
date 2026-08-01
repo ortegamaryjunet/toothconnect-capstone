@@ -100,6 +100,10 @@ function parseBranchOperatingHours(value) {
   return start && end ? { start, end } : null;
 }
 
+function formatTimeSlotLabel(value) {
+  return timeSlots.find((slot) => slot.value === value)?.label || value;
+}
+
 const phoneCountryOptions = getCountries().map((country) => ({
   country,
   callingCode: getCountryCallingCode(country),
@@ -486,6 +490,8 @@ export default function AdminEmployeeForm() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
   const [accessEmail, setAccessEmail] = useState('');
+  const [accessPassword, setAccessPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [enablePerDayBranch, setEnablePerDayBranch] = useState(false);
   const [docWorkStart, setDocWorkStart] = useState('');
   const [docWorkEnd, setDocWorkEnd] = useState('');
@@ -528,6 +534,7 @@ export default function AdminEmployeeForm() {
   const [daWorkStart, setDaWorkStart] = useState('');
   const [daWorkEnd, setDaWorkEnd] = useState('');
   const [recepShiftType, setRecepShiftType] = useState('');
+  const [recepUseStandardHours, setRecepUseStandardHours] = useState(true);
   const [recepWorkStart, setRecepWorkStart] = useState('');
   const [recepWorkEnd, setRecepWorkEnd] = useState('');
 
@@ -543,6 +550,8 @@ export default function AdminEmployeeForm() {
   }));
   const selectedBranch = branches.find((branch) => String(branch.id) === String(selectedBranchId));
   const selectedBranchHours = parseBranchOperatingHours(selectedBranch?.operating_hours);
+  const standardReceptionistHours = selectedBranchHours || { start: '10:00', end: '19:00' };
+  const standardReceptionistHoursLabel = `${formatTimeSlotLabel(standardReceptionistHours.start)} - ${formatTimeSlotLabel(standardReceptionistHours.end)}`;
 
   const dentistOptions = dentists.length > 0 ? dentists : [];
   const specializationOptions =
@@ -752,6 +761,31 @@ export default function AdminEmployeeForm() {
   }, [profilePhotoPreview]);
 
   useEffect(() => {
+    if (employeeType === 'dentalAssistant') return;
+
+    const err = accessEmail ? validateEmailValue(accessEmail) : null;
+    setFieldError('accessEmail', err);
+    if (!err && accessEmail) clearSubmitError('accessEmail');
+  }, [accessEmail, employeeType]);
+
+  useEffect(() => {
+    if (employeeType === 'dentalAssistant') return;
+
+    accessPasswordRef.current = accessPassword;
+
+    if (accessPassword) {
+      setFieldError('accessPassword', null);
+      clearSubmitError('accessPassword');
+    }
+
+    if (confirmPassword) {
+      const err = confirmPassword === accessPassword ? null : 'Passwords do not match';
+      setFieldError('confirmPassword', err);
+      if (!err) clearSubmitError('confirmPassword');
+    }
+  }, [accessPassword, confirmPassword, employeeType]);
+
+  useEffect(() => {
     setSelectedBranchId('');
     setSelectedSpecialization('');
     setSelectedDentistSpecializations([]);
@@ -765,6 +799,7 @@ export default function AdminEmployeeForm() {
     setDaWorkStart('');
     setDaWorkEnd('');
     setRecepShiftType('');
+    setRecepUseStandardHours(true);
     setRecepWorkStart('');
     setRecepWorkEnd('');
     setProfilePhoto(null);
@@ -783,11 +818,20 @@ export default function AdminEmployeeForm() {
       setDaWorkEnd(selectedBranchHours.end);
     }
 
-    if (employeeType === 'receptionist' && recepShiftType === 'Full Day' && selectedBranchHours) {
-      setRecepWorkStart(selectedBranchHours.start);
-      setRecepWorkEnd(selectedBranchHours.end);
+    if (employeeType === 'receptionist' && recepUseStandardHours) {
+      setRecepShiftType('Full Day');
+      setRecepWorkStart(standardReceptionistHours.start);
+      setRecepWorkEnd(standardReceptionistHours.end);
     }
-  }, [employeeType, daShiftType, recepShiftType, selectedBranchHours?.start, selectedBranchHours?.end]);
+  }, [
+    employeeType,
+    daShiftType,
+    recepUseStandardHours,
+    selectedBranchHours?.start,
+    selectedBranchHours?.end,
+    standardReceptionistHours.start,
+    standardReceptionistHours.end,
+  ]);
 
   useEffect(() => {
     if (!enablePerDayBranch) return;
@@ -836,6 +880,8 @@ export default function AdminEmployeeForm() {
     setFormErrors(new Set());
     setFieldErrors({});
     setAccessEmail('');
+    setAccessPassword('');
+    setConfirmPassword('');
     accessPasswordRef.current = '';
   }
 
@@ -1041,7 +1087,7 @@ export default function AdminEmployeeForm() {
       if (!formData.get('daWorkStart')) errors.add('daWorkStart');
       if (!formData.get('daWorkEnd')) errors.add('daWorkEnd');
     } else {
-      ['startDate', 'employmentType', 'recepShiftType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
+      ['startDate', 'employmentType'].forEach((n) => { if (!formData.get(n)) errors.add(n); });
       if (!formData.get('recepWorkStart')) errors.add('recepWorkStart');
       if (!formData.get('recepWorkEnd')) errors.add('recepWorkEnd');
     }
@@ -1060,7 +1106,7 @@ export default function AdminEmployeeForm() {
       ? ['branchId', 'department', 'startDate', 'employmentType', 'shiftType']
       : employeeType === 'dentalAssistant'
         ? ['branchId', 'daDepartment', 'daStartDate', 'daEmploymentType', 'daShiftType', 'daWorkStart', 'daWorkEnd']
-        : ['branchId', 'startDate', 'employmentType', 'recepShiftType', 'recepWorkStart', 'recepWorkEnd'];
+        : ['branchId', 'startDate', 'employmentType', 'recepWorkStart', 'recepWorkEnd'];
     const sec4 = ['accessEmail', 'accessPassword', 'confirmPassword'];
     const maps = {
       dentist: { docPersonal: sec1, docWork: sec3, docAccess: sec4 },
@@ -1193,7 +1239,7 @@ export default function AdminEmployeeForm() {
           ? payload.daShiftType
           : isDentist
             ? payload.shiftType || null
-            : payload.recepShiftType || null,
+            : recepUseStandardHours ? 'Full Day' : 'Custom Hours',
         work_days: workDays,
         work_start_time: isDentist ? payload.docWorkStart : isDentalAssistant ? payload.daWorkStart : payload.recepWorkStart,
         work_end_time: isDentist ? payload.docWorkEnd : isDentalAssistant ? payload.daWorkEnd : payload.recepWorkEnd,
@@ -1523,10 +1569,21 @@ export default function AdminEmployeeForm() {
             label="Password"
             name="accessPassword"
             type="password"
+            value={accessPassword}
+            onChange={(e) => {
+              const value = e.target.value;
+              setAccessPassword(value);
+              accessPasswordRef.current = value;
+              const err = value ? null : 'Password is required';
+              setFieldError('accessPassword', err);
+              if (!err) clearSubmitError('accessPassword');
+            }}
             onInput={(e) => {
               filterPasswordInput(e);
-              accessPasswordRef.current = e.target.value;
-              const err = e.target.value ? null : 'Password is required';
+              const value = e.target.value;
+              setAccessPassword(value);
+              accessPasswordRef.current = value;
+              const err = value ? null : 'Password is required';
               setFieldError('accessPassword', err);
               if (!err) clearSubmitError('accessPassword');
             }}
@@ -1541,12 +1598,23 @@ export default function AdminEmployeeForm() {
             label="Confirm Password"
             name="confirmPassword"
             type="password"
+            value={confirmPassword}
+            onChange={(e) => {
+              const val = e.target.value;
+              setConfirmPassword(val);
+              let err = null;
+              if (!val) err = 'Please confirm your password';
+              else if (val !== accessPassword) err = 'Passwords do not match';
+              setFieldError('confirmPassword', err);
+              if (!err) clearSubmitError('confirmPassword');
+            }}
             onInput={(e) => {
               filterPasswordInput(e);
               const val = e.target.value;
+              setConfirmPassword(val);
               let err = null;
               if (!val) err = 'Please confirm your password';
-              else if (val !== accessPasswordRef.current) err = 'Passwords do not match';
+              else if (val !== accessPassword) err = 'Passwords do not match';
               setFieldError('confirmPassword', err);
               if (!err) clearSubmitError('confirmPassword');
             }}
@@ -2238,47 +2306,114 @@ export default function AdminEmployeeForm() {
             </div>
             <div style={styles.rowTwo}>
               <ScheduleFieldRaw name="schedule[]" dayOptions={DAY_OPTIONS} styles={styles} />
-              <TimeRangeFieldRaw
-                startName="recepWorkStart"
-                endName="recepWorkEnd"
-                startValue={recepWorkStart}
-                endValue={recepWorkEnd}
-                onStartChange={setRecepWorkStart}
-                onEndChange={setRecepWorkEnd}
-                disabled={recepShiftType === 'Full Day'}
-                hasError={formErrors.has('recepWorkStart') || formErrors.has('recepWorkEnd')}
-                styles={styles}
-              />
+              <div style={styles.field}>
+                <label style={styles.label}>Working Hours</label>
+                <label
+                  style={{
+                    ...styles.checkboxLabel,
+                    alignItems: 'flex-start',
+                    gap: 10,
+                    padding: '11px 13px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 12,
+                    background: '#f8fafc',
+                    minHeight: 43,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={recepUseStandardHours}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setRecepUseStandardHours(checked);
+                      setRecepShiftType(checked ? 'Full Day' : 'Custom Hours');
+                      if (checked) {
+                        setRecepWorkStart(standardReceptionistHours.start);
+                        setRecepWorkEnd(standardReceptionistHours.end);
+                        setFormErrors((prev) => {
+                          const next = new Set(prev);
+                          next.delete('recepWorkStart');
+                          next.delete('recepWorkEnd');
+                          return next;
+                        });
+                      } else {
+                        setRecepWorkStart('');
+                        setRecepWorkEnd('');
+                      }
+                    }}
+                    style={{ ...styles.checkboxInput, marginTop: 2 }}
+                  />
+                  <span style={{ lineHeight: 1.35 }}>
+                    Use Standard Working Hours ({standardReceptionistHoursLabel})
+                  </span>
+                </label>
+                {recepUseStandardHours && (
+                  <>
+                    <input type="hidden" name="recepShiftType" value="Full Day" readOnly />
+                    <input type="hidden" name="recepWorkStart" value={standardReceptionistHours.start} readOnly />
+                    <input type="hidden" name="recepWorkEnd" value={standardReceptionistHours.end} readOnly />
+                  </>
+                )}
+                {!recepUseStandardHours && (
+                  <>
+                    <input type="hidden" name="recepShiftType" value="Custom Hours" readOnly />
+                    <div style={styles.timeGroup}>
+                      <select
+                        name="recepWorkStart"
+                        value={recepWorkStart}
+                        onChange={(event) => {
+                          setRecepWorkStart(event.target.value);
+                          if (event.target.value) {
+                            setFormErrors((prev) => {
+                              const next = new Set(prev);
+                              next.delete('recepWorkStart');
+                              return next;
+                            });
+                          }
+                        }}
+                        style={{
+                          ...styles.input,
+                          ...(formErrors.has('recepWorkStart') ? { borderColor: '#dc2626', borderWidth: '2px' } : {}),
+                        }}
+                      >
+                        <option value="" disabled>Start time</option>
+                        {timeSlots.map((slot) => (
+                          <option key={slot.value} value={slot.value}>{slot.label}</option>
+                        ))}
+                      </select>
+                      <span style={styles.separator}>to</span>
+                      <select
+                        name="recepWorkEnd"
+                        value={recepWorkEnd}
+                        onChange={(event) => {
+                          setRecepWorkEnd(event.target.value);
+                          if (event.target.value) {
+                            setFormErrors((prev) => {
+                              const next = new Set(prev);
+                              next.delete('recepWorkEnd');
+                              return next;
+                            });
+                          }
+                        }}
+                        style={{
+                          ...styles.input,
+                          ...(formErrors.has('recepWorkEnd') ? { borderColor: '#dc2626', borderWidth: '2px' } : {}),
+                        }}
+                      >
+                        <option value="" disabled>End time</option>
+                        {timeSlots.map((slot) => (
+                          <option key={slot.value} value={slot.value}>{slot.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             <div style={styles.rowTwo}>
               <FieldRaw label="Start Date" name="startDate" type="date" min={today} hasError={formErrors.has('startDate')} styles={styles} />
               <SelectFieldRaw label="Employment Type" name="employmentType" placeholder="Select Type" options={EMPLOYMENT_TYPES} hasError={formErrors.has('employmentType')} styles={styles} />
-            </div>
-            <div style={styles.rowTwo}>
-              <SelectFieldRaw
-                label="Shift Type"
-                name="recepShiftType"
-                placeholder="Select Type"
-                options={STAFF_SHIFT_TYPES}
-                value={recepShiftType}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setRecepShiftType(value);
-                  if (value) {
-                    setFormErrors((prev) => {
-                      const next = new Set(prev);
-                      next.delete('recepShiftType');
-                      return next;
-                    });
-                  }
-                  if (value === 'Full Day' && selectedBranchHours) {
-                    setRecepWorkStart(selectedBranchHours.start);
-                    setRecepWorkEnd(selectedBranchHours.end);
-                  }
-                }}
-                hasError={formErrors.has('recepShiftType')}
-                styles={styles}
-              />
             </div>
           </>
         )}

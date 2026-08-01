@@ -347,6 +347,65 @@
       minWidth: 0,
     },
 
+    inventoryFilterControls: {
+      display: 'grid',
+      gridTemplateColumns: isSmallScreen ? '1fr' : 'minmax(150px, 190px) minmax(145px, 170px) minmax(145px, 170px)',
+      gap: 12,
+      alignItems: 'end',
+      width: isSmallScreen ? '100%' : 'auto',
+      minWidth: 0,
+    },
+
+    inventoryFilterGroup: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      minWidth: 0,
+      width: '100%',
+    },
+
+    inventoryFilterLabel: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: '#1e3a8a',
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    inventoryFilterSelect: {
+      width: '100%',
+      height: 44,
+      borderRadius: 14,
+      border: '1px solid #dbe3ef',
+      background: '#ffffff',
+      padding: '0 36px 0 14px',
+      outline: 'none',
+      fontSize: 14,
+      color: '#334155',
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+      appearance: 'none',
+      WebkitAppearance: 'none',
+      MozAppearance: 'none',
+      backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23334155' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'right 14px center',
+      cursor: 'pointer',
+    },
+
+    inventoryFilterInput: {
+      width: '100%',
+      height: 44,
+      borderRadius: 14,
+      border: '1px solid #dbe3ef',
+      background: '#ffffff',
+      padding: '0 14px',
+      outline: 'none',
+      fontSize: 14,
+      color: '#334155',
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
+    },
+
     searchBox: {
       width: isSmallScreen ? '100%' : 420,
       minWidth: 0,
