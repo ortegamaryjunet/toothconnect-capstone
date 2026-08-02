@@ -432,8 +432,33 @@
       fontFamily: 'Arial, sans-serif',
     },
 
-    websiteFieldRow: {
-      marginBottom: 14,
+    websiteFieldsGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gap: 20,
+    },
+
+    websiteFieldsGrid: {
+      display: "grid",
+      gridTemplateColumns: "340px 1fr",
+      gap: 24,
+      alignItems: "start",
+      marginBottom: 28,
+    },
+
+    websiteFields: {
+      display: "grid",
+      gridTemplateColumns: "repeat(2, minmax(340px, 1fr))",
+      gap: 14,
+      alignItems: "start",
+      marginBottom: 18,
+    },
+
+    websiteSectionTitle: {
+      fontSize: 20,
+      fontWeight: 700,
+      margin: "28px 0 16px",
+      color: "#1e293b",
     },
 
     websiteFieldLabel: {
@@ -1206,6 +1231,28 @@
       fontSize: 13,
       lineHeight: 1.5,
       fontFamily: 'Arial, sans-serif',
+    },
+
+    clearBtn: {
+      height: 48,
+      padding: '0 22px',
+      border: 'none',
+      outline: 'none',
+      borderRadius: 15,
+      background: "#fff1f2",
+      color: "#dc2626",
+      border: "1px solid #fecdd3",
+      cursor: 'pointer',
+      fontSize: 14,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      width: isMobile ? '100%' : 'auto',
+      boxShadow: 'inset 0 0 0 1px #dbe3ef',
+    },
+
+    clearBtnHover: {
+      background: "#fee2e2",
+      borderColor: "#ef4444",
     },
 
     saveBtn: {
