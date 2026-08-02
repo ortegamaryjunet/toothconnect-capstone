@@ -166,16 +166,61 @@ async function sendRecallReminders() {
   }
 }
 
+async function expireAnnouncements() {
+  try {
+    const [result] = await pool.query(
+      `
+      UPDATE website_announcements
+      SET status = 'expired'
+      WHERE end_date < NOW()
+      AND status = 'active'
+      `
+    );
+
+    if (result.affectedRows > 0) {
+      console.log(
+        `[cron] Expired ${result.affectedRows} announcements`
+      );
+    }
+
+    return {
+      expired: result.affectedRows,
+    };
+
+  } catch (err) {
+    console.error(
+      "[cron] Announcement expiration error:",
+      err
+    );
+
+    return {
+      error: err.message,
+    };
+  }
+}
+
 function startCronJobs() {
   cron.schedule('0 * * * *', async () => {
     console.log('[cron] Running hourly appointment reminder job...');
     await sendAppointmentReminders();
   });
 
+
   cron.schedule('0 8 * * *', async () => {
     console.log('[cron] Running daily recall reminder job...');
     await sendRecallReminders();
-  }, { timezone: 'Asia/Manila' });
+  }, {
+    timezone: 'Asia/Manila'
+  });
+
+
+  cron.schedule('* * * * *', async () => {
+    console.log('[cron] Checking expired announcements...');
+    await expireAnnouncements();
+  }, {
+    timezone: 'Asia/Manila'
+  });
+
 
   console.log('[cron] Scheduled jobs started');
 }
@@ -184,4 +229,5 @@ module.exports = {
   startCronJobs,
   sendAppointmentReminders,
   sendRecallReminders,
-};
+  expireAnnouncements,
+}
