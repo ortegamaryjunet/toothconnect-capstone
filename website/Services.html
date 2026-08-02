@@ -32,6 +32,7 @@
 </section>
 
 <section class="service-details">
+
     <aside class="summary-card">
         <button class="summary-toggle" id="summaryToggle">
             <span>Summary</span>
@@ -51,6 +52,7 @@
     </aside>
 
     <main class="content">
+
         <section id="overviewSection" class="detail-section">
             <span class="section-label">Overview</span>
             <h2 id="mainHeading">Service Overview</h2>
@@ -59,17 +61,42 @@
 
         <section id="comparisonSection" class="detail-section comparison-section">
             <span class="section-label">Before and After</span>
+
             <h3>Patient Smile Transformation</h3>
-            <p class="comparison-text">Move the slider to compare the smile before and after the dental treatment.</p>
+
+            <p class="comparison-text">
+                Move the slider to compare the smile before and after the dental treatment.
+            </p>
 
             <div class="tooth-comparison" id="toothComparison">
-                <img src="./images/braces-before.jpg" alt="" class="comparison-img before-img" id="comparisonBeforeImg">
+
+                <img
+                    id="comparisonBeforeImg"
+                    class="comparison-img before-img"
+                    src=""
+                    alt=""
+                    loading="lazy"
+                />
 
                 <div class="comparison-after" id="comparisonAfter">
-                    <img src="./images/braces-after.jpg" alt="" class="comparison-img after-img" id="comparisonAfterImg">
+                    <img
+                        id="comparisonAfterImg"
+                        class="comparison-img after-img"
+                        src=""
+                        alt=""
+                        loading="lazy"
+                    />
                 </div>
 
-                <input type="range" min="0" max="100" value="50" class="comparison-range" id="comparisonRange" aria-label="Tooth comparison slider">
+                <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value="50"
+                    class="comparison-range"
+                    id="comparisonRange"
+                    aria-label="Tooth comparison slider"
+                >
 
                 <div class="comparison-line" id="comparisonLine">
                     <span>
@@ -77,8 +104,9 @@
                     </span>
                 </div>
 
-                <div class="comparison-tag before-tag">Before</div>
-                <div class="comparison-tag after-tag">After</div>
+                <div class="comparison-tag before-tag">Before Treatment</div>
+                <div class="comparison-tag after-tag">After Treatment</div>
+
             </div>
         </section>
 
@@ -117,7 +145,9 @@
             <h3>Important Reminder</h3>
             <p id="remindersText"></p>
         </section>
+
     </main>
+
 </section>
 
 <footer>
