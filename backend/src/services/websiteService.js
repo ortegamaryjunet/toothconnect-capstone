@@ -1418,27 +1418,45 @@ async function listInquiries({ search = '', branchNames = [] } = {}) {
 // ── Website CMS ──────────────────────────────────────────────────────────────
 
 async function getContent() {
-  const [rows] = await db.query('SELECT section, field_key, field_value FROM website_content ORDER BY section, id');
+  const [rows] = await db.query(
+    "SELECT section, field_key, field_value FROM website_content ORDER BY section, id"
+  );
+
   const map = {};
+
   for (const r of rows) {
-    const k = `${r.section}_${r.field_key}`;
-    map[k] = r.field_value;
+    map[r.field_key] = r.field_value;
   }
+
   return map;
 }
 
-async function upsertContent(fields) {
-  for (const [key, value] of Object.entries(fields)) {
-    const sep = key.indexOf('_');
-    if (sep < 1) continue;
-    const section = key.slice(0, sep);
-    const field_key = key.slice(sep + 1);
-    await db.query(
-      `INSERT INTO website_content (section, field_key, field_value)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE field_value = VALUES(field_value)`,
-      [section, field_key, value]
+async function upsertContent(section, fields) {
+  for (const [field_key, field_value] of Object.entries(fields)) {
+    const [existing] = await db.query(
+      `SELECT id
+       FROM website_content
+       WHERE section = ?
+         AND field_key = ?
+       LIMIT 1`,
+      [section, field_key]
     );
+
+    if (existing.length) {
+      await db.query(
+        `UPDATE website_content
+         SET field_value = ?
+         WHERE id = ?`,
+        [field_value, existing[0].id]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO website_content
+        (section, field_key, field_value)
+        VALUES (?, ?, ?)`,
+        [section, field_key, field_value]
+      );
+    }
   }
 }
 
@@ -1477,18 +1495,20 @@ async function listWebsiteServices({ all = false } = {}) {
   return rows;
 }
 
-async function createWebsiteService({ name, image_path, description, slug, sort_order = 0, status = 'active' }) {
+async function createWebsiteService({ name, image_path, before_image, after_image, intro, heading, overview, benefits, process, care, duration, ideal_for, reminder, description, slug, sort_order = 0, status = 'active' }) {
   const [result] = await db.query(
-    'INSERT INTO website_services (name, image_path, description, slug, sort_order, status) VALUES (?, ?, ?, ?, ?, ?)',
-    [name, image_path || null, description || null, slug || null, sort_order, status]
+    'INSERT INTO website_services (name, image_path, before_image, after_image, intro, heading, overview, benefits, process, care, duration, ideal_for, reminder, description, slug, sort_order, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name, image_path || null, before_image || null, after_image || null, intro || null, heading || null, overview || null, benefits || null, process || null, care || null, duration || null, ideal_for || null, reminder || null, description || null, slug || null, sort_order, status]
   );
   return result.insertId;
 }
 
-async function updateWebsiteService(id, { name, image_path, description, slug, sort_order, status }) {
+async function updateWebsiteService(id, { name, image_path, before_image, after_image, intro, heading, overview, benefits, process, care, duration, ideal_for, reminder, description, slug, sort_order, status }) {
+  const [[current]] = await db.query('SELECT image_path, before_image, after_image FROM website_services WHERE id = ?', [id]);
+
   await db.query(
-    'UPDATE website_services SET name = ?, image_path = ?, description = ?, slug = ?, sort_order = ?, status = ? WHERE id = ?',
-    [name, image_path || null, description || null, slug || null, sort_order ?? 0, status ?? 'active', id]
+    'UPDATE website_services SET name = ?, image_path = ?, before_image = ?, after_image = ?, intro = ?, heading = ?, overview = ?, benefits = ?, process = ?, care = ?, duration = ?, ideal_for = ?, reminder = ?, description = ?, slug = ?, sort_order = ?, status = ? WHERE id = ?',
+    [name, image_path || current.image_path, before_image || current.before_image, after_image || current.after_image, intro || null, heading || null, overview || null, benefits || null, process || null, care || null, duration || null, ideal_for || null, reminder || null, description || null, slug || null, sort_order ?? 0, status ?? 'active', id]
   );
 }
 
@@ -1497,35 +1517,179 @@ async function deleteWebsiteService(id) {
 }
 
 async function listAnnouncements({ all = false } = {}) {
-  const today = new Date().toISOString().slice(0, 10);
-  let sql, params;
+  const now = new Date();
+
+  const manilaTime = new Date(
+    now.toLocaleString("en-US", {
+      timeZone: "Asia/Manila",
+    })
+  );
+
+  const currentDateTime =
+    `${manilaTime.getFullYear()}-` +
+    `${String(manilaTime.getMonth() + 1).padStart(2, "0")}-` +
+    `${String(manilaTime.getDate()).padStart(2, "0")} ` +
+    `${String(manilaTime.getHours()).padStart(2, "0")}:` +
+    `${String(manilaTime.getMinutes()).padStart(2, "0")}:` +
+    `${String(manilaTime.getSeconds()).padStart(2, "0")}`;
+
+
+  let sql;
+  let params = [];
+
+
   if (all) {
-    sql = 'SELECT * FROM website_announcements ORDER BY created_at DESC';
-    params = [];
+    sql = `
+      SELECT *,
+      CASE
+        WHEN end_date < ? THEN 'expired'
+        ELSE status
+      END AS display_status
+      FROM website_announcements
+      ORDER BY created_at DESC
+    `;
+
+    params = [currentDateTime];
+
   } else {
-    sql = `SELECT * FROM website_announcements
-           WHERE status = 'active'
-             AND (start_date IS NULL OR start_date <= ?)
-             AND (end_date IS NULL OR end_date >= ?)
-           ORDER BY created_at DESC`;
-    params = [today, today];
+
+    sql = `
+      SELECT *
+      FROM website_announcements
+      WHERE status = 'active'
+      AND start_date <= ?
+      AND end_date >= ?
+      ORDER BY created_at DESC
+    `;
+
+    params = [
+      currentDateTime,
+      currentDateTime
+    ];
   }
+
+
   const [rows] = await db.query(sql, params);
+
   return rows;
 }
 
-async function createAnnouncement({ title, message, start_date, end_date, status = 'active' }) {
+async function createAnnouncement({
+  title,
+  message,
+  title_font_family,
+  title_font_size,
+  title_font_weight,
+  title_color,
+  title_alignment,
+  message_font_family,
+  message_font_size,
+  message_font_weight,
+  message_color,
+  message_alignment,
+  start_date,
+  end_date,
+  status = "active",
+}) {
   const [result] = await db.query(
-    'INSERT INTO website_announcements (title, message, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)',
-    [title, message, start_date || null, end_date || null, status]
+    `
+    INSERT INTO website_announcements (
+      title,
+      message,
+      title_font_family,
+      title_font_size,
+      title_font_weight,
+      title_color,
+      title_alignment,
+      message_font_family,
+      message_font_size,
+      message_font_weight,
+      message_color,
+      message_alignment,
+      start_date,
+      end_date,
+      status
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      title,
+      message,
+      title_font_family || null,
+      title_font_size || null,
+      title_font_weight || null,
+      title_color || "#000000",
+      title_alignment || "left",
+      message_font_family || null,
+      message_font_size || null,
+      message_font_weight || null,
+      message_color || "#000000",
+      message_alignment || "left",
+      start_date || null,
+      end_date || null,
+      status,
+    ]
   );
+
   return result.insertId;
 }
 
-async function updateAnnouncement(id, { title, message, start_date, end_date, status }) {
+async function updateAnnouncement(
+  id,
+  {
+    title,
+    message,
+    title_font_family,
+    title_font_size,
+    title_font_weight,
+    title_color,
+    title_alignment,
+    message_font_family,
+    message_font_size,
+    message_font_weight,
+    message_color,
+    message_alignment,
+    start_date,
+    end_date,
+    status,
+  }
+) {
   await db.query(
-    'UPDATE website_announcements SET title = ?, message = ?, start_date = ?, end_date = ?, status = ? WHERE id = ?',
-    [title, message, start_date || null, end_date || null, status ?? 'active', id]
+    `UPDATE website_announcements SET
+      title = ?,
+      message = ?,
+      title_font_family = ?,
+      title_font_size = ?,
+      title_font_weight = ?,
+      title_color = ?,
+      title_alignment = ?,
+      message_font_family = ?,
+      message_font_size = ?,
+      message_font_weight = ?,
+      message_color = ?,
+      message_alignment = ?,
+      start_date = ?,
+      end_date = ?,
+      status = ?
+    WHERE id = ?`,
+    [
+      title,
+      message,
+      title_font_family || null,
+      title_font_size || null,
+      title_font_weight || null,
+      title_color || "#000000",
+      title_alignment || "left",
+      message_font_family || null,
+      message_font_size || null,
+      message_font_weight || null,
+      message_color || "#000000",
+      message_alignment || "left",
+      start_date || null,
+      end_date || null,
+      status || "active",
+      id,
+    ]
   );
 }
 
