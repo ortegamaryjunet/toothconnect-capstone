@@ -21,6 +21,8 @@ const router = express.Router();
 
 router.use(authenticate);
 
+const CLINIC_TIMEZONE = 'Asia/Manila';
+
 function normalizeBufferMinutes(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : APPOINTMENT_BUFFER_MINUTES;
@@ -42,6 +44,17 @@ function formatScheduleStampForNote(dateValue) {
   const hour12 = hour24 % 12 || 12;
 
   return `${datePart} ${hour12}:${minuteText} ${period}`;
+}
+
+function formatClinicSchedule(value) {
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: CLINIC_TIMEZONE,
+  });
 }
 
 function buildRescheduleNoteForNewAppointment({ existing, reason, originalStart, newStart }) {
@@ -1151,9 +1164,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
          WHERE a.id = ?`,
         [result.insertId]
       );
-      const schedule = new Date(start).toLocaleString('en-US', {
-        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
-      });
+      const schedule = formatClinicSchedule(start);
 
       if (isReschedule) {
         const rescheduleNotification = {
@@ -1273,13 +1284,7 @@ router.patch('/:id/cancel', async (req, res) => {
       );
       const detail = details[0] || {};
       const schedule = detail.start_time
-        ? new Date(detail.start_time).toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-          })
+        ? formatClinicSchedule(detail.start_time)
         : 'their scheduled time';
 
       try {
@@ -1309,13 +1314,7 @@ router.patch('/:id/cancel', async (req, res) => {
       );
       const detail = details[0] || {};
       const schedule = detail.start_time
-        ? new Date(detail.start_time).toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-          })
+        ? formatClinicSchedule(detail.start_time)
         : 'your scheduled time';
       const notifBody = reason
         ? `Your ${detail.service_name || 'appointment'} on ${schedule} has been cancelled. Reason: ${reason}`
