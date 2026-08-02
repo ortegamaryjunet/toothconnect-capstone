@@ -341,11 +341,13 @@ export default function RecepPatientProfile() {
 
         {activeSection === 'profile' && (
           <section style={styles.contentSection}>
-            <div style={styles.profileBanner}>
-              <h2 style={styles.bannerTitle}>Profile Information</h2>
-              <p style={styles.bannerText}>
-                Patient basic details and contact information.
-              </p>
+            <div style={styles.sectionHeader}>
+              <div>
+                <h3 style={styles.bannerTitle}>Profile Information</h3>
+                <p style={styles.bannerText}>
+                  Patient basic details and contact information.
+                </p>
+              </div>
             </div>
 
             <div style={styles.patientMainCard}>
