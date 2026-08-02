@@ -2,12 +2,23 @@ const cron = require('node-cron');
 const pool = require('../config/db');
 const { sendPushToUser } = require('./push');
 
+const CLINIC_TIMEZONE = 'Asia/Manila';
+
 async function createNotification(userId, type, title, body, relatedType, relatedId) {
   await pool.query(
     `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [userId, type, title, body, relatedType || null, relatedId || null]
   );
+}
+
+function formatClinicTime(value) {
+  return new Date(value).toLocaleTimeString('en-PH', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: CLINIC_TIMEZONE,
+  });
 }
 
 async function sendAppointmentReminders() {
@@ -26,9 +37,7 @@ async function sendAppointmentReminders() {
     );
 
     for (const a of appts24) {
-      const localTime = new Date(a.start_time).toLocaleString('en-PH', {
-        hour: 'numeric', minute: '2-digit', hour12: true,
-      });
+      const localTime = formatClinicTime(a.start_time);
       const body24 = `Your ${a.service_name} with ${a.dentist_name} at ${a.branch_name} is tomorrow at ${localTime}.`;
       await createNotification(
         a.patient_id,
@@ -57,9 +66,7 @@ async function sendAppointmentReminders() {
     );
 
     for (const a of appts2) {
-      const localTime = new Date(a.start_time).toLocaleString('en-PH', {
-        hour: 'numeric', minute: '2-digit', hour12: true,
-      });
+      const localTime = formatClinicTime(a.start_time);
       const body2h = `Warning: you have a ${a.service_name} appointment with ${a.dentist_name} at ${a.branch_name} in about 2 hours, at ${localTime}. Please prepare and arrive on time.`;
       await createNotification(
         a.patient_id,
@@ -88,9 +95,7 @@ async function sendAppointmentReminders() {
     );
 
     for (const a of appts1) {
-      const localTime = new Date(a.start_time).toLocaleString('en-PH', {
-        hour: 'numeric', minute: '2-digit', hour12: true,
-      });
+      const localTime = formatClinicTime(a.start_time);
       const body1h = `Final warning: your ${a.service_name} appointment with ${a.dentist_name} at ${a.branch_name} is in about 1 hour, at ${localTime}. Please be ready and arrive on time.`;
       await createNotification(
         a.patient_id,
@@ -200,8 +205,8 @@ async function expireAnnouncements() {
 }
 
 function startCronJobs() {
-  cron.schedule('0 * * * *', async () => {
-    console.log('[cron] Running hourly appointment reminder job...');
+  cron.schedule('*/5 * * * *', async () => {
+    console.log('[cron] Running appointment reminder job...');
     await sendAppointmentReminders();
   });
 
