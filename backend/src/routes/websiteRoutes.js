@@ -9,6 +9,17 @@ const websiteService = require('../services/websiteService');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { sendEmail } = require('../services/email');
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}${path.extname(file.originalname)}`);
+  },
+});
+
+const upload = multer({ storage });
+
 router.post('/saveAppointment', async (req, res) => {
   try {
     const {
@@ -498,13 +509,22 @@ router.get('/services', async (req, res) => {
   }
 });
 
-router.get('/announcements', async (req, res) => {
+router.get("/announcements", async (req, res) => {
   try {
-    const announcements = await websiteService.listAnnouncements({ all: false });
-    res.json({ announcements });
+    const announcements = await websiteService.listAnnouncements({
+      all: false,
+    });
+
+    res.json({
+      announcements,
+    });
+
   } catch (err) {
-    console.error('Get announcements error:', err);
-    res.status(500).json({ message: 'Failed to load announcements.' });
+    console.error("Get announcements error:", err);
+
+    res.status(500).json({
+      message: "Failed to get announcements.",
+    });
   }
 });
 
@@ -513,15 +533,28 @@ router.get('/announcements', async (req, res) => {
 router.put('/content', authenticate, requireRole('admin'), async (req, res) => {
   try {
     const { fields } = req.body;
+
     if (!fields || typeof fields !== 'object') {
-      return res.status(400).json({ message: 'fields object is required.' });
+      return res.status(400).json({
+        message: 'fields object is required.'
+      });
     }
-    await websiteService.upsertContent(fields);
+
+    await websiteService.upsertContent('footer', fields);
+
     const content = await websiteService.getContent();
-    res.json({ message: 'Website content updated.', content });
+
+    res.json({
+      message: 'Website content updated.',
+      content
+    });
+
   } catch (err) {
     console.error('Update website content error:', err);
-    res.status(500).json({ message: 'Failed to update website content.' });
+
+    res.status(500).json({
+      message: err.message || 'Failed to update website content.'
+    });
   }
 });
 
@@ -593,18 +626,85 @@ router.post('/website-services', authenticate, requireRole('admin'), async (req,
   }
 });
 
-router.put('/website-services/:id', authenticate, requireRole('admin'), async (req, res) => {
-  try {
-    const { name, image_path, description, slug, sort_order, status } = req.body;
-    if (!name) return res.status(400).json({ message: 'name is required.' });
-    await websiteService.updateWebsiteService(req.params.id, { name, image_path, description, slug, sort_order, status });
-    const services = await websiteService.listWebsiteServices({ all: true });
-    res.json({ message: 'Service updated.', services });
-  } catch (err) {
-    console.error('Update website service error:', err);
-    res.status(500).json({ message: 'Failed to update website service.' });
+router.put(
+  "/website-services/:id",
+  authenticate,
+  requireRole("admin"),
+  upload.fields([
+    { name: "image_path", maxCount: 1 },
+    { name: "before_image", maxCount: 1 },
+    { name: "after_image", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const files = req.files || {};
+
+      const image_path = files.image_path?.[0] ? `/uploads/${files.image_path[0].filename}` : req.body.image_path;
+
+      const before_image = files.before_image?.[0] ? `/uploads/${files.before_image[0].filename}` : req.body.before_image;
+
+      const after_image = files.after_image?.[0] ? `/uploads/${files.after_image[0].filename}` : req.body.after_image;
+
+      const {
+        name,
+        intro,
+        heading,
+        overview,
+        benefits,
+        process,
+        care,
+        duration,
+        ideal_for,
+        reminder,
+        description,
+        slug,
+        sort_order,
+        status,
+      } = req.body;
+
+      if (!name) {
+        return res.status(400).json({
+          message: "name is required.",
+        });
+      }
+
+      await websiteService.updateWebsiteService(req.params.id, {
+        name,
+        image_path,
+        before_image,
+        after_image,
+        intro,
+        heading,
+        overview,
+        benefits,
+        process,
+        care,
+        duration,
+        ideal_for,
+        reminder,
+        description,
+        slug,
+        sort_order,
+        status,
+      });
+
+      const services = await websiteService.listWebsiteServices({
+        all: true,
+      });
+
+      res.json({
+        message: "Service updated.",
+        services,
+      });
+    } catch (err) {
+      console.error("Update website service error:", err);
+
+      res.status(500).json({
+        message: err.message || "Failed to update website service.",
+      });
+    }
   }
-});
+);
 
 router.delete('/website-services/:id', authenticate, requireRole('admin'), async (req, res) => {
   try {
@@ -626,29 +726,138 @@ router.get('/announcements/all', authenticate, requireRole('admin'), async (req,
   }
 });
 
-router.post('/announcements', authenticate, requireRole('admin'), async (req, res) => {
+router.post("/announcements", authenticate, requireRole("admin"), async (req, res) => {
   try {
-    const { title, message, start_date, end_date, status } = req.body;
-    if (!title || !message) return res.status(400).json({ message: 'title and message are required.' });
-    const id = await websiteService.createAnnouncement({ title, message, start_date, end_date, status });
-    const announcements = await websiteService.listAnnouncements({ all: true });
-    res.status(201).json({ message: 'Announcement created.', id, announcements });
+    const {
+      title,
+      message,
+      title_font_family,
+      title_font_size,
+      title_font_weight,
+      title_color,
+      title_alignment,
+      message_font_family,
+      message_font_size,
+      message_font_weight,
+      message_color,
+      message_alignment,
+      start_date,
+      start_time,
+      end_date,
+      end_time,
+      status,
+    } = req.body;
+
+    if (!title || !message || !start_date || !start_time || !end_date || !end_time) {
+      return res.status(400).json({
+        message: "Title, message, start date, start time, end date, and end time are required.",
+      });
+    }
+
+    const announcementStart = `${start_date} ${start_time}:00`;
+
+    const announcementEnd = `${end_date} ${end_time}:00`;
+
+    const id = await websiteService.createAnnouncement({
+      title,
+      message,
+      title_font_family,
+      title_font_size,
+      title_font_weight,
+      title_color,
+      title_alignment,
+      message_font_family,
+      message_font_size,
+      message_font_weight,
+      message_color,
+      message_alignment,
+      start_date: announcementStart,
+      end_date: announcementEnd,
+      status,
+    });
+
+    const announcements = await websiteService.listAnnouncements({
+      all: true,
+    });
+
+    res.status(201).json({
+      message: "Announcement created.",
+      id,
+      announcements,
+    });
   } catch (err) {
-    console.error('Create announcement error:', err);
-    res.status(500).json({ message: 'Failed to create announcement.' });
+    console.error("Create announcement error:", err);
+
+    res.status(500).json({
+      message: "Failed to create announcement.",
+    });
   }
 });
 
-router.put('/announcements/:id', authenticate, requireRole('admin'), async (req, res) => {
+router.put("/announcements/:id", authenticate, requireRole("admin"), async (req, res) => {
   try {
-    const { title, message, start_date, end_date, status } = req.body;
-    if (!title || !message) return res.status(400).json({ message: 'title and message are required.' });
-    await websiteService.updateAnnouncement(req.params.id, { title, message, start_date, end_date, status });
-    const announcements = await websiteService.listAnnouncements({ all: true });
-    res.json({ message: 'Announcement updated.', announcements });
+    const {
+      title,
+      message,
+      title_font_family,
+      title_font_size,
+      title_font_weight,
+      title_color,
+      title_alignment,
+      message_font_family,
+      message_font_size,
+      message_font_weight,
+      message_color,
+      message_alignment,
+      start_date,
+      start_time,
+      end_date,
+      end_time,
+      status,
+    } = req.body;
+
+    if (!title || !message || !start_date || !start_time || !end_date || !end_time) {
+      return res.status(400).json({
+        message: "Title, message, start date, start time, end date, and end time are required.",
+      });
+    }
+
+    const announcementStart = `${start_date} ${start_time}:00`;
+
+    const announcementEnd = `${end_date} ${end_time}:00`;
+
+    await websiteService.updateAnnouncement(req.params.id, {
+      title,
+      message,
+      title_font_family,
+      title_font_size,
+      title_font_weight,
+      title_color,
+      title_alignment,
+      message_font_family,
+      message_font_size,
+      message_font_weight,
+      message_color,
+      message_alignment,
+      start_date: announcementStart,
+      end_date: announcementEnd,
+      status,
+    });
+
+    const announcements = await websiteService.listAnnouncements({
+      all: true,
+    });
+
+    res.json({
+      message: "Announcement updated.",
+      announcements,
+    });
   } catch (err) {
-    console.error('Update announcement error:', err);
-    res.status(500).json({ message: 'Failed to update announcement.' });
+    console.error("Update announcement error:", err);
+
+    res.status(500).json({
+      message: err.message || "Failed to update announcement.",
+    });
   }
 });
 
@@ -669,17 +878,6 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}${path.extname(file.originalname)}`);
-  },
-});
-
-const upload = multer({ storage });
-
 router.post(
   "/upload-logo",
   authenticate,
@@ -696,6 +894,24 @@ router.post(
       path: `/uploads/${req.file.filename}`,
     });
   }
-);  
+);
+
+router.post(
+  "/upload-hero-image",
+  authenticate,
+  requireRole("admin"),
+  upload.single("heroImage"),
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        message: "No hero image uploaded.",
+      });
+    }
+
+    res.json({
+      path: `/uploads/${req.file.filename}`,
+    });
+  }
+);
 
 module.exports = router;
