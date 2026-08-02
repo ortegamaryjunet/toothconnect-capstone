@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const multer = require("multer");
+const fs = require("fs");
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 console.log(
@@ -145,6 +147,39 @@ app.use('/api/treatment-plans', treatmentPlanRoutes);
 
 const aiRoutes = require('./src/routes/ai');
 app.use('/api/ai', aiRoutes);
+
+const uploadServiceImage = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, "uploads/services"));
+    },
+    filename: (req, file, cb) => {
+      cb(null, Date.now() + path.extname(file.originalname));
+    },
+  }),
+});
+
+const uploadBeforeImage = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, "uploads/treatment/before"));
+    },
+    filename: (req, file, cb) => {
+      cb(null, Date.now() + path.extname(file.originalname));
+    },
+  }),
+});
+
+const uploadAfterImage = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, "uploads/treatment/after"));
+    },
+    filename: (req, file, cb) => {
+      cb(null, Date.now() + path.extname(file.originalname));
+    },
+  }),
+});
 
 app.get('/api/admin/ping',  authenticate, requireRole('admin'),        (req, res) => res.json({ message: 'Admin only', user: req.user }));
 app.get('/api/dentist/ping',authenticate, requireRole('dentist'),      (req, res) => res.json({ message: 'Dentist only', user: req.user }));
@@ -494,9 +529,9 @@ pool.query(`
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
-    start_date DATE NULL,
-    end_date DATE NULL,
-    status ENUM('active','hidden') NOT NULL DEFAULT 'active',
+    start_date DATETIME NULL,
+    end_date DATETIME NULL,
+    status ENUM('active','hidden','expired') NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   )
