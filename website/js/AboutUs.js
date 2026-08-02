@@ -1,4 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
+    initializeRevealAnimation();
+    initializeTeamHoverEffect();
+    loadAboutPageContent();
+});
+
+function initializeRevealAnimation() {
     const revealItems = document.querySelectorAll(
         ".section-title, .team-title, .about-card, .value-card, .owner-row, .team-card, .branch-info, .branch-box, .map-card"
     );
@@ -22,7 +28,9 @@ document.addEventListener("DOMContentLoaded", function () {
     window.addEventListener("load", revealOnScroll);
 
     revealOnScroll();
+}
 
+function initializeTeamHoverEffect() {
     const teamCards = document.querySelectorAll(".team-card");
 
     teamCards.forEach(function (card) {
@@ -40,4 +48,279 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
     });
-});
+}
+
+async function loadAboutPageContent() {
+    try {
+        const response = await fetch("/website/content");
+
+        if (!response.ok) {
+            throw new Error("Failed to load website content.");
+        }
+
+        const { content = {} } = await response.json();
+
+        setText("aboutHeroTag", content.about_hero_tag);
+        applyTextStyle("aboutHeroTag", content, "about_hero_tag");
+
+        setText("aboutHeroTitle", content.about_hero_title);
+        applyTextStyle("aboutHeroTitle", content, "about_hero_title");
+
+        setText("aboutHeroDescription", content.about_hero_description);
+        applyTextStyle("aboutHeroDescription", content, "about_hero_description");
+
+        setLink("viewBranchesButton", content.view_branches_button_text, "#branches");
+        applyTextStyle("viewBranchesButton", content, "view_branches_button");
+
+        setLink("meetTeamButton", content.meet_team_button_text, "#team");
+        applyTextStyle("meetTeamButton", content, "meet_team_button");
+
+        setText("heroCardTitle", content.hero_card_title);
+        applyTextStyle("heroCardTitle", content, "hero_card_title");
+
+        setText("heroCardDescription", content.hero_card_description);
+        applyTextStyle("heroCardDescription", content, "hero_card_description");
+
+        setText("branchCount", content.branch_count);
+        applyTextStyle("branchCount", content, "branch_count");
+
+        setText("branchCountLabel", content.branch_count_label);
+        applyTextStyle("branchCountLabel", content, "branch_count_label");
+
+        setText("careTeamCount", content.care_team_count);
+        applyTextStyle("careTeamCount", content, "care_team_count");
+
+        setText("careTeamCountLabel", content.care_team_count_label);
+        applyTextStyle("careTeamCountLabel", content, "care_team_count_label");
+
+        setText("whoWeAreTag", content.who_we_are_tag);
+        applyTextStyle("whoWeAreTag", content, "who_we_are_tag");
+
+        setText("whoWeAreTitle", content.who_we_are_title);
+        applyTextStyle("whoWeAreTitle", content, "who_we_are_title");
+
+        setText("whoWeAreDescription", content.who_we_are_description);
+        applyTextStyle("whoWeAreDescription", content, "who_we_are_description");
+
+        setText("missionTitle", content.mission_title);
+        applyTextStyle("missionTitle", content, "mission_title");
+
+        setText("missionContent", content.mission_content);
+        applyTextStyle("missionContent", content, "mission_content");
+
+        setText("visionTitle", content.vision_title);
+        applyTextStyle("visionTitle", content, "vision_title");
+
+        setText("visionContent", content.vision_content);
+        applyTextStyle("visionContent", content, "vision_content");
+
+        setText("careTitle", content.care_title);
+        applyTextStyle("careTitle", content, "care_title");
+
+        setText("careContent", content.care_content);
+        applyTextStyle("careContent", content, "care_content");
+
+        setText("teamSectionTag", content.team_section_tag);
+        applyTextStyle("teamSectionTag", content, "team_section_tag");
+
+        setText("teamSectionTitle", content.team_section_title);
+        applyTextStyle("teamSectionTitle", content, "team_section_title");
+
+        setText("teamSectionDescription", content.team_section_description);
+        applyTextStyle("teamSectionDescription", content, "team_section_description");
+
+        setText("ownerLabel", content.owner_label);
+        applyTextStyle("ownerLabel", content, "owner_label");
+
+        setText("ownerName", content.owner_name);
+        applyTextStyle("ownerName", content, "owner_name");
+
+        setText("ownerPosition", content.owner_position);
+        applyTextStyle("ownerPosition", content, "owner_position");
+
+        setText("ownerMessage1", content.owner_message_1);
+        applyTextStyle("ownerMessage1", content, "owner_message_1");
+
+        setText("ownerMessage2", content.owner_message_2);
+        applyTextStyle("ownerMessage2", content, "owner_message_2");
+
+        setImage("ownerImage", content.owner_image, content.owner_name);
+
+        setText("doctor1Name", content.doctor1_name);
+        applyTextStyle("doctor1Name", content, "doctor1_name");
+
+        setText("doctor1Position", content.doctor1_position);
+        applyTextStyle("doctor1Position", content, "doctor1_position");
+
+        setImage("doctor1Image", content.doctor1_image, content.doctor1_name);
+
+        setText("doctor2Name", content.doctor2_name);
+        applyTextStyle("doctor2Name", content, "doctor2_name");
+
+        setText("doctor2Position", content.doctor2_position);
+        applyTextStyle("doctor2Position", content, "doctor2_position");
+
+        setImage("doctor2Image", content.doctor2_image, content.doctor2_name);
+
+        setText("assistant1Name", content.assistant1_name);
+        applyTextStyle("assistant1Name", content, "assistant1_name");
+
+        setText("assistant1Position", content.assistant1_position);
+        applyTextStyle("assistant1Position", content, "assistant1_position");
+
+        setImage("assistant1Image", content.assistant1_image, content.assistant1_name);
+
+        setText("assistant2Name", content.assistant2_name);
+        applyTextStyle("assistant2Name", content, "assistant2_name");
+
+        setText("assistant2Position", content.assistant2_position);
+        applyTextStyle("assistant2Position", content, "assistant2_position");
+
+        setImage("assistant2Image", content.assistant2_image, content.assistant2_name);
+
+        setText("branchSectionTag", content.branch_section_tag);
+        applyTextStyle("branchSectionTag", content, "branch_section_tag");
+
+        setText("branchSectionTitle", content.branch_section_title);
+        applyTextStyle("branchSectionTitle", content, "branch_section_title");
+
+        setText("makatiBranchName", content.makati_branch_name);
+        applyTextStyle("makatiBranchName", content, "makati_branch_name");
+
+        setText("makatiBranchStatus", content.makati_branch_status);
+        applyTextStyle("makatiBranchStatus", content, "makati_branch_status");
+
+        setText("makatiBranchAddress", content.makati_branch_address);
+        applyTextStyle("makatiBranchAddress", content, "makati_branch_address");
+
+        setText("makatiBranchLandmark", content.makati_branch_landmark);
+        applyTextStyle("makatiBranchLandmark", content, "makati_branch_landmark");
+
+        setText("makatiBranchHours", content.makati_branch_hours);
+        applyTextStyle("makatiBranchHours", content, "makati_branch_hours");
+
+        setText("makatiBranchSchedule", content.makati_branch_schedule);
+        applyTextStyle("makatiBranchSchedule", content, "makati_branch_schedule");
+
+        setLink("makatiBranchMapButton", content.makati_branch_map_button, "#makati-map");
+        applyTextStyle("makatiBranchMapButton", content, "makati_branch_map_button");
+
+        setText("makatiMapBranchName", content, "makati_branch_name");
+        setText("makatiMapBranchAddress", content, "makati_branch_address");
+        setIframe("makatiBranchMap", content.makati_branch_map);
+
+        setText("lasPinasBranchName", content, "las_pinas_branch_name");
+        applyTextStyle("lasPinasBranchName", content, "las_pinas_branch_address");
+
+        setText("lasPinasBranchStatus", content.las_pinas_branch_status);
+        applyTextStyle("lasPinasBranchStatus", content, "las_pinas_branch_status");
+
+        setText("lasPinasBranchAddress", content.las_pinas_branch_address);
+        applyTextStyle("lasPinasBranchAddress", content, "las_pinas_branch_address");
+
+        setText("lasPinasBranchHours", content.las_pinas_branch_hours);
+        applyTextStyle("lasPinasBranchHours", content, "las_pinas_branch_hours");
+
+        setLink("lasPinasBranchMapButton", content.las_pinas_branch_map_button, "#laspinas-map");
+        applyTextStyle("lasPinasBranchMapButton", content, "las_pinas_branch_map_button");
+
+        setText("lasPinasMapBranchName", content.las_pinas_branch_name);
+        setText("lasPinasMapBranchAddress", content.las_pinas_branch_address);
+        setIframe("lasPinasBranchMap", content.las_pinas_branch_map);
+
+        setText("mapSectionTag", content.map_section_tag);
+        applyTextStyle("mapSectionTag", content, "map_section_tag");
+
+        setText("mapSectionTitle", content.map_section_title);
+        applyTextStyle("mapSectionTitle", content, "map_section_title");
+
+        setText("mapSectionDescription", content.map_section_description);
+        applyTextStyle("mapSectionDescription", content, "map_section_description");
+
+        setText("footerCopyright", content.footer_copyright);
+        applyTextStyle("footerCopyright", content, "footer_copyright");
+
+    } catch (error) {
+        console.error("Error loading About page content:", error);
+    }
+}
+
+function setText(id, value) {
+    const element = document.getElementById(id);
+
+    if (!element) {
+        return;
+    }
+
+    element.textContent = value ?? "";
+}
+
+function setImage(id, value, alt = "") {
+    const element = document.getElementById(id);
+
+    if (!element) {
+        return;
+    }
+
+    if (value) {
+        element.src = value;
+    } else {
+        element.removeAttribute("src");
+    }
+
+    element.alt = alt || "";
+}
+
+function setLink(id, text, href) {
+    const element = document.getElementById(id);
+
+    if (!element) {
+        return;
+    }
+
+    element.textContent = text ?? "";
+    element.href = href || "#";
+}
+
+function setIframe(id, value) {
+    const element = document.getElementById(id);
+
+    if (!element) {
+        return;
+    }
+
+    element.src = value || "";
+}
+
+function applyTextStyle(id, content, prefix) {
+    const element = document.getElementById(id);
+
+    if (!element) {
+        return;
+    }
+
+    if (content[`${prefix}_font_family`]) {
+        element.style.fontFamily = content[`${prefix}_font_family`];
+    }
+
+    if (content[`${prefix}_font_size`]) {
+        const size = content[`${prefix}_font_size`];
+        element.style.fontSize = /^\d+$/.test(String(size)) ? `${size}px` : size;
+    }
+
+    if (content[`${prefix}_font_weight`]) {
+        element.style.fontWeight = content[`${prefix}_font_weight`];
+    }
+
+    if (content[`${prefix}_font_style`]) {
+        element.style.fontStyle = content[`${prefix}_font_style`];
+    }
+
+    if (content[`${prefix}_color`]) {
+        element.style.color = content[`${prefix}_color`];
+    }
+
+    if (content[`${prefix}_alignment`]) {
+        element.style.textAlign = content[`${prefix}_alignment`];
+    }
+}
