@@ -16,27 +16,24 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     card: {
       background: '#ffffff',
-      border: `1px solid ${primaryBorder}`,
+      border: '1px solid #e2e8f0',
       borderRadius: 22,
-      padding: isMobile ? 14 : 20,
+      padding: isMobile ? 16 : 22,
       boxSizing: 'border-box',
-      boxShadow: '0 10px 26px rgba(139, 101, 8, 0.07)',
+      boxShadow: '0 8px 24px rgba(15,23,42,.05)',
     },
 
     cardTitle: {
       margin: '0 0 4px',
-      fontSize: 16,
-      fontWeight: 800,
-      color: primaryDark,
-      fontFamily: 'Arial, sans-serif',
+      fontSize: 20,
+      fontWeight: 700,
+      color: '#0f172a',
     },
 
     chartSubtitle: {
-      fontSize: 12,
-      color: '#9b7a1d',
-      marginBottom: 16,
-      fontFamily: 'Arial, sans-serif',
-      fontWeight: 700,
+      fontSize: 14,
+      color: '#64748b',
+      marginBottom: 20,
     },
 
     chartBox: {
@@ -104,26 +101,26 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     toothBox: {
-      width: 26,
-      height: 34,
-      border: `1.5px solid ${primaryBorder}`,
-      borderRadius: 4,
-      background: '#fffdf7',
-      transition: 'border-color 0.15s, background 0.15s',
+      width: 28,
+      height: 36,
+      border: '1.5px solid #cbd5e1',
+      borderRadius: 6,
+      background: '#ffffff',
+      transition: '.2s',
     },
 
     toothBoxPlanned: {
-      background: primarySoft,
-      borderColor: primary,
-      boxShadow: 'inset 0 0 0 2px rgba(212, 175, 55, 0.2)',
+      background: 'linear-gradient(180deg, #fffdf4 0%, #fff3c4 100%)',
+      borderColor: '#c99700',
+      boxShadow: '0 0 0 2px rgba(212, 175, 55, 0.22)',
     },
 
-    /* Legend */
-    legend: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 12,
+    legendDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 4,
+      background: '#fff8df',
+      border: '1px solid #d4af37',
     },
 
     legendDot: {
@@ -183,12 +180,13 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       flexShrink: 0,
     },
 
-    /* Table */
     tableWrapper: {
       width: '100%',
-      overflowX: 'auto',
-      border: `1px solid ${primaryBorder}`,
-      borderRadius: 16,
+      overflow: 'hidden',
+      border: '1px solid #e2e8f0',
+      borderRadius: 18,
+      background: '#ffffff',
+      boxShadow: '0 6px 18px rgba(15,23,42,.05)',
     },
 
     table: {
@@ -199,22 +197,19 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     th: {
-      padding: '12px 14px',
-      background: primarySoft,
-      borderBottom: `1px solid ${primaryBorder}`,
-      color: primaryDark,
+      padding: '18px',
+      background: '#f8fafc',
+      color: '#475569',
       fontSize: 13,
       fontWeight: 700,
-      textAlign: 'left',
-      whiteSpace: 'nowrap',
+      borderBottom: '1px solid #e2e8f0',
     },
 
     td: {
-      padding: '14px',
-      borderBottom: '1px solid #f8ead0',
-      color: '#1e293b',
+      padding: '18px',
+      color: '#334155',
+      borderBottom: '1px solid #f1f5f9',
       fontSize: 14,
-      verticalAlign: 'middle',
     },
 
     tableRow: {
@@ -227,11 +222,11 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     emptyRow: {
-      padding: '24px 14px',
-      color: primaryDark,
-      fontSize: 14,
+      padding: '90px 20px',
+      color: '#94a3b8',
+      fontSize: 15,
       textAlign: 'center',
-      fontWeight: 700,
+      fontWeight: 500,
     },
 
     /* Action group */
@@ -243,66 +238,60 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     viewBtn: {
-      minHeight: 30,
-      padding: '5px 10px',
-      fontSize: 12,
-      fontWeight: 800,
-      border: `1px solid ${primary}`,
-      borderRadius: 8,
-      background: primarySoft,
-      color: primaryDark,
+      minHeight: 34,
+      padding: '0 14px',
+      border: '1px solid #bfdbfe',
+      borderRadius: 10,
+      background: '#eff6ff',
+      color: '#2563eb',
       cursor: 'pointer',
-      fontFamily: 'Arial, sans-serif',
       display: 'inline-flex',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: 5,
+      gap: 6,
+      fontWeight: 600,
     },
 
     attachmentBtn: {
-      minHeight: 30,
-      padding: '5px 10px',
-      border: `1px solid ${primary}`,
-      borderRadius: 8,
-      background: primarySoft,
-      color: primaryDark,
+      minHeight: 34,
+      padding: '0 14px',
+      border: '1px solid #e8c75f',
+      borderRadius: 10,
+      background: '#fff8df',
+      color: '#8b6508',
       cursor: 'pointer',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 5,
+      gap: 8,
       fontSize: 12,
-      fontWeight: 800,
-      fontFamily: 'Arial, sans-serif',
+      fontWeight: 700,
+      transition: '.2s',
     },
 
     attachmentCount: {
-      minWidth: 18,
-      height: 18,
-      padding: '0 5px',
+      minWidth: 20,
+      height: 20,
+      padding: '0 6px',
       borderRadius: 999,
-      background: primary,
+      background: '#b8860b',
       color: '#ffffff',
       fontSize: 11,
-      fontWeight: 800,
+      fontWeight: 700,
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      boxSizing: 'border-box',
+      boxShadow: '0 2px 6px rgba(184,134,11,.25)',
     },
 
     editBtn: {
-      minHeight: 43,
+      minHeight: 42,
       padding: '0 16px',
-      fontSize: 14,
-      fontWeight: 800,
-      border: `1px solid ${primary}`,
-      borderRadius: 14,
-      background: primary,
+      borderRadius: 12,
+      border: 'none',
+      background: '#2563eb',
       color: '#ffffff',
+      fontWeight: 700,
       cursor: 'pointer',
-      fontFamily: '"Inter Bold", Arial, sans-serif',
-      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     deleteBtn: {
@@ -469,20 +458,19 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     uploadDropzone: {
-      border: `1.5px dashed ${primary}`,
-      borderRadius: 16,
-      padding: '22px 18px',
+      border: '2px dashed #93c5fd',
+      borderRadius: 18,
+      padding: '24px 18px',
       marginBottom: 16,
-      background: primarySoft,
-      color: primaryDark,
+      background: '#f8fbff',
+      color: '#2563eb',
       cursor: 'pointer',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 7,
+      gap: 8,
       textAlign: 'center',
       fontSize: 13,
-      fontFamily: 'Arial, sans-serif',
     },
 
     uploadIcon: {
@@ -860,18 +848,19 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     backStyleBtn: {
-      minWidth: 72,
+      minWidth: 90,
       height: 42,
-      padding: '0 16px',
-      border: `1px solid ${primary}`,
+      padding: '0 18px',
       borderRadius: 12,
-      background: primary,
-      color: '#ffffff',
+      border: '1px solid #cbd5e1',
+      background: '#ffffff',
+      color: '#334155',
       cursor: 'pointer',
-      fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 14,
-      fontWeight: 800,
-      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      fontWeight: 600,
     },
 
     saveBtnDisabled: {
@@ -881,24 +870,21 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     pagination: {
       display: 'flex',
-      alignItems: 'center',
       justifyContent: 'flex-end',
-      gap: 10,
-      marginTop: 16,
-      fontFamily: 'Arial, sans-serif',
+      alignItems: 'center',
+      gap: 16,
+      padding: '18px 20px',
     },
 
     pageBtn: {
-      minWidth: 74,
-      height: 38,
-      padding: '0 14px',
-      borderRadius: 12,
-      border: `1px solid ${primaryBorder}`,
+      minWidth: 90,
+      height: 40,
+      borderRadius: 10,
+      border: '1px solid #cbd5e1',
       background: '#ffffff',
-      color: primaryDark,
+      color: '#334155',
+      fontWeight: 600,
       cursor: 'pointer',
-      fontWeight: 800,
-      fontFamily: 'Arial, sans-serif',
     },
 
     pageBtnDisabled: {
@@ -907,10 +893,9 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     pageInfo: {
-      fontSize: 13,
-      color: primaryDark,
-      fontFamily: 'Arial, sans-serif',
-      fontWeight: 700,
+      fontSize: 14,
+      color: '#64748b',
+      fontWeight: 600,
     },
 
     /* View modal rows */
