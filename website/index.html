@@ -12,9 +12,9 @@
 
 <header class="header" id="header">
 	<a href="#home" class="logo-box">
-	    <div class="brand-mark">
-	        <img id="website-logo" src="./images/clinic-logo.jpg" alt="Clinic Logo">
-	    </div>
+        <div class="brand-mark">
+            <img id="website-logo" alt="Clinic Logo" loading="lazy">
+        </div>
 	
 	    <div class="logo-text">
 	        <h2>SMILE EMPRESS</h2>
@@ -44,36 +44,41 @@
     <div class="hero-left">
         <span class="eyebrow">
             <i class="fa-solid fa-notes-medical"></i>
-            <span id="hero-eyebrow">"The Smile that can Impress"</span>
+            <span id="hero-eyebrow"></span>
         </span>
 
-        <h1 id="hero-heading">Let's illuminate your smile journey together!</h1>
+        <h1 id="hero-heading"></h1>
 
-        <p id="hero-description">Smile Empress Dental Hub delivers gentle and modern dental care focused on keeping every patient comfortable while achieving healthier, brighter, and more confident smiles.</p>
+        <p id="hero-description"></p>
 
-        <a href="./BookAppointment.html" class="header-btn">Book Now</a>
+        <a href="./BookAppointment.html" class="header-btn">
+            <span id="hero-button-label"></span>
+        </a>
 
         <div class="hero-stats">
             <div>
-                <strong id="hero-stat1-value">9+</strong>
-                <span id="hero-stat1-label">Dental Services</span>
+                <strong id="hero-stat1-value"></strong>
+                <span id="hero-stat1-label"></span>
             </div>
 
             <div>
-                <strong id="hero-stat2-value">98%</strong>
-                <span id="hero-stat2-label">Happy & Satisfied Patients</span>
+                <strong id="hero-stat2-value"></strong>
+                <span id="hero-stat2-label"></span>
             </div>
 
             <div>
-                <strong id="hero-stat3-value">20+</strong>
-                <span id="hero-stat3-label">Years of Dental Experience</span>
+                <strong id="hero-stat3-value"></strong>
+                <span id="hero-stat3-label"></span>
             </div>
         </div>
     </div>
 
     <div class="hero-right">
         <div class="image-panel">
-            <img src="./images/dentist.png" alt="Dentist" id="hero-dentist-image">
+            <img
+                id="hero-dentist-image"
+                alt="Featured Dentist"
+            >
         </div>
 
         <div class="float-card top-card">
@@ -82,17 +87,19 @@
             </a>
 
             <div>
-                <h4 id="hero-dentist-name">Dra. Twinky D. Belino</h4>
-                <p id="hero-dentist-title">Cosmetic Dentist</p>
+                <h4 id="hero-dentist-name"></h4>
+                <p id="hero-dentist-title"></p>
             </div>
         </div>
 
         <div class="float-card bottom-card">
-            <a href="./BookAppointment.html" class="float-card-btn"><i class="fa-solid fa-calendar-check"></i></a>
+            <a href="./BookAppointment.html" class="float-card-btn">
+                <i class="fa-solid fa-calendar-check"></i>
+            </a>
 
             <div>
-                <h4 id="hero-booking-title">Book Appointment</h4>
-                <p id="hero-booking-subtitle">Quick and Easy Scheduling</p>
+                <h4 id="hero-booking-title"></h4>
+                <p id="hero-booking-subtitle"></p>
             </div>
         </div>
     </div>
@@ -136,59 +143,7 @@
             <i class="fa-solid fa-chevron-left"></i>
         </button>
 
-        <div class="service-stack" id="serviceGrid">
-
-            <div class="service-card show" data-modal="modalScaling">
-                <img src="./images/deep-scaling.webp" alt="Deep Scaling">
-                <span>Deep Scaling</span>
-            </div>
-
-            <div class="service-card show" data-modal="modalSmile">
-                <img src="./images/smile-makeover.jpg" alt="Smile Make-Overs">
-                <span>Smile Make-Overs</span>
-            </div>
-
-            <div class="service-card show active" data-modal="modalWhitening">
-                <img src="./images/teeth-whitening.jpg" alt="Teeth Whitening">
-                <span>Teeth Whitening</span>
-            </div>
-
-            <div class="service-card show" data-modal="modalVeneers">
-                <img src="./images/veneers.jpg" alt="Veneers">
-                <span>Veneers</span>
-            </div>
-
-            <div class="service-card show" data-modal="modalCrowns">
-                <img src="./images/crowns.jpeg" alt="Porcelain Jacket Crowns">
-                <span>Porcelain Crowns</span>
-            </div>
-
-            <div class="service-card" data-modal="modalDentures">
-                <img src="./images/dentures.jpg" alt="Dentures">
-                <span>Dentures</span>
-            </div>
-
-            <div class="service-card" data-modal="modalRootCanal">
-                <img src="./images/root-canal.jpg" alt="Root Canal Treatment">
-                <span>Root Canal</span>
-            </div>
-
-            <div class="service-card" data-modal="modalBraces">
-                <img src="./images/braces.jpg" alt="Braces">
-                <span>Braces</span>
-            </div>
-
-            <div class="service-card" data-modal="modalAligners">
-                <img src="./images/clear-aligner.webp" alt="Clear Aligners">
-                <span>Clear Aligners</span>
-            </div>
-
-            <div class="service-card" data-modal="modalImplants">
-                <img src="./images/dental-implant.jpg" alt="Dental Implants">
-                <span>Dental Implants</span>
-            </div>
-
-        </div>
+        <div class="service-stack" id="serviceGrid"></div>
 
         <button type="button" class="service-arrow right" id="nextService" aria-label="Next service">
             <i class="fa-solid fa-chevron-right"></i>
@@ -401,64 +356,68 @@
 
         </div>
 
-        <div class="faq-right">
-            <div class="help-card">
-                <i class="fa-solid fa-comments"></i>
+<div class="faq-right">
 
-                <h3>We're Ready to Assist You</h3>
-                <p>Our dental team can guide you based on your concern and preferred schedule.</p>
+    <div class="help-card">
+        <i class="fa-solid fa-comments"></i>
 
-                <a href="#contact">Contact Us</a>
-            </div>
+        <h3>We're Ready to Assist You</h3>
 
-            <div class="hours-card">
-                <h3><i class="fa-solid fa-clock"></i>Clinic Hours</h3>
+        <p>
+            Our dental team can guide you based on your concern and preferred schedule.
+        </p>
 
-                <p>
-                    <span id="hours-weekdays">Monday to Saturday</span>
-                    <b id="hours-weekday-time">10:00 AM - 7:00 PM</b>
-                </p>
+        <a href="#contact">Contact Us</a>
+    </div>
 
-                <p>
-                    <span id="hours-sunday">Sunday</span>
-                    <b id="hours-sunday-note">By Appointment</b>
-                </p>
-            </div>
+    <div class="hours-card">
+        <h3>
+            <i class="fa-solid fa-clock"></i>
+            Clinic Hours
+        </h3>
 
-            <div class="call-card">
-                <div class="call-content">
-                    <small id="call-tagline">Your Smile, Our Priority</small>
+        <p>
+            <span id="hours-weekdays"></span>
+            <b id="hours-weekday-time"></b>
+        </p>
 
-                    <h4>
-                        <i class="fa-solid fa-phone"></i>
-                        <span id="call-phone1">0977-066-5269</span>
-                        or
-                        <span id="call-phone2">0916-525-8468</span>
-                    </h4>
+        <p>
+            <span id="hours-sunday"></span>
+            <b id="hours-sunday-note"></b>
+        </p>
+    </div>
 
-                    <div class="call-email">
-                        <i class="fa-solid fa-envelope"></i>
-                        <span id="call-email">smileempressdentalhub@gmail.com</span>
-                    </div>
-                </div>
+    <div class="call-card">
+        <div class="call-content">
+
+            <small id="call-tagline"></small>
+            <h4>
+                <i class="fa-solid fa-phone"></i>
+                <span id="call-phone1"></span>
+                <span id="call-separator">or</span>
+                <span id="call-phone2"></span>
+            </h4>
+
+            <div class="call-email">
+                <i class="fa-solid fa-envelope"></i>
+
+                <span id="call-email"></span>
             </div>
         </div>
     </div>
+</div>
+
 </section>
 
 <section class="contact" id="contact">
     <div class="contact-content">
-        <span>Contact Us</span>
-        <h2>Start Your Dental Care Journey Today</h2>
+        <span id="contact-tagline"></span>
+        <h2 id="contact-heading"></h2>
 
-        <p id="contact-description">
-            For appointments and questions, contact us at
-            0977-066-5269 or 0916-525-8468,
-            or email us at smileempressdentalhub@gmail.com.
-        </p>
+        <p id="contact-description"></p>
 
         <div class="contact-socials">
-            <a id="contact-facebook" href="https://www.facebook.com/Thesmileempressdentalhub" target="_blank" class="facebook-social" aria-label="Facebook page">
+            <a id="contact-facebook" href="#" target="_blank" rel="noopener noreferrer" class="facebook-social" aria-label="Facebook page">
                 <i class="fa-brands fa-facebook-f"></i>
             </a>
         </div>
@@ -586,28 +545,32 @@
 
 <footer class="footer">
     <div class="footer-top">
+
         <div class="footer-brand">
-            <p>Smile Empress Dental Hub</p>
-            <p>Capstone Project</p>
+            <p id="footer-brand-name"></p>
         </div>
 
         <div class="footer-column">
             <h4>SUPPORT</h4>
 
-            <a id="footer-email-link" href="https://mail.google.com/mail/?view=cm&fs=1&to=smileempressdentalhub@gmail.com" target="_blank">
-                smileempressdentalhub@gmail.com
-            </a>
+            <a id="footer-email"></a>
 
-            <p id="footer-phone1">(+63) 977-066-5269</p>
-            <p id="footer-phone2">(+63) 916-525-8468</p>
+            <a id="footer-phone1"></a>
+
+            <a id="footer-phone2"></a>
         </div>
 
         <div class="footer-column">
             <h4>SOCIALS</h4>
 
-            <a id="footer-facebook" href="https://www.facebook.com/Thesmileempressdentalhub" target="_blank">
+            <a
+                id="footer-facebook"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
                 <i class="fa-brands fa-facebook"></i>
-                <span>Smile Empress Dental Hub</span>
+
+                <span id="footer-facebook-name"></span>
             </a>
         </div>
 
@@ -620,248 +583,35 @@
             <a href="#faq">FAQs</a>
             <a href="#contact">Contact</a>
         </div>
+
     </div>
 
     <div class="footer-bottom">
-        <p id="footer-team-name">CODE IV: GECO</p>
-        <p id="footer-brand-name">ToothConnect: Dental Clinic Management System</p>
+        <p id="footer-team-name"></p>
+
+        <p id="footer-system-name"></p>
     </div>
 </footer>
 
-<div class="service-modal" id="modalScaling">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
+<div class="service-modal" id="modalScaling"></div>
 
-        <h2>Deep Scaling</h2>
+<div class="service-modal" id="modalWhitening"></div>
 
-        <div class="modal-img-box">
-            <img src="./images/deep-scaling.webp" alt="Deep Scaling">
-        </div>
+<div class="service-modal" id="modalVeneers"></div>
 
-        <p>
-            Deep scaling removes plaque, tartar, and buildup from teeth and gum areas.
-            It helps improve gum health, freshen breath, and prevent dental problems caused by bacteria.
-        </p>
+<div class="service-modal" id="modalCrowns"></div>
 
-        <a href="./Services.html?service=scaling" class="quote-btn">Read More</a>
-    </div>
-</div>
+<div class="service-modal" id="modalDentures"></div>
 
-<div class="service-modal" id="modalSmile">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
+<div class="service-modal" id="modalRootCanal"></div>
 
-        <h2>Smile Make-Overs</h2>
+<div class="service-modal" id="modalBraces"></div>
 
-        <div class="modal-img-box">
-            <img src="./images/smile-makeover.jpg" alt="Smile Make-Overs">
-        </div>
+<div class="service-modal" id="modalAligners"></div>
 
-        <p>
-            Smile make-overs improve the look of your smile through customized cosmetic dental treatments.
-            It may include whitening, veneers, crowns, and other treatments based on your dental needs.
-        </p>
+<div class="service-modal" id="modalImplants"></div>
 
-        <a href="./Services.html?service=smilemakeovers" class="quote-btn">Read More</a>
-    </div>
-</div>
-
-<div class="service-modal" id="modalWhitening">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <h2>Teeth Whitening</h2>
-
-        <div class="modal-img-box">
-            <img src="./images/teeth-whitening.jpg" alt="Teeth Whitening">
-        </div>
-
-        <p>
-            Teeth whitening helps reduce stains and discoloration for a cleaner and brighter smile.
-            It is a simple cosmetic treatment that improves tooth color safely.
-        </p>
-
-        <a href="./Services.html?service=whitening" class="quote-btn">Read More</a>
-    </div>
-</div>
-
-<div class="service-modal" id="modalVeneers">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <h2>Veneers</h2>
-
-        <div class="modal-img-box">
-            <img src="./images/veneers.jpg" alt="Veneers">
-        </div>
-
-        <p>
-            Veneers are thin covers placed on the front part of the teeth.
-            They help improve tooth shape, color, spacing, and overall smile appearance.
-        </p>
-
-        <a href="./Services.html?service=veneers" class="quote-btn">Read More</a>
-    </div>
-</div>
-
-<div class="service-modal" id="modalCrowns">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <h2>Porcelain Jacket Crowns</h2>
-
-        <div class="modal-img-box">
-            <img src="./images/crowns.jpeg" alt="Porcelain Jacket Crowns">
-        </div>
-
-        <p>
-            Porcelain jacket crowns protect and restore damaged teeth.
-            They improve strength, appearance, and natural function for better chewing and smiling.
-        </p>
-
-        <a href="./Services.html?service=crowns" class="quote-btn">Read More</a>
-
-    </div>
-</div>
-
-<div class="service-modal" id="modalDentures">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <h2>Dentures</h2>
-
-        <div class="modal-img-box">
-            <img src="./images/dentures.jpg" alt="Dentures">
-        </div>
-
-        <p>
-            Dentures replace missing teeth and support chewing, speaking, and smiling.
-            They are made to fit comfortably and restore daily oral function.
-        </p>
-
-        <a href="./Services.html?service=dentures" class="quote-btn">Read More</a>
-
-    </div>
-</div>
-
-<div class="service-modal" id="modalRootCanal">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <h2>Root Canal Treatment</h2>
-
-        <div class="modal-img-box">
-            <img src="./images/root-canal.jpg" alt="Root Canal Treatment">
-        </div>
-
-        <p>
-            Root canal treatment helps save infected or damaged teeth.
-            It removes infection inside the tooth and helps reduce pain while keeping the natural tooth.
-        </p>
-
-        <a href="./Services.html?service=rootcanal" class="quote-btn">Read More</a>
-
-    </div>
-</div>
-
-<div class="service-modal" id="modalBraces">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <h2>Braces</h2>
-
-        <div class="modal-img-box">
-            <img src="./images/braces.jpg" alt="Braces">
-        </div>
-
-        <p>
-            Braces help align crooked teeth and correct bite problems.
-            This treatment improves smile appearance, oral function, and long-term dental health.
-        </p>
-
-        <a href="./Services.html?service=braces" class="quote-btn">Read More</a>
-
-    </div>
-</div>
-
-<div class="service-modal" id="modalAligners">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <h2>Clear Aligners</h2>
-
-        <div class="modal-img-box">
-            <img src="./images/clear-aligner.webp" alt="Clear Aligners">
-        </div>
-
-        <p>
-            Clear aligners are removable trays that straighten teeth in a comfortable and discreet way.
-            They are ideal for patients who want a cleaner orthodontic look.
-        </p>
-
-        <a href="./Services.html?service=aligners" class="quote-btn">Read More</a>
-
-    </div>
-</div>
-
-<div class="service-modal" id="modalImplants">
-    <div class="service-modal-card">
-        <button type="button" class="modal-close" aria-label="Close modal">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <h2>Dental Implants</h2>
-
-        <div class="modal-img-box">
-            <img src="./images/dental-implant.jpg" alt="Dental Implants">
-        </div>
-
-        <p>
-            Dental implants replace missing teeth with strong and natural-looking support.
-            They help restore comfort, chewing ability, and confidence when smiling.
-        </p>
-
-        <a href="./Services.html?service=implants" class="quote-btn">Read More</a>
-    </div>
-</div>
-
-<div class="message-modal" id="messageModal">
-    <div class="message-box">
-        <button type="button" class="message-close" id="closeMessageModal" aria-label="Close message">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-
-        <div class="message-icon" id="messageIcon">
-            <i class="fa-solid fa-circle-exclamation"></i>
-        </div>
-
-        <h3 id="messageTitle">Error</h3>
-
-        <p id="messageText">Please complete all required fields.</p>
-
-        <button type="button" class="message-btn" id="messageBtn">
-            Okay
-        </button>
-    </div>
-</div>
+<div class="message-modal" id="messageModal"></div>
 
 <!-- BOOK MODAL -->
 <div class="step-modal" id="modalBook">
