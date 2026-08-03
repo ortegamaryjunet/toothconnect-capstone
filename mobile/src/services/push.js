@@ -9,7 +9,7 @@ Notifications.setNotificationHandler({
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
   }),
 });
 
@@ -24,6 +24,8 @@ export async function registerForPushNotificationsAsync() {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Default',
         importance: Notifications.AndroidImportance.HIGH,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        showBadge: true,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#1a365d',
       });
@@ -83,6 +85,12 @@ export async function clearPushToken() {
 }
 
 export function addNotificationListeners({ onReceived, onTapped }) {
+  Notifications.getLastNotificationResponseAsync()
+    .then((response) => {
+      if (response && onTapped) onTapped(response);
+    })
+    .catch(() => {});
+
   const receivedSubscription = Notifications.addNotificationReceivedListener(
     (notification) => {
       console.log('[push] Notification received:', notification.request.content);

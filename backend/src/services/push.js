@@ -16,6 +16,14 @@ async function getUserPushToken(userId) {
   return rows[0].push_token;
 }
 
+async function getUnreadNotificationCount(userId) {
+  const [[row]] = await pool.query(
+    'SELECT COUNT(*) AS unread FROM notifications WHERE user_id = ? AND is_read = FALSE',
+    [userId]
+  );
+  return Number(row?.unread || 0);
+}
+
 async function sendPushToUser(userId, { title, body, data }) {
   const token = await getUserPushToken(userId);
   if (!token) {
@@ -32,6 +40,7 @@ async function sendPushToUser(userId, { title, body, data }) {
     sound: 'default',
     title,
     body,
+    badge: await getUnreadNotificationCount(userId),
     data: data || {},
   };
 

@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { addNotificationListeners } from './src/services/push';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import logger from './src/utils/logger';
+import { handleNotificationNavigation } from './src/navigation/rootNavigation';
 
 // Forward fatal native errors to logger so they appear in crash logs
 const _originalHandler = global.ErrorUtils?.getGlobalHandler?.();
@@ -22,6 +23,7 @@ export default function App() {
       },
       onTapped: (response) => {
         logger.info('App', 'Notification tapped', response.notification.request.content.title);
+        handleNotificationNavigation(response);
       },
     });
     return removeListeners;

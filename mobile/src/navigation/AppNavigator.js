@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import { View, Text } from 'react-native';
+import { navigationRef, flushPendingNotificationNavigation } from './rootNavigation';
 import { useAuth } from '../auth/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -28,6 +30,12 @@ const Stack = createNativeStackNavigator();
 export default function AppNavigator() {
   const { user, loading } = useAuth();
 
+  useEffect(() => {
+    if (user) {
+      flushPendingNotificationNavigation();
+    }
+  }, [user]);
+
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f4f6f8' }}>
@@ -37,7 +45,14 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        if (user) {
+          flushPendingNotificationNavigation();
+        }
+      }}
+    >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>

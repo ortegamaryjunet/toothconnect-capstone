@@ -21,6 +21,11 @@ function formatClinicTime(value) {
   });
 }
 
+function formatDentistName(name) {
+  const cleanName = String(name || 'your dentist').trim();
+  return cleanName.toLowerCase().startsWith('dr.') ? cleanName : `Dr. ${cleanName}`;
+}
+
 async function sendAppointmentReminders() {
   try {
     const [appts24] = await pool.query(
@@ -38,16 +43,17 @@ async function sendAppointmentReminders() {
 
     for (const a of appts24) {
       const localTime = formatClinicTime(a.start_time);
-      const body24 = `Your ${a.service_name} with ${a.dentist_name} at ${a.branch_name} is tomorrow at ${localTime}.`;
+      const dentistName = formatDentistName(a.dentist_name);
+      const body24 = `Your ${a.service_name} appointment is tomorrow at ${localTime} with ${dentistName} at ${a.branch_name}.`;
       await createNotification(
         a.patient_id,
         'appointment_reminder',
-        'Appointment tomorrow',
+        'Appointment Reminder',
         body24,
         'appointment',
         a.id
       );
-      sendPushToUser(a.patient_id, { title: 'Appointment tomorrow', body: body24, data: { type: 'appointment_reminder', appointment_id: a.id } }).catch(() => {});
+      sendPushToUser(a.patient_id, { title: 'Appointment Reminder', body: body24, data: { type: 'appointment_reminder', appointment_id: a.id } }).catch(() => {});
       await pool.query('UPDATE appointments SET reminder_sent_24h = TRUE WHERE id = ?', [a.id]);
     }
     if (appts24.length > 0) console.log(`[cron] Sent ${appts24.length} 24-hour reminders`);
@@ -67,16 +73,17 @@ async function sendAppointmentReminders() {
 
     for (const a of appts2) {
       const localTime = formatClinicTime(a.start_time);
-      const body2h = `Warning: you have a ${a.service_name} appointment with ${a.dentist_name} at ${a.branch_name} in about 2 hours, at ${localTime}. Please prepare and arrive on time.`;
+      const dentistName = formatDentistName(a.dentist_name);
+      const body2h = `Your ${a.service_name} appointment is at ${localTime} with ${dentistName} at ${a.branch_name}. Please prepare and arrive on time.`;
       await createNotification(
         a.patient_id,
         'appointment_reminder',
-        'Appointment warning',
+        'Appointment Reminder',
         body2h,
         'appointment',
         a.id
       );
-      sendPushToUser(a.patient_id, { title: 'Appointment warning', body: body2h, data: { type: 'appointment_reminder_2h', appointment_id: a.id } }).catch(() => {});
+      sendPushToUser(a.patient_id, { title: 'Appointment Reminder', body: body2h, data: { type: 'appointment_reminder_2h', appointment_id: a.id } }).catch(() => {});
       await pool.query('UPDATE appointments SET reminder_sent_2h = TRUE WHERE id = ?', [a.id]);
     }
     if (appts2.length > 0) console.log(`[cron] Sent ${appts2.length} 2-hour reminders`);
@@ -96,16 +103,17 @@ async function sendAppointmentReminders() {
 
     for (const a of appts1) {
       const localTime = formatClinicTime(a.start_time);
-      const body1h = `Final warning: your ${a.service_name} appointment with ${a.dentist_name} at ${a.branch_name} is in about 1 hour, at ${localTime}. Please be ready and arrive on time.`;
+      const dentistName = formatDentistName(a.dentist_name);
+      const body1h = `Your ${a.service_name} appointment is at ${localTime} with ${dentistName} at ${a.branch_name}. This is your final reminder. Please arrive on time.`;
       await createNotification(
         a.patient_id,
         'appointment_reminder',
-        'Final appointment warning',
+        'Appointment Reminder',
         body1h,
         'appointment',
         a.id
       );
-      sendPushToUser(a.patient_id, { title: 'Final appointment warning', body: body1h, data: { type: 'appointment_reminder_1h', appointment_id: a.id } }).catch(() => {});
+      sendPushToUser(a.patient_id, { title: 'Appointment Reminder', body: body1h, data: { type: 'appointment_reminder_1h', appointment_id: a.id } }).catch(() => {});
       await pool.query('UPDATE appointments SET reminder_sent_1h = TRUE WHERE id = ?', [a.id]);
     }
     if (appts1.length > 0) console.log(`[cron] Sent ${appts1.length} 1-hour reminders`);

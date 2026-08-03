@@ -9,6 +9,9 @@ import styles from '../styles/NotificationsScreen';
 const TYPE_LABELS = {
   message: 'Message',
   appointment_reminder: 'Appointment',
+  appointment_new: 'Appointment',
+  appointment_rescheduled: 'Appointment',
+  appointment_cancelled: 'Appointment',
   appointment_cancelled_by_staff: 'Appointment',
   recall: 'Recall',
   system: 'System',
@@ -58,7 +61,14 @@ export default function NotificationsScreen({ navigation }) {
       type === 'receipt_rejected'
     ) {
       navigation.navigate('Appointments', { highlightAppointmentId: related_id });
-    } else if (type === 'appointment_cancelled_by_staff') {
+    } else if (
+      type === 'appointment_reminder' ||
+      type === 'appointment_new' ||
+      type === 'appointment_rescheduled' ||
+      type === 'appointment_cancelled' ||
+      type === 'appointment_cancelled_by_staff' ||
+      n.related_type === 'appointment'
+    ) {
       navigation.navigate('Appointments', { highlightAppointmentId: related_id });
     } else {
       fetchAll();
