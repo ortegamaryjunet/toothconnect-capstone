@@ -7,17 +7,17 @@
 }
 
 :root {
-    --gold: #d4af37;
-    --gold-dark: #8b6508;
-    --gold-deep: #6f4f05;
-    --gold-soft: #fff3cf;
-    --cream: #fffaf0;
-    --cream-2: #fdf6e7;
-    --dark: #2b2113;
-    --text: #5f513c;
-    --muted: #8a7a62;
-    --white: #ffffff;
-    --line: #ead9b0;
+    --gold: #d4af37;              /* rgb(212, 175, 55) */
+    --gold-dark: #8b6508;         /* rgb(139, 101, 8) */
+    --gold-deep: #6f4f05;         /* rgb(111, 79, 5) */
+    --gold-soft: #fff3cf;         /* rgb(255, 243, 207) */
+    --cream: #fffaf0;             /* rgb(255, 250, 240) */
+    --cream-2: #fdf6e7;           /* rgb(253, 246, 231) */
+    --dark: #2b2113;              /* rgb(43, 33, 19) */
+    --text: #5f513c;              /* rgb(95, 81, 60) */
+    --muted: #8a7a62;             /* rgb(138, 122, 98) */
+    --white: #ffffff;             /* rgb(255, 255, 255) */
+    --line: #ead9b0;              /* rgb(234, 217, 176) */
     --shadow: 0 22px 55px rgba(139, 101, 8, 0.14);
     --radius: 28px;
 }
@@ -195,16 +195,21 @@ body {
     border-radius: 20px;
     background: var(--cream);
     border: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
 }
 
 .hero-mini-grid strong {
     display: block;
+    width: 100%;
     color: var(--gold-dark);
     font-size: 28px;
     font-weight: 900;
 }
 
 .hero-mini-grid span {
+    display: block;
+    width: 100%;
     color: var(--muted);
     font-size: 13px;
     font-weight: 800;
@@ -230,6 +235,7 @@ body {
 }
 
 .section-title p {
+    text-align: left;
     margin-top: 14px;
     color: var(--text);
     line-height: 1.8;
@@ -306,6 +312,7 @@ body {
 }
 
 .owner-content {
+    display: flex;
     min-height: 360px;
     padding: 40px 45px;
     border-radius: 30px;
@@ -326,18 +333,19 @@ body {
     box-shadow: 0 20px 45px rgba(139,101,8,.18);
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
 }
 
 .owner-content p {
     font-size: 16px;
-    line-height: 1.8;
-    color: #fffaf0;
+    line-height: 1.9;
+    color: inherit;
     margin-bottom: 16px;
     font-weight: 500;
+    letter-spacing: 0.2px;
 }
 
 .owner-label {
-    align-self: flex-end;
     padding: 8px 18px;
     border-radius: 999px;
     background: rgba(255,255,255,.15);
@@ -350,26 +358,23 @@ body {
 
 .owner-info {
     margin-top: 50px !important;
-    text-align: right;
 }
 
 .owner-content h3 {
     font-size: clamp(32px, 3vw, 44px);
     line-height: 1;
-    margin-top: 20px !important;
-    margin-bottom: 10px;
-    color: #fff;
+    margin-top: 28px !important;
+    margin-bottom: 12px;
+    color: inherit;
     font-weight: 800;
-    text-align: right;
 }
 
 .owner-role {
-    color: #fff3cf !important;
+    color: inherit;
     font-size: 17px !important;
     font-weight: 700 !important;
-    margin-top: 5 !important;
+    margin-top: 6px !important;
     margin-bottom: 0 !important;
-    text-align: right;
 }
 
 .team-grid {
