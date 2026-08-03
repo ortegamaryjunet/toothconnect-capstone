@@ -18,17 +18,17 @@
 
 :root {
     --gold: #d4af37;
-    --gold-dark: #8b6508;
-    --gold-deep: #5f4307;
-    --gold-soft: #fff6dc;
-    --gold-light: #f5d77b;
-    --cream: #fffaf0;
-    --bg: #fffaf2;
-    --dark: #1f1a12;
-    --text: #5f5442;
-    --muted: #8b806d;
-    --white: #ffffff;
-    --line: #ead8a7;
+    --gold-dark: #8b6508;   /* rgb(139, 101, 8) */
+    --gold-deep: #5f4307;   /* rgb(95, 67, 7) */
+    --gold-soft: #fff6dc;   /* rgb(255, 246, 220) */
+    --gold-light: #f5d77b;  /* rgb(245, 215, 123) */
+    --cream: #fffaf0;       /* rgb(255, 250, 240) */
+    --bg: #fffaf2;          /* rgb(255, 250, 242) */
+    --dark: #1f1a12;        /* rgb(31, 26, 18) */
+    --text: #5f5442;        /* rgb(95, 84, 66) */
+    --muted: #8b806d;       /* rgb(139, 128, 109) */
+    --white: #ffffff;       /* rgb(255, 255, 255) */
+    --line: #ead8a7;        /* rgb(234, 216, 167) */
     --shadow: 0 22px 60px rgba(139, 101, 8, 0.14);
 }
 
