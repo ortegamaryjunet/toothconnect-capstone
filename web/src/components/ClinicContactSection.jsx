@@ -87,15 +87,6 @@ export default function ClinicContactSection({
 
   return (
     <div>
-      <h3 style={sectionTitle}>Footer</h3>
-
-      <div style={gridStyle}>
-        {fieldRow("Brand Name", "footer_brand_name")}
-        {fieldRow("Team Name", "footer_team_name")}
-        {fieldRow("System Name", "footer_system_name")}
-      </div>
-
-      <hr style={{ margin: "28px 0" }} />
 
       <h3 style={sectionTitle}>Contact</h3>
 
@@ -137,6 +128,16 @@ export default function ClinicContactSection({
           "Sunday Hours Note (e.g. By Appointment)",
           "hours_sunday_note"
         )}
+      </div>
+
+      <hr style={{ margin: "28px 0" }} />
+
+      <h3 style={sectionTitle}>Footer</h3>
+
+      <div style={gridStyle}>
+        {fieldRow("Brand Name", "footer_brand_name")}
+        {fieldRow("Team Name", "footer_team_name")}
+        {fieldRow("System Name", "footer_system_name")}
       </div>
 
       {websiteContentEditing &&
