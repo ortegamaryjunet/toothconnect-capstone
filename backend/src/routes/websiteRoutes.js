@@ -9,6 +9,18 @@ const websiteService = require('../services/websiteService');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { sendEmail } = require('../services/email');
 
+const uploadDir = path.join(__dirname, "../../uploads");
+
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const teamDir = path.join(__dirname, "../../uploads/team");
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -872,12 +884,6 @@ router.delete('/announcements/:id', authenticate, requireRole('admin'), async (r
   }
 });
 
-const uploadDir = path.join(__dirname, "../../uploads");
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
 router.post(
   "/upload-logo",
   authenticate,
@@ -910,6 +916,38 @@ router.post(
 
     res.json({
       path: `/uploads/${req.file.filename}`,
+    });
+  }
+);
+
+if (!fs.existsSync(teamDir)) {
+    fs.mkdirSync(teamDir, { recursive: true });
+}
+
+const teamStorage = multer.diskStorage({
+    destination(req, file, cb) {
+        cb(null, teamDir);
+    },
+    filename(req, file, cb) {
+        const ext = path.extname(file.originalname);
+        cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    },
+});
+
+const uploadTeam = multer({
+    storage: teamStorage,
+});
+
+router.post("/upload-team-image", authenticate, requireRole("admin"), uploadTeam.single("image"),
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        message: "No image uploaded.",
+      });
+    }
+
+    res.json({
+      path: `/uploads/team/${req.file.filename}`,
     });
   }
 );
