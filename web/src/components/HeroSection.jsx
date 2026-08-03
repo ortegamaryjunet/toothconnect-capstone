@@ -76,13 +76,6 @@ export default function HeroSection({ api, styles, websiteContent, websiteConten
 
     event.target.value = "";
   };
-  console.log(websiteContentForm);
-
-  console.log(
-  websiteContentForm.hero_stat1_value_text_color,
-  websiteContentForm.hero_stat2_value_text_color,
-  websiteContentForm.hero_stat3_value_text_color
-);
 
   return (
     <div>
