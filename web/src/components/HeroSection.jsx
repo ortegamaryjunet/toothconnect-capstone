@@ -76,6 +76,13 @@ export default function HeroSection({ api, styles, websiteContent, websiteConten
 
     event.target.value = "";
   };
+  console.log(websiteContentForm);
+
+  console.log(
+  websiteContentForm.hero_stat1_value_text_color,
+  websiteContentForm.hero_stat2_value_text_color,
+  websiteContentForm.hero_stat3_value_text_color
+);
 
   return (
     <div>
@@ -201,8 +208,26 @@ export default function HeroSection({ api, styles, websiteContent, websiteConten
 <div style={styles.websiteFieldsGrid}><div>{fieldRow("Booking Title","hero_booking_title")}</div><div style={styles.websiteFields}>{textDesignFields("hero_booking_title","Booking Title")}</div></div>
 <div style={styles.websiteFieldsGrid}><div>{fieldRow("Booking Subtitle","hero_booking_subtitle")}</div><div style={styles.websiteFields}>{textDesignFields("hero_booking_subtitle","Booking Subtitle")}</div></div>
 
-{websiteContentEditing&&contentEditActions(collectFieldsByPrefixes(["hero_"]),["hero_heading","hero_description","hero_button_label","hero_stat1_value","hero_stat1_label","hero_stat2_value","hero_stat2_label","hero_stat3_value","hero_stat3_label","hero_dentist_name","hero_dentist_title","hero_booking_title","hero_booking_subtitle","hero_dentist_image"])}
-
+    {websiteContentEditing &&
+      contentEditActions(
+        collectFieldsByPrefixes(["hero_"]),
+        [
+          "hero_heading",
+          "hero_description",
+          "hero_button_label",
+          "hero_stat1_value",
+          "hero_stat1_label",
+          "hero_stat2_value",
+          "hero_stat2_label",
+          "hero_stat3_value",
+          "hero_stat3_label",
+          "hero_dentist_name",
+          "hero_dentist_title",
+          "hero_booking_title",
+          "hero_booking_subtitle",
+          "hero_dentist_image",
+        ]
+      )}
     </div>
   );
 }
