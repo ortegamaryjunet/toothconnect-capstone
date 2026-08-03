@@ -17,19 +17,13 @@
 
 <section class="hero" id="about">
     <div class="hero-text">
-        <span class="tag">About Smile Empress Dental Hub</span>
-
-        <h1>Gentle dental care for healthier and brighter smiles.</h1>
-
-        <p>
-            Smile Empress Dental Hub provides patient-centered dental care in a calm,
-            safe, and welcoming clinic environment. With two accessible branches,
-            our team is ready to help you care for your smile with comfort and confidence.
-        </p>
+        <span class="tag" id="aboutHeroTag"></span>
+        <h1 id="aboutHeroTitle"></h1>
+        <p id="aboutHeroDescription"></p>
 
         <div class="hero-actions">
-            <a href="#branches" class="btn primary-btn">View Branches</a>
-            <a href="#team" class="btn outline-btn">Meet Our Team</a>
+            <a id="viewBranchesButton" href="#branches" class="btn primary-btn"></a>
+            <a id="meetTeamButton" href="#team" class="btn outline-btn"></a>
         </div>
     </div>
 
@@ -38,21 +32,18 @@
             <i class="fa-solid fa-tooth"></i>
         </div>
 
-        <h3>Patient First Care</h3>
-
-        <p>
-            We are committed to making every visit comfortable by delivering quality dental care, honest guidance, and personalized treatment plans.
-        </p>
+        <h3 id="heroCardTitle"></h3>
+        <p id="heroCardDescription"></p>
 
         <div class="hero-mini-grid">
             <div>
-                <strong>2</strong>
-                <span>Branches</span>
+                <strong id="branchCount"></strong>
+                <span id="branchCountLabel"></span>
             </div>
 
             <div>
-                <strong>4</strong>
-                <span>Care Team</span>
+                <strong id="careTeamCount"></strong>
+                <span id="careTeamCountLabel"></span>
             </div>
         </div>
     </div>
@@ -60,113 +51,86 @@
 
 <section class="section">
     <div class="section-title">
-        <span>Who We Are</span>
-        <h2>A trusted dental clinic for everyday oral care</h2>
-        <p>
-            We provide dental services that support proper oral health,
-            confident smiles, and long-term dental care.
-        </p>
+        <span id="whoWeAreTag"></span>
+        <h2 id="whoWeAreTitle"></h2>
+        <p id="whoWeAreDescription"></p>
     </div>
 
     <div class="about-grid">
         <div class="about-card">
             <i class="fa-solid fa-bullseye"></i>
-            <h3>Our Mission</h3>
-            <p>
-                To provide safe, honest, and quality dental care for patients of all ages.
-            </p>
+            <h3 id="missionTitle"></h3>
+            <p id="missionContent"></p>
         </div>
 
         <div class="about-card">
             <i class="fa-solid fa-eye"></i>
-            <h3>Our Vision</h3>
-            <p>
-                To be known as a caring dental hub where every patient can smile with confidence.
-            </p>
+            <h3 id="visionTitle"></h3>
+            <p id="visionContent"></p>
         </div>
 
         <div class="about-card">
             <i class="fa-solid fa-hand-holding-heart"></i>
-            <h3>Our Care</h3>
-            <p>
-                We listen, explain, and guide every patient before each treatment step.
-            </p>
+            <h3 id="careTitle"></h3>
+            <p id="careContent"></p>
         </div>
     </div>
 </section>
 
 <section class="team-section" id="team">
     <div class="section-title">
-        <span>Our Team</span>
-        <h2>Meet the Smile Empress Dental Hub Team</h2>
-        <p>
-            Our dental team works together to provide gentle, safe,
-            and trusted care for every patient.
-        </p>
+        <span id="teamSectionTag"></span>
+        <h2 id="teamSectionTitle"></h2>
+        <p id="teamSectionDescription"></p>
     </div>
 
     <div class="owner-card">
         <div class="owner-photo">
-            <img src="./images/twinky.jpg" alt="Dr. Twinky D. Belino">
+            <img id="ownerImage" src="" alt="">
         </div>
 
         <div class="owner-content">
-            <p>
-                Welcome to Smile Empress Dental Hub. As the owner, 
-                my mission is to provide high-quality dental care
-                that prioritizes patient comfort, safety, and satisfaction.
-                We believe that every smile is unique, and we are dedicated
-                to delivering personalized treatments while creating a warm,
-                friendly, and stress-free environment for patients of all ages.
-            </p>
+            <p id="ownerMessage1"></p>
+            <p id="ownerMessage2"></p>
 
-            <p>
-                Supported by a skilled team of dentists and dental assistants,
-                our clinic is committed to helping patients achieve and maintain
-                excellent oral health through comprehensive dental services.
-                Through continuous learning, modern technology, and compassionate
-                care, we aim to build lasting trust with our patients while
-                helping them enjoy healthier, brighter, and more confident smiles
-                for years to come.
-            </p>
+            <span class="owner-label" id="ownerLabel"></span>
 
-            <span class="owner-label">Owner</span>
+            <h3 id="ownerName"></h3>
 
-            <h3>Dr. Twinky D. Belino</h3>
-            <p class="owner-role">Cosmetic Dentist</p>
+            <p class="owner-role" id="ownerPosition"></p>
         </div>
     </div>
 
     <div class="team-grid">
         <div class="team-card">
-            <img src="./images/dentist-1.jpg" alt="Dr. Maureen Datu">
+            <img id="doctor1Image" src="" alt="">
             <div class="team-info">
-                <h3>Dr. Maureen Datu</h3>
-                <p>Orthodontist</p>
+                <h3 id="doctor1Name"></h3>
+                <p id="doctor1Position"></p>
             </div>
         </div>
 
         <div class="team-card">
-            <img src="./images/dentist-2.jpg" alt="Dr. Tourmand Morteza">
+            <img id="doctor2Image" src="" alt="">
             <div class="team-info">
-                <h3>Dr. Tourmand Morteza</h3>
-                <p>Endodontist</p>
+                <h3 id="doctor2Name"></h3>
+                <p id="doctor2Position"></p>
             </div>
         </div>
 
         <div class="team-card">
-            <img src="./images/Judith.jpg" alt="Ms. Judith">
+            <img id="assistant1Image" src="" alt="">
             <div class="team-info">
-                <h3>Ms. Judith</h3>
-                <p>Dental Assistant</p>
+                <h3 id="assistant1Name"></h3>
+                <p id="assistant1Position"></p>
             </div>
         </div>
 
         <div class="team-card">
-            <img src="./images/Rachelle.jpg" alt="Ms. Rachelle">
+            <img id="assistant2Image" src="" alt="">
             <div class="team-info">
-                <h3>Ms. Rachelle</h3>
-                <p>Dental Assistant</p>
+                <h3 id="assistant2Name"></h3>
+                <p id="assistant2Position"></p>
             </div>
         </div>
     </div>
@@ -174,8 +138,8 @@
 
 <section class="branch-section" id="branches">
     <div class="branch-header">
-        <span>Our Branches</span>
-        <h2>Visit the Smile Empress Dental Hub branch nearest to you</h2>
+        <span id="branchSectionTag"></span>
+        <h2 id="branchSectionTitle"></h2>
     </div>
 
     <div class="branches-grid">
@@ -186,34 +150,34 @@
                 </div>
 
                 <div>
-                    <h3>Makati Branch</h3>
-                    <p>Open for Appointments and Walk Ins</p>
+                    <h3 id="makatiBranchName"></h3>
+                    <p id="makatiBranchStatus"></p>
                 </div>
             </div>
 
             <div class="branch-details">
                 <div>
                     <i class="fa-solid fa-location-dot"></i>
-                    <p>C3 Mezzanine Vira Condominium P. Burgos St.</p>
+                    <p id="makatiBranchAddress"></p>
                 </div>
 
                 <div>
                     <i class="fa-solid fa-building"></i>
-                    <p>2nd Floor, above 7-Eleven, across from Makati Palace Hotel.</p>
+                    <p id="makatiBranchLandmark"></p>
                 </div>
 
                 <div>
                     <i class="fa-solid fa-clock"></i>
-                    <p>Monday to Saturday, 10:00 AM to 7:00 PM</p>
+                    <p id="makatiBranchHours"></p>
                 </div>
 
                 <div>
                     <i class="fa-solid fa-calendar-check"></i>
-                    <p>Sunday, Strictly by Appointments</p>
+                    <p id="makatiBranchSchedule"></p>
                 </div>
             </div>
 
-            <a href="#makati-map" class="branch-btn">View Makati Map</a>
+            <a id="makatiBranchMapButton" href="#makati-map" class="branch-btn"></a>
         </div>
 
         <div class="branch-box">
@@ -223,78 +187,64 @@
                 </div>
 
                 <div>
-                    <h3>Las Piñas Branch</h3>
-                    <p>Strictly for Appointments</p>
+                    <h3 id="lasPinasBranchName"></h3>
+                    <p id="lasPinasBranchStatus"></p>
                 </div>
             </div>
 
             <div class="branch-details">
                 <div>
                     <i class="fa-solid fa-location-dot"></i>
-                    <p>
-                        2nd Floor YAF Bldg., JB Tan St.
-                        BF Resort Village, Las Piñas City.
-                    </p>
+                    <p id="lasPinasBranchAddress"></p>
                 </div>
 
                 <div>
                     <i class="fa-solid fa-clock"></i>
-                    <p>Monday to Saturday, 10:00 AM to 7:00 PM</p>
+                    <p id="lasPinasBranchHours"></p>
                 </div>
             </div>
 
-            <a href="#laspinas-map" class="branch-btn">View Las Piñas Map</a>
+            <a id="lasPinasBranchMapButton" href="#laspinas-map" class="branch-btn"></a>
         </div>
     </div>
 </section>
 
 <section class="map-section" id="location">
     <div class="section-title">
-        <span>Clinic Locations</span>
-        <h2>Find our Smile Empress Dental Hub branches</h2>
-        <p>
-            Use the maps below to check each branch location and nearby landmarks.
-        </p>
+        <span id="mapSectionTag"></span>
+        <h2 id="mapSectionTitle"></h2>
+        <p id="mapSectionDescription"></p>
     </div>
 
     <div class="map-grid">
         <div class="map-card" id="makati-map">
             <div class="map-header">
-                <h3>Makati Branch</h3>
-                <p>C3 Mezzanine Vira Condominium P. Burgos St.</p>
+                <h3 id="makatiMapBranchName"></h3>
+                <p id="makatiMapBranchAddress"></p>
             </div>
 
             <div class="map-wrapper">
-                <iframe
-                    src="https://www.google.com/maps?q=Makati%20Palace%20Hotel%20P.%20Burgos%20Makati&output=embed"
-                    loading="lazy"
-                    referrerpolicy="no-referrer-when-downgrade">
-                </iframe>
+                <iframe id="makatiBranchMap" src="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
             </div>
         </div>
 
         <div class="map-card" id="laspinas-map">
             <div class="map-header">
-                <h3>Las Piñas Branch</h3>
-                <p>2nd Floor YAF Bldg., JB Tan St. BF Resort Village, Las Piñas City.</p>
+                <h3 id="lasPinasBranchName"></h3>
+                <p id="lasPinasBranchAddress"></p>
             </div>
 
             <div class="map-wrapper">
-                <iframe
-                    src="https://www.google.com/maps?q=YAF%20Building%20JB%20Tan%20Street%20BF%20Resort%20Village%20Las%20Pinas&output=embed"
-                    loading="lazy"
-                    referrerpolicy="no-referrer-when-downgrade">
-                </iframe>
+                <iframe id="lasPinasBranchMap" src="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
             </div>
         </div>
     </div>
 </section>
 
 <footer>
-    <p>© 2026 Smile Empress Dental Hub. All rights reserved.</p>
+    <p id="footerCopyright"></p>
 </footer>
 
 <script src="./js/AboutUs.js" defer></script>
-
 </body>
 </html>
