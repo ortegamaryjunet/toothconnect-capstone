@@ -53,26 +53,24 @@ function applyTextDesign(id, prefix, c) {
         return;
     }
 
-    console.group(`[applyTextDesign] ${id}`);
-
-    console.log("Prefix:", prefix);
-
-    console.log("Font Family:", c[`${prefix}_font_family`]);
-    console.log("Font Size:", c[`${prefix}_font_size`]);
-    console.log("Font Weight:", c[`${prefix}_font_weight`]);
-    console.log("Font Style:", c[`${prefix}_font_style`]);
-    console.log("Text Color:", c[`${prefix}_text_color`]);
     console.log("Text Alignment:", c[`${prefix}_text_alignment`]);
 
     element.style.fontFamily = c[`${prefix}_font_family`] || "";
     element.style.fontSize = c[`${prefix}_font_size`] || "";
     element.style.fontWeight = c[`${prefix}_font_weight`] || "";
     element.style.fontStyle = c[`${prefix}_font_style`] || "";
-    element.style.color = c[`${prefix}_text_color`] || "";
+    element.style.color =
+        c[`${prefix}_text_color`] ||
+        c[`${prefix}_color`] ||
+        "";
 
-    const alignment = (c[`${prefix}_text_alignment`] || "left")
-        .trim()
-        .toLowerCase();
+    const alignment = (
+        c[`${prefix}_text_alignment`] ||
+        c[`${prefix}_alignment`] ||
+        "left"
+    )
+    .trim()
+    .toLowerCase();
 
     console.log("Normalized Alignment:", alignment);
 
@@ -99,11 +97,6 @@ function applyTextDesign(id, prefix, c) {
                     button.style.justifyContent = "center";
                     console.warn("Unknown alignment:", alignment);
             }
-
-            console.log(
-                "Applied justifyContent:",
-                button.style.justifyContent
-            );
         }
     } else {
         element.style.textAlign = alignment;
@@ -113,10 +106,6 @@ function applyTextDesign(id, prefix, c) {
             element.style.textAlign
         );
     }
-
-    console.log("Final Element:", element);
-
-    console.groupEnd();
 }
 
 function loadWebsiteContent() {
