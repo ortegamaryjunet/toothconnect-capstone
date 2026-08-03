@@ -52,7 +52,7 @@ function initializeTeamHoverEffect() {
 
 async function loadAboutPageContent() {
     try {
-        const response = await fetch("/website/content");
+        const response = await fetch("http://localhost:4000/api/website/content")
 
         if (!response.ok) {
             throw new Error("Failed to load website content.");
@@ -138,11 +138,11 @@ async function loadAboutPageContent() {
         setText("ownerPosition", content.owner_position);
         applyTextStyle("ownerPosition", content, "owner_position");
 
-        setText("ownerMessage1", content.owner_message_1);
-        applyTextStyle("ownerMessage1", content, "owner_message_1");
+        setText("ownerMessage1", content.owner_message1);
+        applyTextStyle("ownerMessage1", content, "owner_message1");
 
-        setText("ownerMessage2", content.owner_message_2);
-        applyTextStyle("ownerMessage2", content, "owner_message_2");
+        setText("ownerMessage2", content.owner_message2);
+        applyTextStyle("ownerMessage2", content, "owner_message2");
 
         setImage("ownerImage", content.owner_image, content.owner_name);
 
@@ -183,6 +183,18 @@ async function loadAboutPageContent() {
 
         setText("branchSectionTitle", content.branch_section_title);
         applyTextStyle("branchSectionTitle", content, "branch_section_title");
+        const title = document.getElementById("branchSectionTitle");
+
+console.log("Inline style:", title.style.cssText);
+
+console.log("Computed style:", {
+    family: getComputedStyle(title).fontFamily,
+    size: getComputedStyle(title).fontSize,
+    weight: getComputedStyle(title).fontWeight,
+    color: getComputedStyle(title).color,
+    align: getComputedStyle(title).textAlign,
+});
+        applyTextStyle("branchSectionTitle", content, "branch_section_title");
 
         setText("makatiBranchName", content.makati_branch_name);
         applyTextStyle("makatiBranchName", content, "makati_branch_name");
@@ -205,12 +217,16 @@ async function loadAboutPageContent() {
         setLink("makatiBranchMapButton", content.makati_branch_map_button, "#makati-map");
         applyTextStyle("makatiBranchMapButton", content, "makati_branch_map_button");
 
-        setText("makatiMapBranchName", content, "makati_branch_name");
-        setText("makatiMapBranchAddress", content, "makati_branch_address");
-        setIframe("makatiBranchMap", content.makati_branch_map);
+        setText("makatiMapBranchName", content.makati_branch_name);
+        applyTextStyle("makatiMapBranchName", content, "makati_branch_name");
 
-        setText("lasPinasBranchName", content, "las_pinas_branch_name");
-        applyTextStyle("lasPinasBranchName", content, "las_pinas_branch_address");
+        setText("makatiMapBranchAddress", content.makati_branch_address);
+        applyTextStyle("makatiMapBranchAddress", content, "makati_branch_address");
+
+        setIframe("makatiBranchMap", getMapUrl(content.makati_branch_address));
+
+        setText("lasPinasBranchName", content.las_pinas_branch_name);
+        applyTextStyle("lasPinasBranchName", content, "las_pinas_branch_name");
 
         setText("lasPinasBranchStatus", content.las_pinas_branch_status);
         applyTextStyle("lasPinasBranchStatus", content, "las_pinas_branch_status");
@@ -218,15 +234,25 @@ async function loadAboutPageContent() {
         setText("lasPinasBranchAddress", content.las_pinas_branch_address);
         applyTextStyle("lasPinasBranchAddress", content, "las_pinas_branch_address");
 
+        setText("lasPinasBranchLandmark", content.las_pinas_branch_landmark);
+        applyTextStyle("lasPinasBranchLandmark", content, "las_pinas_branch_landmark");
+
         setText("lasPinasBranchHours", content.las_pinas_branch_hours);
         applyTextStyle("lasPinasBranchHours", content, "las_pinas_branch_hours");
+
+        setText("lasPinasBranchSchedule", content.las_pinas_branch_schedule);
+        applyTextStyle("lasPinasBranchSchedule", content, "las_pinas_branch_schedule");
 
         setLink("lasPinasBranchMapButton", content.las_pinas_branch_map_button, "#laspinas-map");
         applyTextStyle("lasPinasBranchMapButton", content, "las_pinas_branch_map_button");
 
         setText("lasPinasMapBranchName", content.las_pinas_branch_name);
+        applyTextStyle("lasPinasMapBranchName", content, "las_pinas_branch_name");
+
         setText("lasPinasMapBranchAddress", content.las_pinas_branch_address);
-        setIframe("lasPinasBranchMap", content.las_pinas_branch_map);
+        applyTextStyle("lasPinasMapBranchAddress", content, "las_pinas_branch_address");
+
+        setIframe("lasPinasBranchMap", getMapUrl(content.las_pinas_branch_address));
 
         setText("mapSectionTag", content.map_section_tag);
         applyTextStyle("mapSectionTag", content, "map_section_tag");
@@ -243,6 +269,14 @@ async function loadAboutPageContent() {
     } catch (error) {
         console.error("Error loading About page content:", error);
     }
+}
+
+function getMapUrl(address) {
+    if (!address) {
+        return "";
+    }
+
+    return `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
 }
 
 function setText(id, value) {
@@ -263,7 +297,15 @@ function setImage(id, value, alt = "") {
     }
 
     if (value) {
-        element.src = value;
+        if (
+            value.startsWith("http://") ||
+            value.startsWith("https://") ||
+            value.startsWith("blob:")
+        ) {
+            element.src = value;
+        } else {
+            element.src = `http://localhost:4000${value}`;
+        }
     } else {
         element.removeAttribute("src");
     }
@@ -299,28 +341,95 @@ function applyTextStyle(id, content, prefix) {
         return;
     }
 
-    if (content[`${prefix}_font_family`]) {
-        element.style.fontFamily = content[`${prefix}_font_family`];
+    const fontFamily = content[`${prefix}_font_family`];
+    const fontSize = content[`${prefix}_font_size`];
+    const fontWeight = content[`${prefix}_font_weight`];
+    const fontStyle = content[`${prefix}_font_style`];
+
+    const textColor =
+        content[`${prefix}_text_color`] ??
+        content[`${prefix}_color`];
+
+    const textAlignment =
+        content[`${prefix}_text_alignment`] ??
+        content[`${prefix}_alignment`];
+
+    if (fontFamily) {
+        element.style.fontFamily = fontFamily;
     }
 
-    if (content[`${prefix}_font_size`]) {
-        const size = content[`${prefix}_font_size`];
-        element.style.fontSize = /^\d+$/.test(String(size)) ? `${size}px` : size;
+    if (fontSize) {
+        element.style.fontSize = /^\d+$/.test(String(fontSize))
+            ? `${fontSize}px`
+            : fontSize;
     }
 
-    if (content[`${prefix}_font_weight`]) {
-        element.style.fontWeight = content[`${prefix}_font_weight`];
+    if (fontWeight) {
+        element.style.fontWeight = fontWeight;
     }
 
-    if (content[`${prefix}_font_style`]) {
-        element.style.fontStyle = content[`${prefix}_font_style`];
+    if (fontStyle) {
+        element.style.fontStyle = fontStyle;
     }
 
-    if (content[`${prefix}_color`]) {
-        element.style.color = content[`${prefix}_color`];
+    if (textColor) {
+        element.style.color = textColor;
     }
 
-    if (content[`${prefix}_alignment`]) {
-        element.style.textAlign = content[`${prefix}_alignment`];
+    if (textAlignment) {
+        element.style.textAlign = textAlignment;
+
+        const parent = element.parentElement;
+
+        if (parent) {
+            // Section headers (Who We Are, Team, Map)
+            if (
+                parent.classList.contains("section-title") ||
+                parent.classList.contains("branch-header")
+            ) {
+                parent.style.textAlign = textAlignment;
+
+                if (textAlignment === "left") {
+                    parent.style.margin = "0 0 50px";
+                } else if (textAlignment === "right") {
+                    parent.style.margin = "0 0 50px auto";
+                } else {
+                    parent.style.margin = "0 auto 50px";
+                }
+            }
+
+            // Owner section
+            if (parent.classList.contains("owner-content")) {
+                parent.style.textAlign = textAlignment;
+
+                if (textAlignment === "left") {
+                    parent.style.alignItems = "flex-start";
+                } else if (textAlignment === "right") {
+                    parent.style.alignItems = "flex-end";
+                } else {
+                    parent.style.alignItems = "center";
+                }
+            }
+
+            // Team cards
+            if (parent.classList.contains("team-info")) {
+                parent.style.textAlign = textAlignment;
+            }
+
+            // Branch card header
+            if (parent.classList.contains("branch-top")) {
+                parent.style.textAlign = textAlignment;
+            }
+
+            // Branch details
+            if (parent.classList.contains("branch-details")) {
+                parent.style.textAlign = textAlignment;
+            }
+
+            // Map card header
+            if (parent.classList.contains("map-header")) {
+                parent.style.textAlign = textAlignment;
+            }
+        }
     }
 }
