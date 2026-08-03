@@ -18,6 +18,7 @@ import {
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import AdminProfileMenu from '../components/AdminProfileMenu';
 import createAdminSettingsStyles from '../styles/AdminSettings';
+import WebsiteContentRenderer from "../components/WebsiteContentRenderer";
 
 import clinicLogo from '../assets/adminImages/clinic-logo.png';
 import AdminScheduleRequests from './AdminScheduleRequests';
@@ -275,60 +276,601 @@ function calculateYearsActive(dateOpened) {
   return String(Math.max(0, new Date().getFullYear() - openedYear));
 }
 
-const WEBSITE_FONT_OPTIONS = [
-  'Arial, sans-serif',
-  'Inter, sans-serif',
-  'Poppins, sans-serif',
-  'Roboto, sans-serif',
-  'Montserrat, sans-serif',
-  'Georgia, serif',
-  'Times New Roman, serif',
-];
-
-const WEBSITE_FONT_SIZE_OPTIONS = ['12px', '13px', '14px', '15px', '16px', '18px', '20px', '24px', '28px', '32px', '36px', '42px', '48px'];
-
-const WEBSITE_ALIGNMENT_OPTIONS = [
-  { value: 'left', label: 'Left' },
-  { value: 'center', label: 'Center' },
-  { value: 'right', label: 'Right' },
-  { value: 'justify', label: 'Justify' },
-];
-
 export default function AdminSettings() {
   const location = useLocation();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const [screenWidth, setScreenWidth] = useState(
-    typeof window !== 'undefined' ? window.innerWidth : 1200
+    typeof window !== "undefined" ? window.innerWidth : 1200
   );
 
-  const [activeSection, setActiveSection] = useState('leaveRequests');
+  const [activeSection, setActiveSection] = useState("leaveRequests");
   const [activeOverlay, setActiveOverlay] = useState(null);
 
   const highlightRequestId = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    return params.get('highlightRequestId') || null;
+    return params.get("highlightRequestId") || null;
   }, [location.search]);
 
   useEffect(() => {
     if (highlightRequestId) {
-      setActiveSection('leaveRequests');
+      setActiveSection("leaveRequests");
     }
   }, [highlightRequestId]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const section = params.get('section');
-    if (section === 'adminAccount') {
-      setActiveSection('adminAccount');
+    const section = params.get("section");
+
+    if (section === "adminAccount") {
+      setActiveSection("adminAccount");
     }
   }, [location.search]);
+
+  const fontFamilyOptions = [
+    "Arial",
+    "Helvetica",
+    "Verdana",
+    "Tahoma",
+    "Trebuchet MS",
+    "Times New Roman",
+    "Georgia",
+  ];
+
+  const fontWeightOptions = [
+    { value: "100", label: "100 Thin" },
+    { value: "200", label: "200 Extra Light" },
+    { value: "300", label: "300 Light" },
+    { value: "400", label: "400 Normal" },
+    { value: "500", label: "500 Medium" },
+    { value: "600", label: "600 Semi Bold" },
+    { value: "700", label: "700 Bold" },
+    { value: "800", label: "800 Extra Bold" },
+    { value: "900", label: "900 Black" },
+  ];
+
+  const textAlignOptions = [
+    { value: "left", label: "Left" },
+    { value: "center", label: "Center" },
+    { value: "right", label: "Right" },
+    { value: "justify", label: "Justify" },
+  ];
+
+  const fontSizeOptions = [
+    { value: "8px", label: "8px" },
+    { value: "9px", label: "9px" },
+    { value: "10px", label: "10px" },
+    { value: "11px", label: "11px" },
+    { value: "12px", label: "12px" },
+    { value: "13px", label: "13px" },
+    { value: "14px", label: "14px" },
+    { value: "16px", label: "16px" },
+    { value: "18px", label: "18px" },
+    { value: "20px", label: "20px" },
+    { value: "22px", label: "22px" },
+    { value: "23px", label: "23px" },
+    { value: "24px", label: "24px" },
+    { value: "26px", label: "26px" },
+    { value: "28px", label: "28px" },
+    { value: "32px", label: "32px" },
+    { value: "36px", label: "36px" },
+    { value: "42px", label: "42px" },
+    { value: "48px", label: "48px" },
+    { value: "56px", label: "56px" },
+    { value: "64px", label: "64px" },
+    { value: "72px", label: "72px" },
+  ];
+
+  const fieldRow = (label, key, type = "text", options = []) => {
+    const value = websiteContentForm[key] ?? "";
+
+    const inputValue =
+      type === "color"
+        ? /^#[0-9A-Fa-f]{6}$/.test(value)
+          ? value
+          : "#000000"
+        : value;
+
+    const showError = websiteContentErrors[key];
+
+    const handleChange = (newValue) => {
+      let error = "";
+
+      /* Brand Name */
+      if (key === "footer_brand_name") {
+        newValue = newValue.replace(/[^A-Za-z\s&.'-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z\s&.'-]+$/.test(newValue.trim())
+        ) {
+          error = "Brand name contains invalid characters.";
+        }
+      }
+
+      /* Team Name */
+      else if (key === "footer_team_name") {
+        newValue = newValue.replace(/[^A-Za-z\s&:.,'()-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z\s&:.,'()-]+$/.test(newValue.trim())
+        ) {
+          error = "Team name contains invalid characters.";
+        }
+      }
+
+      /* System Name */
+      else if (key === "footer_system_name") {
+        newValue = newValue.replace(/[^A-Za-z\s&:.,'()-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z\s&:.,'()-]+$/.test(newValue.trim())
+        ) {
+          error = "System name contains invalid characters.";
+        }
+      }
+
+      /* Clinic Tagline */
+      else if (key === "contact_tagline") {
+        newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()!?-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(newValue)
+        ) {
+          error = "Clinic tagline contains invalid characters.";
+        }
+      }
+
+      /* Contact Badge */
+      else if (key === "contact_badge") {
+        newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()!?-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(newValue)
+        ) {
+          error = "Contact badge contains invalid characters.";
+        }
+      }
+
+      /* Contact Heading */
+      else if (key === "contact_heading") {
+        newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()!?-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(newValue)
+        ) {
+          error = "Contact heading contains invalid characters.";
+        }
+      }
+
+      /* Contact Button */
+      else if (key === "contact_button") {
+        newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()!?-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(newValue)
+        ) {
+          error = "Button label contains invalid characters.";
+        }
+      }
+
+      /* Facebook Page Name */
+      else if (key === "contact_facebook_name") {
+        newValue = newValue.replace(/[^A-Za-z\s&.'-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z\s&.'-]+$/.test(newValue.trim())
+        ) {
+          error = "Facebook page name contains invalid characters.";
+        }
+      }
+
+      /* Facebook URL */
+      else if (key === "contact_facebook_url") {
+        const fbRegex =
+          /^https?:\/\/(www\.)?(facebook\.com|fb\.com)\/.+$/i;
+
+        if (
+          newValue &&
+          !fbRegex.test(newValue.trim())
+        ) {
+          error = "Enter a valid Facebook URL.";
+        }
+      }
+
+      /* Email */
+      else if (key === "contact_email") {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (
+          newValue &&
+          !emailRegex.test(newValue.trim())
+        ) {
+          error = "Enter a valid email address.";
+        }
+      }
+
+      /* Phone Numbers */
+      else if (
+        key === "contact_phone1" ||
+        key === "contact_phone2"
+      ) {
+        newValue = newValue.replace(/\D/g, "").slice(0, 10);
+
+        if (
+          newValue.length > 0 &&
+          !newValue.startsWith("9")
+        ) {
+          error = "Phone number must start with 9.";
+        } else if (
+          newValue.length > 0 &&
+          newValue.length < 10
+        ) {
+          error =
+            "Phone number must contain exactly 10 digits.";
+        } else if (
+          newValue.length === 10 &&
+          !/^9\d{9}$/.test(newValue)
+        ) {
+          error =
+            "Phone number must start with 9 and contain exactly 10 digits.";
+        }
+      }
+
+      /* Weekdays */
+      else if (key === "hours_weekdays") {
+        newValue = newValue.replace(/[^A-Za-z\s-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z\s-]+$/.test(newValue)
+        ) {
+          error = "Weekdays label contains invalid characters.";
+        }
+      }
+
+      /* Weekday Time */
+      else if (key === "hours_weekday_time") {
+        newValue = newValue.replace(/[^A-Za-z0-9:\s-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z0-9:\s-]+$/.test(newValue)
+        ) {
+          error = "Weekday hours contain invalid characters.";
+        }
+      }
+
+      /* Sunday */
+      else if (key === "hours_sunday") {
+        newValue = newValue.replace(/[^A-Za-z\s]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z\s]+$/.test(newValue)
+        ) {
+          error = "Sunday label contains invalid characters.";
+        }
+      }
+
+      /* Sunday Note */
+      else if (key === "hours_sunday_note") {
+        newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()-]/g, "");
+
+        if (
+          newValue &&
+          !/^[A-Za-z0-9\s&:.,'()-]+$/.test(newValue)
+        ) {
+          error = "Sunday note contains invalid characters.";
+        }
+      }
+
+      /* Hero Statistic Values */
+      else if (
+        key === "hero_stat1_value" ||
+        key === "hero_stat2_value" ||
+        key === "hero_stat3_value"
+      ) {
+        newValue = newValue.replace(/[^0-9%+]/g, "");
+
+        if (newValue && !/^\d+[%+]?$/.test(newValue)) {
+          error = "Only numbers with an optional % or + are allowed.";
+        }
+      }
+
+      /* Hero Labels */
+      else if (
+        key === "hero_eyebrow" ||
+        key === "hero_heading" ||
+        key === "hero_description" ||
+        key === "hero_button_label" ||
+        key === "hero_stat1_label" ||
+        key === "hero_stat2_label" ||
+        key === "hero_stat3_label" ||
+        key === "hero_dentist_name" ||
+        key === "hero_dentist_title" ||
+        key === "hero_booking_title" ||
+        key === "hero_booking_subtitle"
+      ) {
+        newValue = newValue.replace(/[^A-Za-z\s&.,'()!?:-]/g, "");
+
+        if (newValue && !/^[A-Za-z\s&.,'()!?:-]+$/.test(newValue)) {
+          error = "Contains invalid characters.";
+        }
+      }
+
+      else if (
+        key === "about_hero_tag" ||
+        key === "about_hero_title" ||
+        key === "about_hero_description" ||
+        key === "hero_card_title" ||
+        key === "hero_card_description" ||
+        key === "who_we_are_tag" ||
+        key === "who_we_are_title" ||
+        key === "who_we_are_description" ||
+        key === "mission_title" ||
+        key === "vision_title" ||
+        key === "care_title" ||
+        key === "team_section_tag" ||
+        key === "team_section_title" ||
+        key === "team_section_description" ||
+        key === "branch_section_tag" ||
+        key === "branch_section_title" ||
+        key === "map_section_tag" ||
+        key === "map_section_title" ||
+        key === "owner_label" ||
+        key === "owner_name" ||
+        key === "owner_position" ||
+        key === "doctor1_name" ||
+        key === "doctor1_position" ||
+        key === "doctor2_name" ||
+        key === "doctor2_position" ||
+        key === "assistant1_name" ||
+        key === "assistant1_position" ||
+        key === "assistant2_name" ||
+        key === "assistant2_position" ||
+        key === "branch_count_label" ||
+        key === "care_team_count_label"
+      ) {
+        if (
+          newValue &&
+          !/^[A-Za-z0-9\s&.,'()!?:/%+\-]+$/.test(newValue.trim())
+        ) {
+          error = "Contains invalid characters.";
+        }
+      }
+
+      else if (
+        key === "owner_message_1" ||
+        key === "owner_message_2" ||
+        key === "mission_content" ||
+        key === "vision_content" ||
+        key === "care_content" ||
+        key === "map_section_description"
+      ) {
+        if (newValue && !/^[A-Za-z0-9\s&.,'"()!?:;%+\-\/\n\r]+$/.test(newValue)
+        ) {
+          error = "Contains invalid characters.";
+        }
+      }
+
+      else if (
+        key === "makati_branch_name" ||
+        key === "las_pinas_branch_name" ||
+        key === "makati_branch_status" ||
+        key === "las_pinas_branch_status" ||
+        key === "makati_branch_address" ||
+        key === "las_pinas_branch_address" ||
+        key === "makati_branch_landmark" ||
+        key === "makati_branch_hours" ||
+        key === "las_pinas_branch_hours" ||
+        key === "makati_branch_schedule" ||
+        key === "makati_branch_map_button" ||
+        key === "las_pinas_branch_map_button"
+      ) {
+        if (newValue && !/^[A-Za-z0-9\s&.,'"()!?:#/%+\-]+$/.test(newValue)
+        ) {
+          error = "Contains invalid characters.";
+        }
+      }
+
+      setWebsiteContentForm((prev) => ({
+        ...prev,
+        [key]: newValue,
+      }));
+
+      setWebsiteContentErrors((prev) => ({
+        ...prev,
+        [key]: error,
+      }));
+    };
+
+    return (
+      <div
+        key={key}
+        style={{
+          ...styles.websiteFieldRow,
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          marginBottom: 14,
+        }}
+      >
+        <label
+          style={{
+            ...styles.websiteFieldLabel,
+            marginBottom: 6,
+          }}
+        >
+          {label}
+        </label>
+
+        {websiteContentEditing ? (
+          type === "textarea" ? (
+            <textarea
+              value={value}
+              rows={3}
+              onChange={(event) => handleChange(event.target.value)}
+              style={{
+                ...styles.formInput,
+                ...styles.websiteTextarea,
+                width: "100%",
+                boxSizing: "border-box",
+                borderColor: showError ? "#dc2626" : "#d1d5db",
+              }}
+            />
+          ) : type === "select" ? (
+            <select
+              value={value}
+              onChange={(event) => handleChange(event.target.value)}
+              style={{
+                ...styles.formInput,
+                width: "100%",
+                boxSizing: "border-box",
+                borderColor: showError ? "#dc2626" : "#d1d5db",
+              }}
+            >
+              <option value="">Select {label}</option>
+
+              {options.map((option) => {
+                const optionValue =
+                  typeof option === "string"
+                    ? option
+                    : option.value;
+
+                const optionLabel =
+                  typeof option === "string"
+                    ? option
+                    : option.label;
+
+                return (
+                  <option
+                    key={optionValue}
+                    value={optionValue}
+                  >
+                    {optionLabel}
+                  </option>
+                );
+              })}
+            </select>
+          ) : (
+            <input
+              type={type}
+              value={inputValue}
+              onChange={(event) => {
+                let newValue = event.target.value;
+
+                if (
+                  key === "contact_phone1" ||
+                  key === "contact_phone2"
+                ) {
+                  newValue = newValue.replace(/\D/g, "");
+
+                  if (
+                    newValue.length > 0 &&
+                    !newValue.startsWith("9")
+                  ) {
+                    return;
+                  }
+
+                  newValue = newValue.slice(0, 10);
+                }
+
+                handleChange(newValue);
+              }}
+              inputMode={
+                key === "contact_phone1" ||
+                key === "contact_phone2"
+                  ? "numeric"
+                  : undefined
+              }
+              maxLength={
+                key === "contact_phone1" ||
+                key === "contact_phone2"
+                  ? 10
+                  : undefined
+              }
+              style={{
+                ...styles.formInput,
+                width: "100%",
+                boxSizing: "border-box",
+                borderColor: showError ? "#dc2626" : "#d1d5db",
+              }}
+            />
+          )
+        ) : (
+          <div
+            style={{
+              ...styles.formInput,
+              ...styles.readOnlyInput,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            {value || (
+              <span style={{ color: "#94a3b8" }}>
+                —
+              </span>
+            )}
+          </div>
+        )}
+
+        {showError && (
+          <div
+            style={{
+              color: "#dc2626",
+              fontSize: 12,
+              marginTop: 5,
+              lineHeight: 1.3,
+            }}
+          >
+            {showError}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const textDesignFields = (prefix, label) => (
+    <>
+      {fieldRow(`${label} Font Family`, `${prefix}_font_family`, "select", fontFamilyOptions)}
+
+      {fieldRow(`${label} Font Size`, `${prefix}_font_size`, "select", fontSizeOptions)}
+
+      {fieldRow(`${label} Font Weight`, `${prefix}_font_weight`, "select", fontWeightOptions)}
+
+      {fieldRow(`${label} Font Style`, `${prefix}_font_style`, "select",
+        [
+          { value: "normal", label: "Normal" },
+          { value: "italic", label: "Italic" },
+        ]
+      )}
+
+      {fieldRow(`${label} Text Color`, `${prefix}_text_color`, "color")}
+
+      {fieldRow(`${label} Text Alignment`, `${prefix}_text_alignment`, "select", textAlignOptions)}
+    </>
+  );
 
   const [branches, setBranches] = useState([]);
   const [services, setServices] = useState([]);
   const [onlineInquiries, setOnlineInquiries] = useState([]);
   const [websiteTab, setWebsiteTab] = useState('content');
 
+  const [websiteHeroSaveConfirmModal, setWebsiteHeroSaveConfirmModal] = useState(null);
+  const [websiteMessageModal, setWebsiteMessageModal] = useState(null);
+  const [websiteContentClearConfirmModal, setWebsiteContentClearConfirmModal] = useState(null);
+  const [websiteContentErrors, setWebsiteContentErrors] = useState({});
+  const [websiteAboutOverlay, setWebsiteAboutOverlay] = useState(null);
+  const [websiteAboutSaveConfirmModal, setWebsiteAboutSaveConfirmModal] = useState(null);
+  const [websiteServiceSaveConfirmModal, setWebsiteServiceSaveConfirmModal] = useState(null);
   const [websiteContent, setWebsiteContent] = useState({});
   const [websiteFaqs, setWebsiteFaqs] = useState([]);
   const [websiteServices, setWebsiteServices] = useState([]);
@@ -337,35 +879,26 @@ export default function AdminSettings() {
   const [websiteContentForm, setWebsiteContentForm] = useState({});
   const [websiteContentSaving, setWebsiteContentSaving] = useState(false);
   const [websiteContentEditing, setWebsiteContentEditing] = useState(false);
-  const [showWebsiteContentCancelConfirmModal, setShowWebsiteContentCancelConfirmModal] =
-    useState(false);
-  const [websiteContentSaveConfirmModal, setWebsiteContentSaveConfirmModal] =
-    useState(null);
+  const [showWebsiteContentCancelConfirmModal, setShowWebsiteContentCancelConfirmModal] = useState(false);
+  const [websiteContentSaveConfirmModal, setWebsiteContentSaveConfirmModal] = useState(null);
+  const [websiteServiceSaving, setWebsiteServiceSaving] = useState(false);
   const [websiteContentMsg, setWebsiteContentMsg] = useState({ text: '', type: '' });
   const [websiteValidationModal, setWebsiteValidationModal] = useState(null);
   const [websiteFaqOverlay, setWebsiteFaqOverlay] = useState(null);
   const [websiteServiceOverlay, setWebsiteServiceOverlay] = useState(null);
   const [websiteAnnouncementOverlay, setWebsiteAnnouncementOverlay] = useState(null);
-  const [cancellationPolicyEditing, setCancellationPolicyEditing] =
-    useState(false);
-  const [cancellationPolicyMessage, setCancellationPolicyMessage] =
-    useState('');
-  const [cancellationPolicyDraft, setCancellationPolicyDraft] =
-    useState('');
-  const [cancellationPolicySaving, setCancellationPolicySaving] =
-    useState(false);
-  const [showCancellationPolicyCancelConfirmModal, setShowCancellationPolicyCancelConfirmModal] =
-    useState(false);
-  const [cancellationPolicySaveConfirmModal, setCancellationPolicySaveConfirmModal] =
-    useState(null);
+  const [cancellationPolicyEditing, setCancellationPolicyEditing] = useState(false);
+  const [cancellationPolicyMessage, setCancellationPolicyMessage] = useState('');
+  const [cancellationPolicyDraft, setCancellationPolicyDraft] = useState('');
+  const [cancellationPolicySaving, setCancellationPolicySaving] = useState(false);
+  const [showCancellationPolicyCancelConfirmModal, setShowCancellationPolicyCancelConfirmModal] = useState(false);
+  const [cancellationPolicySaveConfirmModal, setCancellationPolicySaveConfirmModal] = useState(null);
   const [deleteAnnouncementModal, setDeleteAnnouncementModal] = useState(false);
   const [deleteAnnouncementId, setDeleteAnnouncementId] = useState(null);
   const [deleteWebsiteServiceModal, setDeleteWebsiteServiceModal] = useState(false);
   const [deleteWebsiteServiceId, setDeleteWebsiteServiceId] = useState(null);
-  const [showBranchCancelConfirmModal, setShowBranchCancelConfirmModal] =
-    useState(false);
-  const [showBranchSaveConfirmModal, setShowBranchSaveConfirmModal] =
-    useState(false);
+  const [showBranchCancelConfirmModal, setShowBranchCancelConfirmModal] = useState(false);
+  const [showBranchSaveConfirmModal, setShowBranchSaveConfirmModal] = useState(false);
   
   const [users, setUsers] = useState([]);
   const [adminAccountForm, setAdminAccountForm] = useState(initialAdminAccountForm);
@@ -376,15 +909,12 @@ export default function AdminSettings() {
   const [adminAccountTouchedFields, setAdminAccountTouchedFields] = useState({});
   const [adminAccountMessage, setAdminAccountMessage] = useState('');
   const [adminAccountError, setAdminAccountError] = useState('');
-  const [showAdminAccountCancelConfirmModal, setShowAdminAccountCancelConfirmModal] =
-    useState(false);
-  const [adminAccountSaveConfirmModal, setAdminAccountSaveConfirmModal] =
-    useState(null);
+  const [showAdminAccountCancelConfirmModal, setShowAdminAccountCancelConfirmModal] = useState(false);
+  const [adminAccountSaveConfirmModal, setAdminAccountSaveConfirmModal] = useState(null);
   const [adminProfilePhotoUploading, setAdminProfilePhotoUploading] = useState(false);
   const [adminPhotoRemoveConfirm, setAdminPhotoRemoveConfirm] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
-  const [showAdminConfirmPassword, setShowAdminConfirmPassword] =
-    useState(false);
+  const [showAdminConfirmPassword, setShowAdminConfirmPassword] = useState(false);
 
   const [branchForm, setBranchForm] = useState(initialBranchForm);
   const [branchPhoneCountry, setBranchPhoneCountry] = useState('PH');
@@ -392,19 +922,15 @@ export default function AdminSettings() {
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
   const [serviceTouchedFields, setServiceTouchedFields] = useState({});
   const [serviceCategoryMode, setServiceCategoryMode] = useState('select');
-  const [showServiceCancelConfirmModal, setShowServiceCancelConfirmModal] =
-    useState(false);
-  const [showServiceSaveConfirmModal, setShowServiceSaveConfirmModal] =
-    useState(false);
+  const [showServiceCancelConfirmModal, setShowServiceCancelConfirmModal] = useState(false);
+  const [showServiceSaveConfirmModal, setShowServiceSaveConfirmModal] = useState(false);
   const [serviceKitOverlay, setServiceKitOverlay] = useState(false);
   const [serviceKitServiceId, setServiceKitServiceId] = useState('');
   const [serviceKitBranchId, setServiceKitBranchId] = useState('');
   const [serviceKitItems, setServiceKitItems] = useState([]);
   const [serviceKitItemErrors, setServiceKitItemErrors] = useState([]);
-  const [showServiceKitCancelConfirmModal, setShowServiceKitCancelConfirmModal] =
-    useState(false);
-  const [showServiceKitSaveConfirmModal, setShowServiceKitSaveConfirmModal] =
-    useState(false);
+  const [showServiceKitCancelConfirmModal, setShowServiceKitCancelConfirmModal] = useState(false);
+  const [showServiceKitSaveConfirmModal, setShowServiceKitSaveConfirmModal] = useState(false);
   const [serviceKitServicesForBranch, setServiceKitServicesForBranch] = useState([]);
   const [serviceKitInventory, setServiceKitInventory] = useState({
     supplies: [],
@@ -526,6 +1052,8 @@ export default function AdminSettings() {
       websiteValidationModal ||
       showWebsiteContentCancelConfirmModal ||
       websiteContentSaveConfirmModal ||
+      websiteServiceSaveConfirmModal ||
+      websiteAboutSaveConfirmModal ||
       showAdminAccountCancelConfirmModal ||
       adminAccountSaveConfirmModal ||
       showServiceCancelConfirmModal ||
@@ -579,6 +1107,8 @@ export default function AdminSettings() {
         setCancellationPolicyDraft(cancellationPolicyMessage);
         setCancellationPolicyEditing(false);
         setWebsiteValidationModal(null);
+        setWebsiteServiceSaveConfirmModal(null);
+        setWebsiteAboutSaveConfirmModal(null);
         setShowWebsiteContentCancelConfirmModal(false);
         setShowAdminAccountCancelConfirmModal(false);
         setAdminAccountSaveConfirmModal(null);
@@ -696,18 +1226,145 @@ export default function AdminSettings() {
     });
   }
 
-  function validateWebsiteFields(fields, requiredKeys = []) {
-    const missing = requiredKeys.filter((key) => !String(fields[key] || '').trim());
+  function validateWebsiteField(key, value) {
+    value = String(value ?? "");
 
-    if (missing.length > 0) {
-      showWebsiteValidationModal(
-        'Required Fields Missing',
-        'Please complete all required website content fields before saving.'
-      );
-      return false;
+    switch (key) {
+      case "footer_brand_name":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z\s&.'-]+$/.test(value.trim())) {
+          return "Brand name contains invalid characters.";
+        }
+        break;
+
+      case "footer_team_name":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z\s&:.,'()-]+$/.test(value.trim())) {
+          return "Team name contains invalid characters.";
+        }
+        break;
+
+      case "footer_system_name":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z\s&:.,'()-]+$/.test(value.trim())) {
+          return "System name contains invalid characters.";
+        }
+        break;
+
+      case "contact_tagline":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(value.trim())) {
+          return "Clinic tagline contains invalid characters.";
+        }
+        break;
+
+      case "contact_badge":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(value.trim())) {
+          return "Contact badge contains invalid characters.";
+        }
+        break;
+
+      case "contact_heading":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(value.trim())) {
+          return "Contact heading contains invalid characters.";
+        }
+        break;
+
+      case "contact_button":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(value.trim())) {
+          return "Button label contains invalid characters.";
+        }
+        break;
+
+      case "contact_email":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+          return "Enter a valid email address.";
+        }
+        break;
+
+      case "contact_facebook_name":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z\s&.'-]+$/.test(value.trim())) {
+          return "Facebook page name contains invalid characters.";
+        }
+        break;
+
+      case "contact_facebook_url":
+        if (!value.trim()) return "This field is required.";
+        if (!/^https?:\/\/(www\.)?(facebook\.com|fb\.com)\/.+$/i.test(value.trim())) {
+          return "Enter a valid Facebook URL.";
+        }
+        break;
+
+      case "contact_phone1":
+      case "contact_phone2":
+        if (!value) return "This field is required.";
+        if (!/^9\d{9}$/.test(value)) {
+          return "Phone number must start with 9 and contain exactly 10 digits.";
+        }
+        break;
+
+      case "hours_weekdays":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z\s-]+$/.test(value.trim())) {
+          return "Weekdays label contains invalid characters.";
+        }
+        break;
+
+      case "hours_weekday_time":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z0-9:\s-]+$/.test(value.trim())) {
+          return "Weekday hours contain invalid characters.";
+        }
+        break;
+
+      case "hours_sunday":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z\s]+$/.test(value.trim())) {
+          return "Sunday label contains invalid characters.";
+        }
+        break;
+
+      case "hours_sunday_note":
+        if (!value.trim()) return "This field is required.";
+        if (!/^[A-Za-z0-9\s&:.,'()-]+$/.test(value.trim())) {
+          return "Sunday note contains invalid characters.";
+        }
+        break;
     }
 
-    return true;
+    return "";
+  }
+
+  function validateWebsiteFields(sectionFields, requiredKeys = []) {
+    const errors = {};
+
+    requiredKeys.forEach((key) => {
+      const value = sectionFields[key];
+      const error = validateWebsiteField(key, value);
+
+      if (error) {
+        errors[key] = error;
+      }
+    });
+
+    Object.entries(sectionFields).forEach(([key, value]) => {
+      if (errors[key]) return;
+
+      const error = validateWebsiteField(key, value);
+
+      if (error) {
+        errors[key] = error;
+      }
+    });
+
+    setWebsiteContentErrors(errors);
+
+    return Object.keys(errors).length === 0;
   }
 
   async function saveWebsiteContent(sectionFields, requiredKeys = []) {
@@ -723,6 +1380,7 @@ export default function AdminSettings() {
       const res = await api.put('/website/content', { fields: sectionFields });
       const updated = res.data.content || {};
 
+      console.log(sectionFields);
       setWebsiteContent(updated);
       setWebsiteContentForm(updated);
       setWebsiteContentEditing(false);
@@ -760,26 +1418,138 @@ export default function AdminSettings() {
       .replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
-  function handleWebsiteContentSaveRequest(sectionFields, requiredKeys = []) {
-    if (!validateWebsiteFields(sectionFields, requiredKeys)) {
+  function confirmWebsiteContentClear() {
+    if (!websiteContentClearConfirmModal) return;
+
+    const clearedFields = {};
+
+    Object.keys(
+      websiteContentClearConfirmModal.sectionFields
+    ).forEach((key) => {
+      if (key === "website_logo_fit") {
+        clearedFields[key] = "contain";
+      } else {
+        clearedFields[key] = "";
+      }
+    });
+
+    console.log("CLEAR", clearedFields);
+
+    setWebsiteContentForm((prev) => ({
+      ...prev,
+      ...clearedFields,
+    }));
+
+    setWebsiteContent((prev) => ({
+      ...prev,
+      ...clearedFields,
+    }));
+
+    setWebsiteContentClearConfirmModal(null);
+  }
+
+  function handleWebsiteContentClearRequest(sectionFields) {
+    console.log(sectionFields);
+
+    setWebsiteContentClearConfirmModal({
+      sectionFields,
+    });
+  }
+
+  function handleWebsiteHeroSaveRequest(sectionFields, requiredKeys = []) {
+    const isValid = validateWebsiteFields(sectionFields, requiredKeys);
+
+    if (!isValid) {
+      setTimeout(() => {
+        showWebsiteValidationModal(
+          "Validation Error",
+          "Please correct the highlighted fields before saving."
+        );
+      }, 0);
+
       return;
     }
 
     const details = Object.entries(sectionFields).map(([key, value]) => ({
       key,
       label: formatWebsiteContentFieldLabel(key),
-      value: String(value || '').trim() || 'Not entered',
-      previousValue: String(websiteContent[key] || '').trim() || 'Not set',
+      value: String(value ?? "").trim() || "Not entered",
+      previousValue: String(websiteContent[key] ?? "").trim() || "Not set",
       changed:
-        String(value || '').trim() !==
-        String(websiteContent[key] || '').trim(),
+        String(value ?? "").trim() !==
+        String(websiteContent[key] ?? "").trim(),
     }));
 
-setWebsiteContentSaveConfirmModal({
-  sectionFields,
-  requiredKeys,
-  details,
-});
+    if (!details.some((detail) => detail.changed)) {
+      showWebsiteValidationModal(
+        "No Changes Detected",
+        "There are no changes to save."
+      );
+
+      return;
+    }
+
+    setWebsiteHeroSaveConfirmModal({
+      details: details.filter((detail) => detail.changed),
+      sectionFields,
+      requiredKeys,
+    });
+  }
+
+  async function confirmWebsiteHeroSave() {
+    if (!websiteHeroSaveConfirmModal) {
+      return;
+    }
+
+    const { sectionFields, requiredKeys } =
+      websiteHeroSaveConfirmModal;
+
+    setWebsiteHeroSaveConfirmModal(null);
+
+    await saveWebsiteContent(
+      sectionFields,
+      requiredKeys
+    );
+  }
+
+  function handleWebsiteContentSaveRequest(sectionFields, requiredKeys = []) {
+    const isValid = validateWebsiteFields(sectionFields, requiredKeys);
+
+    if (!isValid) {
+      setTimeout(() => {
+        showWebsiteValidationModal(
+          "Validation Error",
+          "Please correct the highlighted fields before saving."
+        );
+      }, 0);
+
+      return;
+    }
+
+    const details = Object.entries(sectionFields).map(([key, value]) => ({
+      key,
+      label: formatWebsiteContentFieldLabel(key),
+      value: String(value ?? "").trim() || "Not entered",
+      previousValue: String(websiteContent[key] ?? "").trim() || "Not set",
+      changed:
+        String(value ?? "").trim() !==
+        String(websiteContent[key] ?? "").trim(),
+    }));
+
+    if (!details.some((detail) => detail.changed)) {
+      showWebsiteValidationModal(
+        "No Changes Detected",
+        "There are no changes to save."
+      );
+
+      return;
+    }
+
+    setWebsiteContentSaveConfirmModal({
+      details: details.filter((detail) => detail.changed),
+      sectionFields,
+      requiredKeys,
+    });
   }
 
   async function confirmWebsiteContentSave() {
@@ -818,19 +1588,140 @@ setWebsiteContentSaveConfirmModal({
     }
   }
 
+  async function confirmWebsiteAboutSave() {
+    if (!websiteAboutSaveConfirmModal)
+      return;
+
+    await saveWebsiteContent(
+      websiteAboutSaveConfirmModal.data,
+      [
+        "about_hero_tag",
+        "about_hero_title",
+        "about_hero_description",
+        "hero_card_title",
+        "hero_card_description",
+        "who_we_are_tag",
+        "who_we_are_title",
+        "who_we_are_description",
+        "mission_title",
+        "mission_content",
+        "vision_title",
+        "vision_content",
+        "care_title",
+        "care_content",
+        "team_section_tag",
+        "team_section_title",
+        "team_section_description",
+        "owner_label",
+        "owner_name",
+        "owner_position",
+        "owner_message_1",
+        "owner_message_2",
+        "branch_section_tag",
+        "branch_section_title",
+        "map_section_tag",
+        "map_section_title",
+        "map_section_description",
+      ]
+    );
+
+    setWebsiteAboutSaveConfirmModal(null);
+  }
+
   async function saveWebsiteService(data) {
     try {
-      if (data.id) {
-        const res = await api.put(`/website/website-services/${data.id}`, data);
-        setWebsiteServices(res.data.services || []);
+      setWebsiteServiceSaving(true);
+
+      const formData = new FormData();
+
+      [
+        "name",
+        "intro",
+        "heading",
+        "overview",
+        "benefits",
+        "process",
+        "care",
+        "duration",
+        "ideal_for",
+        "reminder",
+        "description",
+        "slug",
+        "sort_order",
+        "status",
+      ].forEach((key) => {
+        if (data[key] !== undefined && data[key] !== null) {
+          formData.append(key, data[key]);
+        }
+      });
+
+      // Service Image
+      if (data.image_path instanceof File) {
+        formData.append("image_path", data.image_path);
       } else {
-        const res = await api.post('/website/website-services', data);
-        setWebsiteServices(res.data.services || []);
+        formData.append("image_path", data.image_path || "");
       }
+
+      // Before Image
+      if (data.before_image instanceof File) {
+        formData.append("before_image", data.before_image);
+      } else {
+        formData.append("before_image", data.before_image || "");
+      }
+
+      // After Image
+      if (data.after_image instanceof File) {
+        formData.append("after_image", data.after_image);
+      } else {
+        formData.append("after_image", data.after_image || "");
+      }
+
+      let res;
+
+      if (data.id) {
+        res = await api.put(
+          `/website/website-services/${data.id}`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+      } else {
+        res = await api.post(
+          "/website/website-services",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+      }
+
+      setWebsiteServices(res.data.services || []);
       setWebsiteServiceOverlay(null);
+      setWebsiteServiceSaveConfirmModal(null);
     } catch (err) {
-      showWebsiteValidationModal('Save Failed', err.response?.data?.message || 'Failed to save service.');
+      console.error("Update website service error:", err);
+
+      showWebsiteValidationModal(
+        "Save Failed",
+        err.response?.data?.message || "Failed to update website service."
+      );
+    } finally {
+      setWebsiteServiceSaving(false);
     }
+  }
+
+  async function confirmWebsiteServiceSave() {
+    if (!websiteServiceSaveConfirmModal) 
+      return;
+
+    await saveWebsiteService(websiteServiceSaveConfirmModal.data);
+
+    setWebsiteServiceSaveConfirmModal(null);
   }
 
   async function deleteWebsiteService() {
@@ -857,46 +1748,83 @@ setWebsiteContentSaveConfirmModal({
   }
 
   async function saveAnnouncement(data) {
-    const payload = {
-      title: String(data.title || '').trim(),
-      message: String(data.message || '').trim(),
-      start_date: data.start_date || '',
-      end_date: data.end_date || '',
-      status: data.status || 'active',
-    };
+  const payload = {
+    title: String(data.title || "").trim(),
+    message: String(data.message || "").trim(),
 
-    if (!payload.title || !payload.message || !payload.start_date || !payload.end_date) {
+    title_font_family: data.title_font_family || "",
+    title_font_size: data.title_font_size || "",
+    title_font_weight: data.title_font_weight || "",
+    title_color: data.title_color || "#000000",
+    title_alignment: data.title_alignment || "left",
+
+    message_font_family: data.message_font_family || "",
+    message_font_size: data.message_font_size || "",
+    message_font_weight: data.message_font_weight || "",
+    message_color: data.message_color || "#000000",
+    message_alignment: data.message_alignment || "left",
+
+    start_date: data.start_date || "",
+    start_time: data.start_time || "",
+    end_date: data.end_date || "",
+    end_time: data.end_time || "",
+    status: data.status || "active",
+  };
+
+  console.log(payload);
+
+    if (
+      !payload.title ||
+      !payload.message ||
+      !payload.start_date ||
+      !payload.start_time ||
+      !payload.end_date ||
+      !payload.end_time
+    ) {
       showWebsiteValidationModal(
-        'Required Fields Missing',
-        'Please complete the announcement title, message, start date, and end date.'
+        "Required Fields Missing",
+        "Please complete the announcement title, message, start date, start time, end date, and end time."
       );
+
       return;
     }
 
-    if (new Date(payload.end_date) < new Date(payload.start_date)) {
+    const startDateTime = new Date(`${payload.start_date}T${payload.start_time}`);
+
+    const endDateTime = new Date(`${payload.end_date}T${payload.end_time}`);
+
+    if (endDateTime < startDateTime) {
       showWebsiteValidationModal(
-        'Invalid Date Range',
-        'End date must be the same day or later than the start date.'
+        "Invalid Date Range",
+        "End date and time must be the same as or later than the start date and time."
       );
+
       return;
     }
 
     try {
       if (data.id) {
         const res = await api.put(`/website/announcements/${data.id}`, payload);
+
         setWebsiteAnnouncements(res.data.announcements || []);
       } else {
-        const res = await api.post('/website/announcements', payload);
+        const res = await api.post("/website/announcements", payload);
+
         setWebsiteAnnouncements(res.data.announcements || []);
       }
+
       setWebsiteAnnouncementOverlay(null);
+
       showWebsiteValidationModal(
-        'Announcement Saved',
-        'Website announcement has been saved successfully.',
-        'success'
+        "Announcement Saved",
+        "Website announcement has been saved successfully.",
+        "success"
       );
     } catch (err) {
-      showWebsiteValidationModal('Save Failed', err.response?.data?.message || 'Failed to save announcement.');
+      showWebsiteValidationModal(
+        "Save Failed",
+        err.response?.data?.message || "Failed to save announcement."
+      );
     }
   }
 
@@ -2271,6 +3199,338 @@ setWebsiteContentSaveConfirmModal({
     return styles.statusBadge;
   }
 
+  function handleWebsiteAboutSaveRequest(data) {
+    const details = [
+      {
+        key: "about_hero_tag",
+        label: "Hero Tag",
+        value: data.about_hero_tag || "Not entered",
+        previousValue: websiteContent.about_hero_tag || "Not set",
+        changed: data.about_hero_tag !== websiteContent.about_hero_tag,
+      },
+      {
+        key: "about_hero_title",
+        label: "Hero Title",
+        value: data.about_hero_title || "Not entered",
+        previousValue: websiteContent.about_hero_title || "Not set",
+        changed: data.about_hero_title !== websiteContent.about_hero_title,
+      },
+      {
+        key: "about_hero_description",
+        label: "Hero Description",
+        value: data.about_hero_description || "Not entered",
+        previousValue: websiteContent.about_hero_description || "Not set",
+        changed: data.about_hero_description !== websiteContent.about_hero_description,
+      },
+      {
+        key: "hero_card_title",
+        label: "Hero Card Title",
+        value: data.hero_card_title || "Not entered",
+        previousValue: websiteContent.hero_card_title || "Not set",
+        changed: data.hero_card_title !== websiteContent.hero_card_title,
+      },
+      {
+        key: "hero_card_description",
+        label: "Hero Card Description",
+        value: data.hero_card_description || "Not entered",
+        previousValue: websiteContent.hero_card_description || "Not set",
+        changed: data.hero_card_description !== websiteContent.hero_card_description,
+      },
+      {
+        key: "who_we_are_tag",
+        label: "Who We Are Tag",
+        value: data.who_we_are_tag || "Not entered",
+        previousValue: websiteContent.who_we_are_tag || "Not set",
+        changed: data.who_we_are_tag !== websiteContent.who_we_are_tag,
+      },
+      {
+        key: "who_we_are_title",
+        label: "Who We Are Title",
+        value: data.who_we_are_title || "Not entered",
+        previousValue: websiteContent.who_we_are_title || "Not set",
+        changed: data.who_we_are_title !== websiteContent.who_we_are_title,
+      },
+      {
+        key: "who_we_are_description",
+        label: "Who We Are Description",
+        value: data.who_we_are_description || "Not entered",
+        previousValue: websiteContent.who_we_are_description || "Not set",
+        changed: data.who_we_are_description !== websiteContent.who_we_are_description,
+      },
+      {
+        key: "mission_title",
+        label: "Mission Title",
+        value: data.mission_title || "Not entered",
+        previousValue: websiteContent.mission_title || "Not set",
+        changed: data.mission_title !== websiteContent.mission_title,
+      },
+      {
+        key: "mission_content",
+        label: "Mission Content",
+        value: data.mission_content || "Not entered",
+        previousValue: websiteContent.mission_content || "Not set",
+        changed: data.mission_content !== websiteContent.mission_content,
+      },
+      {
+        key: "vision_title",
+        label: "Vision Title",
+        value: data.vision_title || "Not entered",
+        previousValue: websiteContent.vision_title || "Not set",
+        changed: data.vision_title !== websiteContent.vision_title,
+      },
+      {
+        key: "vision_content",
+        label: "Vision Content",
+        value: data.vision_content || "Not entered",
+        previousValue: websiteContent.vision_content || "Not set",
+        changed: data.vision_content !== websiteContent.vision_content,
+      },
+      {
+        key: "care_title",
+        label: "Care Title",
+        value: data.care_title || "Not entered",
+        previousValue: websiteContent.care_title || "Not set",
+        changed: data.care_title !== websiteContent.care_title,
+      },
+      {
+        key: "care_content",
+        label: "Care Content",
+        value: data.care_content || "Not entered",
+        previousValue: websiteContent.care_content || "Not set",
+        changed: data.care_content !== websiteContent.care_content,
+      },
+      {
+        key: "team_section_tag",
+        label: "Team Section Tag",
+        value: data.team_section_tag || "Not entered",
+        previousValue: websiteContent.team_section_tag || "Not set",
+        changed: data.team_section_tag !== websiteContent.team_section_tag,
+      },
+      {
+        key: "team_section_title",
+        label: "Team Section Title",
+        value: data.team_section_title || "Not entered",
+        previousValue: websiteContent.team_section_title || "Not set",
+        changed: data.team_section_title !== websiteContent.team_section_title,
+      },
+      {
+        key: "team_section_description",
+        label: "Team Section Description",
+        value: data.team_section_description || "Not entered",
+        previousValue: websiteContent.team_section_description || "Not set",
+        changed: data.team_section_description !== websiteContent.team_section_description,
+      },
+      {
+        key: "owner_label",
+        label: "Owner Label",
+        value: data.owner_label || "Not entered",
+        previousValue: websiteContent.owner_label || "Not set",
+        changed: data.owner_label !== websiteContent.owner_label,
+      },
+      {
+        key: "owner_name",
+        label: "Owner Name",
+        value: data.owner_name || "Not entered",
+        previousValue: websiteContent.owner_name || "Not set",
+        changed: data.owner_name !== websiteContent.owner_name,
+      },
+      {
+        key: "owner_position",
+        label: "Owner Position",
+        value: data.owner_position || "Not entered",
+        previousValue: websiteContent.owner_position || "Not set",
+        changed: data.owner_position !== websiteContent.owner_position,
+      },
+      {
+        key: "owner_message_1",
+        label: "Owner Message 1",
+        value: data.owner_message_1 || "Not entered",
+        previousValue: websiteContent.owner_message_1 || "Not set",
+        changed: data.owner_message_1 !== websiteContent.owner_message_1,
+      },
+      {
+        key: "owner_message_2",
+        label: "Owner Message 2",
+        value: data.owner_message_2 || "Not entered",
+        previousValue: websiteContent.owner_message_2 || "Not set",
+        changed: data.owner_message_2 !== websiteContent.owner_message_2,
+      },
+      {
+        key: "branch_section_tag",
+        label: "Branch Section Tag",
+        value: data.branch_section_tag || "Not entered",
+        previousValue: websiteContent.branch_section_tag || "Not set",
+        changed: data.branch_section_tag !== websiteContent.branch_section_tag,
+      },
+      {
+        key: "branch_section_title",
+        label: "Branch Section Title",
+        value: data.branch_section_title || "Not entered",
+        previousValue: websiteContent.branch_section_title || "Not set",
+        changed: data.branch_section_title !== websiteContent.branch_section_title,
+      },
+      {
+        key: "map_section_tag",
+        label: "Map Section Tag",
+        value: data.map_section_tag || "Not entered",
+        previousValue: websiteContent.map_section_tag || "Not set",
+        changed: data.map_section_tag !== websiteContent.map_section_tag,
+      },
+      {
+        key: "map_section_title",
+        label: "Map Section Title",
+        value: data.map_section_title || "Not entered",
+        previousValue: websiteContent.map_section_title || "Not set",
+        changed: data.map_section_title !== websiteContent.map_section_title,
+      },
+      {
+        key: "map_section_description",
+        label: "Map Section Description",
+        value: data.map_section_description || "Not entered",
+        previousValue: websiteContent.map_section_description || "Not set",
+        changed: data.map_section_description !== websiteContent.map_section_description,
+      },
+    ];
+
+    setWebsiteAboutSaveConfirmModal({
+      data,
+      details,
+      changedFields: details.filter((item) => item.changed),
+    });
+  }
+
+  function handleWebsiteServiceSaveRequest(data) {
+    const details = [
+      {
+        key: "name",
+        label: "Service Name",
+        value: data.name || "Not entered",
+        previousValue: websiteServiceOverlay?.name || "Not set",
+        changed: data.name !== websiteServiceOverlay?.name,
+      },
+      {
+        key: "image_path",
+        label: "Service Image",
+        value: data.image_path instanceof File ? data.image_path.name : "No change",
+        previousValue: websiteServiceOverlay?.image_path || "Not set",
+        changed: data.image_path instanceof File,
+      },
+      {
+        key: "before_image",
+        label: "Before Image",
+        value: data.before_image instanceof File ? data.before_image.name : "No change",
+        previousValue: websiteServiceOverlay?.before_image || "Not set",
+        changed: data.before_image instanceof File,
+      },
+      {
+        key: "after_image",
+        label: "After Image",
+        value: data.after_image instanceof File ? data.after_image.name : "No change",
+        previousValue: websiteServiceOverlay?.after_image || "Not set",
+        changed: data.after_image instanceof File,
+      },
+      {
+        key: "intro",
+        label: "Hero Introduction",
+        value: data.intro || "Not entered",
+        previousValue: websiteServiceOverlay?.intro || "Not set",
+        changed: data.intro !== websiteServiceOverlay?.intro,
+      },
+      {
+        key: "heading",
+        label: "Main Heading",
+        value: data.heading || "Not entered",
+        previousValue: websiteServiceOverlay?.heading || "Not set",
+        changed: data.heading !== websiteServiceOverlay?.heading,
+      },
+      {
+        key: "overview",
+        label: "Overview",
+        value: data.overview || "Not entered",
+        previousValue: websiteServiceOverlay?.overview || "Not set",
+        changed: data.overview !== websiteServiceOverlay?.overview,
+      },
+      {
+        key: "benefits",
+        label: "Benefits",
+        value: data.benefits || "Not entered",
+        previousValue: websiteServiceOverlay?.benefits || "Not set",
+        changed: data.benefits !== websiteServiceOverlay?.benefits,
+      },
+      {
+        key: "process",
+        label: "Treatment Process",
+        value: data.process || "Not entered",
+        previousValue: websiteServiceOverlay?.process || "Not set",
+        changed: data.process !== websiteServiceOverlay?.process,
+      },
+      {
+        key: "care",
+        label: "Aftercare Tips",
+        value: data.care || "Not entered",
+        previousValue: websiteServiceOverlay?.care || "Not set",
+        changed: data.care !== websiteServiceOverlay?.care,
+      },
+      {
+        key: "duration",
+        label: "Estimated Duration",
+        value: data.duration || "Not entered",
+        previousValue: websiteServiceOverlay?.duration || "Not set",
+        changed: data.duration !== websiteServiceOverlay?.duration,
+      },
+      {
+        key: "ideal_for",
+        label: "Best For",
+        value: data.ideal_for || "Not entered",
+        previousValue: websiteServiceOverlay?.ideal_for || "Not set",
+        changed: data.ideal_for !== websiteServiceOverlay?.ideal_for,
+      },
+      {
+        key: "reminder",
+        label: "Important Reminder",
+        value: data.reminder || "Not entered",
+        previousValue: websiteServiceOverlay?.reminder || "Not set",
+        changed: data.reminder !== websiteServiceOverlay?.reminder,
+      },
+      {
+        key: "description",
+        label: "Card Description",
+        value: data.description || "Not entered",
+        previousValue: websiteServiceOverlay?.description || "Not set",
+        changed: data.description !== websiteServiceOverlay?.description,
+      },
+      {
+        key: "slug",
+        label: "Slug",
+        value: data.slug || "Not entered",
+        previousValue: websiteServiceOverlay?.slug || "Not set",
+        changed: data.slug !== websiteServiceOverlay?.slug,
+      },
+      {
+        key: "sort_order",
+        label: "Sort Order",
+        value: String(data.sort_order ?? ""),
+        previousValue: String(websiteServiceOverlay?.sort_order ?? ""),
+        changed:
+          String(data.sort_order ?? "") !==
+          String(websiteServiceOverlay?.sort_order ?? ""),
+      },
+      {
+        key: "status",
+        label: "Status",
+        value: data.status || "Not selected",
+        previousValue: websiteServiceOverlay?.status || "Not set",
+        changed: data.status !== websiteServiceOverlay?.status,
+      },
+    ];
+
+    setWebsiteServiceSaveConfirmModal({
+      data,
+      details,
+      changedFields: details.filter((item) => item.changed),
+    });
+  }
+
   function handleWebsiteLogoFile(event) {
     const file = event.target.files?.[0];
 
@@ -2307,78 +3567,6 @@ setWebsiteContentSaveConfirmModal({
       fontFamily: 'Arial, sans-serif',
     });
 
-    const fieldRow = (label, key, type = 'text', options = []) => {
-      const value = websiteContentForm[key] || '';
-
-      return (
-        <div key={key} style={styles.websiteFieldRow}>
-          <label style={styles.websiteFieldLabel}>{label}</label>
-
-          {websiteContentEditing ? (
-            type === 'textarea' ? (
-              <textarea
-                value={value}
-                onChange={(event) =>
-                  setWebsiteContentForm((prev) => ({
-                    ...prev,
-                    [key]: event.target.value,
-                  }))
-                }
-                rows={3}
-                style={{ ...styles.formInput, ...styles.websiteTextarea }}
-              />
-            ) : type === 'select' ? (
-              <select
-                value={value}
-                onChange={(event) =>
-                  setWebsiteContentForm((prev) => ({
-                    ...prev,
-                    [key]: event.target.value,
-                  }))
-                }
-                style={{ ...styles.formInput, width: '100%' }}
-              >
-                <option value="">Select {label}</option>
-
-                {options.map((option) => {
-                  const optionValue = typeof option === 'string' ? option : option.value;
-                  const optionLabel = typeof option === 'string' ? option : option.label;
-
-                  return (
-                    <option key={optionValue} value={optionValue}>{optionLabel}</option>
-                  );
-                })}
-              </select>
-            ) : (
-              <input
-                type={type}
-                value={value}
-                onChange={(event) =>
-                  setWebsiteContentForm((prev) => ({
-                    ...prev,
-                    [key]: event.target.value,
-                  }))
-                }
-                style={{ ...styles.formInput, width: '100%' }}
-              />
-            )
-          ) : (
-            <div
-              style={{
-                ...styles.formInput,
-                ...styles.readOnlyInput,
-                minHeight: type === 'textarea' ? 72 : undefined,
-                whiteSpace: type === 'textarea' ? 'pre-wrap' : 'normal',
-                lineHeight: 1.5,
-              }}
-            >
-              {value || <span style={{ color: '#94a3b8' }}>—</span>}
-            </div>
-          )}
-        </div>
-      );
-    };
-
     const collectFieldsByPrefixes = (prefixes) => {
       return Object.fromEntries(
         Object.entries(websiteContentForm).filter(([key]) =>
@@ -2387,615 +3575,1085 @@ setWebsiteContentSaveConfirmModal({
       );
     };
 
-    const sectionDesignFields = (prefix, title) => (
-      <div style={styles.websiteDesignBox}>
-        <h4 style={styles.websiteDesignTitle}>{title} Content Text Design</h4>
+const contentEditActions = (
+  sectionFields,
+  requiredKeys = []
+) => (
+  <div style={styles.overlayActions}>
+    <button
+      type="button"
+      style={styles.saveBtn}
+      disabled={websiteContentSaving}
+      onClick={() => {
+        if (websiteContentSection === "hero") {
+          handleWebsiteHeroSaveRequest(
+            sectionFields,
+            requiredKeys
+          );
+        } else {
+          handleWebsiteContentSaveRequest(
+            sectionFields,
+            requiredKeys
+          );
+        }
+      }}
+    >
+      {websiteContentSaving
+        ? "Saving..."
+        : "Save Content"}
+    </button>
 
-        {fieldRow('Font Style', `${prefix}_font_family`, 'select', WEBSITE_FONT_OPTIONS)}
-        {fieldRow('Title Font Size', `${prefix}_title_font_size`, 'select', WEBSITE_FONT_SIZE_OPTIONS)}
-        {fieldRow('Description Font Size', `${prefix}_description_font_size`, 'select', WEBSITE_FONT_SIZE_OPTIONS)}
-        {fieldRow('Text Alignment', `${prefix}_text_alignment`, 'select', WEBSITE_ALIGNMENT_OPTIONS)}
-      </div>
+    <button
+      type="button"
+      style={styles.clearBtn}
+      disabled={websiteContentSaving}
+      onClick={() => {
+        console.log(
+          "Current Website Section:",
+          websiteContentSection
+        );
+
+        console.log(
+          "Section Fields:",
+          sectionFields
+        );
+
+        console.log(
+          "Section Keys:",
+          Object.keys(sectionFields)
+        );
+
+        handleWebsiteContentClearRequest(
+          sectionFields
+        );
+      }}
+    >
+      Clear
+    </button>
+
+    <button
+      type="button"
+      style={styles.secondaryBtn}
+      disabled={websiteContentSaving}
+      onClick={handleCancelWebsiteContentEdit}
+    >
+      Cancel
+    </button>
+  </div>
+);
+
+  function getContentSectionFields() {
+    console.log("Admin getStatusStyle:", getStatusStyle);
+
+    return (
+      <WebsiteContentRenderer
+        api={api}
+        websiteContentSection={websiteContentSection}
+        websiteContent={websiteContent}
+        websiteContentForm={websiteContentForm}
+        websiteContentErrors={websiteContentErrors}
+        websiteContentEditing={websiteContentEditing}
+        websiteContentSaving={websiteContentSaving}
+        websiteFaqs={websiteFaqs}
+        websiteServices={websiteServices}
+        websiteAnnouncements={websiteAnnouncements}
+        fieldRow={fieldRow}
+        textDesignFields={textDesignFields}
+        contentEditActions={contentEditActions}
+        collectFieldsByPrefixes={collectFieldsByPrefixes}
+        handleWebsiteContentSaveRequest={handleWebsiteContentSaveRequest}
+        setWebsiteContent={setWebsiteContent}
+        setWebsiteContentForm={setWebsiteContentForm}
+        showWebsiteValidationModal={showWebsiteValidationModal}
+        setWebsiteContentEditing={setWebsiteContentEditing}
+        setWebsiteFaqOverlay={setWebsiteFaqOverlay}
+        setWebsiteServiceOverlay={setWebsiteServiceOverlay}
+        setWebsiteAnnouncementOverlay={setWebsiteAnnouncementOverlay}
+        deleteFaq={deleteFaq}
+        deleteAnnouncement={deleteAnnouncement}
+        getStatusStyle={getStatusStyle}
+        setDeleteAnnouncementId={setDeleteAnnouncementId}
+        setDeleteAnnouncementModal={setDeleteAnnouncementModal}
+        setDeleteWebsiteServiceId={setDeleteWebsiteServiceId}
+        setDeleteWebsiteServiceModal={setDeleteWebsiteServiceModal}
+        styles={styles}
+      />
     );
+  }
 
-    const contentEditActions = (sectionFields, requiredKeys = []) => (
-      <div style={styles.overlayActions}>
-        <button
-          type="button"
-          style={styles.secondaryBtn}
-          disabled={websiteContentSaving}
-          onClick={handleCancelWebsiteContentEdit}
-        >
-          Cancel
-        </button>
-
-        <button
-          type="button"
-          style={styles.saveBtn}
-          disabled={websiteContentSaving}
-          onClick={() => handleWebsiteContentSaveRequest(sectionFields, requiredKeys)}
-        >
-          {websiteContentSaving ? 'Saving...' : 'Save Content'}
-        </button>
-      </div>
-    );
-
-    function getContentSectionFields() {
-      if (websiteContentSection === 'logo') {
-        const logoPath = websiteContentEditing
-          ? websiteContentForm.website_logo_path
-          : websiteContent.website_logo_path;
-
-        const logoSrc = logoPath
-          ? logoPath.startsWith('http') || logoPath.startsWith('blob:')
-            ? logoPath
-            : `${api.defaults.baseURL.replace('/api', '')}${logoPath}`
-          : '/images/clinic-logo.jpg';
-
-        return (
-          <div style={styles.logoCard}>
-            <div style={styles.logoPreviewPanel}>
-              <div style={styles.logoPreview}>
-                <img
-                  src={logoSrc}
-                  alt="Website Logo"
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    objectFit:
-                      (websiteContentEditing
-                        ? websiteContentForm.website_logo_fit
-                        : websiteContent.website_logo_fit) || 'contain',
-                  }}
-                />
-              </div>
-
-              <h3 style={styles.logoHeading}>
-                Website Logo
-              </h3>
-
-              <p style={styles.logoText}>
-                Upload a logo from your computer or mobile device. Changes will appear throughout the website after saving.
-              </p>
-            </div>
-
-            <div style={styles.logoRight}>
-                <label
-                  style={{
-                    ...styles.logoUploadBtn,
-                    ...(websiteContentEditing
-                      ? {}
-                      : styles.logoUploadBtnDisabled),
-                  }}
-                >
-                <i className="fi fi-rr-picture"></i>
-                <span>Choose Logo</span>
-
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  hidden
-                  disabled={!websiteContentEditing}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-
-                    try {
-                      const token = localStorage.getItem('token');
-
-                      const formData = new FormData();
-                      formData.append('logo', file);
-
-                      const res = await api.post(
-                        '/website/upload-logo',
-                        formData,
-                        {
-                          headers: {
-                            Authorization: `Bearer ${token}`,
-                            'Content-Type': 'multipart/form-data',
-                          },
-                        }
-                      );
-
-                      console.log('Upload Response:', res.data);
-
-                      const uploadedPath = res.data.path;
-
-                      setWebsiteContent((prev) => ({
-                        ...prev,
-                        website_logo_path: uploadedPath,
-                      }));
-
-                      setWebsiteContentForm((prev) => ({
-                        ...prev,
-                        website_logo_path: uploadedPath,
-                      }));
-                    } catch (err) {
-                      console.error(err);
-                      alert('Failed to upload logo.');
-                    }
-                  }}
-                />
-              </label>
-
-              <div style={styles.logoInfo}>
-                Supported formats: PNG, JPG, WEBP and SVG
-              </div>
-
-              <div style={styles.logoOption}>
-                <label style={styles.websiteFieldLabel}>
-                  Logo Display
-                </label>
-
-                <div style={styles.logoSelectWrapper}>
-                  <select
-                    value={websiteContentForm.website_logo_fit || 'contain'}
-                    disabled={!websiteContentEditing}
-                    onChange={(e) =>
-                      setWebsiteContentForm((prev) => ({
-                        ...prev,
-                        website_logo_fit: e.target.value,
-                      }))
-                    }
-                    style={styles.logoSelect}
-                  >
-                    <option value="contain">Contain</option>
-                    <option value="cover">Cover</option>
-                    <option value="fill">Fill</option>
-                    <option value="scale-down">Scale Down</option>
-                    <option value="none">Original Size</option>
-                  </select>
-
-                  <i
-                    className="fi fi-rr-angle-small-down"
-                    style={styles.logoSelectIcon}
-                  ></i>
-                </div>
-              </div>
-            </div>
-
-            {websiteContentEditing &&
-              contentEditActions(
-                {
-                  website_logo_path: websiteContentForm.website_logo_path,
-                  website_logo_fit: websiteContentForm.website_logo_fit,
-                },
-                ['website_logo_path']
-              )}
-          </div>
-        );
-      }
-      if (websiteContentSection === 'hero') {
-        return (
-          <div>
-            {fieldRow('Eyebrow Text', 'hero_eyebrow')}
-            {fieldRow('Heading', 'hero_heading')}
-            {fieldRow('Description', 'hero_description', 'textarea')}
-
-            {fieldRow('Stat 1 Value (e.g. 10+)', 'hero_stat1_value')}
-            {fieldRow('Stat 1 Label', 'hero_stat1_label')}
-            {fieldRow('Stat 2 Value (e.g. 98%)', 'hero_stat2_value')}
-            {fieldRow('Stat 2 Label', 'hero_stat2_label')}
-            {fieldRow('Stat 3 Value (e.g. 20+)', 'hero_stat3_value')}
-            {fieldRow('Stat 3 Label', 'hero_stat3_label')}
-
-            {fieldRow('Featured Dentist Name', 'hero_dentist_name')}
-            {fieldRow('Featured Dentist Title', 'hero_dentist_title')}
-
-            {fieldRow('Booking Card Title', 'hero_booking_title')}
-            {fieldRow('Booking Card Subtitle', 'hero_booking_subtitle')}
-            
-            {sectionDesignFields('hero', 'Hero')}
-            {websiteContentEditing && (
-              contentEditActions(
-                collectFieldsByPrefixes(['hero_']),
-                ['hero_heading', 'hero_description']
-              )
-            )}
-          </div>
-        );
-      }
-      if (websiteContentSection === 'about') {
-        return (
-          <div>
-            {fieldRow('Paragraph 1', 'about_paragraph1', 'textarea')}
-            {fieldRow('Paragraph 2', 'about_paragraph2', 'textarea')}
-            {fieldRow('Paragraph 3', 'about_paragraph3', 'textarea')}
-            {sectionDesignFields('about', 'About')}
-            {websiteContentEditing && (
-              contentEditActions(
-                collectFieldsByPrefixes(['about_']),
-                ['about_paragraph1']
-              )
-            )}
-          </div>
-        );
-      }
-      if (websiteContentSection === 'contact') {
-        return (
-          <div>
-            {fieldRow('Phone Number 1', 'contact_phone1')}
-            {fieldRow('Phone Number 2', 'contact_phone2')}
-            {fieldRow('Email Address', 'contact_email')}
-            {fieldRow('Facebook Page URL', 'contact_facebook_url')}
-            {fieldRow('Contact Section Tagline', 'contact_tagline')}
-            {fieldRow('Weekdays Label (e.g. Monday to Saturday)', 'hours_weekdays')}
-            {fieldRow('Weekday Hours (e.g. 10:00 AM - 7:00 PM)', 'hours_weekday_time')}
-            {fieldRow('Sunday Label', 'hours_sunday')}
-            {fieldRow('Sunday Note (e.g. By Appointment)', 'hours_sunday_note')}
-            {sectionDesignFields('contact', 'Contact & Hours')}
-            {websiteContentEditing && (
-              contentEditActions(
-                collectFieldsByPrefixes(['contact_', 'hours_']),
-                ['contact_phone1', 'contact_email']
-              )
-            )}
-          </div>
-        );
-      }
-      if (websiteContentSection === 'footer') {
-        return (
-          <div>
-            {fieldRow('Brand Name', 'footer_brand_name')}
-            {fieldRow('Team / Subtitle', 'footer_team_name')}
-
-            {sectionDesignFields('footer', 'Footer')}
-            {websiteContentEditing && (
-              contentEditActions(
-                collectFieldsByPrefixes(['footer_']),
-                ['footer_brand_name']
-              )
-            )}
-          </div>
-        );
-      }
-      if (websiteContentSection === 'faqs') {
-        return (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-              <button
-                type="button"
-                style={styles.primaryBtn}
-                onClick={() => setWebsiteFaqOverlay({ question: '', answer: '', sort_order: websiteFaqs.length + 1, status: 'active' })}
-              >
-                <i className="fi fi-rr-plus"></i> <span>Add FAQ</span>
-              </button>
-            </div>
-            <div style={styles.tableWrapper}>
-              <table style={{ ...styles.branchTable, minWidth: 660 }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...styles.tableHead, width: 44 }}>#</th>
-                    <th style={styles.tableHead}>Question</th>
-                    <th style={styles.tableHead}>Answer</th>
-                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Status</th>
-                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {websiteFaqs.length === 0 ? (
-                    <tr><td colSpan={5} style={styles.emptyRow}>No FAQs found.</td></tr>
-                  ) : websiteFaqs.map((faq) => (
-                    <tr key={faq.id} style={styles.tableRow}>
-                      <td style={styles.tableCell}>{faq.sort_order}</td>
-                      <td style={{ ...styles.tableCell, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {faq.question?.length > 80 ? faq.question.slice(0, 80) + '…' : faq.question}
-                      </td>
-                      <td style={{ ...styles.tableCell, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {faq.answer?.length > 100 ? faq.answer.slice(0, 100) + '…' : faq.answer}
-                      </td>
-                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
-                        <span style={getStatusStyle(faq.status === 'active' ? 'Active' : 'Inactive')}>
-                          {faq.status === 'active' ? 'Active' : 'Hidden'}
-                        </span>
-                      </td>
-                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
-                        <button type="button" style={styles.editBtn} onClick={() => setWebsiteFaqOverlay({ ...faq })}>
-                          <i className="fi fi-rr-file-edit"></i>
-                        </button>
-                        <button type="button" style={{ ...styles.editBtn, color: '#dc2626', marginLeft: 6 }} onClick={() => deleteFaq(faq.id)}>
-                          <i className="fi fi-rr-trash"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      }
-      if (websiteContentSection === 'services') {
-        return (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-              <button
-                type="button"
-                style={styles.primaryBtn}
-                onClick={() => setWebsiteServiceOverlay({ name: '', image_path: '', description: '', slug: '', sort_order: websiteServices.length + 1, status: 'active' })}
-              >
-                <i className="fi fi-rr-plus"></i> <span>Add Service</span>
-              </button>
-            </div>
-            <div style={styles.tableWrapper}>
-              <table style={{ ...styles.branchTable, minWidth: 720 }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...styles.tableHead, width: 44 }}>#</th>
-                    <th style={styles.tableHead}>Name</th>
-                    <th style={styles.tableHead}>Image Path</th>
-                    <th style={styles.tableHead}>Slug</th>
-                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Status</th>
-                    <th style={{ ...styles.tableHead, whiteSpace: 'nowrap', width: 90 }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {websiteServices.length === 0 ? (
-                    <tr><td colSpan={6} style={styles.emptyRow}>No service cards found.</td></tr>
-                  ) : websiteServices.map((svc) => (
-                    <tr key={svc.id} style={styles.tableRow}>
-                      <td style={styles.tableCell}>{svc.sort_order}</td>
-                      <td style={styles.tableCell}>{svc.name}</td>
-                      <td style={{ ...styles.tableCell, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 12, color: '#64748b' }}>
-                        {svc.image_path || '—'}
-                      </td>
-                      <td style={styles.tableCell}>{svc.slug || '—'}</td>
-                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
-                        <span style={getStatusStyle(svc.status === 'active' ? 'Active' : 'Inactive')}>
-                          {svc.status === 'active' ? 'Active' : 'Hidden'}
-                        </span>
-                      </td>
-                      <td style={{ ...styles.tableCell, whiteSpace: 'nowrap' }}>
-                        <button type="button" style={styles.editBtn} onClick={() => setWebsiteServiceOverlay({ ...svc })}>
-                          <i className="fi fi-rr-file-edit"></i>
-                        </button>
-                        <button type="button" style={{ ...styles.editBtn, color: '#dc2626', marginLeft: 6 }} 
-                            onClick={() => {
-                              setDeleteWebsiteServiceId(svc.id);
-                              setDeleteWebsiteServiceModal(true);
-                            }}>
-                          <i className="fi fi-rr-trash"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      }
-      if (websiteContentSection === 'announcements') {
-        return (
-          <div>
-            <div style={styles.websiteAnnouncementHeader}>
-              <div>
-                <h3 style={styles.websiteAnnouncementTitle}>Website Announcements</h3>
-                <p style={styles.websiteAnnouncementSubtitle}>
-                  Add announcements that will appear only within the selected date range.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                style={styles.primaryBtn}
-                onClick={() =>
-                  setWebsiteAnnouncementOverlay({
-                    title: '',
-                    message: '',
-                    start_date: '',
-                    end_date: '',
-                    status: 'active',
-                  })
-                }
-              >
-                <i className="fi fi-rr-plus"></i> <span>Add Announcement</span>
-              </button>
-            </div>
-
-            <div style={styles.websiteAnnouncementGrid}>
-              {websiteAnnouncements.length === 0 ? (
-                <div style={styles.websiteAnnouncementEmpty}>
-                  <i className="fi fi-rr-megaphone" style={styles.websiteAnnouncementEmptyIcon}></i>
-                  <span>No announcements found.</span>
-                </div>
-              ) : (
-                websiteAnnouncements.map((ann) => (
-                  <div key={ann.id} style={styles.websiteAnnouncementCard}>
-                    <div style={styles.websiteAnnouncementCardHeader}>
-                      <div style={styles.websiteAnnouncementIconBox}>
-                        <i className="fi fi-rr-megaphone"></i>
-                      </div>
-
-                      <span style={getStatusStyle(ann.status === 'active' ? 'Active' : 'Inactive')}>
-                        {ann.status === 'active' ? 'Active' : 'Hidden'}
-                      </span>
-                    </div>
-
-                    <h4 style={styles.websiteAnnouncementCardTitle}>
-                      {ann.title || 'Untitled Announcement'}
-                    </h4>
-
-                    <p style={styles.websiteAnnouncementCardMessage}>
-                      {ann.message || 'No announcement message provided.'}
-                    </p>
-
-                    <div style={styles.websiteAnnouncementDateRow}>
-                      <div style={styles.websiteAnnouncementDateBox}>
-                        <span style={styles.websiteAnnouncementDateLabel}>Start Date</span>
-                        <strong style={styles.websiteAnnouncementDateValue}>
-                          {ann.start_date ? String(ann.start_date).slice(0, 10) : '—'}
-                        </strong>
-                      </div>
-
-                      <div style={styles.websiteAnnouncementDateBox}>
-                        <span style={styles.websiteAnnouncementDateLabel}>End Date</span>
-                        <strong style={styles.websiteAnnouncementDateValue}>
-                          {ann.end_date ? String(ann.end_date).slice(0, 10) : '—'}
-                        </strong>
-                      </div>
-                    </div>
-
-                    <div style={styles.websiteAnnouncementActions}>
-                      <button
-                        type="button"
-                        style={styles.websiteAnnouncementEditBtn}
-                        onClick={() => setWebsiteAnnouncementOverlay({ ...ann })}
-                      >
-                        <i className="fi fi-rr-file-edit"></i> Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        style={styles.websiteAnnouncementDeleteBtn}
-                        onClick={() => {
-                          setDeleteAnnouncementId(ann.id);
-                          setDeleteAnnouncementModal(true);
-                        }}
-                      >
-                        <i className="fi fi-rr-trash"></i> Delete
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        );
-      }
-
-      return null;
-    }
 
     const contentSections = [
       { key: 'logo', label: 'Logo' },
       { key: 'hero', label: 'Hero' },
-      { key: 'services', label: 'Services' },
-      { key: 'about', label: 'About Us' },
       { key: 'faqs', label: 'FAQs' },
-      { key: 'contact', label: 'Contact & Hours' },
-      { key: 'footer', label: 'Footer' },
       { key: 'announcements', label: 'Announcements' },
+      { key: 'clinicContact', label: 'Clinic Contact & Details' },
+      { key: 'about', label: 'About Us Page' },
+      { key: 'services', label: 'Services Page' },
     ];
 
     return (
       <>
         <section style={styles.tableCard}>
           <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, padding: "6px", background: "transparent", borderBottom: "1px solid #e2e8f0", borderRadius: 10, overflowX: "auto", scrollbarWidth: "none" }}>
-                {contentSections.map((sec) => {
-                  const active = websiteContentSection === sec.key;
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, padding: "6px", background: "transparent", borderBottom: "1px solid #e2e8f0", borderRadius: 10, overflowX: "auto", scrollbarWidth: "none" }}>
+              {contentSections.map((sec) => {
+                const active = websiteContentSection === sec.key;
 
-                  return (
-                    <button
-                      key={sec.key}
-                      type="button"
-                      onClick={() => {
-                        setWebsiteContentSection(sec.key);
-                        setWebsiteContentEditing(false);
-                        setWebsiteContentMsg({ text: "", type: "" });
-                      }}
+                return (
+                  <button
+                    key={sec.key}
+                    type="button"
+                    onClick={() => {
+                      setWebsiteContentSection(sec.key);
+                      setWebsiteContentEditing(false);
+                      setWebsiteContentMsg({ text: "", type: "" });
+                    }}
+                    style={{ position: "relative", padding: "8px 14px", border: "none", borderRadius: 8, background: active ? "#fef7e6" : "transparent", color: active ? "#b88900" : "#64748b", fontSize: 13, fontWeight: active ? 700 : 600, fontFamily: "Arial, sans-serif", cursor: "pointer", transition: "all .2s ease" }}
+                    onMouseEnter={(e) => {
+                      if (!active) {
+                        e.currentTarget.style.background = "#f8fafc";
+                        e.currentTarget.style.color = "#334155";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!active) {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "#64748b";
+                      }
+                    }}
+                  >
+                    {sec.label}
+
+                    {active && (
+                      <span style={{ position: "absolute", left: "20%", right: "20%", bottom: -7, height: 2, borderRadius: 999, background: "#d4af37" }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {websiteContentMsg.text && (
+              <p style={{ marginBottom: 14, padding: "8px 14px", borderRadius: 8, fontSize: 13, background: websiteContentMsg.type === "success" ? "#dcfce7" : "#fee2e2", color: websiteContentMsg.type === "success" ? "#15803d" : "#dc2626" }}>
+                {websiteContentMsg.text}
+              </p>
+            )}
+
+            {["logo", "hero", "about", "clinicContact"].includes(websiteContentSection) && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+                {!websiteContentEditing && (
+                  <button
+                    type="button"
+                    style={styles.primaryBtn}
+                    onClick={() => {
+                      setWebsiteValidationModal(null);
+                      setWebsiteContentErrors({});
+                      setWebsiteContentMsg({ text: "", type: "" });
+                      setWebsiteContentForm({ ...websiteContent });
+                      setWebsiteContentEditing(true);
+                    }}
+                  >
+                    <i className="fi fi-rr-edit"></i>
+                    <span>Edit Content</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            <WebsiteContentRenderer
+              api={api}
+              websiteContentSection={websiteContentSection}
+              websiteContent={websiteContent}
+              websiteContentForm={websiteContentForm}
+              websiteContentErrors={websiteContentErrors}
+              websiteContentEditing={websiteContentEditing}
+              websiteContentSaving={websiteContentSaving}
+              websiteFaqs={websiteFaqs}
+              websiteServices={websiteServices}
+              websiteAnnouncements={websiteAnnouncements}
+              fieldRow={fieldRow}
+              textDesignFields={textDesignFields}
+              contentEditActions={contentEditActions}
+              collectFieldsByPrefixes={collectFieldsByPrefixes}
+              handleWebsiteContentSaveRequest={handleWebsiteContentSaveRequest}
+
+              setWebsiteContent={setWebsiteContent}
+              setWebsiteContentForm={setWebsiteContentForm}
+              showWebsiteValidationModal={showWebsiteValidationModal}
+
+              setWebsiteContentEditing={setWebsiteContentEditing}
+              setWebsiteFaqOverlay={setWebsiteFaqOverlay}
+              setWebsiteServiceOverlay={setWebsiteServiceOverlay}
+              setWebsiteAnnouncementOverlay={setWebsiteAnnouncementOverlay}
+              deleteFaq={deleteFaq}
+              deleteAnnouncement={deleteAnnouncement}
+              getStatusStyle={getStatusStyle}
+              setDeleteAnnouncementId={setDeleteAnnouncementId}
+              setDeleteAnnouncementModal={setDeleteAnnouncementModal}
+              setDeleteWebsiteServiceId={setDeleteWebsiteServiceId}
+              setDeleteWebsiteServiceModal={setDeleteWebsiteServiceModal}
+              styles={styles}
+            />
+          </div>
+        </section>
+
+        {websiteFaqOverlay && (
+              <WebsiteItemOverlay
+                styles={styles}
+                title={websiteFaqOverlay.id ? "Edit FAQ" : "New FAQ"}
+                onClose={() => setWebsiteFaqOverlay(null)}
+                onSave={(data) => saveFaq(data)}
+                onValidationError={(message) => showWebsiteValidationModal("Required Fields Missing", message)}
+                data={websiteFaqOverlay}
+                fields={[
+                  { key: "question", label: "Question", type: "textarea", required: true },
+                  { key: "answer", label: "Answer", type: "textarea", required: true },
+                  { key: "sort_order", label: "Sort Order", type: "number" },
+                  { key: "status", label: "Status", type: "select", options: [{ value: "active", label: "Active" }, { value: "hidden", label: "Hidden" }] },
+                ]}
+              />
+            )}
+
+        {websiteAboutOverlay && (
+          <WebsiteItemOverlay
+            styles={styles}
+            title="Edit About Us Content"
+            onClose={() => setWebsiteAboutOverlay(null)}
+            onSave={(data) => handleWebsiteContentSaveRequest(data, [
+              "about_hero_tag",
+              "about_hero_title",
+              "about_hero_description",
+              "hero_card_title",
+              "hero_card_description",
+              "who_we_are_tag",
+              "who_we_are_title",
+              "who_we_are_description",
+              "mission_title",
+              "mission_content",
+              "vision_title",
+              "vision_content",
+              "care_title",
+              "care_content",
+              "team_section_tag",
+              "team_section_title",
+              "team_section_description",
+              "owner_label",
+              "owner_name",
+              "owner_position",
+              "owner_message_1",
+              "owner_message_2",
+              "branch_section_tag",
+              "branch_section_title",
+              "map_section_tag",
+              "map_section_title",
+              "map_section_description"
+            ])}
+            onValidationError={(message) =>
+              showWebsiteValidationModal("Required Fields Missing", message)
+            }
+            data={websiteContentForm}
+            fields={[
+              { key: "about_hero_tag", label: "Hero Tag", required: true },
+              { key: "about_hero_title", label: "Hero Title", required: true },
+              { key: "about_hero_description", label: "Hero Description", type: "textarea", required: true },
+
+              { key: "hero_card_title", label: "Hero Card Title", required: true },
+              { key: "hero_card_description", label: "Hero Card Description", type: "textarea", required: true },
+
+              { key: "who_we_are_tag", label: "Who We Are Tag", required: true },
+              { key: "who_we_are_title", label: "Who We Are Title", required: true },
+              { key: "who_we_are_description", label: "Who We Are Description", type: "textarea", required: true },
+
+              { key: "mission_title", label: "Mission Title", required: true },
+              { key: "mission_content", label: "Mission Content", type: "textarea", required: true },
+
+              { key: "vision_title", label: "Vision Title", required: true },
+              { key: "vision_content", label: "Vision Content", type: "textarea", required: true },
+
+              { key: "care_title", label: "Care Title", required: true },
+              { key: "care_content", label: "Care Content", type: "textarea", required: true },
+
+              { key: "team_section_tag", label: "Team Section Tag", required: true },
+              { key: "team_section_title", label: "Team Section Title", required: true },
+              { key: "team_section_description", label: "Team Section Description", type: "textarea", required: true },
+
+              { key: "owner_label", label: "Owner Label", required: true },
+              { key: "owner_name", label: "Owner Name", required: true },
+              { key: "owner_position", label: "Owner Position", required: true },
+              { key: "owner_message_1", label: "Owner Message 1", type: "textarea", required: true },
+              { key: "owner_message_2", label: "Owner Message 2", type: "textarea", required: true },
+
+              { key: "branch_section_tag", label: "Branch Section Tag", required: true },
+              { key: "branch_section_title", label: "Branch Section Title", required: true },
+
+              { key: "map_section_tag", label: "Map Section Tag", required: true },
+              { key: "map_section_title", label: "Map Section Title", required: true },
+              { key: "map_section_description", label: "Map Section Description", type: "textarea", required: true }
+            ]}
+          />
+        )}
+
+        {websiteHeroSaveConfirmModal && (
+          <div
+            style={styles.modal}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setWebsiteHeroSaveConfirmModal(null);
+              }
+            }}
+          >
+            <div
+              style={{
+                ...styles.modalContent,
+                width: isMobile ? "95%" : 700,
+                maxWidth: 700,
+                padding: "34px 38px",
+                maxHeight: "88vh",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <div
+                style={{
+                  width: 90,
+                  height: 90,
+                  margin: "0 auto 18px",
+                  borderRadius: "50%",
+                  background: "#fff7ed",
+                  border: "1px solid #fed7aa",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <i
+                  className="fi fi-rr-check"
+                  style={{
+                    fontSize: 34,
+                    color: "#d97706",
+                    lineHeight: 1,
+                  }}
+                ></i>
+              </div>
+
+              <h2
+                style={{
+                  ...styles.modalTitle,
+                  marginBottom: 10,
+                }}
+              >
+                Confirm Content Changes
+              </h2>
+
+              <p
+                style={{
+                  ...styles.modalText,
+                  marginBottom: 22,
+                }}
+              >
+                Please review the changes below before saving.
+              </p>
+
+              <div
+                style={{
+                  width: "100%",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: "#ffffff",
+                  flex: 1,
+                  overflowY: "auto",
+                  marginBottom: 20,
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "210px 1fr",
+                    background: "#f8fafc",
+                    padding: "14px 20px",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontWeight: 700,
+                    color: "#334155",
+                    fontSize: 14,
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 2,
+                  }}
+                >
+                  <div>Field</div>
+                  <div>New Value</div>
+                </div>
+
+                {websiteHeroSaveConfirmModal.details.map((detail, index, array) => (
+                  <div
+                    key={detail.key}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "210px 1fr",
+                      gap: 20,
+                      padding: "15px 20px",
+                      alignItems: "center",
+                      borderBottom:
+                        index === array.length - 1
+                          ? "none"
+                          : "1px solid #f1f5f9",
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          color: "#64748b",
+                          fontWeight: 600,
+                          fontSize: 13,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {detail.label}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color:
+                            detail.previousValue === "Not set"
+                              ? "#2563eb"
+                              : "#d97706",
+                        }}
+                      >
+                        {detail.previousValue === "Not set"
+                          ? "Added"
+                          : "Changed"}
+                      </div>
+                    </div>
+
+                    <div
                       style={{
-                        position: "relative",
-                        padding: "8px 14px",
-                        border: "none",
-                        borderRadius: 8,
-                        background: active ? "#fef7e6" : "transparent",
-                        color: active ? "#b88900" : "#64748b",
+                        color: "#0f172a",
+                        fontWeight: 600,
                         fontSize: 13,
-                        fontWeight: active ? 700 : 600,
-                        fontFamily: "Arial, sans-serif",
-                        cursor: "pointer",
-                        transition: "all .2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!active) {
-                          e.currentTarget.style.background = "#f8fafc";
-                          e.currentTarget.style.color = "#334155";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!active) {
-                          e.currentTarget.style.background = "transparent";
-                          e.currentTarget.style.color = "#64748b";
-                        }
+                        lineHeight: 1.5,
+                        wordBreak: "break-word",
+                        overflowWrap: "anywhere",
+                        whiteSpace: "pre-wrap",
+                        textAlign: "right",
                       }}
                     >
-                      {sec.label}
+                      {detail.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                      {active && (
-                        <span style={{ position: "absolute", left: "20%", right: "20%", bottom: -7, height: 2, borderRadius: 999, background: "#d4af37" }} />
-                      )}
-                    </button>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  padding: "16px 18px",
+                  marginBottom: 22,
+                  borderRadius: 12,
+                  background: "#fffbeb",
+                  border: "1px solid #fde68a",
+                  color: "#92400e",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                }}
+              >
+                <i
+                  className="fi fi-rr-info"
+                  style={{
+                    marginTop: 2,
+                    fontSize: 16,
+                  }}
+                ></i>
+
+                <span>
+                  Please verify all Hero section changes before saving. Once saved,
+                  these updates will immediately appear on your website.
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 14,
+                  marginTop: "auto",
+                }}
+              >
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    height: 52,
+                    border: "1px solid #d1d5db",
+                    borderRadius: 14,
+                    background: "#f8fafc",
+                    color: "#475569",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    fontFamily: "Arial, sans-serif",
+                    cursor: "pointer",
+                    transition: "all .2s ease",
+                  }}
+                  onClick={() =>
+                    setWebsiteHeroSaveConfirmModal(null)
+                  }
+                >
+                  Review Changes
+                </button>
+
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    height: 52,
+                    border: "1px solid #eab308",
+                    borderRadius: 14,
+                    background: "#d4af37",
+                    color: "#ffffff",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    fontFamily: "Arial, sans-serif",
+                    cursor: "pointer",
+                    transition: "all .2s ease",
+                  }}
+                  onClick={confirmWebsiteHeroSave}
+                >
+                  Save Hero Content
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {websiteContentClearConfirmModal && (
+          <div
+            style={styles.modal}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setWebsiteContentClearConfirmModal(null);
+              }
+            }}
+          >
+            <div
+              style={{
+                ...styles.modalContent,
+                width: isMobile ? "95%" : 620,
+                maxWidth: 620,
+                padding: "34px 38px",
+                maxHeight: "88vh",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+                <div
+                  style={{
+                    width: 90,
+                    height: 90,
+                    margin: "0 auto 18px",
+                    borderRadius: "50%",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                <i
+                  className="fi fi-rr-trash"
+                  style={{
+                    fontSize: 34,
+                    color: "#dc2626",
+                    lineHeight: 1,
+                  }}
+                ></i>
+              </div>
+
+              <h2
+                style={{
+                  ...styles.modalTitle,
+                  marginBottom: 10,
+                }}
+              >
+                Clear Website Content
+              </h2>
+
+              <p
+                style={{
+                  ...styles.modalText,
+                  marginBottom: 22,
+                }}
+              >
+                You are about to clear all fields in this section. Review the
+                current values before continuing.
+              </p>
+
+              <div
+                style={{
+                  width: "100%",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: "#ffffff",
+                  flex: 1,
+                  overflowY: "auto",
+                  marginBottom: 20,
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "210px 1fr",
+                    background: "#f8fafc",
+                    padding: "14px 20px",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontWeight: 700,
+                    color: "#334155",
+                    fontSize: 14,
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 2,
+                  }}
+                >
+                  <div>Field</div>
+                  <div>Current Value</div>
+                </div>
+
+                {Object.entries(
+                  websiteContentClearConfirmModal.sectionFields
+                ).map(([key, value], index, array) => {
+                  const displayValue =
+                    value === undefined ||
+                    value === null ||
+                    String(value).trim() === ""
+                      ? null
+                      : String(value);
+
+                  return (
+                    <div
+                      key={key}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "210px 1fr",
+                        gap: 20,
+                        padding: "15px 20px",
+                        alignItems: "center",
+                        borderBottom:
+                          index === array.length - 1
+                            ? "none"
+                            : "1px solid #f1f5f9",
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#64748b",
+                          fontWeight: 600,
+                          fontSize: 13,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {formatWebsiteContentFieldLabel(key)}
+                      </div>
+
+                      <div
+                        style={{
+                          color: displayValue ? "#0f172a" : "#94a3b8",
+                          fontWeight: 500,
+                          fontSize: 13,
+                          lineHeight: 1.5,
+                          wordBreak: "break-word",
+                          overflowWrap: "anywhere",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {displayValue || "Not set"}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
 
-              {websiteContentMsg.text && (
-                <p style={{
-                  marginBottom: 14,
-                  padding: '8px 14px',
-                  borderRadius: 8,
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  padding: "16px 18px",
+                  marginBottom: 22,
+                  borderRadius: 12,
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#991b1b",
                   fontSize: 13,
-                  background: websiteContentMsg.type === 'success' ? '#dcfce7' : '#fee2e2',
-                  color: websiteContentMsg.type === 'success' ? '#15803d' : '#dc2626',
-                }}>
-                  {websiteContentMsg.text}
-                </p>
-              )}
+                  lineHeight: 1.6,
+                }}
+              >
+                <i
+                  className="fi fi-rr-triangle-warning"
+                  style={{
+                    marginTop: 2,
+                    fontSize: 16,
+                  }}
+                ></i>
 
-              {['logo', 'hero', 'about', 'contact', 'footer'].includes(websiteContentSection) && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                  {!websiteContentEditing && (
-                    <button
-                      type="button"
-                      style={styles.primaryBtn}
-                      onClick={() => setWebsiteContentEditing(true)}
-                    >
-                      <i className="fi fi-rr-edit"></i> <span>Edit Content</span>
-                    </button>
-                  )}
-                </div>
-              )}
+                <span>
+                  Clearing these fields only removes the current input in this section. Your website content will not be updated until you click <strong>Save Content</strong>.
+                </span>
+              </div>
 
-              {getContentSectionFields()}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 14,
+                    marginTop: "auto",
+                  }}
+                >
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    height: 52,
+                    border: "1px solid #86efac",
+                    borderRadius: 14,
+                    background: "#f0fdf4",
+                    color: "#16a34a",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    fontFamily: "Arial, sans-serif",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    transition: "all .2s ease",
+                  }}
+                  onClick={() =>
+                    setWebsiteContentClearConfirmModal(null)
+                  }
+                >
+                  Keep Content
+                </button>
+
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    height: 52,
+                    border: "1px solid #fca5a5",
+                    borderRadius: 14,
+                    background: "#fef2f2",
+                    color: "#dc2626",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    fontFamily: "Arial, sans-serif",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    transition: "all .2s ease",
+                  }}
+                  onClick={confirmWebsiteContentClear}
+                >
+                  Clear Content
+                </button>
+              </div>
             </div>
-        </section>
+          </div>
+        )}
 
-        {websiteFaqOverlay && (
-          <WebsiteItemOverlay
-            styles={styles}
-            title={websiteFaqOverlay.id ? 'Edit FAQ' : 'New FAQ'}
-            onClose={() => setWebsiteFaqOverlay(null)}
-            onSave={(data) => saveFaq(data)}
-            onValidationError={(message) => showWebsiteValidationModal('Required Fields Missing', message)}
-            data={websiteFaqOverlay}
-            fields={[
-              { key: 'question', label: 'Question', type: 'textarea', required: true },
-              { key: 'answer', label: 'Answer', type: 'textarea', required: true },
-              { key: 'sort_order', label: 'Sort Order (number)', type: 'number' },
-              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'hidden', label: 'Hidden' }] },
-            ]}
-          />
+        {websiteAboutSaveConfirmModal && (
+          <div
+            style={styles.modal}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setWebsiteAboutSaveConfirmModal(null);
+              }
+            }}
+          >
+            <div
+              style={{
+                ...styles.modalContent,
+                width: isMobile ? "100%" : 520,
+                maxWidth: 520,
+              }}
+            >
+              <div style={styles.modalIcon}>
+                <i
+                  className="fi fi-rr-check-circle"
+                  style={styles.modalIconText}
+                ></i>
+              </div>
+
+              <h2 style={styles.modalTitle}>
+                Confirm About Us Changes
+              </h2>
+
+              <p style={styles.modalText}>
+                Please review the About Us content before saving.
+              </p>
+
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  fontFamily: "Arial, sans-serif",
+                  marginBottom: 8,
+                }}
+              >
+                {websiteAboutSaveConfirmModal.details.filter((detail) => detail.changed).length === 0 ? (
+                  <div
+                    style={{
+                      color: "#64748b",
+                      fontSize: 13,
+                      padding: "8px 0",
+                    }}
+                  >
+                    No content changes detected.
+                  </div>
+                ) : (
+                  websiteAboutSaveConfirmModal.details
+                    .filter((detail) => detail.changed)
+                    .map((detail) => (
+                      <div
+                        key={detail.key}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          padding: "7px 0",
+                          borderBottom: "1px solid #f1f5f9",
+                          fontSize: 13,
+                          textAlign: "left",
+                        }}
+                      >
+                        <span style={{ color: "#64748b" }}>
+                          {detail.label}
+                          <small
+                            style={{
+                              display: "block",
+                              color: "#94a3b8",
+                              marginTop: 2,
+                            }}
+                          >
+                            {detail.previousValue === "Not set"
+                              ? "Added"
+                              : "Changed"}
+                          </small>
+                        </span>
+
+                        <strong
+                          style={{
+                            color: "#0f172a",
+                            textAlign: "right",
+                            maxWidth: 260,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {detail.value}
+                        </strong>
+                      </div>
+                    ))
+                )}
+              </div>
+
+              <div style={styles.modalActions}>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.modalButton,
+                    ...styles.cancelBtn,
+                  }}
+                  onClick={() => setWebsiteAboutSaveConfirmModal(null)}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  style={{
+                    ...styles.modalButton,
+                    ...styles.saveBtn,
+                  }}
+                  disabled={websiteContentSaving}
+                  onClick={confirmWebsiteAboutSave}
+                >
+                  {websiteContentSaving ? "Saving..." : "Save Content"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {websiteServiceOverlay && (
           <WebsiteItemOverlay
             styles={styles}
-            title={websiteServiceOverlay.id ? 'Edit Service Card' : 'New Service Card'}
+            title={websiteServiceOverlay.id ? "Edit Service Card" : "New Service Card"}
             onClose={() => setWebsiteServiceOverlay(null)}
-            onSave={(data) => saveWebsiteService(data)}
-            onValidationError={(message) => showWebsiteValidationModal('Required Fields Missing', message)}
+            onSave={handleWebsiteServiceSaveRequest}
+            onValidationError={(message) =>
+              showWebsiteValidationModal("Required Fields Missing", message)
+            }
             data={websiteServiceOverlay}
             fields={[
-              { key: 'name', label: 'Service Name', required: true },
-              { key: 'image_path', label: 'Image Path (e.g. ./images/crowns.jpeg)' },
-              { key: 'description', label: 'Modal Description', type: 'textarea', required: true },
-              { key: 'slug', label: 'Slug (for Services.html link, e.g. crowns)' },
-              { key: 'sort_order', label: 'Sort Order (number)', type: 'number' },
-              { key: 'status', label: 'Status', type: 'select', options: [{ value: 'active', label: 'Active' }, { value: 'hidden', label: 'Hidden' }] },
+              { key: "name", label: "Service Name", required: true },
+              { key: "image_path", label: "Service Image", type: "image", required: true },
+              { key: "before_image", label: "Before Image", type: "image", required: true },
+              { key: "after_image", label: "After Image", type: "image", required: true },
+              { key: "intro", label: "Hero Introduction", type: "textarea", required: true },
+              { key: "heading", label: "Main Heading", required: true },
+              { key: "overview", label: "Overview", type: "textarea", required: true },
+              { key: "benefits", label: "Benefits", type: "textarea", required: true },
+              { key: "process", label: "Treatment Process", type: "textarea", required: true },
+              { key: "care", label: "Aftercare Tips", type: "textarea", required: true },
+              { key: "duration", label: "Estimated Duration", type: "textarea", required: true },
+              { key: "ideal_for", label: "Best For", type: "textarea", required: true },
+              { key: "reminder", label: "Important Reminder", type: "textarea", required: true },
+              { key: "description", label: "Card Description", type: "textarea", required: true },
+              { key: "slug", label: "Slug", required: true },
+              { key: "sort_order", label: "Sort Order", type: "number", required: true },
+              {
+                key: "status",
+                label: "Status",
+                type: "select",
+                required: true,
+                options: [
+                  { value: "active", label: "Active" },
+                  { value: "hidden", label: "Hidden" },
+                ],
+              },
             ]}
           />
+        )}
+
+        {websiteServiceSaveConfirmModal && (
+          <div
+            style={styles.modal}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setWebsiteServiceSaveConfirmModal(null);
+              }
+            }}
+          >
+            <div
+              style={{
+                ...styles.modalContent,
+                width: isMobile ? "100%" : 520,
+                maxWidth: 520,
+              }}
+            >
+              <div style={styles.modalIcon}>
+                <i
+                  className="fi fi-rr-check-circle"
+                  style={styles.modalIconText}
+                ></i>
+              </div>
+
+              <h2 style={styles.modalTitle}>
+                Confirm Content Changes
+              </h2>
+
+              <p style={styles.modalText}>
+                Please review the website service details before saving.
+              </p>
+
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  fontFamily: "Arial, sans-serif",
+                  marginBottom: 8,
+                }}
+              >
+                {websiteServiceSaveConfirmModal.details.filter((detail) => detail.changed).length === 0 ? (
+                  <div
+                    style={{
+                      color: "#64748b",
+                      fontSize: 13,
+                      padding: "8px 0",
+                    }}
+                  >
+                    No content changes detected.
+                  </div>
+                ) : (
+                  websiteServiceSaveConfirmModal.details
+                    .filter((detail) => detail.changed)
+                    .map((detail) => (
+                      <div
+                        key={detail.key}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          padding: "7px 0",
+                          borderBottom: "1px solid #f1f5f9",
+                          fontSize: 13,
+                          textAlign: "left",
+                        }}
+                      >
+                        <span style={{ color: "#64748b" }}>
+                          {detail.label}
+                          <small
+                            style={{
+                              display: "block",
+                              color: "#94a3b8",
+                              marginTop: 2,
+                            }}
+                          >
+                            {detail.previousValue === "Not set"
+                              ? "Added"
+                              : "Changed"}
+                          </small>
+                        </span>
+
+                        <strong
+                          style={{
+                            color: "#0f172a",
+                            textAlign: "right",
+                            maxWidth: 260,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {detail.value}
+                        </strong>
+                      </div>
+                    ))
+                )}
+              </div>
+
+              <div style={styles.modalActions}>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.modalButton,
+                    ...styles.cancelBtn,
+                  }}
+                  onClick={() => setWebsiteServiceSaveConfirmModal(null)}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  style={{
+                    ...styles.modalButton,
+                    ...styles.saveBtn,
+                  }}
+                  disabled={websiteServiceSaving}
+                  onClick={confirmWebsiteServiceSave}
+                >
+                  {websiteServiceSaving ? "Saving..." : "Save Content"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
 
@@ -3008,19 +4666,31 @@ setWebsiteContentSaveConfirmModal({
             onValidationError={(message) => showWebsiteValidationModal('Required Fields Missing', message)}
             data={websiteAnnouncementOverlay}
             fields={[
-              { key: 'title', label: 'Announcement Title', required: true },
-              { key: 'message', label: 'Announcement Message', type: 'textarea', required: true },
-              { key: 'start_date', label: 'Start Date', type: 'date', required: true },
-              { key: 'end_date', label: 'End Date', type: 'date', required: true },
-              {
-                key: 'status',
-                label: 'Status',
-                type: 'select',
-                options: [
-                  { value: 'active', label: 'Active' },
-                  { value: 'hidden', label: 'Hidden' },
-                ],
-              },
+              { key: "title", label: "Announcement Title", required: true, column: "left" },
+
+              { key: "title_font_family", label: "Font Family", type: "font-family", column: "right" },
+              { key: "title_font_size", label: "Font Size", type: "font-size", column: "right" },
+              { key: "title_font_weight", label: "Font Weight", type: "font-weight", column: "right" },
+              { key: "title_color", label: "Text Color", type: "color", column: "right" },
+              { key: "title_alignment", label: "Text Alignment", type: "select", column: "right", options: textAlignOptions },
+
+              { key: "message", label: "Announcement Message", type: "textarea", required: true, column: "left" },
+
+              { key: "message_font_family", label: "Font Family", type: "font-family", column: "right" },
+              { key: "message_font_size", label: "Font Size", type: "font-size", column: "right" },
+              { key: "message_font_weight", label: "Font Weight", type: "font-weight", column: "right" },
+              { key: "message_color", label: "Text Color", type: "color", column: "right" },
+              { key: "message_alignment", label: "Text Alignment", type: "select", column: "right", options: textAlignOptions },
+
+              { key: "start_date", label: "From Date", type: "date" },
+              { key: "start_time", label: "From Time", type: "time-select" },
+              { key: "end_date", label: "To Date", type: "date" },
+              { key: "end_time", label: "To Time", type: "time-select" },
+
+              { key: "status", label: "Status", type: "select", options: [
+                { value: "active", label: "Active" },
+                { value: "hidden", label: "Hidden" },
+              ]}
             ]}
           />
         )}
@@ -4633,7 +6303,12 @@ setWebsiteContentSaveConfirmModal({
               <select
                 value={serviceKitServiceId}
                 onChange={(e) => reloadServiceKitService(e.target.value)}
-                style={styles.formInput}
+                style={{
+                  ...styles.formInput,
+                  borderColor: errors[f.key] ? "#dc2626" : "#d1d5db",
+                  boxShadow: errors[f.key] ? "0 0 0 1px #dc2626" : "none",
+                }}
+
                 disabled={!serviceKitBranchSelected}
               >
                 <option value="" disabled>
@@ -5592,67 +7267,228 @@ setWebsiteContentSaveConfirmModal({
             }
           }}
         >
-          <div style={{ ...styles.modalContent, width: isMobile ? '100%' : 520, maxWidth: 520 }}>
-            <div style={styles.modalIcon}>
-              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+          <div
+            style={{
+              ...styles.modalContent,
+              width: isMobile ? "95%" : 700,
+              maxWidth: 700,
+              padding: "34px 38px",
+              maxHeight: "88vh",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                width: 90,
+                height: 90,
+                margin: "0 auto 18px",
+                borderRadius: "50%",
+                background: "#fff7ed",
+                border: "1px solid #fed7aa",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <i
+                className="fi fi-rr-check"
+                style={{
+                  fontSize: 34,
+                  color: "#d97706",
+                  lineHeight: 1,
+                }}
+              ></i>
             </div>
 
-            <h2 style={styles.modalTitle}>Confirm Content Changes</h2>
-            <p style={styles.modalText}>
-              Please review the website content details before saving.
+            <h2
+              style={{
+                ...styles.modalTitle,
+                marginBottom: 10,
+              }}
+            >
+              Confirm Content Changes
+            </h2>
+
+            <p
+              style={{
+                ...styles.modalText,
+                marginBottom: 22,
+              }}
+            >
+              Please review the changes below before saving.
             </p>
 
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
-              {websiteContentSaveConfirmModal.details.filter((detail) => detail.changed).length === 0 ? (
-                <div style={{ color: '#64748b', fontSize: 13, padding: '8px 0' }}>
-                  No content changes detected.
-                </div>
-              ) : (
-                websiteContentSaveConfirmModal.details
-                  .filter((detail) => detail.changed)
-                  .map((detail) => (
+            <div
+              style={{
+                width: "100%",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                overflow: "hidden",
+                background: "#ffffff",
+                flex: 1,
+                overflowY: "auto",
+                marginBottom: 20,
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "210px 1fr",
+                  background: "#f8fafc",
+                  padding: "14px 20px",
+                  borderBottom: "1px solid #e2e8f0",
+                  fontWeight: 700,
+                  color: "#334155",
+                  fontSize: 14,
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 2,
+                }}
+              >
+                <div>Field</div>
+                <div>New Value</div>
+              </div>
+
+              {websiteContentSaveConfirmModal.details
+                .filter((detail) => detail.changed)
+                .map((detail, index, array) => (
+                  <div
+                    key={detail.key}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "210px 1fr",
+                      gap: 20,
+                      padding: "15px 20px",
+                      alignItems: "center",
+                      borderBottom:
+                        index === array.length - 1
+                          ? "none"
+                          : "1px solid #f1f5f9",
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          color: "#64748b",
+                          fontWeight: 600,
+                          fontSize: 13,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {detail.label}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color:
+                            detail.previousValue === "Not set"
+                              ? "#2563eb"
+                              : "#d97706",
+                        }}
+                      >
+                        {detail.previousValue === "Not set"
+                          ? "Added"
+                          : "Changed"}
+                      </div>
+                    </div>
+
                     <div
-                      key={detail.key}
                       style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        gap: 12,
-                        padding: '7px 0',
-                        borderBottom: '1px solid #f1f5f9',
+                        color: "#0f172a",
+                        fontWeight: 600,
                         fontSize: 13,
-                        textAlign: 'left',
+                        lineHeight: 1.5,
+                        wordBreak: "break-word",
+                        overflowWrap: "anywhere",
+                        whiteSpace: "pre-wrap",
+                        textAlign: "right",
                       }}
                     >
-                      <span style={{ color: '#64748b' }}>
-                        {detail.label}
-                        <small style={{ display: 'block', color: '#94a3b8', marginTop: 2 }}>
-                          {detail.previousValue === 'Not set' ? 'Added' : 'Changed'}
-                        </small>
-                      </span>
-                      <strong style={{ color: '#0f172a', textAlign: 'right', maxWidth: 260, overflowWrap: 'anywhere' }}>
-                        {detail.value}
-                      </strong>
+                      {detail.value || "Not entered"}
                     </div>
-                  ))
-              )}
+                  </div>
+                ))}
             </div>
 
-            <div style={styles.modalActions}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                padding: "16px 18px",
+                marginBottom: 22,
+                borderRadius: 12,
+                background: "#fffbeb",
+                border: "1px solid #fde68a",
+                color: "#92400e",
+                fontSize: 13,
+                lineHeight: 1.6,
+              }}
+            >
+              <i
+                className="fi fi-rr-info"
+                style={{
+                  marginTop: 2,
+                  fontSize: 16,
+                }}
+              ></i>
+
+              <span>
+                Please verify all changes before saving. Once saved, these updates will immediately appear on your website
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 14,
+                marginTop: "auto",
+              }}
+            >
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.cancelBtn }}
-                onClick={() => setWebsiteContentSaveConfirmModal(null)}
+                style={{
+                  flex: 1,
+                  height: 52,
+                  border: "1px solid #d1d5db",
+                  borderRadius: 14,
+                  background: "#f8fafc",
+                  color: "#475569",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  fontFamily: "Arial, sans-serif",
+                  cursor: "pointer",
+                }}
+                onClick={() =>
+                  setWebsiteContentSaveConfirmModal(null)
+                }
               >
-                Cancel
+                Review Changes
               </button>
 
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                style={{
+                  flex: 1,
+                  height: 52,
+                  border: "1px solid #eab308",
+                  borderRadius: 14,
+                  background: "#d4af37",
+                  color: "#ffffff",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  fontFamily: "Arial, sans-serif",
+                  cursor: "pointer",
+                }}
                 disabled={websiteContentSaving}
                 onClick={confirmWebsiteContentSave}
               >
-                {websiteContentSaving ? 'Saving...' : 'Save Content'}
+                {websiteContentSaving ? "Saving..." : "Save Content"}
               </button>
             </div>
           </div>
@@ -5940,26 +7776,434 @@ function FormActions({ styles, label }) {
   );
 }
 
+const API_URL = "http://localhost:4000";
+
+function getImagePreview(path) {
+
+  if (!path) return "";
+
+  if (path instanceof File) {
+    return URL.createObjectURL(path);
+  }
+
+  if (typeof path === "string") {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+
+    return `${API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+  }
+
+  return "";
+}
+
 function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError, data, fields }) {
   const [form, setForm] = useState(() => {
     const initial = {};
-    fields.forEach(f => { initial[f.key] = data[f.key] ?? ''; });
+
+    fields.forEach((f) => {
+      initial[f.key] = data?.[f.key] ?? "";
+    });
+
     return initial;
   });
 
-  function handleChange(key, value) {
-    setForm(prev => ({ ...prev, [key]: value }));
+  const [errors, setErrors] = useState({});
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const [imagePreview, setImagePreview] = useState({
+    image_path: getImagePreview(data?.image_path),
+    before_image: getImagePreview(data?.before_image),
+    after_image: getImagePreview(data?.after_image),
+  });
+
+  useEffect(() => {
+    const updated = {};
+
+    fields.forEach((f) => {
+      updated[f.key] = data?.[f.key] ?? "";
+    });
+
+    setForm(updated);
+    setErrors({});
+
+    console.log("Website Service Data:", data);
+
+    setImagePreview({
+      image_path: getImagePreview(data?.image_path),
+      before_image: getImagePreview(data?.before_image),
+      after_image: getImagePreview(data?.after_image),
+    });
+  }, [data, fields]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(imagePreview).forEach((url) => {
+        if (typeof url === "string" && url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, [imagePreview]);
+
+  function validateField(field, value) {
+    const inputValue = String(value || "").trim();
+
+    if (field.type === "image") {
+      return value ? "" : `${field.label} is required.`;
+    }
+
+    if (field.required && !inputValue) {
+      return `${field.label} is required.`;
+    }
+
+    if (!inputValue) {
+      return "";
+    }
+
+    switch (field.key) {
+      case "footer_brand_name":
+        if (!/^[A-Za-z\s&.'-]+$/.test(inputValue)) {
+          return "Brand name must contain letters only.";
+        }
+        break;
+
+      case "footer_team_name":
+        if (!/^[A-Za-z\s&:.,'()-]+$/.test(inputValue)) {
+          return "Team name contains invalid characters.";
+        }
+        break;
+
+      case "footer_system_name":
+        if (!/^[A-Za-z\s&:.,'()-]+$/.test(inputValue)) {
+          return "System name contains invalid characters.";
+        }
+        break;
+
+      case "contact_phone1":
+      case "contact_phone2":
+        if (!/^9\d{9}$/.test(inputValue)) {
+          return "Phone number must start with 9 and contain exactly 10 digits.";
+        }
+        break;
+
+      case "contact_email":
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue)) {
+          return "Enter a valid email address.";
+        }
+        break;
+
+      case "contact_facebook_name":
+        if (!/^[A-Za-z\s&.'-]+$/.test(inputValue)) {
+          return "Facebook page name contains invalid characters.";
+        }
+        break;
+
+      case "contact_facebook_url":
+        if (
+          !/^https?:\/\/(www\.)?(facebook\.com|fb\.com)\/.+$/i.test(inputValue)
+        ) {
+          return "Enter a valid Facebook URL.";
+        }
+        break;
+
+      case "contact_tagline":
+        if (!/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(inputValue)) {
+          return "Clinic tagline contains invalid characters.";
+        }
+        break;
+
+      case "contact_badge":
+        if (!/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(inputValue)) {
+          return "Contact badge contains invalid characters.";
+        }
+        break;
+
+      case "contact_heading":
+        if (!/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(inputValue)) {
+          return "Contact heading contains invalid characters.";
+        }
+        break;
+
+      case "contact_button":
+        if (!/^[A-Za-z0-9\s&:.,'()!?-]+$/.test(inputValue)) {
+          return "Contact button contains invalid characters.";
+        }
+        break;
+
+      case "hours_weekdays":
+        if (!/^[A-Za-z\s-]+$/.test(inputValue)) {
+          return "Weekdays label contains invalid characters.";
+        }
+        break;
+
+      case "hours_weekday_time":
+        if (!/^[A-Za-z0-9:\s-]+$/.test(inputValue)) {
+          return "Weekday hours contain invalid characters.";
+        }
+        break;
+
+      case "hours_sunday":
+        if (!/^[A-Za-z\s]+$/.test(inputValue)) {
+          return "Sunday label contains invalid characters.";
+        }
+        break;
+
+      case "hours_sunday_note":
+        if (!/^[A-Za-z0-9\s&:.,'()-]+$/.test(inputValue)) {
+          return "Sunday note contains invalid characters.";
+        }
+        break;
+    }
+
+    if (field.validation?.type === "email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailRegex.test(inputValue)) {
+        return `${field.label} must be a valid email address.`;
+      }
+    }
+
+    if (field.validation?.type === "url") {
+      try {
+        new URL(inputValue);
+      } catch {
+        return `${field.label} must be a valid link.`;
+      }
+    }
+
+    if (field.validation?.type === "phone") {
+      const phoneRegex = /^[0-9+\-\s()]{10,15}$/;
+
+      if (!phoneRegex.test(inputValue)) {
+        return `${field.label} must be a valid phone number.`;
+      }
+    }
+
+    if (field.validation?.type === "number") {
+      if (isNaN(Number(inputValue))) {
+        return `${field.label} must be a number.`;
+      }
+
+      if (
+        field.validation.min &&
+        Number(inputValue) < field.validation.min
+      ) {
+        return `${field.label} must be at least ${field.validation.min}.`;
+      }
+
+      if (
+        field.validation.max &&
+        Number(inputValue) > field.validation.max
+      ) {
+        return `${field.label} must not exceed ${field.validation.max}.`;
+      }
+    }
+
+    return "";
+  }
+
+  function handleChange(field, value) {
+    setHasChanges(true);
+
+    let newValue = value;
+    let error = validateWebsiteField(key, newValue);
+
+    setWebsiteContentForm(prev => ({
+      ...prev,
+      [key]: newValue,
+    }));
+
+    setWebsiteContentErrors(prev => ({
+      ...prev,
+      [key]: error,
+    }));
+
+    if (
+      field.key === "contact_phone1" ||
+      field.key === "contact_phone2"
+    ) {
+      newValue = newValue.replace(/\D/g, "");
+
+      if (newValue.length > 0 && !newValue.startsWith("9")) {
+        return;
+      }
+
+      newValue = newValue.slice(0, 10);
+    }
+
+    if (field.key === "footer_brand_name") {
+      newValue = newValue.replace(/[^A-Za-z\s&.'-]/g, "");
+    }
+
+    if (field.key === "footer_team_name") {
+      newValue = newValue.replace(/[^A-Za-z\s&:.,'()-]/g, "");
+    }
+
+    if (field.key === "footer_system_name") {
+      newValue = newValue.replace(/[^A-Za-z\s&:.,'()-]/g, "");
+    }
+
+    if (field.key === "contact_tagline") {
+      newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()!?-]/g, "");
+    }
+
+    if (field.key === "contact_badge") {
+      newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()!?-]/g, "");
+    }
+
+    if (field.key === "contact_heading") {
+      newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()!?-]/g, "");
+    }
+
+    if (field.key === "contact_button") {
+      newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()!?-]/g, "");
+    }
+
+    if (field.key === "contact_facebook_name") {
+      newValue = newValue.replace(/[^A-Za-z\s&.'-]/g, "");
+    }
+
+    if (field.key === "hours_weekdays") {
+      newValue = newValue.replace(/[^A-Za-z\s-]/g, "");
+    }
+
+    if (field.key === "hours_weekday_time") {
+      newValue = newValue.replace(/[^A-Za-z0-9:\s-]/g, "");
+    }
+
+    if (field.key === "hours_sunday") {
+      newValue = newValue.replace(/[^A-Za-z\s]/g, "");
+    }
+
+    if (field.key === "hours_sunday_note") {
+      newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()-]/g, "");
+    }
+
+    error = validateField(field, newValue);
+
+    if (
+      field.key === "contact_email" &&
+      newValue &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newValue.trim())
+    ) {
+      error = "Enter a valid email address.";
+    }
+
+    if (
+      (field.key === "contact_phone1" ||
+        field.key === "contact_phone2") &&
+      newValue &&
+      !/^9\d{9}$/.test(newValue)
+    ) {
+      error =
+        "Phone number must start with 9 and contain exactly 10 digits.";
+    }
+
+    if (
+      field.key === "footer_brand_name" &&
+      newValue &&
+      !/^[A-Za-z\s&.'-]+$/.test(newValue.trim())
+    ) {
+      error = "Brand name must contain letters only.";
+    }
+
+    if (
+      field.key === "footer_team_name" &&
+      newValue &&
+      !/^[A-Za-z\s&:.,'()-]+$/.test(newValue.trim())
+    ) {
+      error = "Team name contains invalid characters.";
+    }
+
+    if (
+      field.key === "footer_system_name" &&
+      newValue &&
+      !/^[A-Za-z\s&:.,'()-]+$/.test(newValue.trim())
+    ) {
+      error = "System name contains invalid characters.";
+    }
+
+    if (
+      field.key === "contact_facebook_name" &&
+      newValue &&
+      !/^[A-Za-z\s&.'-]+$/.test(newValue.trim())
+    ) {
+      error = "Facebook page name contains invalid characters.";
+    }
+
+    if (
+      field.key === "contact_facebook_url" &&
+      newValue &&
+      !/^https?:\/\/(www\.)?(facebook\.com|fb\.com)\/.+$/i.test(newValue.trim())
+    ) {
+      error = "Enter a valid Facebook URL.";
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      [field.key]: newValue,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [field.key]: error,
+    }));
+  }
+
+  function handleImageUpload(e, key) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    const field = fields.find((f) => f.key === key);
+
+    setHasChanges(true);
+
+    setImagePreview((prev) => ({
+      ...prev,
+      [key]: URL.createObjectURL(file),
+    }));
+
+    setForm((prev) => ({
+      ...prev,
+      [key]: file,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [key]: validateField(field, file),
+    }));
   }
 
   function handleSubmit(e) {
     e.preventDefault();
 
-    const missingFields = fields.filter((field) => {
-      return field.required && !String(form[field.key] || '').trim();
+    const newErrors = {};
+    let allEmpty = true;
+
+    fields.forEach((field) => {
+      if (!field.required) return;
+
+      const value = form[field.key];
+
+      if (field.type === "image") {
+        if (value) allEmpty = false;
+      } else if (String(value || "").trim()) {
+        allEmpty = false;
+      }
+
+      newErrors[field.key] = validateField(field, value);
     });
 
-    if (missingFields.length > 0) {
-      onValidationError?.('Please complete all required fields before saving.');
+    setErrors(newErrors);
+
+    if (allEmpty) {
+      onValidationError?.("Please complete all required fields before saving.");
+      return;
+    }
+
+    if (Object.values(newErrors).some(Boolean)) {
       return;
     }
 
@@ -5967,8 +8211,117 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
   }
 
   function handleOverlayClick(e) {
-    if (e.target === e.currentTarget) onClose();
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
   }
+
+  const renderField = (f) => {
+    return (
+      <div
+        key={f.key}
+        style={{
+          ...styles.field,
+          width: "100%",
+        }}
+      >
+        <label style={styles.fieldLabel}>
+          {f.label}
+
+          {f.required && (
+            <span style={{ color: "#dc2626", marginLeft: 4 }}>
+              *
+            </span>
+          )}
+        </label>
+
+        {f.type === "textarea" ? (
+          <textarea
+            style={{
+              ...styles.formInput,
+              minHeight: 80,
+              resize: "vertical",
+            }}
+            value={form[f.key] || ""}
+            onChange={(e) =>
+              handleChange(f, e.target.value)
+            }
+          />
+
+        ) : f.type === "select" ? (
+
+          <select
+            style={styles.formInput}
+            value={form[f.key] || ""}
+            onChange={(e) =>
+              handleChange(f, e.target.value)
+            }
+          >
+            {(f.options || []).map((opt) => (
+              <option
+                key={opt.value}
+                value={opt.value}
+              >
+                {opt.label}
+              </option>
+            ))}
+          </select>
+
+        ) : f.type === "time-select" ? (
+
+          <select
+            style={styles.formInput}
+            value={form[f.key] || ""}
+            onChange={(e) =>
+              handleChange(f, e.target.value)
+            }
+          >
+            <option value="">
+              Select Time
+            </option>
+
+            {Array.from({ length: 24 }).flatMap((_, hour) =>
+              ["00","10","20","30","40","50"].map((minute)=>{
+
+                const value =
+                  `${String(hour).padStart(2,"0")}:${minute}`;
+
+                const hour12 =
+                  hour % 12 || 12;
+
+                const period =
+                  hour < 12 ? "AM" : "PM";
+
+                return (
+                  <option
+                    key={value}
+                    value={value}
+                  >
+                    {`${hour12}:${minute} ${period}`}
+                  </option>
+                );
+
+              })
+            )}
+
+          </select>
+
+        ) : (
+
+          <input
+            type={f.type || "text"}
+            style={styles.formInput}
+            value={form[f.key] || ""}
+            onChange={(e) =>
+              handleChange(f, e.target.value)
+            }
+          />
+
+        )}
+
+      </div>
+    );
+  };
 
   return (
     <div style={styles.overlay} onClick={handleOverlayClick}>
@@ -5979,39 +8332,305 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
         </div>
         <div style={styles.overlayBody}>
           <form onSubmit={handleSubmit}>
-            <div style={styles.formGrid}>
-              {fields.map(f => (
-                <div key={f.key} style={{ ...styles.field, ...styles.fieldWide }}>
-                  <label style={styles.fieldLabel}>
-                    {f.label}{f.required ? ' *' : ''}
-                  </label>
-                  {f.type === 'textarea' ? (
-                    <textarea
-                      style={{ ...styles.formInput, minHeight: 80, resize: 'vertical' }}
-                      value={form[f.key]}
-                      onChange={e => handleChange(f.key, e.target.value)}
-                    />
-                  ) : f.type === 'select' ? (
-                    <select
-                      style={styles.formInput}
-                      value={form[f.key]}
-                      onChange={e => handleChange(f.key, e.target.value)}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "20px",
+                  }}
+                >
+                {fields.map((f) => {
+                  const isFullWidth =
+                    f.type === "textarea" ||
+                    f.type === "image";
+
+                  const fieldColumn =
+                    f.column === "right"
+                      ? "2"
+                      : "1";
+
+                  return (
+                    <div
+                      key={f.key}
+                      style={{
+                        ...styles.field,
+                        width: "100%",
+                        gridColumn: isFullWidth ? "1 / -1" : fieldColumn,
+                      }}
                     >
-                      {(f.options || []).map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
+                  <label style={styles.fieldLabel}>
+                    {f.label}
+                    {f.required && (
+                      <span style={{ color: "#dc2626", marginLeft: 4 }}>*</span>
+                    )}
+                  </label>
+
+                  {f.type === "textarea" ? (
+                    <>
+                      <textarea
+                        style={{
+                          ...styles.formInput,
+                          minHeight: 80,
+                          resize: "vertical",
+                          borderColor: errors[f.key] ? "#dc2626" : "#d1d5db",
+                          boxShadow: errors[f.key] ? "0 0 0 1px #dc2626" : "none",
+                        }}
+                        value={form[f.key]}
+                        onChange={(e) => handleChange(f, e.target.value)}
+                        onBlur={() =>
+                          setErrors((prev) => ({
+                            ...prev,
+                            [f.key]: validateField(f, form[f.key]),
+                          }))
+                        }
+                      />
+
+                      {errors[f.key] && (
+                        <p
+                          style={{
+                            color: "#dc2626",
+                            fontSize: 12,
+                            marginTop: 6,
+                            marginBottom: 0,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {errors[f.key]}
+                        </p>
+                      )}
+                    </>
+                  ) : f.type === "select" ? (
+                    <>
+                      <select
+                        style={{
+                          ...styles.formInput,
+                          borderColor: errors[f.key] ? "#dc2626" : "#d1d5db",
+                          boxShadow: errors[f.key] ? "0 0 0 1px #dc2626" : "none",
+                        }}
+                        value={form[f.key]}
+                        onChange={(e) => handleChange(f, e.target.value)}
+                        onBlur={() =>
+                          setErrors((prev) => ({
+                            ...prev,
+                            [f.key]: validateField(f, form[f.key]),
+                          }))
+                        }
+                      >
+                        {(f.options || []).map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      {errors[f.key] && (
+                        <p
+                          style={{
+                            color: "#dc2626",
+                            fontSize: 12,
+                            marginTop: 6,
+                            marginBottom: 0,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {errors[f.key]}
+                        </p>
+                      )}
+                    </>
+                  ) : f.type === "image" ? (
+                    <>
+                      <div
+                        style={{
+                          border: errors[f.key] ? "1px solid #dc2626" : "1px solid #d1d5db",
+                          borderRadius: 14,
+                          padding: "10px 14px",
+                          background: "#fff",
+                          marginBottom: 12,
+                        }}
+                      >
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png"
+                          onChange={(e) => handleImageUpload(e, f.key)}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            outline: "none",
+                            padding: 0,
+                            fontSize: 14,
+                            background: "transparent",
+                            cursor: "pointer",
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          marginTop: 12,
+                          marginBottom: 16,
+                        }}
+                      >
+                        <div
+                          style={{
+                            border: errors[f.key]
+                              ? "1px dashed #dc2626"
+                              : "1px dashed #d1d5db",
+                            borderRadius: 12,
+                            background: "#fff",
+                            width: 260,
+                            height: 260,
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {imagePreview[f.key] ? (
+                            <img
+                              src={imagePreview[f.key]}
+                              alt={f.label}
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100%",
+                                objectFit: "contain",
+                                borderRadius: 12,
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                width: "100%",
+                                height: "100%",
+                                color: "#94a3b8",
+                                fontWeight: 600,
+                              }}
+                            >
+                              <i
+                                className="fi fi-rr-picture"
+                                style={{
+                                  fontSize: 50,
+                                  marginBottom: 12,
+                                  color: "#cbd5e1",
+                                }}
+                              />
+                              <span>No uploaded image</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {errors[f.key] && (
+                        <p
+                          style={{
+                            color: "#dc2626",
+                            fontSize: 12,
+                            marginTop: -6,
+                            marginBottom: 12,
+                            textAlign: "center",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {errors[f.key]}
+                        </p>
+                      )}
+                    </>
+                  ) : f.type === "time-select" ? (
+                    <>
+                      <select
+                        style={{
+                          ...styles.formInput,
+                          borderColor: errors[f.key] ? "#dc2626" : "#d1d5db",
+                          boxShadow: errors[f.key] ? "0 0 0 1px #dc2626" : "none",
+                        }}
+                        value={form[f.key] || ""}
+                        onChange={(e) => handleChange(f, e.target.value)}
+                        onBlur={() =>
+                          setErrors((prev) => ({
+                            ...prev,
+                            [f.key]: validateField(f, form[f.key]),
+                          }))
+                        }
+                      >
+                        <option value="">Select Time</option>
+
+                        {Array.from({ length: 24 }).flatMap((_, hour) =>
+                          ["00", "10", "20", "30", "40", "50"].map((minute) => {
+                            const value = `${String(hour).padStart(2, "0")}:${minute}`;
+
+                            const hour12 = hour % 12 || 12;
+
+                            const period = hour < 12 ? "AM" : "PM";
+
+                            return (
+                              <option
+                                key={value}
+                                value={value}
+                              >
+                                {`${hour12}:${minute} ${period}`}
+                              </option>
+                            );
+                          })
+                        )}
+                      </select>
+
+                      {errors[f.key] && (
+                        <p
+                          style={{
+                            color: "#dc2626",
+                            fontSize: 12,
+                            marginTop: 6,
+                            marginBottom: 0,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {errors[f.key]}
+                        </p>
+                      )}
+                    </>
                   ) : (
-                    <input
-                      type={f.type || 'text'}
-                      style={styles.formInput}
-                      value={form[f.key]}
-                      onChange={e => handleChange(f.key, e.target.value)}
-                    />
+                    <>
+                      <input
+                        type={f.type || "text"}
+                        style={{
+                          ...styles.formInput,
+                          borderColor: errors[f.key] ? "#dc2626" : "#d1d5db",
+                          boxShadow: errors[f.key] ? "0 0 0 1px #dc2626" : "none",
+                        }}
+                        value={form[f.key]}
+                        onChange={(e) => handleChange(f, e.target.value)}
+                        onBlur={() =>
+                          setErrors((prev) => ({
+                            ...prev,
+                            [f.key]: validateField(f, form[f.key]),
+                          }))
+                        }
+                      />
+
+                      {errors[f.key] && (
+                        <p
+                          style={{
+                            color: "#dc2626",
+                            fontSize: 12,
+                            marginTop: 6,
+                            marginBottom: 0,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {errors[f.key]}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
             
             <div style={styles.overlayActions}>
               <button type="submit" style={styles.saveBtn}>Save</button>
