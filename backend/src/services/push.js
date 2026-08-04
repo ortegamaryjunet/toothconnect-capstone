@@ -38,6 +38,8 @@ async function sendPushToUser(userId, { title, body, data }) {
   const message = {
     to: token,
     sound: 'default',
+    channelId: 'default',
+    priority: 'high',
     title,
     body,
     badge: await getUnreadNotificationCount(userId),
