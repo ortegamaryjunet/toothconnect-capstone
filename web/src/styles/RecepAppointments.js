@@ -774,6 +774,10 @@
       padding: isVerySmall ? 12 : 18,
       boxSizing: 'border-box',
       minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      maxHeight: isSmallScreen ? 520 : 'calc(100vh - 210px)',
+      minHeight: 0,
     },
 
     calendarWeekdays: {
@@ -809,8 +813,8 @@
     },
 
     calendarDayActive: {
-      background: '#b8860b',
-      borderColor: '#b8860b',
+      background: '#d4af37',
+      borderColor: '#d4af37',
       color: '#ffffff',
     },
 
@@ -939,6 +943,9 @@
       display: 'flex',
       flexDirection: 'column',
       gap: 12,
+      overflowY: 'auto',
+      paddingRight: 4,
+      minHeight: 0,
     },
 
     calendarEmptyState: {
@@ -984,7 +991,7 @@
 
     scheduleItemTop: {
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 10,
       marginBottom: 6,
@@ -995,6 +1002,8 @@
       color: '#b8860b',
       fontSize: 14,
       marginBottom: 0,
+      flex: 1,
+      minWidth: 0,
     },
 
     scheduleStatusBadge: {
@@ -1032,28 +1041,30 @@
     serviceKitCalendarButton: {
       marginTop: 6,
       marginBottom: 6,
-      height: 28,
-      padding: '0 10px',
-      borderRadius: 9,
-      border: '1px solid #86efac',
-      background: '#f0fdf4',
-      color: '#166534',
+      height: 37,
+      minWidth: 129,
+      padding: '0 15px',
+      borderRadius: 10,
+      border: 'none',
+      background: '#d4af37',
+      color: '#ffffff',
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 11,
+      fontSize: 13,
       textTransform: 'none',
       cursor: 'pointer',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     scheduleName: {
       fontFamily: '"Inter Bold", Arial, sans-serif',
       color: '#0f172a',
-      fontSize: 15,
+      fontSize: 17,
       marginBottom: 5,
     },
 
     scheduleDetail: {
       color: '#64748b',
-      fontSize: 13,
+      fontSize: 15,
       marginTop: 4,
     },
 

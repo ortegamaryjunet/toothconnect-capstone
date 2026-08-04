@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { listAppointments, saveAppointmentNote } from '../api/appointments';
 import { getServiceKit, getConsumption, submitConsumption, updateConsumption } from '../api/inventory';
@@ -36,10 +36,20 @@ export default function DentistAppointment() {
   const [selectedNoteAppointment, setSelectedNoteAppointment] = useState(null);
   const [noteText, setNoteText] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
+  const [showNoteCancelConfirmModal, setShowNoteCancelConfirmModal] = useState(false);
+  const [showNoteSaveConfirmModal, setShowNoteSaveConfirmModal] = useState(false);
+  const [noteSuccessModal, setNoteSuccessModal] = useState({ show: false, message: '' });
 
   const [showKitModal, setShowKitModal] = useState(false);
+  const [showKitCancelConfirmModal, setShowKitCancelConfirmModal] = useState(false);
+  const [showKitCloseConfirmModal, setShowKitCloseConfirmModal] = useState(false);
+  const [showKitEditConfirmModal, setShowKitEditConfirmModal] = useState(false);
+  const [showKitSubmitConfirmModal, setShowKitSubmitConfirmModal] = useState(false);
+  const [showKitUpdateConfirmModal, setShowKitUpdateConfirmModal] = useState(false);
+  const [kitSuccessModal, setKitSuccessModal] = useState({ show: false, message: '' });
   const [selectedKitAppointment, setSelectedKitAppointment] = useState(null);
   const [kitItems, setKitItems] = useState([]);
+  const [originalKitItems, setOriginalKitItems] = useState([]);
   const [kitNotes, setKitNotes] = useState('');
   const [kitLoading, setKitLoading] = useState(false);
   const [kitError, setKitError] = useState('');
@@ -60,10 +70,13 @@ export default function DentistAppointment() {
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedDate, setSelectedDate] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
   const [appointments, setAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [appointmentsError, setAppointmentsError] = useState('');
+  const [historyKitStatusById, setHistoryKitStatusById] = useState({});
+  const [historyKitRefreshing, setHistoryKitRefreshing] = useState(false);
 
   const isMobile = screenWidth <= 768;
   const isTablet = screenWidth > 768 && screenWidth <= 1200;
@@ -115,7 +128,20 @@ export default function DentistAppointment() {
   }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
-    if (showLogoutModal || showNoteModal || showKitModal) {
+    if (
+      showLogoutModal ||
+      showNoteModal ||
+      showNoteCancelConfirmModal ||
+      showNoteSaveConfirmModal ||
+      showKitModal ||
+      showKitCancelConfirmModal ||
+      showKitCloseConfirmModal ||
+      showKitEditConfirmModal ||
+      showKitSubmitConfirmModal ||
+      showKitUpdateConfirmModal ||
+      noteSuccessModal.show ||
+      kitSuccessModal.show
+    ) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -124,14 +150,48 @@ export default function DentistAppointment() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showNoteModal, showKitModal]);
+  }, [
+    showLogoutModal,
+    showNoteModal,
+    showNoteCancelConfirmModal,
+    showNoteSaveConfirmModal,
+    showKitModal,
+    showKitCancelConfirmModal,
+    showKitCloseConfirmModal,
+    showKitEditConfirmModal,
+    showKitSubmitConfirmModal,
+    showKitUpdateConfirmModal,
+    noteSuccessModal.show,
+    kitSuccessModal.show,
+  ]);
 
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
-        closeLogoutModal();
-        closeNoteModal();
-        closeKitModal();
+        if (showNoteSaveConfirmModal) {
+          setShowNoteSaveConfirmModal(false);
+        } else if (showNoteCancelConfirmModal) {
+          setShowNoteCancelConfirmModal(false);
+        } else if (showNoteModal && !noteSaving) {
+          requestCloseNoteModal();
+        } else if (showKitSubmitConfirmModal) {
+          setShowKitSubmitConfirmModal(false);
+        } else if (showKitUpdateConfirmModal) {
+          setShowKitUpdateConfirmModal(false);
+        } else if (showKitEditConfirmModal) {
+          setShowKitEditConfirmModal(false);
+        } else if (showKitCancelConfirmModal) {
+          setShowKitCancelConfirmModal(false);
+        } else if (showKitCloseConfirmModal) {
+          setShowKitCloseConfirmModal(false);
+        } else if (showKitModal && (!kitAlreadySubmitted || kitEditMode) && !kitSubmitting) {
+          setShowKitCancelConfirmModal(true);
+        } else if (showKitModal && kitAlreadySubmitted && !kitEditMode && !kitSubmitting) {
+          setShowKitCloseConfirmModal(true);
+        } else {
+          closeLogoutModal();
+          closeKitModal();
+        }
       }
     }
 
@@ -140,49 +200,96 @@ export default function DentistAppointment() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, []);
+  }, [
+    showNoteSaveConfirmModal,
+    showNoteCancelConfirmModal,
+    showNoteModal,
+    noteSaving,
+    showKitSubmitConfirmModal,
+    showKitUpdateConfirmModal,
+    showKitEditConfirmModal,
+    showKitCancelConfirmModal,
+    showKitCloseConfirmModal,
+    showKitModal,
+    kitAlreadySubmitted,
+    kitEditMode,
+    kitSubmitting,
+  ]);
 
   const calendarDays = useMemo(() => {
     return generateCalendarDays(selectedMonth, selectedYear);
   }, [selectedMonth, selectedYear]);
 
-  const filteredAppointments = useMemo(() => {
+  const dateFilteredAppointments = useMemo(() => {
     return appointments.filter((appointment) => {
       const matchesDate = selectedDate
         ? appointment.date === selectedDate
         : appointment.month === selectedMonth &&
           appointment.year === selectedYear;
 
-      const matchesStatus =
-        statusFilter === 'All' ||
-        appointment.rawStatus.toLowerCase().replace(/[\s_]+/g, '') ===
-          statusFilter.toLowerCase().replace(/[\s_]+/g, '');
-
-      return matchesDate && matchesStatus;
+      return matchesDate;
     });
-  }, [appointments, selectedDate, statusFilter]);
+  }, [appointments, selectedDate, selectedMonth, selectedYear]);
 
-  const confirmedCount = filteredAppointments.filter(
-    (appointment) =>
-      appointment.rawStatus === 'scheduled' || appointment.rawStatus === 'rescheduled'
+  const upcomingAppointments = useMemo(() => {
+    return dateFilteredAppointments.filter((appointment) => {
+      const cleanStatus = normalizeAppointmentStatus(appointment.rawStatus);
+      return cleanStatus === 'scheduled' || cleanStatus === 'rescheduled' || cleanStatus === 'arrived';
+    });
+  }, [dateFilteredAppointments]);
+
+  const historyAppointments = useMemo(() => {
+    return dateFilteredAppointments
+      .filter((appointment) => {
+        const cleanStatus = normalizeAppointmentStatus(appointment.rawStatus);
+        const isHistory =
+          cleanStatus === 'completed' || cleanStatus === 'cancelled' || cleanStatus === 'noshow';
+        const matchesStatus =
+          statusFilter === 'All' ||
+          cleanStatus === normalizeAppointmentStatus(statusFilter);
+
+        return isHistory && matchesStatus;
+      })
+      .sort((a, b) => getAppointmentSortTime(b) - getAppointmentSortTime(a));
+  }, [dateFilteredAppointments, statusFilter]);
+
+  const confirmedCount = dateFilteredAppointments.filter(
+    (appointment) => {
+      const cleanStatus = normalizeAppointmentStatus(appointment.rawStatus);
+      return cleanStatus === 'scheduled' || cleanStatus === 'rescheduled' || cleanStatus === 'arrived';
+    }
   ).length;
 
-  const waitingCount = filteredAppointments.filter(
-    (appointment) => appointment.rawStatus === 'completed'
+  const waitingCount = dateFilteredAppointments.filter(
+    (appointment) => normalizeAppointmentStatus(appointment.rawStatus) === 'completed'
   ).length;
 
-  const noShowCount = filteredAppointments.filter(
-    (appointment) => appointment.rawStatus === 'no_show'
+  const noShowCount = dateFilteredAppointments.filter(
+    (appointment) => normalizeAppointmentStatus(appointment.rawStatus) === 'noshow'
   ).length;
 
-  const totalPages = Math.ceil(filteredAppointments.length / rowsPerPage);
+  const upcomingTotalPages = Math.ceil(upcomingAppointments.length / rowsPerPage);
+  const historyTotalPages = Math.ceil(historyAppointments.length / rowsPerPage);
 
-  const paginatedAppointments = useMemo(() => {
-    const start = (currentPage - 1) * rowsPerPage;
+  const paginatedUpcomingAppointments = useMemo(() => {
+    const start = (upcomingPage - 1) * rowsPerPage;
     const end = start + rowsPerPage;
 
-    return filteredAppointments.slice(start, end);
-  }, [filteredAppointments, currentPage]);
+    return upcomingAppointments.slice(start, end);
+  }, [upcomingAppointments, upcomingPage]);
+
+  const paginatedHistoryAppointments = useMemo(() => {
+    const start = (historyPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+
+    return historyAppointments.slice(start, end);
+  }, [historyAppointments, historyPage]);
+
+  const visibleCompletedHistoryAppointments = useMemo(() => {
+    return paginatedHistoryAppointments.filter(
+      (appointment) => normalizeAppointmentStatus(appointment.rawStatus) === 'completed'
+    );
+  }, [paginatedHistoryAppointments]);
 
   const hasDeductibleKitItems = useMemo(
     () => kitItems.some((item) => Number(item.quantity_used) > 0 && item.inventory_id),
@@ -198,6 +305,61 @@ export default function DentistAppointment() {
     ),
     [kitItems]
   );
+
+  useEffect(() => {
+    setUpcomingPage((page) => Math.min(page, Math.max(upcomingTotalPages, 1)));
+  }, [upcomingTotalPages]);
+
+  useEffect(() => {
+    setHistoryPage((page) => Math.min(page, Math.max(historyTotalPages, 1)));
+  }, [historyTotalPages]);
+
+  const loadVisibleHistoryKitStatuses = useCallback(async (options = {}) => {
+    const completedRows = visibleCompletedHistoryAppointments;
+    if (completedRows.length === 0) {
+      return;
+    }
+
+    setHistoryKitRefreshing(true);
+
+    try {
+      const results = await Promise.all(
+        completedRows.map(async (appointment) => {
+          try {
+            const consumptionData = await getConsumption(appointment.id);
+            return {
+              id: appointment.id,
+              submitted: Boolean(consumptionData?.submitted),
+              submittedByRole: consumptionData?.submitted_by?.role || '',
+            };
+          } catch {
+            return {
+              id: appointment.id,
+              submitted: null,
+              submittedByRole: '',
+            };
+          }
+        })
+      );
+
+      if (options.cancelled?.()) return;
+
+      setHistoryKitStatusById((current) => {
+        const next = { ...current };
+        results.forEach((item) => {
+          next[item.id] = {
+            submitted: item.submitted,
+            submittedByRole: item.submittedByRole,
+          };
+        });
+        return next;
+      });
+    } finally {
+      if (!options.cancelled?.()) {
+        setHistoryKitRefreshing(false);
+      }
+    }
+  }, [visibleCompletedHistoryAppointments]);
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -218,7 +380,7 @@ export default function DentistAppointment() {
   }
 
   function openNoteModal(appointment) {
-    if (appointment.rawStatus !== 'completed') {
+    if (normalizeAppointmentStatus(appointment.rawStatus) !== 'completed') {
       return;
     }
 
@@ -229,14 +391,53 @@ export default function DentistAppointment() {
 
   function closeNoteModal() {
     setShowNoteModal(false);
+    setShowNoteCancelConfirmModal(false);
+    setShowNoteSaveConfirmModal(false);
     setSelectedNoteAppointment(null);
     setNoteText('');
     setNoteSaving(false);
   }
 
+  function requestCloseNoteModal() {
+    if (noteSaving) return;
+    setShowNoteCancelConfirmModal(true);
+  }
+
+  function closeNoteCancelConfirmModal() {
+    setShowNoteCancelConfirmModal(false);
+  }
+
+  function confirmCancelNoteModal() {
+    closeNoteModal();
+  }
+
+  function requestSaveNoteModal() {
+    if (!selectedNoteAppointment || noteSaving) {
+      return;
+    }
+
+    setShowNoteSaveConfirmModal(true);
+  }
+
+  function closeNoteSaveConfirmModal() {
+    setShowNoteSaveConfirmModal(false);
+  }
+
+  function confirmSaveNoteModal() {
+    setShowNoteSaveConfirmModal(false);
+    handleSaveNote();
+  }
+
+  function showNoteSuccessModal(message) {
+    setNoteSuccessModal({ show: true, message });
+    window.setTimeout(() => {
+      setNoteSuccessModal({ show: false, message: '' });
+    }, 3000);
+  }
+
   function handleNoteModalOverlayClick(event) {
     if (event.target === event.currentTarget) {
-      closeNoteModal();
+      requestCloseNoteModal();
     }
   }
 
@@ -248,15 +449,20 @@ export default function DentistAppointment() {
     setNoteSaving(true);
 
     try {
-      await saveAppointmentNote(selectedNoteAppointment.id, noteText.trim());
+      const savedNote = noteText.trim();
+      const appointmentLabel = getServiceKitAppointmentLabel(selectedNoteAppointment);
+      await saveAppointmentNote(selectedNoteAppointment.id, savedNote);
       setAppointments((prev) =>
         prev.map((a) =>
           a.id === selectedNoteAppointment.id
-            ? { ...a, note: noteText.trim() }
+            ? { ...a, note: savedNote }
             : a
         )
       );
       closeNoteModal();
+      showNoteSuccessModal(
+        `Note for this appointment (${appointmentLabel}) has been successfully saved.`
+      );
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save note.');
     } finally {
@@ -265,15 +471,14 @@ export default function DentistAppointment() {
   }
 
   async function openKitModal(appointment) {
-    const cleanStatus = String(appointment?.rawStatus || '')
-      .toLowerCase()
-      .replace(/[\s_]+/g, '');
+    const cleanStatus = normalizeAppointmentStatus(appointment?.rawStatus);
     const isConsultation = /consultation/i.test(String(appointment?.reason || ''));
 
     if (cleanStatus !== 'completed') return;
 
     setSelectedKitAppointment(appointment);
     setKitItems([]);
+    setOriginalKitItems([]);
     setKitNotes('');
     setKitError('');
     setKitAlreadySubmitted(false);
@@ -302,6 +507,7 @@ export default function DentistAppointment() {
         setKitEditedAt(consumptionData?.edited_at || '');
         setKitNotes('No inventory items was used for consultation service.');
         setKitItems([]);
+        setOriginalKitItems([]);
         return;
       }
 
@@ -327,6 +533,7 @@ export default function DentistAppointment() {
         }));
 
         setKitItems(submittedItems);
+        setOriginalKitItems(submittedItems);
       } else {
         const normalizedKitItems = (kitData.items || []).map((item) => ({
           category: item.category,
@@ -341,6 +548,7 @@ export default function DentistAppointment() {
 
         setKitNotes(kitData.notes || '');
         setKitItems(normalizedKitItems);
+        setOriginalKitItems([]);
       }
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to load service kit.');
@@ -350,9 +558,15 @@ export default function DentistAppointment() {
   }
 
   function closeKitModal() {
+    setShowKitCancelConfirmModal(false);
+    setShowKitCloseConfirmModal(false);
+    setShowKitEditConfirmModal(false);
+    setShowKitSubmitConfirmModal(false);
+    setShowKitUpdateConfirmModal(false);
     setShowKitModal(false);
     setSelectedKitAppointment(null);
     setKitItems([]);
+    setOriginalKitItems([]);
     setKitError('');
     setKitSubmitting(false);
     setKitAlreadySubmitted(false);
@@ -364,8 +578,71 @@ export default function DentistAppointment() {
 
   function handleKitModalOverlayClick(event) {
     if (event.target === event.currentTarget) {
+      if ((!kitAlreadySubmitted || kitEditMode) && !kitSubmitting) {
+        setShowKitCancelConfirmModal(true);
+        return;
+      }
+      if (kitAlreadySubmitted && !kitEditMode && !kitSubmitting) {
+        setShowKitCloseConfirmModal(true);
+        return;
+      }
       closeKitModal();
     }
+  }
+
+  function requestCloseKitModal() {
+    if (kitSubmitting) return;
+    setShowKitCancelConfirmModal(true);
+  }
+
+  function closeKitCancelConfirmModal() {
+    setShowKitCancelConfirmModal(false);
+  }
+
+  function confirmCancelKitModal() {
+    closeKitModal();
+  }
+
+  function closeKitCloseConfirmModal() {
+    setShowKitCloseConfirmModal(false);
+  }
+
+  function confirmCloseKitModal() {
+    closeKitModal();
+  }
+
+  function closeKitSubmitConfirmModal() {
+    setShowKitSubmitConfirmModal(false);
+  }
+
+  function confirmSubmitKitModal() {
+    setShowKitSubmitConfirmModal(false);
+    handleKitConfirm();
+  }
+
+  function closeKitUpdateConfirmModal() {
+    setShowKitUpdateConfirmModal(false);
+  }
+
+  function confirmUpdateKitModal() {
+    setShowKitUpdateConfirmModal(false);
+    handleKitConfirm();
+  }
+
+  function showKitSuccessModal(message) {
+    setKitSuccessModal({ show: true, message });
+    window.setTimeout(() => {
+      setKitSuccessModal({ show: false, message: '' });
+    }, 3000);
+  }
+
+  function closeKitEditConfirmModal() {
+    setShowKitEditConfirmModal(false);
+  }
+
+  function confirmEditKitModal() {
+    setShowKitEditConfirmModal(false);
+    setKitEditMode(true);
   }
 
   function handleKitQtyChange(index, value) {
@@ -412,8 +689,19 @@ export default function DentistAppointment() {
       } else {
         await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
       }
+      showKitSuccessModal(
+        `Service kit for ${getServiceKitAppointmentLabel(selectedKitAppointment)} has been ${isEditingSubmitted ? 'updated' : 'successfully submitted'}${isEditingSubmitted ? ' successfully' : ''}.`
+      );
       setKitAlreadySubmitted(true);
       setKitEditMode(false);
+      setOriginalKitItems(kitItems);
+      setHistoryKitStatusById((current) => ({
+        ...current,
+        [selectedKitAppointment.id]: {
+          submitted: true,
+          submittedByRole: user?.role || 'dentist',
+        },
+      }));
       setKitSubmittedBy({
         name: user?.name || 'Dentist',
         role: user?.role || 'dentist',
@@ -425,6 +713,7 @@ export default function DentistAppointment() {
         });
         setKitEditedAt(new Date().toISOString());
       }
+      loadVisibleHistoryKitStatuses();
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to submit consumption.');
     } finally {
@@ -486,22 +775,34 @@ export default function DentistAppointment() {
     }
   }
 
-  function nextPage() {
-    if (currentPage < totalPages) {
-      setCurrentPage((prev) => prev + 1);
+  function nextUpcomingPage() {
+    if (upcomingPage < upcomingTotalPages) {
+      setUpcomingPage((prev) => prev + 1);
     }
   }
 
-  function prevPage() {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
+  function prevUpcomingPage() {
+    if (upcomingPage > 1) {
+      setUpcomingPage((prev) => prev - 1);
+    }
+  }
+
+  function nextHistoryPage() {
+    if (historyPage < historyTotalPages) {
+      setHistoryPage((prev) => prev + 1);
+    }
+  }
+
+  function prevHistoryPage() {
+    if (historyPage > 1) {
+      setHistoryPage((prev) => prev - 1);
     }
   }
 
   function getStatusPillStyle(status) {
-    const cleanStatus = String(status).toLowerCase().replace(/[\s_]+/g, '');
+    const cleanStatus = normalizeAppointmentStatus(status);
 
-    if (cleanStatus === 'scheduled' || cleanStatus === 'rescheduled') {
+    if (cleanStatus === 'scheduled' || cleanStatus === 'rescheduled' || cleanStatus === 'arrived') {
       return { ...styles.statusPill, ...styles.statusPillConfirmed };
     }
 
@@ -514,6 +815,141 @@ export default function DentistAppointment() {
     }
 
     return styles.statusPill;
+  }
+
+  function getServiceKitStatusLabel(statusInfo) {
+    if (!statusInfo) return historyKitRefreshing ? 'Checking...' : 'No Service Kit Added';
+    if (statusInfo.submitted === null) return 'Unable to Check';
+    if (!statusInfo.submitted) return 'No Service Kit Added';
+
+    const role = String(statusInfo.submittedByRole || '').toLowerCase();
+    if (role === 'receptionist') return 'Receptionist Submitted';
+    if (role === 'dentist') return 'Dentist Submitted';
+    return 'Service Kit Submitted';
+  }
+
+  function getServiceKitStatusStyle(statusInfo) {
+    if (!statusInfo || statusInfo.submitted === false) {
+      return { ...styles.serviceKitStatusBadge, ...styles.serviceKitStatusMissing };
+    }
+
+    if (statusInfo.submitted === null) {
+      return { ...styles.serviceKitStatusBadge, ...styles.serviceKitStatusUnknown };
+    }
+
+    return { ...styles.serviceKitStatusBadge, ...styles.serviceKitStatusSubmitted };
+  }
+
+  function renderAppointmentRows(rows, emptyMessage, options = {}) {
+    const showActions = options.showActions !== false;
+    const colSpan = showActions ? 7 : 4;
+
+    if (appointmentsLoading) {
+      return (
+        <tr>
+          <td colSpan={colSpan} style={styles.emptyRow}>
+            Loading appointments...
+          </td>
+        </tr>
+      );
+    }
+
+    if (appointmentsError) {
+      return (
+        <tr>
+          <td colSpan={colSpan} style={styles.emptyRow}>
+            {appointmentsError}
+          </td>
+        </tr>
+      );
+    }
+
+    if (rows.length === 0) {
+      return (
+        <tr>
+          <td colSpan={colSpan} style={styles.emptyRow}>
+            {emptyMessage}
+          </td>
+        </tr>
+      );
+    }
+
+    return rows.map((appointment) => {
+      const isCompleted =
+        normalizeAppointmentStatus(appointment?.rawStatus) === 'completed';
+      const hasNote = Boolean(appointment.note);
+
+      return (
+        <tr key={appointment.id} style={styles.tableRow}>
+          <td style={styles.tableCell}>{appointment.patientName}</td>
+
+          <td style={styles.tableCell}>{appointment.reason}</td>
+
+          <td style={styles.tableCell}>
+            {appointment.originalSchedule && appointment.rescheduledSchedule ? (
+              <div style={{ display: 'grid', gap: 6, whiteSpace: 'normal' }}>
+                <div>
+                  <strong>Original Schedule:</strong> {appointment.originalSchedule}
+                </div>
+                <div>
+                  <strong>Rescheduled:</strong> {appointment.rescheduledSchedule}
+                </div>
+              </div>
+            ) : (
+              appointment.time
+            )}
+          </td>
+
+          <td style={styles.tableCell}>
+            <span style={getStatusPillStyle(appointment.status)}>
+              {appointment.status}
+            </span>
+          </td>
+
+          {showActions && (
+            <>
+              <td style={styles.tableCell}>
+                {isCompleted ? (
+                  <span style={getServiceKitStatusStyle(historyKitStatusById[appointment.id])}>
+                    {getServiceKitStatusLabel(historyKitStatusById[appointment.id])}
+                  </span>
+                ) : (
+                  <span style={styles.noActionText}>Not Required</span>
+                )}
+              </td>
+
+              <td style={styles.tableCell}>
+                {isCompleted ? (
+                  <button
+                    type="button"
+                    style={styles.reviewKitButton}
+                    onClick={() => openKitModal(appointment)}
+                  >
+                    Service Kit
+                  </button>
+                ) : (
+                  <span style={styles.noActionText}>No Action</span>
+                )}
+              </td>
+
+              <td style={styles.tableCell}>
+                <button
+                  type="button"
+                  disabled={!isCompleted}
+                  onClick={() => openNoteModal(appointment)}
+                  style={{
+                    ...styles.noteButton,
+                    ...(!isCompleted ? styles.noteButtonDisabled : {}),
+                  }}
+                >
+                  {hasNote ? 'Edit Note' : 'Add Note'}
+                </button>
+              </td>
+            </>
+          )}
+        </tr>
+      );
+    });
   }
 
   return (
@@ -692,6 +1128,7 @@ export default function DentistAppointment() {
                       {week.map((day, dayIndex) => {
                         const isSelected =
                           day.dateString && day.dateString === selectedDate;
+                        const showTodayHighlight = day.isToday && !selectedDate;
 
                         return (
                           <td
@@ -699,13 +1136,14 @@ export default function DentistAppointment() {
                             onClick={() => {
                               if (!day.disabled) {
                                 setSelectedDate(day.dateString);
-                                setCurrentPage(1);
+                                setUpcomingPage(1);
+                                setHistoryPage(1);
                               }
                             }}
                             style={{
                               ...styles.calendarTd,
                               ...(day.disabled ? styles.calendarDisabled : {}),
-                              ...(day.isToday ? styles.calendarToday : {}),
+                              ...(showTodayHighlight ? styles.calendarToday : {}),
                               ...(isSelected ? styles.calendarSelected : {}),
                             }}
                           >
@@ -740,24 +1178,8 @@ export default function DentistAppointment() {
               <section style={styles.tableCard}>
                 <div style={styles.tableHeader}>
                   <div>
-                    <h3 style={styles.cardTitle}>Appointment List</h3>
+                    <h3 style={styles.cardTitle}>Upcoming Appointments</h3>
                   </div>
-
-                  <select
-                    value={statusFilter}
-                    onChange={(event) => {
-                      setStatusFilter(event.target.value);
-                      setCurrentPage(1);
-                    }}
-                    style={styles.dropdownStatus}
-                  >
-                    <option value="All">All Status</option>
-                    <option value="scheduled">Scheduled</option>
-                    <option value="rescheduled">Rescheduled</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="no_show">No Show</option>
-                  </select>
                 </div>
 
                 <div style={styles.tableWrapper}>
@@ -768,107 +1190,14 @@ export default function DentistAppointment() {
                         <th style={styles.tableHead}>Reason</th>
                         <th style={styles.tableHead}>Time</th>
                         <th style={styles.tableHead}>Status</th>
-                        <th style={styles.tableHead}>Action</th>
-                        <th style={styles.tableHead}>Note</th>
                       </tr>
                     </thead>
 
                     <tbody>
-                      {appointmentsLoading ? (
-                        <tr>
-                          <td colSpan="6" style={styles.emptyRow}>
-                            Loading appointments...
-                          </td>
-                        </tr>
-                      ) : appointmentsError ? (
-                        <tr>
-                          <td colSpan="6" style={styles.emptyRow}>
-                            {appointmentsError}
-                          </td>
-                        </tr>
-                      ) : paginatedAppointments.length === 0 ? (
-                        <tr>
-                          <td colSpan="6" style={styles.emptyRow}>
-                            No appointment found.
-                          </td>
-                        </tr>
-                      ) : (
-                        paginatedAppointments.map((appointment) => {
-                          const isCompleted =
-                            String(appointment?.rawStatus || '')
-                              .toLowerCase()
-                              .replace(/[\s_]+/g, '') === 'completed';
-                          const hasNote = Boolean(appointment.note);
-
-                          return (
-                            <tr key={appointment.id} style={styles.tableRow}>
-                              <td style={styles.tableCell}>
-                                {appointment.patientName}
-                              </td>
-
-                              <td style={styles.tableCell}>
-                                {appointment.reason}
-                              </td>
-
-                              <td style={styles.tableCell}>
-                                {appointment.originalSchedule && appointment.rescheduledSchedule ? (
-                                  <div style={{ display: 'grid', gap: 6, whiteSpace: 'normal' }}>
-                                    <div>
-                                      <strong>Original Schedule:</strong> {appointment.originalSchedule}
-                                    </div>
-                                    <div>
-                                      <strong>Rescheduled:</strong> {appointment.rescheduledSchedule}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  appointment.time
-                                )}
-                              </td>
-
-                              <td style={styles.tableCell}>
-                                <span
-                                  style={getStatusPillStyle(
-                                    appointment.status
-                                  )}
-                                >
-                                  {appointment.status}
-                                </span>
-                              </td>
-
-                              <td style={styles.tableCell}>
-                                {isCompleted ? (
-                                  <button
-                                    type="button"
-                                    style={styles.reviewKitButton}
-                                    onClick={() => openKitModal(appointment)}
-                                  >
-                                    Service Kit
-                                  </button>
-                                ) : (
-                                  <span style={styles.noActionText}>
-                                    No Action
-                                  </span>
-                                )}
-                              </td>
-
-                              <td style={styles.tableCell}>
-                                <button
-                                  type="button"
-                                  disabled={!isCompleted}
-                                  onClick={() => openNoteModal(appointment)}
-                                  style={{
-                                    ...styles.noteButton,
-                                    ...(!isCompleted
-                                      ? styles.noteButtonDisabled
-                                      : {}),
-                                  }}
-                                >
-                                  {hasNote ? 'Edit Note' : 'Add Note'}
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
+                      {renderAppointmentRows(
+                        paginatedUpcomingAppointments,
+                        'No upcoming appointment found.',
+                        { showActions: false }
                       )}
                     </tbody>
                   </table>
@@ -877,29 +1206,123 @@ export default function DentistAppointment() {
                 <div style={styles.pagination}>
                   <button
                     type="button"
-                    onClick={prevPage}
-                    disabled={currentPage === 1}
+                    onClick={prevUpcomingPage}
+                    disabled={upcomingPage === 1}
                     style={{
                       ...styles.pageBtn,
-                      ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
+                      ...(upcomingPage === 1 ? styles.pageBtnDisabled : {}),
                     }}
                   >
                     Prev
                   </button>
 
                   <span style={styles.pageInfo}>
-                    {filteredAppointments.length === 0
+                    {upcomingAppointments.length === 0
                       ? 'Page 0 of 0'
-                      : `Page ${currentPage} of ${totalPages}`}
+                      : `Page ${upcomingPage} of ${upcomingTotalPages}`}
                   </span>
 
                   <button
                     type="button"
-                    onClick={nextPage}
-                    disabled={currentPage >= totalPages}
+                    onClick={nextUpcomingPage}
+                    disabled={upcomingPage >= upcomingTotalPages}
                     style={{
                       ...styles.pageBtn,
-                      ...(currentPage >= totalPages
+                      ...(upcomingPage >= upcomingTotalPages
+                        ? styles.pageBtnDisabled
+                        : {}),
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </section>
+
+              <section style={styles.tableCard}>
+                <div style={styles.tableHeader}>
+                  <div>
+                    <h3 style={styles.cardTitle}>Appointment List</h3>
+                  </div>
+
+                  <div style={styles.tableHeaderActions}>
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.refreshButton,
+                        ...(historyKitRefreshing ? styles.refreshButtonDisabled : {}),
+                      }}
+                      onClick={() => loadVisibleHistoryKitStatuses()}
+                      disabled={historyKitRefreshing}
+                    >
+                      <i className="fi fi-rr-refresh" style={styles.refreshButtonIcon}></i>
+                      {historyKitRefreshing ? 'Refreshing...' : 'Refresh'}
+                    </button>
+
+                    <select
+                      value={statusFilter}
+                      onChange={(event) => {
+                        setStatusFilter(event.target.value);
+                        setHistoryPage(1);
+                      }}
+                      style={styles.dropdownStatus}
+                    >
+                      <option value="All">All Status</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="no_show">No Show</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={styles.tableWrapper}>
+                  <table style={styles.doctorTable}>
+                    <thead>
+                      <tr>
+                        <th style={styles.tableHead}>Patient Name</th>
+                        <th style={styles.tableHead}>Reason</th>
+                        <th style={styles.tableHead}>Time</th>
+                        <th style={styles.tableHead}>Status</th>
+                        <th style={styles.tableHead}>Service Kit Status</th>
+                        <th style={styles.tableHead}>Action</th>
+                        <th style={styles.tableHead}>Note</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {renderAppointmentRows(
+                        paginatedHistoryAppointments,
+                        'No completed, cancelled, or no show appointment found.'
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={styles.pagination}>
+                  <button
+                    type="button"
+                    onClick={prevHistoryPage}
+                    disabled={historyPage === 1}
+                    style={{
+                      ...styles.pageBtn,
+                      ...(historyPage === 1 ? styles.pageBtnDisabled : {}),
+                    }}
+                  >
+                    Prev
+                  </button>
+
+                  <span style={styles.pageInfo}>
+                    {historyAppointments.length === 0
+                      ? 'Page 0 of 0'
+                      : `Page ${historyPage} of ${historyTotalPages}`}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={nextHistoryPage}
+                    disabled={historyPage >= historyTotalPages}
+                    style={{
+                      ...styles.pageBtn,
+                      ...(historyPage >= historyTotalPages
                         ? styles.pageBtnDisabled
                         : {}),
                     }}
@@ -968,6 +1391,16 @@ export default function DentistAppointment() {
                     : 'Service kit template for this appointment.'}
                 </p>
               </div>
+              {kitAlreadySubmitted && (
+                <button
+                  type="button"
+                  style={styles.noteModalClose}
+                  onClick={() => setShowKitCloseConfirmModal(true)}
+                  disabled={kitSubmitting}
+                >
+                  ×
+                </button>
+              )}
             </div>
 
             <div style={styles.noteDetailsBox}>
@@ -1114,14 +1547,16 @@ export default function DentistAppointment() {
 
             {!kitLoading && !kitError && kitItems.length > 0 && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, gap: 10 }}>
-                <button
-                  type="button"
-                  style={styles.modalSecondaryBtn}
-                  onClick={closeKitModal}
-                  disabled={kitSubmitting}
-                >
-                  Cancel
-                </button>
+                {(!kitAlreadySubmitted || kitEditMode) && (
+                  <button
+                    type="button"
+                    style={styles.modalSecondaryBtn}
+                    onClick={requestCloseKitModal}
+                    disabled={kitSubmitting}
+                  >
+                    Cancel
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -1131,7 +1566,15 @@ export default function DentistAppointment() {
                   }}
                   onClick={() => {
                     if (kitAlreadySubmitted && !kitEditMode) {
-                      setKitEditMode(true);
+                      setShowKitEditConfirmModal(true);
+                      return;
+                    }
+                    if (!kitAlreadySubmitted) {
+                      setShowKitSubmitConfirmModal(true);
+                      return;
+                    }
+                    if (kitEditMode) {
+                      setShowKitUpdateConfirmModal(true);
                       return;
                     }
                     handleKitConfirm();
@@ -1144,10 +1587,215 @@ export default function DentistAppointment() {
                       ? (kitSubmitting ? 'Saving...' : 'Save Changes')
                     : (!hasDeductibleKitItems
                       ? 'No Deductible Items'
-                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct')))}
+                      : (kitSubmitting ? 'Submitting...' : 'Submit Service Kit')))}
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showKitCancelConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitCancelConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Service Kit</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved service kit details will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitCancelConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCancelKitModal}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showKitCloseConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitCloseConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Close Service Kit</h2>
+            <p style={styles.modalText}>Do you want to close this service kit?</p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitCloseConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCloseKitModal}
+              >
+                Yes, Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showKitEditConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitEditConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-edit" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Edit Service Kit</h2>
+            <p style={styles.modalText}>
+              Do you want to edit the service kit submitted by {formatConsumptionSubmitter(kitSubmittedBy)}?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitEditConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.modalPrimaryBtn }}
+                onClick={confirmEditKitModal}
+              >
+                Yes, Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showKitUpdateConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitUpdateConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-edit" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Service Kit Changes</h2>
+            <p style={styles.modalText}>Please review the changes before saving this service kit.</p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {buildServiceKitChangeRows(originalKitItems, kitItems).map(([label, value]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3d675', fontSize: 13, gap: 12 }}>
+                  <span style={{ color: '#000000', fontWeight: 400 }}>{label}</span>
+                  <span style={{ color: '#000000', fontWeight: 400, textAlign: 'right' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitUpdateConfirmModal}
+                disabled={kitSubmitting}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.modalPrimaryBtn }}
+                onClick={confirmUpdateKitModal}
+                disabled={kitSubmitting}
+              >
+                Yes, Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showKitSubmitConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitSubmitConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Submit Service Kit</h2>
+            <p style={styles.modalText}>
+              Do you want to submit the service kit for this appointment?
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 18 }}>
+              {buildServiceKitSubmissionRows(kitItems).map(([label, value]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3d675', fontSize: 13, gap: 12 }}>
+                  <span style={{ color: '#000000', fontWeight: 400 }}>{label}</span>
+                  <span style={{ color: '#000000', fontWeight: 400, textAlign: 'right' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitSubmitConfirmModal}
+                disabled={kitSubmitting}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.modalPrimaryBtn }}
+                onClick={confirmSubmitKitModal}
+                disabled={kitSubmitting}
+              >
+                Yes, Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {kitSuccessModal.show && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Service Kit Saved</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0 }}>{kitSuccessModal.message}</p>
           </div>
         </div>
       )}
@@ -1166,7 +1814,7 @@ export default function DentistAppointment() {
               <button
                 type="button"
                 style={styles.noteModalClose}
-                onClick={closeNoteModal}
+                onClick={requestCloseNoteModal}
               >
                 ×
               </button>
@@ -1208,7 +1856,7 @@ export default function DentistAppointment() {
               <button
                 type="button"
                 style={{ ...styles.noteActionButton, ...styles.noteCancelBtn }}
-                onClick={closeNoteModal}
+                onClick={requestCloseNoteModal}
               >
                 Cancel
               </button>
@@ -1216,12 +1864,103 @@ export default function DentistAppointment() {
               <button
                 type="button"
                 style={{ ...styles.noteActionButton, ...styles.noteSaveBtn }}
-                onClick={handleSaveNote}
+                onClick={requestSaveNoteModal}
                 disabled={noteSaving}
               >
                 {noteSaving ? 'Saving…' : 'Save Note'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showNoteCancelConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeNoteCancelConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Note</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any unsaved note details will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeNoteCancelConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCancelNoteModal}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNoteSaveConfirmModal && selectedNoteAppointment && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeNoteSaveConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Save Note</h2>
+            <p style={styles.modalText}>Please review the details before saving this note.</p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 18 }}>
+              {buildNoteSaveRows(selectedNoteAppointment, noteText).map(([label, value]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3d675', fontSize: 13, gap: 12 }}>
+                  <span style={{ color: '#000000', fontWeight: 400 }}>{label}</span>
+                  <span style={{ color: '#000000', fontWeight: 400, textAlign: 'right', overflowWrap: 'anywhere' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeNoteSaveConfirmModal}
+                disabled={noteSaving}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.modalPrimaryBtn }}
+                onClick={confirmSaveNoteModal}
+                disabled={noteSaving}
+              >
+                Yes, Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {noteSuccessModal.show && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Note Saved</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0 }}>{noteSuccessModal.message}</p>
           </div>
         </div>
       )}
@@ -1261,6 +2000,9 @@ function normalizeAppointments(items) {
       rescheduledSchedule: scheduleMeta.rescheduledSchedule,
       status: isRescheduled ? 'Rescheduled' : formatAppointmentStatus(item.status),
       rawStatus: isRescheduled ? 'rescheduled' : (item.status || 'scheduled'),
+      startTime: item.start_time || '',
+      statusChangedAt: item.status_changed_at || item.statusChangedAt || '',
+      createdAt: item.created_at || item.createdAt || '',
       date: formatDateString(
         safeDate.getFullYear(),
         safeDate.getMonth(),
@@ -1276,12 +2018,18 @@ function formatAppointmentStatus(status) {
   const statusMap = {
     scheduled: 'Scheduled',
     rescheduled: 'Rescheduled',
+    arrived: 'Arrived',
     completed: 'Completed',
     cancelled: 'Cancelled',
     no_show: 'No Show',
+    noshow: 'No Show',
   };
 
-  return statusMap[status] || 'Scheduled';
+  return statusMap[status] || statusMap[normalizeAppointmentStatus(status)] || 'Scheduled';
+}
+
+function normalizeAppointmentStatus(status) {
+  return String(status || '').toLowerCase().replace(/[\s_]+/g, '');
 }
 
 function formatConsumptionSubmitter(submitter) {
@@ -1290,6 +2038,68 @@ function formatConsumptionSubmitter(submitter) {
   const roleLabel =
     role === 'dentist' ? 'Dentist' : role === 'receptionist' ? 'Receptionist' : 'Staff';
   return submitter.name ? `${submitter.name} (${roleLabel})` : roleLabel;
+}
+
+function getServiceKitAppointmentLabel(appointment) {
+  const service = appointment?.reason || appointment?.treatment || 'appointment';
+  const patient = appointment?.patientName || appointment?.name || 'patient';
+  return `${service} - ${patient}`;
+}
+
+function buildServiceKitChangeRows(originalItems, currentItems) {
+  const originalByKey = new Map(
+    (originalItems || []).map((item) => [
+      getServiceKitItemKey(item),
+      Number(item.quantity_used || 0),
+    ])
+  );
+
+  const changes = (currentItems || [])
+    .filter((item) => item.inventory_id)
+    .map((item) => {
+      const originalQty = originalByKey.get(getServiceKitItemKey(item)) ?? 0;
+      const nextQty = Number(item.quantity_used || 0);
+      return [item.item_name || 'Inventory Item', String(nextQty), originalQty];
+    })
+    .filter(([, value, originalQty]) => {
+      const nextQty = Number(value);
+      return originalQty !== nextQty;
+    })
+    .map(([label, value]) => [label, value]);
+
+  return changes.length > 0 ? changes : [['Changes', 'No quantity changes detected']];
+}
+
+function buildServiceKitSubmissionRows(items) {
+  const rows = (items || [])
+    .filter((item) => item.inventory_id && Number(item.quantity_used || 0) > 0)
+    .map((item) => [item.item_name || 'Inventory Item', String(Number(item.quantity_used || 0))]);
+
+  return rows.length > 0 ? rows : [['Items', 'No deductible items']];
+}
+
+function buildNoteSaveRows(appointment, noteText) {
+  return [
+    ['Patient', appointment?.patientName || 'Patient'],
+    ['Service', appointment?.reason || appointment?.treatment || 'Appointment'],
+    ['Time', appointment?.time || '-'],
+    ['Note', String(noteText || '').trim() || 'No note added'],
+  ];
+}
+
+function getAppointmentSortTime(appointment) {
+  const value =
+    appointment?.statusChangedAt ||
+    appointment?.updatedAt ||
+    appointment?.createdAt ||
+    appointment?.startTime;
+  const parsed = new Date(value);
+
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
+function getServiceKitItemKey(item) {
+  return String(item?.inventory_id || item?.item_id || item?.item_name || '');
 }
 
 function formatDateTime(value) {

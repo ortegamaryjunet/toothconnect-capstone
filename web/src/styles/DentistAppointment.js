@@ -319,16 +319,18 @@
     },
 
     calendarNav: {
-      width: isMobile ? 36 : 40,
-      height: isMobile ? 36 : 40,
-      border: 'none',
-      borderRadius: 13,
-      background: '#eff6ff',
-      color: '#b8860b',
+      minWidth: isMobile ? 54 : 64,
+      height: isMobile ? 36 : 38,
+      padding: '0 14px',
+      border: '1px solid #ead8a7',
+      borderRadius: 12,
+      background: '#fff8e1',
+      color: '#8b6508',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
       flexShrink: 0,
     },
 
@@ -356,10 +358,10 @@
     currentMonthLabel: {
       textAlign: 'center',
       fontSize: isMobile ? 18 : 20,
-      fontWeight: 700,
-      color: '#2563eb',
+      fontWeight: 800,
+      color: '#b8860b',
       margin: isMobile ? '18px 0 14px' : '22px 0 18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
     },
 
     calendarTable: {
@@ -394,15 +396,15 @@
     },
 
     calendarToday: {
-      background: '#dbeafe',
-      color: '#2563eb',
-      fontWeight: 700,
+      background: '#d4af37',
+      color: '#ffffff',
+      fontWeight: 800,
     },
 
     calendarSelected: {
-      background: '#b8860b',
+      background: '#d4af37',
       color: '#ffffff',
-      fontWeight: 700,
+      fontWeight: 800,
     },
 
     appointmentContent: {
@@ -503,6 +505,47 @@
       boxSizing: 'border-box',
     },
 
+    tableHeaderActions: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: isMobile ? 'stretch' : 'flex-end',
+      gap: 10,
+      width: isMobile ? '100%' : 'auto',
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+
+    refreshButton: {
+      height: 40,
+      padding: '0 16px',
+      border: 'none',
+      outline: 'none',
+      borderRadius: 12,
+      backgroundColor: '#d4af37',
+      color: '#ffffff',
+      cursor: 'pointer',
+      fontSize: 14,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
+      boxShadow: '0 10px 20px rgba(139, 101, 8, 0.18)',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      width: isMobile ? '100%' : 'auto',
+      whiteSpace: 'nowrap',
+    },
+
+    refreshButtonDisabled: {
+      opacity: 0.65,
+      cursor: 'not-allowed',
+      boxShadow: 'none',
+    },
+
+    refreshButtonIcon: {
+      fontSize: 14,
+      lineHeight: 1,
+    },
+
     tableWrapper: {
       width: '100%',
       maxWidth: '100%',
@@ -513,7 +556,7 @@
     doctorTable: {
       width: '100%',
       borderCollapse: 'collapse',
-      minWidth: isMobile ? 760 : 820,
+      minWidth: isMobile ? 860 : 960,
     },
 
     tableHead: {
@@ -551,34 +594,68 @@
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
       whiteSpace: 'nowrap',
+      background: '#f1f5f9',
+      color: '#475569',
     },
 
     statusPillConfirmed: {
+      background: '#dbeafe',
+      color: '#1d4ed8',
+    },
+
+    statusPillWaiting: {
       background: '#dcfce7',
       color: '#15803d',
     },
 
-    statusPillWaiting: {
-      background: '#fef3c7',
-      color: '#b45309',
-    },
-
     statusPillNoShow: {
       background: '#fee2e2',
-      color: '#dc2626',
+      color: '#b91c1c',
+    },
+
+    serviceKitStatusBadge: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '5px 9px',
+      borderRadius: 999,
+      fontSize: 11,
+      fontWeight: 700,
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      whiteSpace: 'nowrap',
+      border: '1px solid transparent',
+    },
+
+    serviceKitStatusSubmitted: {
+      background: '#fff8e1',
+      color: '#8b6508',
+      borderColor: '#ead8a7',
+    },
+
+    serviceKitStatusMissing: {
+      background: '#f1f5f9',
+      color: '#475569',
+      borderColor: '#e2e8f0',
+    },
+
+    serviceKitStatusUnknown: {
+      background: '#fef2f2',
+      color: '#b91c1c',
+      borderColor: '#fecaca',
     },
 
     reviewKitButton: {
-      border: '1px solid #bfdbfe',
-      background: '#eff6ff',
-      color: '#2563eb',
+      border: '1px solid #ead8a7',
+      background: '#fff8e1',
+      color: '#8b6508',
       borderRadius: 10,
-      padding: '7px 12px',
+      padding: '8px 14px',
       fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
       whiteSpace: 'nowrap',
+      boxShadow: 'none',
     },
 
     noActionText: {
@@ -861,21 +938,24 @@
     noteActionButton: {
       border: 'none',
       borderRadius: 12,
-      padding: '11px 16px',
+      minWidth: 120,
+      height: 44,
+      padding: '0 16px',
       cursor: 'pointer',
       fontSize: 14,
       fontWeight: 700,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
     },
 
     noteCancelBtn: {
       background: '#f1f5f9',
-      color: '#0f172a',
+      color: '#334155',
     },
 
     noteSaveBtn: {
-      background: '#2563eb',
+      background: '#d4af37',
       color: '#ffffff',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     modalSecondaryBtn: {
@@ -894,12 +974,14 @@
       height: 44,
       borderRadius: 12,
       border: 'none',
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      background: '#d4af37',
       color: '#ffffff',
       cursor: 'pointer',
       padding: '0 18px',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
+      fontWeight: 700,
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     notificationBadge: {

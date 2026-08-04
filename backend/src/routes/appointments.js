@@ -852,6 +852,15 @@ router.get('/', async (req, res) => {
          pay.recorded_by, pay.recorded_at, pay.paid_at, pay.verified_at,
          pay.rejection_reason,
          (
+           SELECT al.created_at
+           FROM audit_logs al
+           WHERE al.action = 'appointment_status_changed'
+             AND CAST(JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.appointment_id')) AS UNSIGNED) = a.id
+             AND JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.new_status')) = a.status
+           ORDER BY al.created_at DESC, al.id DESC
+           LIMIT 1
+         ) AS status_changed_at,
+         (
            SELECT JSON_UNQUOTE(JSON_EXTRACT(al.details, '$.created_by_role'))
            FROM audit_logs al
            WHERE al.action = 'appointment_created'
@@ -1189,11 +1198,21 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
       } else {
         await notifyDentist(assignedDentistId, {
           type: 'appointment_new',
-          title: 'New appointment booked',
+          title: 'New Appointment Booked',
           body: `${detail.patient_name} booked a ${detail.service_name} for ${schedule}.`,
           relatedType: 'appointment',
           relatedId: result.insertId,
         });
+
+        if (effectiveStatus === 'arrived') {
+          await notifyDentist(assignedDentistId, {
+            type: 'appointment_arrived',
+            title: 'Patient Arrived',
+            body: `${detail.patient_name || 'A patient'} has arrived for ${detail.service_name || 'an appointment'}.`,
+            relatedType: 'appointment',
+            relatedId: result.insertId,
+          });
+        }
       }
 
       if (!isReschedule) {
@@ -1382,6 +1401,30 @@ router.patch('/:id/status', requireRole('receptionist', 'admin'), async (req, re
        VALUES (?, 'appointment_status_changed', ?, ?)`,
       [userId, appt.branch_id, JSON.stringify({ appointment_id: id, new_status: status })]
     );
+
+    if (status === 'arrived') {
+      try {
+        const [details] = await pool.query(
+          `SELECT u.name AS patient_name, s.name AS service_name
+           FROM appointments a
+           JOIN users u ON u.id = a.patient_id
+           JOIN services s ON s.id = a.service_id
+           WHERE a.id = ?`,
+          [id]
+        );
+        const detail = details[0] || {};
+
+        await notifyDentist(appt.dentist_id, {
+          type: 'appointment_arrived',
+          title: 'Patient Arrived',
+          body: `${detail.patient_name || 'A patient'} has arrived for ${detail.service_name || 'an appointment'}.`,
+          relatedType: 'appointment',
+          relatedId: id,
+        });
+      } catch (notificationErr) {
+        console.error('Failed to create arrival notification:', notificationErr);
+      }
+    }
 
     res.json({ message: `Appointment marked ${status}` });
   } catch (err) {

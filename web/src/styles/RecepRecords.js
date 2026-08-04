@@ -442,18 +442,6 @@
       width: 270,
     },
 
-    genderBadge: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '7px 12px',
-      borderRadius: 999,
-      background: '#e0f2fe',
-      color: '#0369a1',
-      fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 12,
-    },
-
     emptyCell: {
       textAlign: 'center',
       padding: '30px',

@@ -1378,11 +1378,7 @@ export default function RecepRecords() {
                         <td style={styles.td}>{patient.firstName || '-'}</td>
                         <td style={styles.td}>{patient.middleName || '-'}</td>
                         <td style={styles.td}>{patient.age || '-'}</td>
-                        <td style={styles.td}>
-                          <span style={styles.genderBadge}>
-                            {patient.gender || '-'}
-                          </span>
-                        </td>
+                        <td style={styles.td}>{patient.gender || '-'}</td>
                         <td style={{ ...styles.td, ...styles.actionTd }}>
                           <div style={styles.btnGroup}>
                             <button

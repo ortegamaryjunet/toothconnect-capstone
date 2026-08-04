@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -117,8 +117,16 @@ export default function RecepAppointments() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
   const [showKitModal, setShowKitModal] = useState(false);
+  const [showKitAddConfirmModal, setShowKitAddConfirmModal] = useState(false);
+  const [showKitCancelConfirmModal, setShowKitCancelConfirmModal] = useState(false);
+  const [showKitEditConfirmModal, setShowKitEditConfirmModal] = useState(false);
+  const [showKitSubmitConfirmModal, setShowKitSubmitConfirmModal] = useState(false);
+  const [showKitUpdateConfirmModal, setShowKitUpdateConfirmModal] = useState(false);
+  const [kitSuccessModal, setKitSuccessModal] = useState({ show: false, message: '' });
+  const [pendingKitAddAppointment, setPendingKitAddAppointment] = useState(null);
   const [selectedKitAppointment, setSelectedKitAppointment] = useState(null);
   const [kitItems, setKitItems] = useState([]);
+  const [originalKitItems, setOriginalKitItems] = useState([]);
   const [kitNotes, setKitNotes] = useState('');
   const [kitLoading, setKitLoading] = useState(false);
   const [kitError, setKitError] = useState('');
@@ -130,6 +138,7 @@ export default function RecepAppointments() {
   const [kitSubmitting, setKitSubmitting] = useState(false);
   const [calendarDetailsOpenById, setCalendarDetailsOpenById] = useState({});
   const [kitSubmittedByAppointmentId, setKitSubmittedByAppointmentId] = useState({});
+  const [kitSubmitterRoleByAppointmentId, setKitSubmitterRoleByAppointmentId] = useState({});
   const [kitTemplateHasItemsByAppointmentId, setKitTemplateHasItemsByAppointmentId] = useState({});
 
   const isMobile = screenWidth <= 850;
@@ -202,7 +211,16 @@ export default function RecepAppointments() {
   }, []);
 
   useEffect(() => {
-    if (showLogoutModal || showKitModal) {
+    if (
+      showLogoutModal ||
+      showKitModal ||
+      showKitAddConfirmModal ||
+      showKitCancelConfirmModal ||
+      showKitEditConfirmModal ||
+      showKitSubmitConfirmModal ||
+      showKitUpdateConfirmModal ||
+      kitSuccessModal.show
+    ) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -211,7 +229,16 @@ export default function RecepAppointments() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showLogoutModal, showKitModal]);
+  }, [
+    showLogoutModal,
+    showKitModal,
+    showKitAddConfirmModal,
+    showKitCancelConfirmModal,
+    showKitEditConfirmModal,
+    showKitSubmitConfirmModal,
+    showKitUpdateConfirmModal,
+    kitSuccessModal.show,
+  ]);
 
   useEffect(() => {
     if (rescheduleModal.show) {
@@ -228,7 +255,20 @@ export default function RecepAppointments() {
       if (event.key === 'Escape') {
         closeLogoutModal();
         closeRescheduleModal();
-        closeKitModal();
+        if (showKitSubmitConfirmModal) {
+          setShowKitSubmitConfirmModal(false);
+        } else if (showKitUpdateConfirmModal) {
+          setShowKitUpdateConfirmModal(false);
+        } else if (showKitEditConfirmModal) {
+          setShowKitEditConfirmModal(false);
+        } else if (showKitAddConfirmModal) {
+          setShowKitAddConfirmModal(false);
+          setPendingKitAddAppointment(null);
+        } else if (showKitCancelConfirmModal) {
+          setShowKitCancelConfirmModal(false);
+        } else if (showKitModal && !kitSubmitting) {
+          setShowKitCancelConfirmModal(true);
+        }
         setOpenDropdownId(null);
       }
     }
@@ -238,7 +278,15 @@ export default function RecepAppointments() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, []);
+  }, [
+    showKitSubmitConfirmModal,
+    showKitUpdateConfirmModal,
+    showKitEditConfirmModal,
+    showKitAddConfirmModal,
+    showKitCancelConfirmModal,
+    showKitModal,
+    kitSubmitting,
+  ]);
 
   useEffect(() => {
     fetchUpcomingAppointments();
@@ -399,73 +447,88 @@ export default function RecepAppointments() {
       .sort((a, b) => parseTime(a.time) - parseTime(b.time));
   }, [calendarAppointments, selectedDateKey]);
 
+  const loadKitSubmissionStates = useCallback(async (options = {}) => {
+    const completed = selectedDateSchedules.filter(
+      (appointment) => String(appointment.status).toLowerCase() === 'completed'
+    );
+    if (completed.length === 0) return;
+
+    const results = await Promise.all(
+      completed.map(async (appointment) => {
+        const isConsultation = /consultation/i.test(String(appointment.treatment || ''));
+        if (isConsultation) {
+          return { id: appointment.id, submitted: false, submittedByRole: '', hasTemplateItems: false };
+        }
+
+        try {
+          const [consumptionData, kitData] = await Promise.all([
+            getConsumption(appointment.id),
+            appointment.serviceId && recepBranchId
+              ? getServiceKit(appointment.serviceId, recepBranchId).catch(() => ({
+                  kit_exists: false,
+                  items: [],
+                }))
+              : Promise.resolve({ kit_exists: false, items: [] }),
+          ]);
+
+          const hasTemplateItems =
+            Boolean(kitData?.kit_exists) &&
+            Array.isArray(kitData?.items) &&
+            kitData.items.some((item) => Number(item?.default_quantity || 0) > 0 && item?.inventory_id);
+
+          return {
+            id: appointment.id,
+            submitted: Boolean(consumptionData?.submitted),
+            submittedByRole: consumptionData?.submitted_by?.role || '',
+            hasTemplateItems,
+          };
+        } catch {
+          return { id: appointment.id, submitted: null, submittedByRole: '', hasTemplateItems: false };
+        }
+      })
+    );
+
+    if (options.cancelled?.()) return;
+
+    setKitSubmittedByAppointmentId((current) => {
+      const next = { ...current };
+      results.forEach((item) => {
+        next[item.id] = item.submitted;
+      });
+      return next;
+    });
+    setKitSubmitterRoleByAppointmentId((current) => {
+      const next = { ...current };
+      results.forEach((item) => {
+        next[item.id] = item.submittedByRole;
+      });
+      return next;
+    });
+    setKitTemplateHasItemsByAppointmentId((current) => {
+      const next = { ...current };
+      results.forEach((item) => {
+        next[item.id] = item.hasTemplateItems;
+      });
+      return next;
+    });
+  }, [recepBranchId, selectedDateSchedules]);
+
   useEffect(() => {
     let cancelled = false;
 
-    async function loadKitSubmissionStates() {
-      const completed = selectedDateSchedules.filter(
-        (appointment) => String(appointment.status).toLowerCase() === 'completed'
-      );
-      if (completed.length === 0) return;
-
-      const results = await Promise.all(
-        completed.map(async (appointment) => {
-          const isConsultation = /consultation/i.test(String(appointment.treatment || ''));
-          if (isConsultation) {
-            return { id: appointment.id, submitted: false, hasTemplateItems: false };
-          }
-
-          try {
-            const [consumptionData, kitData] = await Promise.all([
-              getConsumption(appointment.id),
-              appointment.serviceId && recepBranchId
-                ? getServiceKit(appointment.serviceId, recepBranchId).catch(() => ({
-                    kit_exists: false,
-                    items: [],
-                  }))
-                : Promise.resolve({ kit_exists: false, items: [] }),
-            ]);
-
-            const hasTemplateItems =
-              Boolean(kitData?.kit_exists) &&
-              Array.isArray(kitData?.items) &&
-              kitData.items.some((item) => Number(item?.default_quantity || 0) > 0 && item?.inventory_id);
-
-            return {
-              id: appointment.id,
-              submitted: Boolean(consumptionData?.submitted),
-              hasTemplateItems,
-            };
-          } catch {
-            return { id: appointment.id, submitted: null, hasTemplateItems: false };
-          }
-        })
-      );
-
-      if (cancelled) return;
-
-      setKitSubmittedByAppointmentId((current) => {
-        const next = { ...current };
-        results.forEach((item) => {
-          next[item.id] = item.submitted;
-        });
-        return next;
-      });
-      setKitTemplateHasItemsByAppointmentId((current) => {
-        const next = { ...current };
-        results.forEach((item) => {
-          next[item.id] = item.hasTemplateItems;
-        });
-        return next;
-      });
-    }
-
-    loadKitSubmissionStates();
+    const initialTimeoutId = window.setTimeout(() => {
+      loadKitSubmissionStates({ cancelled: () => cancelled });
+    }, 0);
+    const intervalId = window.setInterval(() => {
+      loadKitSubmissionStates({ cancelled: () => cancelled });
+    }, 3000);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(initialTimeoutId);
+      window.clearInterval(intervalId);
     };
-  }, [selectedDateSchedules]);
+  }, [loadKitSubmissionStates]);
   const rescheduleEstimatedDuration = useMemo(() => {
     if (!rescheduleModal.appointment?.serviceId) {
       return 30;
@@ -586,6 +649,7 @@ export default function RecepAppointments() {
 
     setSelectedKitAppointment(appointment);
     setKitItems([]);
+    setOriginalKitItems([]);
     setKitNotes('');
     setKitError('');
     setKitAlreadySubmitted(false);
@@ -614,6 +678,7 @@ export default function RecepAppointments() {
         setKitEditedAt(consumptionData?.edited_at || '');
         setKitNotes('No inventory items was used for consultation service.');
         setKitItems([]);
+        setOriginalKitItems([]);
         return;
       }
 
@@ -626,8 +691,7 @@ export default function RecepAppointments() {
         (kitData?.items || []).forEach((ki) => {
           if (ki.inventory_id != null) kitStockMap[ki.inventory_id] = ki.current_stock;
         });
-        setKitItems(
-          (consumptionData.items || []).map((item) => {
+        const submittedItems = (consumptionData.items || []).map((item) => {
             const invId = item.item_id || item.inventory_id || null;
             return {
               category: item.category,
@@ -636,12 +700,12 @@ export default function RecepAppointments() {
               quantity_used: item.quantity_used,
               current_stock: invId != null ? kitStockMap[invId] : undefined,
             };
-          })
-        );
+          });
+        setKitItems(submittedItems);
+        setOriginalKitItems(submittedItems);
       } else {
         setKitNotes(kitData.notes || '');
-        setKitItems(
-          (kitData.items || []).map((item) => ({
+        const templateItems = (kitData.items || []).map((item) => ({
             category: item.category,
             item_name: item.item_name,
             inventory_id: item.inventory_id || null,
@@ -650,8 +714,9 @@ export default function RecepAppointments() {
             unit: item.unit,
             available: item.available,
             sufficient: item.sufficient,
-          }))
-        );
+          }));
+        setKitItems(templateItems);
+        setOriginalKitItems([]);
       }
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to load service kit.');
@@ -661,9 +726,16 @@ export default function RecepAppointments() {
   }
 
   function closeKitModal() {
+    setShowKitAddConfirmModal(false);
+    setShowKitCancelConfirmModal(false);
+    setShowKitEditConfirmModal(false);
+    setShowKitSubmitConfirmModal(false);
+    setShowKitUpdateConfirmModal(false);
+    setPendingKitAddAppointment(null);
     setShowKitModal(false);
     setSelectedKitAppointment(null);
     setKitItems([]);
+    setOriginalKitItems([]);
     setKitNotes('');
     setKitError('');
     setKitAlreadySubmitted(false);
@@ -672,6 +744,77 @@ export default function RecepAppointments() {
     setKitEditedAt('');
     setKitEditMode(false);
     setKitSubmitting(false);
+  }
+
+  function requestCloseKitModal() {
+    if (kitSubmitting) return;
+    setShowKitCancelConfirmModal(true);
+  }
+
+  function closeKitCancelConfirmModal() {
+    setShowKitCancelConfirmModal(false);
+  }
+
+  function confirmCancelKitModal() {
+    closeKitModal();
+  }
+
+  function closeKitSubmitConfirmModal() {
+    setShowKitSubmitConfirmModal(false);
+  }
+
+  function confirmSubmitKitModal() {
+    setShowKitSubmitConfirmModal(false);
+    handleConfirmKitDeduction();
+  }
+
+  function closeKitUpdateConfirmModal() {
+    setShowKitUpdateConfirmModal(false);
+  }
+
+  function confirmUpdateKitModal() {
+    setShowKitUpdateConfirmModal(false);
+    handleConfirmKitDeduction();
+  }
+
+  function showKitSuccessModal(message) {
+    setKitSuccessModal({ show: true, message });
+    window.setTimeout(() => {
+      setKitSuccessModal({ show: false, message: '' });
+    }, 3000);
+  }
+
+  function closeKitEditConfirmModal() {
+    setShowKitEditConfirmModal(false);
+  }
+
+  function confirmEditKitModal() {
+    setShowKitEditConfirmModal(false);
+    setKitEditMode(true);
+  }
+
+  function requestOpenCalendarServiceKitModal(appointment, needsAddConfirm) {
+    if (needsAddConfirm) {
+      setPendingKitAddAppointment(appointment);
+      setShowKitAddConfirmModal(true);
+      return;
+    }
+
+    openCalendarServiceKitModal(appointment);
+  }
+
+  function closeKitAddConfirmModal() {
+    setShowKitAddConfirmModal(false);
+    setPendingKitAddAppointment(null);
+  }
+
+  function confirmAddKitModal() {
+    const appointment = pendingKitAddAppointment;
+    setShowKitAddConfirmModal(false);
+    setPendingKitAddAppointment(null);
+    if (appointment) {
+      openCalendarServiceKitModal(appointment);
+    }
   }
 
   function toggleCalendarDetails(appointmentId) {
@@ -717,8 +860,20 @@ export default function RecepAppointments() {
       } else {
         await submitConsumption(selectedKitAppointment.id, itemsToSubmit);
       }
+      showKitSuccessModal(
+        `Service kit for ${getServiceKitAppointmentLabel(selectedKitAppointment)} has been ${isEditingSubmitted ? 'updated' : 'successfully submitted'}${isEditingSubmitted ? ' successfully' : ''}.`
+      );
       setKitAlreadySubmitted(true);
       setKitEditMode(false);
+      setOriginalKitItems(kitItems);
+      setKitSubmittedByAppointmentId((current) => ({
+        ...current,
+        [selectedKitAppointment.id]: true,
+      }));
+      setKitSubmitterRoleByAppointmentId((current) => ({
+        ...current,
+        [selectedKitAppointment.id]: user?.role || 'receptionist',
+      }));
       setKitSubmittedBy({
         name: user?.name || 'Receptionist',
         role: user?.role || 'receptionist',
@@ -730,6 +885,9 @@ export default function RecepAppointments() {
         });
         setKitEditedAt(new Date().toISOString());
       }
+      window.setTimeout(() => {
+        loadKitSubmissionStates();
+      }, 3000);
     } catch (err) {
       setKitError(err.response?.data?.message || 'Failed to deduct inventory.');
     } finally {
@@ -1437,25 +1595,37 @@ export default function RecepAppointments() {
                         selectedDateSchedules.map((appointment) => {
                           const calendarStatus = getAppointmentCalendarStatus(appointment);
                           const showDetails = Boolean(calendarDetailsOpenById[appointment.id]);
+                          const isCompletedAppointment = calendarStatus === 'Completed';
                           const isServiceKitSubmitted =
-                            calendarStatus === 'Done' &&
+                            isCompletedAppointment &&
                             kitSubmittedByAppointmentId[appointment.id] === true;
                           const isServiceKitPending =
-                            calendarStatus === 'Done' &&
+                            isCompletedAppointment &&
                             kitTemplateHasItemsByAppointmentId[appointment.id] === true &&
                             kitSubmittedByAppointmentId[appointment.id] === false;
+                          const serviceKitSubmittedLabel = getServiceKitSubmittedLabel(
+                            kitSubmitterRoleByAppointmentId[appointment.id]
+                          );
 
                           return (
                           <div
                             key={appointment.id}
-                            style={{ ...styles.scheduleItem, position: 'relative', paddingBottom: 56 }}
+                            style={{ ...styles.scheduleItem, position: 'relative', paddingBottom: 68 }}
                           >
                             <div style={styles.scheduleItemTop}>
                               <div style={styles.scheduleTime}>
                                 {appointment.fullDate} | {appointment.time}
                               </div>
 
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-end',
+                                  gap: 5,
+                                  flexShrink: 0,
+                                }}
+                              >
                                 <span
                                   style={{
                                     ...styles.scheduleStatusBadge,
@@ -1473,33 +1643,36 @@ export default function RecepAppointments() {
                                       border: '1px solid #fdba74',
                                     }}
                                   >
-                                    Pending service_kit
+                                    No Service Kit Added
                                   </span>
                                 )}
                                 {isServiceKitSubmitted && (
                                   <span
                                     style={{
                                       ...styles.scheduleStatusBadge,
-                                      background: '#dcfce7',
-                                      color: '#166534',
-                                      border: '1px solid #86efac',
+                                      background: '#fff8e1',
+                                      color: '#9a6b00',
+                                      border: '1px solid #f3d675',
                                     }}
                                   >
-                                    Service_kit submitted
+                                    {serviceKitSubmittedLabel}
                                   </span>
                                 )}
                               </div>
                             </div>
 
-                            {calendarStatus === 'Done' && (
+                            {isCompletedAppointment && (
                               <button
                                 type="button"
                                 style={styles.serviceKitCalendarButton}
                                 onClick={() =>
-                                  openCalendarServiceKitModal(appointment)
+                                  requestOpenCalendarServiceKitModal(
+                                    appointment,
+                                    isServiceKitPending
+                                  )
                                 }
                               >
-                                service_kit
+                                Add Service Kit
                               </button>
                             )}
 
@@ -1535,8 +1708,12 @@ export default function RecepAppointments() {
                                 <strong>Rescheduled:</strong> {appointment.rescheduledSchedule || 'Not recorded'}
                                 <br />
                                 <strong>Payment Type:</strong> {appointment.paymentMethodLabel || 'Not recorded'}
-                                <br />
-                                <strong>Provider:</strong> {appointment.paymentProvider || 'Not recorded'}
+                                {appointment.paymentProvider && (
+                                  <>
+                                    <br />
+                                    <strong>Provider:</strong> {appointment.paymentProvider}
+                                  </>
+                                )}
                                 <br />
                                 <strong>Payment Amount:</strong> {formatPaymentAmount(appointment.paymentAmount)}
                               </div>
@@ -2382,7 +2559,12 @@ export default function RecepAppointments() {
       )}
 
       {showKitModal && selectedKitAppointment && (
-        <div style={styles.modal} onClick={closeKitModal}>
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) requestCloseKitModal();
+          }}
+        >
           <div
             style={{
               ...styles.modalContentReschedule,
@@ -2401,7 +2583,7 @@ export default function RecepAppointments() {
                     : 'Service kit template for this appointment.'}
                 </p>
               </div>
-              <button type="button" style={styles.modalCloseBtn} onClick={closeKitModal}>
+              <button type="button" style={styles.modalCloseBtn} onClick={requestCloseKitModal}>
                 <i className="fi fi-rr-cross-small"></i>
               </button>
             </div>
@@ -2519,28 +2701,38 @@ export default function RecepAppointments() {
 
             {!kitLoading && !kitError && kitItems.length > 0 && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, gap: 10 }}>
-                <button
-                  type="button"
-                  style={styles.modalSecondaryBtn}
-                  onClick={closeKitModal}
-                  disabled={kitSubmitting}
-                >
-                  Cancel
-                </button>
+                {(!kitAlreadySubmitted || kitEditMode) && (
+                  <button
+                    type="button"
+                    style={styles.modalSecondaryBtn}
+                    onClick={requestCloseKitModal}
+                    disabled={kitSubmitting}
+                  >
+                    Cancel
+                  </button>
+                )}
                 <button
                   type="button"
                   style={{
                     ...styles.modalPrimaryBtn,
-                    ...((kitSubmitting || !hasDeductibleKitItems || kitHasStockError) ? styles.pageBtnDisabled : {}),
+                    ...((!kitAlreadySubmitted || kitEditMode) && (kitSubmitting || !hasDeductibleKitItems || kitHasStockError) ? styles.pageBtnDisabled : {}),
                   }}
                   onClick={() => {
                     if (kitAlreadySubmitted && !kitEditMode) {
-                      setKitEditMode(true);
+                      setShowKitEditConfirmModal(true);
+                      return;
+                    }
+                    if (!kitAlreadySubmitted) {
+                      setShowKitSubmitConfirmModal(true);
+                      return;
+                    }
+                    if (kitEditMode) {
+                      setShowKitUpdateConfirmModal(true);
                       return;
                     }
                     handleConfirmKitDeduction();
                   }}
-                  disabled={kitSubmitting || !hasDeductibleKitItems || kitHasStockError}
+                  disabled={(!kitAlreadySubmitted || kitEditMode) && (kitSubmitting || !hasDeductibleKitItems || kitHasStockError)}
                 >
                   {kitAlreadySubmitted && !kitEditMode
                     ? 'Edit'
@@ -2548,10 +2740,221 @@ export default function RecepAppointments() {
                       ? (kitSubmitting ? 'Saving...' : 'Save Changes')
                     : (!hasDeductibleKitItems
                       ? 'No Deductible Items'
-                      : (kitSubmitting ? 'Deducting...' : 'Confirm & Deduct')))}
+                      : (kitSubmitting ? 'Submitting...' : 'Submit Service Kit')))}
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showKitAddConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitAddConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-plus" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Add Service Kit</h2>
+            <p style={styles.modalText}>
+              Do you want to add a service kit for this appointment?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitAddConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.modalGoldBtn }}
+                onClick={confirmAddKitModal}
+              >
+                Yes, Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showKitEditConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitEditConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-edit" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Edit Service Kit</h2>
+            <p style={styles.modalText}>
+              Do you want to edit the service kit submitted by {formatConsumptionSubmitter(kitSubmittedBy)}?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitEditConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.modalGoldBtn }}
+                onClick={confirmEditKitModal}
+              >
+                Yes, Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showKitUpdateConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitUpdateConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-edit" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Confirm Service Kit Changes</h2>
+            <p style={styles.modalText}>Please review the changes before saving this service kit.</p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {buildServiceKitChangeRows(originalKitItems, kitItems).map(([label, value]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3d675', fontSize: 13, gap: 12 }}>
+                  <span style={{ color: '#000000', fontWeight: 400 }}>{label}</span>
+                  <span style={{ color: '#000000', fontWeight: 400, textAlign: 'right' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitUpdateConfirmModal}
+                disabled={kitSubmitting}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.modalGoldBtn }}
+                onClick={confirmUpdateKitModal}
+                disabled={kitSubmitting}
+              >
+                Yes, Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showKitSubmitConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitSubmitConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Submit Service Kit</h2>
+            <p style={styles.modalText}>
+              Do you want to submit the service kit for this appointment?
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 18 }}>
+              {buildServiceKitSubmissionRows(kitItems).map(([label, value]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3d675', fontSize: 13, gap: 12 }}>
+                  <span style={{ color: '#000000', fontWeight: 400 }}>{label}</span>
+                  <span style={{ color: '#000000', fontWeight: 400, textAlign: 'right' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitSubmitConfirmModal}
+                disabled={kitSubmitting}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.modalGoldBtn }}
+                onClick={confirmSubmitKitModal}
+                disabled={kitSubmitting}
+              >
+                Yes, Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {kitSuccessModal.show && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-check" style={styles.modalIconText}></i>
+            </div>
+            <h2 style={styles.modalTitle}>Service Kit Saved</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0 }}>{kitSuccessModal.message}</p>
+          </div>
+        </div>
+      )}
+
+      {showKitCancelConfirmModal && (
+        <div style={styles.modal} onClick={(event) => {
+          if (event.target === event.currentTarget) closeKitCancelConfirmModal();
+        }}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>
+              {kitAlreadySubmitted && !kitEditMode ? 'Close Service Kit' : 'Cancel Service Kit'}
+            </h2>
+            <p style={styles.modalText}>
+              {kitAlreadySubmitted && !kitEditMode
+                ? 'Do you want to close this service kit?'
+                : 'Are you sure you want to cancel? Any unsaved service kit details will be discarded.'}
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeKitCancelConfirmModal}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCancelKitModal}
+              >
+                {kitAlreadySubmitted && !kitEditMode ? 'Yes, Close' : 'Yes, Cancel'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2898,7 +3301,7 @@ function normalizeAppointments(items) {
       paymentStatus: item.payment_status || '',
       paymentMethod: item.payment_method || '',
       paymentMethodLabel: paymentMethodLabels[item.payment_method] || 'Not recorded',
-      paymentProvider: item.ewallet_provider || item.bank_provider || item.provider || '',
+      paymentProvider: item.ewallet_provider || item.bank_provider || '',
       paymentAmount: Number(item.payment_amount || 0),
       durationMinutes: Number(item.duration_min || 30),
       date: displayDate.week,
@@ -2949,7 +3352,7 @@ function getAppointmentCalendarStatus(appointment) {
   const status = String(appointment?.status || '').toLowerCase();
 
   if (status === 'completed') {
-    return 'Done';
+    return 'Completed';
   }
 
   if (status === 'no_show') {
@@ -2966,7 +3369,7 @@ function getAppointmentCalendarStatus(appointment) {
 function getAppointmentStatusStyle(styles, appointment) {
   const label = getAppointmentCalendarStatus(appointment);
 
-  if (label === 'Done') {
+  if (label === 'Completed') {
     return styles.scheduleStatusDone;
   }
 
@@ -2979,6 +3382,20 @@ function getAppointmentStatusStyle(styles, appointment) {
   }
 
   return styles.scheduleStatusNeutral;
+}
+
+function getServiceKitSubmittedLabel(role) {
+  const normalizedRole = String(role || '').toLowerCase();
+
+  if (normalizedRole === 'dentist') {
+    return 'Dentist Submitted Service Kit';
+  }
+
+  if (normalizedRole === 'receptionist') {
+    return 'Receptionist Submitted Service Kit';
+  }
+
+  return 'Service Kit Added';
 }
 
 function monthBoundsUTC(date) {
@@ -3280,6 +3697,48 @@ function formatConsumptionSubmitter(submitter) {
   const roleLabel =
     role === 'dentist' ? 'Dentist' : role === 'receptionist' ? 'Receptionist' : 'Staff';
   return submitter.name ? `${submitter.name} (${roleLabel})` : roleLabel;
+}
+
+function getServiceKitAppointmentLabel(appointment) {
+  const service = appointment?.treatment || appointment?.reason || 'appointment';
+  const patient = appointment?.name || appointment?.patientName || 'patient';
+  return `${service} - ${patient}`;
+}
+
+function buildServiceKitChangeRows(originalItems, currentItems) {
+  const originalByKey = new Map(
+    (originalItems || []).map((item) => [
+      getServiceKitItemKey(item),
+      Number(item.quantity_used || 0),
+    ])
+  );
+
+  const changes = (currentItems || [])
+    .filter((item) => item.inventory_id)
+    .map((item) => {
+      const originalQty = originalByKey.get(getServiceKitItemKey(item)) ?? 0;
+      const nextQty = Number(item.quantity_used || 0);
+      return [item.item_name || 'Inventory Item', String(nextQty), originalQty];
+    })
+    .filter(([, value, originalQty]) => {
+      const nextQty = Number(value);
+      return originalQty !== nextQty;
+    })
+    .map(([label, value]) => [label, value]);
+
+  return changes.length > 0 ? changes : [['Changes', 'No quantity changes detected']];
+}
+
+function buildServiceKitSubmissionRows(items) {
+  const rows = (items || [])
+    .filter((item) => item.inventory_id && Number(item.quantity_used || 0) > 0)
+    .map((item) => [item.item_name || 'Inventory Item', String(Number(item.quantity_used || 0))]);
+
+  return rows.length > 0 ? rows : [['Items', 'No deductible items']];
+}
+
+function getServiceKitItemKey(item) {
+  return String(item?.inventory_id || item?.item_id || item?.item_name || '');
 }
 
 function formatDateTime(value) {

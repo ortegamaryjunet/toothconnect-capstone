@@ -423,7 +423,7 @@ const createRecepAppointmentFormStyles = ({
     },
 
     calendarTdSelected: {
-      background: '#f59e0b',
+      background: '#d4af37',
       color: '#ffffff',
       fontWeight: 800,
       boxShadow: 'none',

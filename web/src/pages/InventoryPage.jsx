@@ -3861,12 +3861,12 @@ export default function InventoryPage() {
                 ['Maximum Stock', expenseForm.maxStock === '' ? 'Not set' : String(expenseForm.maxStock)],
               ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${expenseGoldBorder}`, fontSize: 13, gap: 12 }}>
-                  <span style={{ color: expenseGoldDark }}>{label}</span>
-                  <strong style={{ color: '#3f2f08', textAlign: 'right' }}>{val}</strong>
+                  <span style={{ color: '#000000', fontWeight: 400 }}>{label}</span>
+                  <span style={{ color: '#000000', fontWeight: 400, textAlign: 'right' }}>{val}</span>
                 </div>
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, gap: 12 }}>
-                <span style={{ color: '#3f2f08', fontWeight: 800 }}>Total Expense</span>
+                <span style={{ color: '#000000', fontWeight: 400 }}>Total Expense</span>
                 <strong style={{ color: expenseGoldDark, fontSize: 15 }}>{formatPeso(computedExpense)}</strong>
               </div>
             </div>
