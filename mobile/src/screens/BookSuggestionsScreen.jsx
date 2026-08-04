@@ -154,6 +154,15 @@ function filterSlotResultFrom(result, minStartISO) {
   };
 }
 
+function buildPreferredSearchWindow(date, time) {
+  const preferredStart = buildClinicISO(date, time);
+  return {
+    preferredStart,
+    from: preferredStart,
+    to: buildClinicDayEndISO(date),
+  };
+}
+
 export default function BookSuggestionsScreen({ navigation, route }) {
   const {
     service,
@@ -304,18 +313,14 @@ export default function BookSuggestionsScreen({ navigation, route }) {
             return;
           }
 
-          const preferredStart = buildClinicISO(date, time);
-          const preferred = new Date(preferredStart);
-          const from = new Date(preferred);
-          const to = new Date(preferred);
-          to.setDate(preferred.getDate() + 14);
+          const preferredWindow = buildPreferredSearchWindow(date, time);
 
           const payload = {
             branch_id: branchId,
             service_id: serviceForRequest.id,
-            from: from.toISOString(),
-            to: to.toISOString(),
-            preferred_start: preferredStart,
+            from: preferredWindow.from,
+            to: preferredWindow.to,
+            preferred_start: preferredWindow.preferredStart,
             ...(selectedDentistId ? { dentist_id: Number(selectedDentistId) } : {}),
             limit: 8,
           };
@@ -331,7 +336,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
             setSelectedDentistId('');
             setNotice('The selected dentist could not be checked, so we showed all available dentists instead.');
           }
-          setData(filterSlotResultFrom(result, preferredStart));
+          setData(filterSlotResultFrom(result, preferredWindow.preferredStart));
           setSuggestionMode('preferred');
           setSelectedSlotBooked(Boolean(result.selected_slot_booked));
         } catch (err) {
@@ -430,31 +435,26 @@ export default function BookSuggestionsScreen({ navigation, route }) {
         return;
       }
 
-      const preferredStart = buildClinicISO(preferredDate, preferredTime);
+      const preferredWindow = buildPreferredSearchWindow(preferredDate, preferredTime);
       const serviceForRequest = await resolveServiceForSlots();
       if (!serviceForRequest?.id) {
         setError('Please choose the service again so we can find available slots.');
         return;
       }
 
-      const preferred = new Date(preferredStart);
-      const from = new Date(preferred);
-      const to = new Date(preferred);
-      to.setDate(preferred.getDate() + 14);
-
       const payload = {
         branch_id: branchId,
         service_id: serviceForRequest.id,
-        from: from.toISOString(),
-        to: to.toISOString(),
-        preferred_start: preferredStart,
+        from: preferredWindow.from,
+        to: preferredWindow.to,
+        preferred_start: preferredWindow.preferredStart,
         ...(selectedDentistId ? { dentist_id: Number(selectedDentistId) } : {}),
         limit: 8,
       };
 
       let result;
       try {
-        result = await requestSlotSuggestions(payload);
+        result = await requestSlotSuggestions(payload, { allowDentistFallback: false });
       } catch (err) {
         if (!payload.dentist_id) throw err;
         const retryPayload = { ...payload };
@@ -464,7 +464,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
         setNotice('The selected dentist could not be checked, so we showed all available dentists instead.');
       }
 
-      setData(filterSlotResultFrom(result, preferredStart));
+      setData(filterSlotResultFrom(result, preferredWindow.preferredStart));
       setSuggestionMode('preferred');
       setSelectedSlotBooked(Boolean(result.selected_slot_booked));
     } catch (err) {
@@ -543,7 +543,9 @@ export default function BookSuggestionsScreen({ navigation, route }) {
         ) : !data || displaySuggestions.length === 0 ? (
           <>
             <Text style={styles.empty}>
-              No available slots found in this range.{'\n'}Try a preferred date and time.
+              {suggestionMode === 'preferred'
+                ? `No available dentist on ${formatDateLabel(preferredDate)} at or after ${formatTimeLabel(preferredTime)}.\nTry an earlier time or another date.`
+                : 'No available slots found in this range.\nTry a preferred date and time.'}
             </Text>
 
             <TouchableOpacity
@@ -573,7 +575,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
             </Text>
             <Text style={styles.sectionSubtitle}>
               {suggestionMode === 'preferred'
-                ? 'If your exact date and time is free, it appears first.'
+                ? `Selected: ${formatDateLabel(preferredDate)} at ${formatTimeLabel(preferredTime)}. If the exact time is free, it appears first.`
                 : 'Within clinic hours, 10:00 AM to 7:00 PM.'}
             </Text>
 
@@ -1051,4 +1053,8 @@ function buildClinicISO(dateValue, timeValue) {
   const [year, month, day] = dateValue.split('-').map(Number);
   const [hour, minute] = timeValue.split(':').map(Number);
   return new Date(Date.UTC(year, month - 1, day, hour - 8, minute, 0, 0)).toISOString();
+}
+
+function buildClinicDayEndISO(dateValue) {
+  return buildClinicISO(addDaysToDateKey(dateValue, 1), '00:00');
 }

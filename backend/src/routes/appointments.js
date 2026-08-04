@@ -199,11 +199,12 @@ async function getAvailableRoundRobinDentists(conn, {
   branchId,
   serviceId,
   start,
+  treatmentEnd,
   blockedEnd,
   clinicDateKey,
 }) {
   const localStart = clinicLocalParts(start);
-  const localEnd = clinicLocalParts(blockedEnd);
+  const localTreatmentEnd = clinicLocalParts(treatmentEnd);
 
   const [rows] = await conn.query(
     `SELECT DISTINCT u.id, u.name
@@ -218,7 +219,7 @@ async function getAvailableRoundRobinDentists(conn, {
        AND dsch.start_time <= ?
        AND dsch.end_time >= ?
      ORDER BY u.id ASC`,
-    [serviceId, branchId, localStart.weekday, localStart.time, localEnd.time]
+    [serviceId, branchId, localStart.weekday, localStart.time, localTreatmentEnd.time]
   );
 
   const available = [];
@@ -248,6 +249,7 @@ async function assignRoundRobinDentist(conn, {
   branchId,
   serviceId,
   start,
+  treatmentEnd,
   blockedEnd,
   clinicDateKey,
 }) {
@@ -255,6 +257,7 @@ async function assignRoundRobinDentist(conn, {
     branchId,
     serviceId,
     start,
+    treatmentEnd,
     blockedEnd,
     clinicDateKey,
   });
@@ -286,6 +289,7 @@ async function validateExplicitDentistAssignment(conn, {
   branchId,
   serviceId,
   start,
+  treatmentEnd,
   blockedEnd,
   clinicDateKey,
 }) {
@@ -304,7 +308,7 @@ async function validateExplicitDentistAssignment(conn, {
   }
 
   const localStart = clinicLocalParts(start);
-  const localEnd = clinicLocalParts(blockedEnd);
+  const localTreatmentEnd = clinicLocalParts(treatmentEnd);
   const [scheduleRows] = await conn.query(
     `SELECT 1
      FROM dentist_schedules dsch
@@ -314,7 +318,7 @@ async function validateExplicitDentistAssignment(conn, {
        AND dsch.start_time <= ?
        AND dsch.end_time >= ?
      LIMIT 1`,
-    [dentistId, branchId, localStart.weekday, localStart.time, localEnd.time]
+    [dentistId, branchId, localStart.weekday, localStart.time, localTreatmentEnd.time]
   );
   if (scheduleRows.length === 0) {
     throw httpError(409, 'This dentist is not scheduled at this branch for the selected time.');
@@ -1003,6 +1007,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     }
 
     const serviceBufferMin = normalizeBufferMinutes(service.time_buffer_min);
+    const treatmentEnd = addMinutes(start, service.duration_min);
     const blockedEnd = addMinutes(start, service.duration_min + serviceBufferMin);
 
     // Block conflicts with website-submitted (online) holds for the same branch + time window
@@ -1055,6 +1060,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
         branchId: effectiveBranchId,
         serviceId: Number(service_id),
         start,
+        treatmentEnd,
         blockedEnd,
         clinicDateKey,
       });
@@ -1064,6 +1070,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
         branchId: effectiveBranchId,
         serviceId: Number(service_id),
         start,
+        treatmentEnd,
         blockedEnd,
         clinicDateKey,
       });

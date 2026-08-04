@@ -307,19 +307,20 @@ async function addScheduleCandidates({
     notBefore: candidateWorkStart,
     workStart,
     workEnd,
-    durationMin: service.duration_min + serviceBufferMin,
+    durationMin: service.duration_min,
   });
 
   for (const slot of candidates) {
     if (slot.start <= new Date()) continue;
+    const blockedEnd = addMinutes(slot.start, service.duration_min + serviceBufferMin);
 
     const branchConflict = branchBusyIntervals.some((b) =>
-      rangesOverlap(slot.start, slot.end, b.start, b.end)
+      rangesOverlap(slot.start, blockedEnd, b.start, b.end)
     );
     if (branchConflict) continue;
 
     const conflict = existing.some((e) =>
-      rangesOverlap(slot.start, slot.end, e.start, e.end)
+      rangesOverlap(slot.start, blockedEnd, e.start, e.end)
     );
     if (conflict) continue;
 
