@@ -642,13 +642,6 @@ export default function AboutSection({
       </div>
 
       <div style={styles.websiteFieldsGrid}>
-        <div>{fieldRow("Makati Landmark", "makati_branch_landmark")}</div>
-        <div style={styles.websiteFields}>
-          {textDesignFields("makati_branch_landmark", "Makati Landmark")}
-        </div>
-      </div>
-
-      <div style={styles.websiteFieldsGrid}>
         <div>{fieldRow("Makati Hours", "makati_branch_hours")}</div>
         <div style={styles.websiteFields}>
           {textDesignFields("makati_branch_hours", "Makati Hours")}
@@ -693,23 +686,9 @@ export default function AboutSection({
       </div>
 
       <div style={styles.websiteFieldsGrid}>
-        <div>{fieldRow("Las Piñas Branch Landmark", "las_pinas_branch_landmark")}</div>
-        <div style={styles.websiteFields}>
-          {textDesignFields("las_pinas_branch_landmark", "Las Piñas Branch Landmark")}
-        </div>
-      </div>
-
-      <div style={styles.websiteFieldsGrid}>
         <div>{fieldRow("Las Piñas Branch Hours", "las_pinas_branch_hours")}</div>
         <div style={styles.websiteFields}>
           {textDesignFields("las_pinas_branch_hours", "Las Piñas Branch Hours")}
-        </div>
-      </div>
-
-      <div style={styles.websiteFieldsGrid}>
-        <div>{fieldRow("Las Piñas Branch Schedule", "las_pinas_branch_schedule")}</div>
-        <div style={styles.websiteFields}>
-          {textDesignFields("las_pinas_branch_schedule", "Las Piñas Branch Schedule")}
         </div>
       </div>
 
@@ -780,6 +759,8 @@ export default function AboutSection({
             "map_section_",
             "footer_",
           ]),
+
+          
           [
             "about_hero_tag", "about_hero_tag_font_family", "about_hero_tag_font_size", "about_hero_tag_font_weight", "about_hero_tag_font_style", "about_hero_tag_text_color", "about_hero_tag_text_alignment",
             "about_hero_title", "about_hero_title_font_family", "about_hero_title_font_size", "about_hero_title_font_weight", "about_hero_title_font_style", "about_hero_title_text_color", "about_hero_title_text_alignment",
@@ -810,14 +791,12 @@ export default function AboutSection({
             "makati_branch_name", "makati_branch_name_font_family", "makati_branch_name_font_size", "makati_branch_name_font_weight", "makati_branch_name_font_style", "makati_branch_name_text_color", "makati_branch_name_text_alignment",
             "makati_branch_status", "makati_branch_status_font_family", "makati_branch_status_font_size", "makati_branch_status_font_weight", "makati_branch_status_font_style", "makati_branch_status_text_color", "makati_branch_status_text_alignment",
             "makati_branch_address", "makati_branch_address_font_family", "makati_branch_address_font_size", "makati_branch_address_font_weight", "makati_branch_address_font_style", "makati_branch_address_text_color", "makati_branch_address_text_alignment",
-            "makati_branch_landmark", "makati_branch_landmark_font_family", "makati_branch_landmark_font_size", "makati_branch_landmark_font_weight", "makati_branch_landmark_font_style", "makati_branch_landmark_text_color", "makati_branch_landmark_text_alignment",
             "makati_branch_hours", "makati_branch_hours_font_family", "makati_branch_hours_font_size", "makati_branch_hours_font_weight", "makati_branch_hours_font_style", "makati_branch_hours_text_color", "makati_branch_hours_text_alignment",
             "makati_branch_schedule", "makati_branch_schedule_font_family", "makati_branch_schedule_font_size", "makati_branch_schedule_font_weight", "makati_branch_schedule_font_style", "makati_branch_schedule_text_color", "makati_branch_schedule_text_alignment",
             "makati_branch_map_button", "makati_branch_map_button_font_family", "makati_branch_map_button_font_size", "makati_branch_map_button_font_weight", "makati_branch_map_button_font_style", "makati_branch_map_button_text_color", "makati_branch_map_button_text_alignment",
             "las_pinas_branch_name", "las_pinas_branch_name_font_family", "las_pinas_branch_name_font_size", "las_pinas_branch_name_font_weight", "las_pinas_branch_name_font_style", "las_pinas_branch_name_text_color", "las_pinas_branch_name_text_alignment",
             "las_pinas_branch_status", "las_pinas_branch_status_font_family", "las_pinas_branch_status_font_size", "las_pinas_branch_status_font_weight", "las_pinas_branch_status_font_style", "las_pinas_branch_status_text_color", "las_pinas_branch_status_text_alignment",
             "las_pinas_branch_address", "las_pinas_branch_address_font_family", "las_pinas_branch_address_font_size", "las_pinas_branch_address_font_weight", "las_pinas_branch_address_font_style", "las_pinas_branch_address_text_color", "las_pinas_branch_address_text_alignment",
-            "las_pinas_branch_landmark", "las_pinas_branch_landmark_font_family", "las_pinas_branch_landmark_font_size", "las_pinas_branch_landmark_font_weight", "las_pinas_branch_landmark_font_style", "las_pinas_branch_landmark_text_color", "las_pinas_branch_landmark_text_alignment",
             "las_pinas_branch_hours", "las_pinas_branch_hours_font_family", "las_pinas_branch_hours_font_size", "las_pinas_branch_hours_font_weight", "las_pinas_branch_hours_font_style", "las_pinas_branch_hours_text_color", "las_pinas_branch_hours_text_alignment",
             "las_pinas_branch_schedule", "las_pinas_branch_schedule_font_family", "las_pinas_branch_schedule_font_size", "las_pinas_branch_schedule_font_weight", "las_pinas_branch_schedule_font_style", "las_pinas_branch_schedule_text_color", "las_pinas_branch_schedule_text_alignment",
             "las_pinas_branch_map_button", "las_pinas_branch_map_button_font_family", "las_pinas_branch_map_button_font_size", "las_pinas_branch_map_button_font_weight", "las_pinas_branch_map_button_font_style", "las_pinas_branch_map_button_text_color", "las_pinas_branch_map_button_text_alignment",
