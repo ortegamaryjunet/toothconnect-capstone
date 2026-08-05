@@ -183,18 +183,6 @@ async function loadAboutPageContent() {
 
         setText("branchSectionTitle", content.branch_section_title);
         applyTextStyle("branchSectionTitle", content, "branch_section_title");
-        const title = document.getElementById("branchSectionTitle");
-
-console.log("Inline style:", title.style.cssText);
-
-console.log("Computed style:", {
-    family: getComputedStyle(title).fontFamily,
-    size: getComputedStyle(title).fontSize,
-    weight: getComputedStyle(title).fontWeight,
-    color: getComputedStyle(title).color,
-    align: getComputedStyle(title).textAlign,
-});
-        applyTextStyle("branchSectionTitle", content, "branch_section_title");
 
         setText("makatiBranchName", content.makati_branch_name);
         applyTextStyle("makatiBranchName", content, "makati_branch_name");
@@ -204,9 +192,6 @@ console.log("Computed style:", {
 
         setText("makatiBranchAddress", content.makati_branch_address);
         applyTextStyle("makatiBranchAddress", content, "makati_branch_address");
-
-        setText("makatiBranchLandmark", content.makati_branch_landmark);
-        applyTextStyle("makatiBranchLandmark", content, "makati_branch_landmark");
 
         setText("makatiBranchHours", content.makati_branch_hours);
         applyTextStyle("makatiBranchHours", content, "makati_branch_hours");
@@ -219,9 +204,11 @@ console.log("Computed style:", {
 
         setText("makatiMapBranchName", content.makati_branch_name);
         applyTextStyle("makatiMapBranchName", content, "makati_branch_name");
+        document.getElementById("makatiMapBranchName").style.color = "#222";
 
         setText("makatiMapBranchAddress", content.makati_branch_address);
         applyTextStyle("makatiMapBranchAddress", content, "makati_branch_address");
+        document.getElementById("makatiMapBranchAddress").style.color = "#666";
 
         setIframe("makatiBranchMap", getMapUrl(content.makati_branch_address));
 
@@ -234,23 +221,19 @@ console.log("Computed style:", {
         setText("lasPinasBranchAddress", content.las_pinas_branch_address);
         applyTextStyle("lasPinasBranchAddress", content, "las_pinas_branch_address");
 
-        setText("lasPinasBranchLandmark", content.las_pinas_branch_landmark);
-        applyTextStyle("lasPinasBranchLandmark", content, "las_pinas_branch_landmark");
-
         setText("lasPinasBranchHours", content.las_pinas_branch_hours);
         applyTextStyle("lasPinasBranchHours", content, "las_pinas_branch_hours");
-
-        setText("lasPinasBranchSchedule", content.las_pinas_branch_schedule);
-        applyTextStyle("lasPinasBranchSchedule", content, "las_pinas_branch_schedule");
 
         setLink("lasPinasBranchMapButton", content.las_pinas_branch_map_button, "#laspinas-map");
         applyTextStyle("lasPinasBranchMapButton", content, "las_pinas_branch_map_button");
 
         setText("lasPinasMapBranchName", content.las_pinas_branch_name);
         applyTextStyle("lasPinasMapBranchName", content, "las_pinas_branch_name");
+        document.getElementById("lasPinasMapBranchName").style.color = "#222";
 
         setText("lasPinasMapBranchAddress", content.las_pinas_branch_address);
         applyTextStyle("lasPinasMapBranchAddress", content, "las_pinas_branch_address");
+        document.getElementById("lasPinasMapBranchAddress").style.color = "#666";
 
         setIframe("lasPinasBranchMap", getMapUrl(content.las_pinas_branch_address));
 
@@ -376,60 +359,145 @@ function applyTextStyle(id, content, prefix) {
         element.style.color = textColor;
     }
 
-    if (textAlignment) {
+    if (!textAlignment) {
+        return;
+    }
+
+    element.style.textAlign = textAlignment;
+
+    const sectionTitle = element.closest(".section-title");
+    const branchHeader = element.closest(".branch-header");
+    const ownerContent = element.closest(".owner-content");
+    const teamInfo = element.closest(".team-info");
+    const branchTop = element.closest(".branch-top");
+    const branchDetails = element.closest(".branch-details");
+    const mapHeader = element.closest(".map-header");
+
+    // Section titles
+    if (sectionTitle || branchHeader) {
+        const container = sectionTitle || branchHeader;
+
+        container.style.textAlign = textAlignment;
+
+        if (textAlignment === "left") {
+            container.style.margin = "0 0 50px";
+        } else if (textAlignment === "right") {
+            container.style.margin = "0 0 50px auto";
+        } else {
+            container.style.margin = "0 auto 50px";
+        }
+    }
+
+    // Owner section
+    if (ownerContent) {
+        ownerContent.style.textAlign = textAlignment;
         element.style.textAlign = textAlignment;
 
-        const parent = element.parentElement;
+        if (
+            id === "ownerMessage1" ||
+            id === "ownerMessage2" ||
+            id === "ownerName" ||
+            id === "ownerPosition"
+        ) {
+            element.style.width = "100%";
+        }
 
-        if (parent) {
-            // Section headers (Who We Are, Team, Map)
-            if (
-                parent.classList.contains("section-title") ||
-                parent.classList.contains("branch-header")
-            ) {
-                parent.style.textAlign = textAlignment;
+        if (id === "ownerLabel") {
+            element.style.width = "fit-content";
 
-                if (textAlignment === "left") {
-                    parent.style.margin = "0 0 50px";
-                } else if (textAlignment === "right") {
-                    parent.style.margin = "0 0 50px auto";
-                } else {
-                    parent.style.margin = "0 auto 50px";
-                }
-            }
-
-            // Owner section
-            if (parent.classList.contains("owner-content")) {
-                parent.style.textAlign = textAlignment;
-
-                if (textAlignment === "left") {
-                    parent.style.alignItems = "flex-start";
-                } else if (textAlignment === "right") {
-                    parent.style.alignItems = "flex-end";
-                } else {
-                    parent.style.alignItems = "center";
-                }
-            }
-
-            // Team cards
-            if (parent.classList.contains("team-info")) {
-                parent.style.textAlign = textAlignment;
-            }
-
-            // Branch card header
-            if (parent.classList.contains("branch-top")) {
-                parent.style.textAlign = textAlignment;
-            }
-
-            // Branch details
-            if (parent.classList.contains("branch-details")) {
-                parent.style.textAlign = textAlignment;
-            }
-
-            // Map card header
-            if (parent.classList.contains("map-header")) {
-                parent.style.textAlign = textAlignment;
+            if (textAlignment === "left") {
+                element.style.marginLeft = "0";
+                element.style.marginRight = "auto";
+            } else if (textAlignment === "center") {
+                element.style.marginLeft = "auto";
+                element.style.marginRight = "auto";
+            } else {
+                element.style.marginLeft = "auto";
+                element.style.marginRight = "0";
             }
         }
+
+
+        // Ito ang kulang
+        if (element.classList.contains("owner-label")) {
+            switch (textAlignment) {
+                case "left":
+                    element.style.alignSelf = "flex-start";
+                    break;
+
+                case "center":
+                    element.style.alignSelf = "center";
+                    break;
+
+                case "right":
+                    element.style.alignSelf = "flex-end";
+                    break;
+            }
+        }
+    }
+
+    // Team cards
+    if (teamInfo) {
+        teamInfo.style.textAlign = textAlignment;
+    }
+
+    // Branch header
+    if (branchTop) {
+        const textContainer = element.parentElement;
+
+        if (textContainer) {
+            textContainer.style.width = "100%";
+            textContainer.style.textAlign = textAlignment;
+        }
+
+        element.style.width = "100%";
+        element.style.textAlign = textAlignment;
+    }
+
+    // Branch details
+    if (branchDetails) {
+        branchDetails.querySelectorAll("div").forEach((row) => {
+            const icon = row.querySelector("i");
+            const text = row.querySelector("p");
+
+            row.style.display = "flex";
+            row.style.alignItems = "flex-start";
+            row.style.gap = "14px";
+
+            if (text) {
+                text.style.width = "100%";
+                text.style.textAlign = textAlignment;
+            }
+
+            switch (textAlignment) {
+                case "left":
+                    row.style.justifyContent = "flex-start";
+                    if (icon) icon.style.order = "0";
+                    if (text) text.style.order = "1";
+                    break;
+
+                case "center":
+                    row.style.justifyContent = "center";
+                    if (icon) icon.style.order = "0";
+                    if (text) text.style.order = "1";
+                    break;
+
+                case "right":
+                    row.style.justifyContent = "flex-end";
+                    if (icon) icon.style.order = "1";
+                    if (text) text.style.order = "0";
+                    break;
+            }
+        });
+    }
+
+    // Map header
+    if (mapHeader) {
+        mapHeader.style.textAlign = textAlignment;
+
+        mapHeader.querySelectorAll("h3, p").forEach((item) => {
+            item.style.width = "100%";
+            item.style.textAlign = textAlignment;
+        });
     }
 }
