@@ -1,20 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  getCountries,
-  getCountryCallingCode,
-  parsePhoneNumberFromString,
-} from 'libphonenumber-js';
+import { getCountries, getCountryCallingCode, parsePhoneNumberFromString, } from 'libphonenumber-js';
 
 import api from '../api/axios';
-import {
-  getManageServiceKit,
-  saveManageServiceKit,
-  listSupplies,
-  listMedicines,
-  listEquipment,
-  listServiceKitHistory,
-} from '../api/inventory';
+import { getManageServiceKit, saveManageServiceKit, listSupplies, listMedicines, listEquipment, listServiceKitHistory, } from '../api/inventory';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import AdminProfileMenu from '../components/AdminProfileMenu';
 import createAdminSettingsStyles from '../styles/AdminSettings';
@@ -344,6 +333,7 @@ export default function AdminSettings() {
     { value: "12px", label: "12px" },
     { value: "13px", label: "13px" },
     { value: "14px", label: "14px" },
+    { value: "15px", label: "15px" },
     { value: "16px", label: "16px" },
     { value: "18px", label: "18px" },
     { value: "20px", label: "20px" },
@@ -353,8 +343,12 @@ export default function AdminSettings() {
     { value: "26px", label: "26px" },
     { value: "28px", label: "28px" },
     { value: "32px", label: "32px" },
+    { value: "34px", label: "34px" },
     { value: "36px", label: "36px" },
+    { value: "38px", label: "38px" },
     { value: "42px", label: "42px" },
+    { value: "44px", label: "44px" },
+    { value: "46px", label: "46px" },
     { value: "48px", label: "48px" },
     { value: "56px", label: "56px" },
     { value: "64px", label: "64px" },
@@ -1368,7 +1362,11 @@ export default function AdminSettings() {
   }
 
   async function saveWebsiteContent(sectionFields, requiredKeys = []) {
+    console.log("websiteContentForm:", websiteContentForm);
+    console.log("sectionFields:", sectionFields);
+    console.log("Saving fields:", sectionFields);
     console.log(sectionFields);
+
     if (!validateWebsiteFields(sectionFields, requiredKeys)) {
       return;
     }
@@ -3567,13 +3565,13 @@ export default function AdminSettings() {
       fontFamily: 'Arial, sans-serif',
     });
 
-    const collectFieldsByPrefixes = (prefixes) => {
+  const collectFieldsByPrefixes = (prefixes) => {
       return Object.fromEntries(
-        Object.entries(websiteContentForm).filter(([key]) =>
-          prefixes.some((prefix) => key.startsWith(prefix))
-        )
+          Object.entries(websiteContentForm).filter(([key]) =>
+              prefixes.some((prefix) => key.startsWith(prefix))
+          )
       );
-    };
+  };
 
 const contentEditActions = (
   sectionFields,
@@ -3598,9 +3596,7 @@ const contentEditActions = (
         }
       }}
     >
-      {websiteContentSaving
-        ? "Saving..."
-        : "Save Content"}
+      {websiteContentSaving ? "Saving..." : "Save Content"}
     </button>
 
     <button
