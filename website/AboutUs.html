@@ -143,69 +143,80 @@
     </div>
 
     <div class="branches-grid">
+
+        <!-- Makati -->
         <div class="branch-box">
             <div class="branch-top">
                 <div class="branch-icon">
                     <i class="fa-solid fa-building"></i>
                 </div>
 
-                <div>
+                <div class="branch-text">
                     <h3 id="makatiBranchName"></h3>
                     <p id="makatiBranchStatus"></p>
                 </div>
             </div>
 
             <div class="branch-details">
-                <div>
+
+                <div class="branch-detail-row">
                     <i class="fa-solid fa-location-dot"></i>
                     <p id="makatiBranchAddress"></p>
                 </div>
 
-                <div>
-                    <i class="fa-solid fa-building"></i>
-                    <p id="makatiBranchLandmark"></p>
-                </div>
-
-                <div>
+                <div class="branch-detail-row">
                     <i class="fa-solid fa-clock"></i>
                     <p id="makatiBranchHours"></p>
                 </div>
 
-                <div>
+                <div class="branch-detail-row">
                     <i class="fa-solid fa-calendar-check"></i>
                     <p id="makatiBranchSchedule"></p>
                 </div>
+
             </div>
 
-            <a id="makatiBranchMapButton" href="#makati-map" class="branch-btn"></a>
+            <a
+                id="makatiBranchMapButton"
+                class="branch-btn"
+                href="#makati-map">
+            </a>
         </div>
 
+        <!-- Las Piñas -->
         <div class="branch-box">
             <div class="branch-top">
                 <div class="branch-icon">
                     <i class="fa-solid fa-hospital"></i>
                 </div>
 
-                <div>
+                <div class="branch-text">
                     <h3 id="lasPinasBranchName"></h3>
                     <p id="lasPinasBranchStatus"></p>
                 </div>
             </div>
 
             <div class="branch-details">
-                <div>
+
+                <div class="branch-detail-row">
                     <i class="fa-solid fa-location-dot"></i>
                     <p id="lasPinasBranchAddress"></p>
                 </div>
 
-                <div>
+                <div class="branch-detail-row">
                     <i class="fa-solid fa-clock"></i>
                     <p id="lasPinasBranchHours"></p>
                 </div>
+
             </div>
 
-            <a id="lasPinasBranchMapButton" href="#laspinas-map" class="branch-btn"></a>
+            <a
+                id="lasPinasBranchMapButton"
+                class="branch-btn"
+                href="#laspinas-map">
+            </a>
         </div>
+
     </div>
 </section>
 
@@ -217,25 +228,45 @@
     </div>
 
     <div class="map-grid">
+
+        <!-- Makati -->
         <div class="map-card" id="makati-map">
+
             <div class="map-header">
-                <h3 id="makatiMapBranchName"></h3>
-                <p id="makatiMapBranchAddress"></p>
+                <div class="map-text">
+                    <h3 id="makatiMapBranchName"></h3>
+                    <p id="makatiMapBranchAddress"></p>
+                </div>
             </div>
 
             <div class="map-wrapper">
-                <iframe id="makatiBranchMap" src="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                <iframe
+                    id="makatiBranchMap"
+                    src=""
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
             </div>
+
         </div>
 
+        <!-- Las Piñas -->
         <div class="map-card" id="laspinas-map">
+
             <div class="map-header">
-                <h3 id="lasPinasBranchName"></h3>
-                <p id="lasPinasBranchAddress"></p>
+                <div class="map-text">
+                    <h3 id="lasPinasMapBranchName"></h3>
+                    <p id="lasPinasMapBranchAddress"></p>
+                </div>
             </div>
 
             <div class="map-wrapper">
-                <iframe id="lasPinasBranchMap" src="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                <iframe
+                    id="lasPinasBranchMap"
+                    src=""
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
             </div>
         </div>
     </div>
