@@ -1,18 +1,15 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import api, { setAccessToken, setOnAuthChange } from '../api/axios';
 
 const AuthContext = createContext(null);
+const WEB_INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const inactivityTimerRef = useRef(null);
 
-  useEffect(() => {
-    setOnAuthChange(setUser);
-    bootstrap();
-  }, []);
-
-  async function bootstrap() {
+  const bootstrap = useCallback(async () => {
     try {
       const refreshRes = await api.post('/auth/refresh', { platform: 'web' });
       setAccessToken(refreshRes.data.accessToken);
@@ -27,12 +24,21 @@ export function AuthProvider({ children }) {
         branches: meRes.data.branches,
         must_change_password: meRes.data.must_change_password,
       });
-    } catch (err) {
+    } catch {
+      setAccessToken(null);
       setUser(null);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    setOnAuthChange(setUser);
+    const timeout = window.setTimeout(() => {
+      bootstrap();
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [bootstrap]);
 
   async function login(email, password) {
     const res = await api.post('/auth/login', { email, password, platform: 'web' });
@@ -41,15 +47,50 @@ export function AuthProvider({ children }) {
     return res.data.user;
   }
 
-  async function logout() {
+  const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout', { platform: 'web' });
-    } catch (err) {
+    } catch {
       // even if backend logout fails, clear local state
     }
     setAccessToken(null);
     setUser(null);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      if (inactivityTimerRef.current) {
+        window.clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      return undefined;
+    }
+
+    function resetInactivityTimer() {
+      if (inactivityTimerRef.current) {
+        window.clearTimeout(inactivityTimerRef.current);
+      }
+      inactivityTimerRef.current = window.setTimeout(() => {
+        logout();
+      }, WEB_INACTIVITY_TIMEOUT_MS);
+    }
+
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'focus'];
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+    });
+    resetInactivityTimer();
+
+    return () => {
+      if (inactivityTimerRef.current) {
+        window.clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, resetInactivityTimer);
+      });
+    };
+  }, [logout, user]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>

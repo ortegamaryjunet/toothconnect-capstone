@@ -5,6 +5,7 @@ import createLoginStyles from '../styles/Login.js';
 import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 const styles = createLoginStyles({ isMobile: window.innerWidth < 520 });
+const LOGIN_LOCKOUT_STORAGE_KEY = 'loginLockout';
 
 function sanitizeLoginEmail(value) {
   return String(value || '').replace(/[^a-zA-Z0-9@.-]/g, '');
@@ -30,6 +31,9 @@ export default function Login() {
   const [forgotPasswordCooldownRemaining, setForgotPasswordCooldownRemaining] = useState(0);
   const [adminRegisterCooldownUntil, setAdminRegisterCooldownUntil] = useState(null);
   const [adminRegisterCooldownRemaining, setAdminRegisterCooldownRemaining] = useState(0);
+  const [loginLockoutUntil, setLoginLockoutUntil] = useState(null);
+  const [loginLockoutRemaining, setLoginLockoutRemaining] = useState(0);
+  const [loginLockoutEmail, setLoginLockoutEmail] = useState('');
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
 
@@ -41,6 +45,26 @@ export default function Login() {
   useEffect(() => {
     if (prefillEmail) {
       setEmail(prefillEmail);
+    }
+  }, [prefillEmail]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(LOGIN_LOCKOUT_STORAGE_KEY) || 'null');
+      const storedUntil = Number(stored?.until || 0);
+      const storedEmail = String(stored?.email || '').trim().toLowerCase();
+      if (storedUntil > Date.now()) {
+        setLoginLockoutUntil(storedUntil);
+        setLoginLockoutEmail(storedEmail);
+        if (storedEmail && !prefillEmail) {
+          setEmail(storedEmail);
+        }
+        setError(stored?.message || 'Too many login attempts, please try again after 15 mins.');
+      } else {
+        window.localStorage.removeItem(LOGIN_LOCKOUT_STORAGE_KEY);
+      }
+    } catch {
+      window.localStorage.removeItem(LOGIN_LOCKOUT_STORAGE_KEY);
     }
   }, [prefillEmail]);
 
@@ -158,8 +182,41 @@ export default function Login() {
     return () => clearInterval(interval);
   }, [adminRegisterCooldownUntil]);
 
+  useEffect(() => {
+    if (!loginLockoutUntil) {
+      setLoginLockoutRemaining(0);
+      return undefined;
+    }
+
+    function syncLockout() {
+      const remaining = Math.max(0, Math.ceil((loginLockoutUntil - Date.now()) / 1000));
+      setLoginLockoutRemaining(remaining);
+      if (remaining <= 0) {
+        setLoginLockoutUntil(null);
+        setLoginLockoutEmail('');
+        setError('');
+        try {
+          window.localStorage.removeItem(LOGIN_LOCKOUT_STORAGE_KEY);
+        } catch {
+          // Ignore storage errors; backend still enforces lockout.
+        }
+      }
+    }
+
+    syncLockout();
+    const interval = setInterval(syncLockout, 1000);
+    return () => clearInterval(interval);
+  }, [loginLockoutUntil]);
+
   const visibleEmailError = (touched.email || submittedOnce) ? fieldErrors.email : '';
   const visiblePasswordError = (touched.password || submittedOnce) ? fieldErrors.password : '';
+  const isCurrentEmailLocked =
+    Boolean(loginLockoutUntil) &&
+    loginLockoutUntil > Date.now() &&
+    loginLockoutEmail === String(email || '').trim().toLowerCase();
+  const loginLockoutDisplayRemaining = isCurrentEmailLocked
+    ? Math.max(loginLockoutRemaining, Math.ceil((loginLockoutUntil - Date.now()) / 1000))
+    : 0;
   const passwordInputStyle = {
     ...styles.input,
     ...(visiblePasswordError ? styles.inputError : {}),
@@ -274,6 +331,7 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (isCurrentEmailLocked) return;
     setError('');
     setSubmittedOnce(true);
 
@@ -295,7 +353,27 @@ export default function Login() {
       const user = await login(email.trim(), password);
       navigate(roleHomePath(user.role), { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      const responseMessage = err.response?.data?.message || 'Login failed';
+      if (err.response?.data?.locked) {
+        const lockoutUntil = err.response?.data?.lockout_until
+          ? new Date(err.response.data.lockout_until).getTime()
+          : Date.now() + 15 * 60 * 1000;
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        if (Number.isFinite(lockoutUntil) && lockoutUntil > Date.now()) {
+          setLoginLockoutUntil(lockoutUntil);
+          setLoginLockoutEmail(normalizedEmail);
+          try {
+            window.localStorage.setItem(LOGIN_LOCKOUT_STORAGE_KEY, JSON.stringify({
+              email: normalizedEmail,
+              until: lockoutUntil,
+              message: responseMessage,
+            }));
+          } catch {
+            // Ignore storage errors; backend still enforces lockout.
+          }
+        }
+      }
+      setError(responseMessage);
     } finally {
       setSubmitting(false);
     }
@@ -428,10 +506,14 @@ export default function Login() {
 
         <button
           type="submit"
-          disabled={submitting}
-          style={{ ...styles.button, ...(submitting ? styles.buttonDisabled : {}) }}
+          disabled={submitting || isCurrentEmailLocked}
+          style={{ ...styles.button, ...((submitting || isCurrentEmailLocked) ? styles.buttonDisabled : {}) }}
         >
-          {submitting ? 'Signing in...' : 'Sign in'}
+          {submitting
+            ? 'Signing in...'
+            : isCurrentEmailLocked
+              ? `Try again in ${formatCooldown(loginLockoutDisplayRemaining)}`
+              : 'Sign in'}
         </button>
 
         <p style={styles.note}>

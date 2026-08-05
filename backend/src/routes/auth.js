@@ -48,6 +48,14 @@ const RESET_PASSWORD_COOLDOWN_MINUTES = 10;
 const ADMIN_REGISTER_MAX_OTP_ATTEMPTS = 3;
 const ADMIN_REGISTER_MAX_RESENDS = 3;
 const ADMIN_REGISTER_COOLDOWN_MINUTES = 10;
+const LOGIN_MAX_FAILED_ATTEMPTS = 3;
+const LOGIN_DEFAULT_LOCKOUT_MINUTES = 15;
+const LOGIN_LOCKOUT_INCREMENT_MINUTES = 5;
+
+function loginLockoutMessage(minutes) {
+  const safeMinutes = Math.max(1, Number(minutes || LOGIN_DEFAULT_LOCKOUT_MINUTES));
+  return `Too many login attempts, please try again after ${safeMinutes} mins.`;
+}
 
 function resetPasswordCooldownMessage() {
   return 'Too many failed attempts. Please wait 10 minutes before trying to reset your password again.';
@@ -1431,7 +1439,8 @@ router.post('/login', async (req, res) => {
     const [users] = await pool.query(
       `SELECT u.id, u.role, u.name, u.email, u.password_hash, u.status,
               u.must_change_password, u.email_verified, u.home_branch_id,
-              u.created_at, b.address AS home_branch_address
+              u.created_at, u.failed_login_attempts, u.login_lockout_until,
+              u.login_lockout_duration_min, b.address AS home_branch_address
        FROM users u
        LEFT JOIN branches b ON b.id = u.home_branch_id
        WHERE u.email = ?`,
@@ -1441,6 +1450,15 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Incorrect email or password.' });
     }
     const user = users[0];
+    const lockedUntil = user.login_lockout_until ? new Date(user.login_lockout_until) : null;
+    if (lockedUntil && lockedUntil.getTime() > Date.now()) {
+      const remainingMinutes = Math.max(1, Math.ceil((lockedUntil.getTime() - Date.now()) / 60000));
+      return res.status(423).json({
+        message: loginLockoutMessage(remainingMinutes),
+        locked: true,
+        lockout_until: lockedUntil,
+      });
+    }
 
     if (platform === 'mobile' && user.role !== 'patient') {
       return res.status(403).json({ message: 'Staff log in via the web app' });
@@ -1456,6 +1474,39 @@ router.post('/login', async (req, res) => {
         `INSERT INTO audit_logs (user_id, action, device_browser, log_status) VALUES (?, 'login_failed', ?, 'failed')`,
         [user.id, deviceBrowser]
       ).catch(() => {});
+      const nextAttempts = Number(user.failed_login_attempts || 0) + 1;
+      if (nextAttempts >= LOGIN_MAX_FAILED_ATTEMPTS) {
+        const lockoutMinutes = Math.max(
+          LOGIN_DEFAULT_LOCKOUT_MINUTES,
+          Number(user.login_lockout_duration_min || LOGIN_DEFAULT_LOCKOUT_MINUTES)
+        );
+        const lockedUntilNext = new Date(Date.now() + lockoutMinutes * 60 * 1000);
+        await pool.query(
+          `UPDATE users
+           SET failed_login_attempts = ?,
+               login_lockout_until = ?,
+               login_lockout_duration_min = ?
+           WHERE id = ?`,
+          [
+            nextAttempts,
+            toMySQLDateTime(lockedUntilNext),
+            lockoutMinutes + LOGIN_LOCKOUT_INCREMENT_MINUTES,
+            user.id,
+          ]
+        );
+        return res.status(423).json({
+          message: loginLockoutMessage(lockoutMinutes),
+          locked: true,
+          lockout_until: lockedUntilNext,
+        });
+      }
+      await pool.query(
+        `UPDATE users
+         SET failed_login_attempts = ?,
+             login_lockout_until = NULL
+         WHERE id = ?`,
+        [nextAttempts, user.id]
+      );
       return res.status(401).json({ message: 'Incorrect email or password.' });
     }
 
@@ -1466,6 +1517,15 @@ router.post('/login', async (req, res) => {
     if (user.role === 'patient' && !user.email_verified) {
       return res.status(403).json({ message: 'Email not verified. Please complete registration.' });
     }
+
+    await pool.query(
+      `UPDATE users
+       SET failed_login_attempts = 0,
+           login_lockout_until = NULL,
+           login_lockout_duration_min = ?
+       WHERE id = ?`,
+      [LOGIN_DEFAULT_LOCKOUT_MINUTES, user.id]
+    );
 
     const userAgent = req.headers['user-agent'];
     const { accessToken, refreshToken, branches } = await issueTokens(user, platform, userAgent);
