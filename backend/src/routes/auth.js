@@ -1711,45 +1711,6 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(404).json({ message: 'Email does not exist' });
     }
 
-    const [cooldowns] = await pool.query(
-      `SELECT
-         TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(consumed_at, INTERVAL ? MINUTE)) AS retry_after_seconds,
-         DATE_ADD(consumed_at, INTERVAL ? MINUTE) AS cooldown_until
-       FROM otp_codes
-       WHERE LOWER(email) = ?
-         AND purpose = 'reset_password'
-         AND attempts >= ?
-         AND consumed_at IS NOT NULL
-         AND consumed_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
-         AND (
-           SELECT COUNT(*)
-           FROM otp_codes req
-           WHERE LOWER(req.email) = LOWER(otp_codes.email)
-             AND req.purpose = 'reset_password'
-             AND req.created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
-         ) >= ?
-       ORDER BY consumed_at DESC
-       LIMIT 1`,
-      [
-        RESET_PASSWORD_COOLDOWN_MINUTES,
-        RESET_PASSWORD_COOLDOWN_MINUTES,
-        normalizedEmail,
-        RESET_PASSWORD_MAX_OTP_ATTEMPTS,
-        RESET_PASSWORD_COOLDOWN_MINUTES,
-        RESET_PASSWORD_COOLDOWN_MINUTES,
-        RESET_PASSWORD_MAX_RESENDS + 1,
-      ]
-    );
-
-    if (cooldowns.length > 0) {
-      const retryAfterSeconds = Math.max(0, Number(cooldowns[0].retry_after_seconds || 0));
-      return res.status(429).json({
-        message: resetPasswordCooldownMessage(),
-        retry_after_seconds: retryAfterSeconds,
-        cooldown_until: cooldowns[0].cooldown_until,
-      });
-    }
-
     const [recentRequests] = await pool.query(
       `SELECT COUNT(*) AS request_count
        FROM otp_codes

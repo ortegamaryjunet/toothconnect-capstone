@@ -29,6 +29,7 @@ export default function OTP() {
   const [resending, setResending] = useState(false);
   const [timer, setTimer] = useState(60);
   const [noticeMessage, setNoticeMessage] = useState('');
+  const [currentCodeExhausted, setCurrentCodeExhausted] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(null);
   const [showCancelOtpPrompt, setShowCancelOtpPrompt] = useState(false);
   const inputRefs = useRef([]);
@@ -129,11 +130,19 @@ export default function OTP() {
       setTimeout(() => inputRefs.current[0]?.focus(), 0);
       const responseMessage = err.response?.data?.message || 'Verification failed. Please try again.';
       const isLockableOtp = purpose === 'reset_password' || purpose === 'admin-register';
+      const usedAllResends = resendCount >= MAX_RESENDS;
+      const usedAllVerifyAttempts = nextAttempts >= MAX_VERIFY_ATTEMPTS;
       const isOtpLocked =
         isLockableOtp &&
-        (err.response?.status === 429 || err.response?.data?.locked);
+        (
+          err.response?.status === 429 ||
+          err.response?.data?.locked ||
+          (usedAllResends && (usedAllVerifyAttempts || err.response?.data?.code_exhausted))
+        );
 
       if (isOtpLocked) {
+        setCurrentCodeExhausted(true);
+        setResendCount(MAX_RESENDS);
         const cooldownUntil = err.response?.data?.cooldown_until
           ? new Date(err.response.data.cooldown_until).getTime()
           : Date.now() + 10 * 60 * 1000;
@@ -147,7 +156,11 @@ export default function OTP() {
         }
         setError('OTP verification failed. Too many incorrect attempts. You will be redirected to the login page in 5 seconds.');
         setRedirectCountdown(5);
-      } else if (nextAttempts >= MAX_VERIFY_ATTEMPTS) {
+      } else if (err.response?.data?.code_exhausted) {
+        setCurrentCodeExhausted(true);
+        setVerifyAttempts(MAX_VERIFY_ATTEMPTS);
+        setError(responseMessage);
+      } else if (usedAllVerifyAttempts) {
         setError(responseMessage);
       } else {
         setError(responseMessage);
@@ -171,6 +184,7 @@ export default function OTP() {
       }
       setResendCount((c) => c + 1);
       setVerifyAttempts(0);
+      setCurrentCodeExhausted(false);
       setTimer(60);
       setDigits(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
@@ -205,7 +219,11 @@ export default function OTP() {
   const otpNoticeMessage = redirectCountdown !== null
     ? `Redirecting to login in ${redirectCountdown} second${redirectCountdown === 1 ? '' : 's'}.`
     : noticeMessage ||
-      (attemptsRemaining > 0
+      (currentCodeExhausted
+        ? resendCount < MAX_RESENDS
+          ? 'This code has no verification attempts left. Please resend a new code to continue.'
+          : 'OTP resend limit reached.'
+        : attemptsRemaining > 0
         ? `You have ${attemptsRemaining} OTP verification attempt${attemptsRemaining === 1 ? '' : 's'} remaining.`
         : resendCount >= MAX_RESENDS
           ? 'OTP resend limit reached.'
@@ -270,8 +288,8 @@ export default function OTP() {
 
           <button
             type="submit"
-            disabled={submitting || verifyAttempts >= MAX_VERIFY_ATTEMPTS || redirectCountdown !== null}
-            style={{ ...styles.button, ...((submitting || verifyAttempts >= MAX_VERIFY_ATTEMPTS || redirectCountdown !== null) ? styles.buttonDisabled : {}) }}
+            disabled={submitting || currentCodeExhausted || redirectCountdown !== null}
+            style={{ ...styles.button, ...((submitting || currentCodeExhausted || redirectCountdown !== null) ? styles.buttonDisabled : {}) }}
           >
             {submitting ? 'Verifying...' : 'Submit'}
           </button>
