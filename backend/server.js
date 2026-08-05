@@ -100,33 +100,6 @@ app.use('/api/auth/forgot-password', passwordResetLimiter);
 app.use('/api/auth/reset-password', passwordResetLimiter);
 app.use('/api/auth', authRoutes);
 
-console.log("__dirname:", __dirname);
-console.log(
-  "Uploads path:",
-  path.join(__dirname, "uploads")
-);
-console.log(
-  "Uploads exists:",
-  fs.existsSync(path.join(__dirname, "uploads"))
-);
-console.log(
-  "Team exists:",
-  fs.existsSync(path.join(__dirname, "uploads", "team"))
-);
-
-app.get("/test-image", (req, res) => {
-    const file = path.join(
-        __dirname,
-        "uploads",
-        "team",
-        "1785760714621-773494830.jpg"
-    );
-
-    console.log(file);
-
-    res.sendFile(file);
-});
-
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const appointmentRoutes = require('./src/routes/appointments');
@@ -565,15 +538,6 @@ const { startCronJobs } = require('./src/services/cron');
 const PORT = process.env.PORT || 4000;
 
 const uploadsPath = path.join(__dirname, "uploads");
-
-console.log(
-    fs.readdirSync(path.join(uploadsPath, "team"))
-);
-
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    startCronJobs();
-});
 
 app.get("/test-image", (req, res) => {
     const file = path.join(
