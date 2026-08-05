@@ -16,7 +16,7 @@ export default function ClinicContactSection({
   };
 
   const sectionTitle = {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 700,
     color: "#0f172a",
     margin: "0 0 18px",
@@ -88,7 +88,7 @@ export default function ClinicContactSection({
   return (
     <div>
 
-      <h3 style={sectionTitle}>Contact</h3>
+      <h3 style={sectionTitle}>Clinic Contact</h3>
 
       <div style={gridStyle}>
         {fieldRow("Phone Number 1", "contact_phone1", "tel")}
