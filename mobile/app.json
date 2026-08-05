@@ -45,7 +45,7 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#1a365d",
-          "defaultChannel": "default"
+          "defaultChannel": "appointments-high"
         }
       ]
     ],

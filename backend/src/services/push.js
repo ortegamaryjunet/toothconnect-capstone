@@ -2,6 +2,7 @@ const { Expo } = require('expo-server-sdk');
 const pool = require('../config/db');
 
 const expo = new Expo();
+const ANDROID_PUSH_CHANNEL_ID = 'appointments-high';
 
 function isValidExpoPushToken(token) {
   return typeof token === 'string' && Expo.isExpoPushToken(token);
@@ -38,7 +39,7 @@ async function sendPushToUser(userId, { title, body, data }) {
   const message = {
     to: token,
     sound: 'default',
-    channelId: 'default',
+    channelId: ANDROID_PUSH_CHANNEL_ID,
     priority: 'high',
     title,
     body,

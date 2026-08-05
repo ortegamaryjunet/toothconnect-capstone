@@ -4,6 +4,8 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import api from '../api/axios';
 
+const ANDROID_PUSH_CHANNEL_ID = 'appointments-high';
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -21,11 +23,12 @@ export async function registerForPushNotificationsAsync() {
 
   if (Platform.OS === 'android') {
     try {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Default',
-        importance: Notifications.AndroidImportance.HIGH,
+      await Notifications.setNotificationChannelAsync(ANDROID_PUSH_CHANNEL_ID, {
+        name: 'Appointment Alerts',
+        importance: Notifications.AndroidImportance.MAX,
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         showBadge: true,
+        sound: 'default',
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#1a365d',
       });
