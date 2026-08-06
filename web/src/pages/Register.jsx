@@ -160,14 +160,16 @@ export default function Register() {
     const shouldShowRequiredError =
       !String(value || '').trim() &&
       (String(value || '').length > 0 || String(previousValue || '').length > 0);
-    const shouldShowNameFormatError = field === 'name' && Boolean(String(value || '').trim());
+    const shouldShowLiveValidation =
+      ['name', 'email', 'password', 'confirmPassword'].includes(field) &&
+      Boolean(String(value || '').trim());
 
-    if (shouldShowRequiredError || shouldShowNameFormatError) {
+    if (shouldShowRequiredError || shouldShowLiveValidation) {
       setTouched((current) => ({ ...current, [field]: true }));
     }
 
     setFieldErrors((current) => {
-      const shouldValidateField = touched[field] || submittedOnce || shouldShowRequiredError || shouldShowNameFormatError;
+      const shouldValidateField = touched[field] || submittedOnce || shouldShowRequiredError || shouldShowLiveValidation;
       const nextErrors = { ...current };
       const nextValues = field === 'password' ? { password: value } : {};
 
@@ -175,7 +177,7 @@ export default function Register() {
         nextErrors[field] = validateField(field, value, nextValues);
       }
 
-      if (field === 'password' && (touched.confirmPassword || submittedOnce)) {
+      if (field === 'password' && (touched.confirmPassword || submittedOnce || confirmPassword.trim())) {
         nextErrors.confirmPassword = validateConfirmPassword(confirmPassword, value);
       }
 
