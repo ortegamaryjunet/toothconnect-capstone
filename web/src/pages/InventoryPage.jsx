@@ -3485,7 +3485,7 @@ export default function InventoryPage() {
               <i className="fi fi-rr-cross-small" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Close History?</h2>
+            <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Close History</h2>
             <p style={styles.modalText}>
               Do you want to close {getInventoryItemName(selectedInventoryItem)} history?
             </p>
@@ -3518,7 +3518,7 @@ export default function InventoryPage() {
               <i className="fi fi-rr-edit" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Save Changes?</h2>
+            <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Save Changes</h2>
             <p style={styles.modalText}>
               Do you want to save the following changes?
             </p>
