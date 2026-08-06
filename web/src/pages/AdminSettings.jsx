@@ -3408,6 +3408,20 @@ export default function AdminSettings() {
   }
 
   function handleWebsiteServiceSaveRequest(data) {
+    const duplicateService = websiteServices.find(
+      (service) =>
+        Number(service.sort_order) === Number(data.sort_order) &&
+        Number(service.id) !== Number(websiteServiceOverlay?.id)
+    );
+
+    if (duplicateService) {
+      showWebsiteValidationModal(
+        "Sort Order Already Exists",
+        `Sort order ${data.sort_order} is already assigned to "${duplicateService.name}". Please choose a different sort order.`
+      );
+      return;
+    }
+
     const details = [
       {
         key: "name",
@@ -3456,7 +3470,7 @@ export default function AdminSettings() {
         label: "Overview",
         value: data.overview || "Not entered",
         previousValue: websiteServiceOverlay?.overview || "Not set",
-        changed: data.overview !== websiteServiceOverlay?.overview,
+        changed: String(data.overview ?? "").trim() !== String(websiteServiceOverlay?.overview ?? "").trim(),
       },
       {
         key: "benefits",
@@ -4550,8 +4564,8 @@ const contentEditActions = (
             <div
               style={{
                 ...styles.modalContent,
-                width: isMobile ? "100%" : 520,
-                maxWidth: 520,
+                width: isMobile ? "100%" : 760,
+                maxWidth: 760,
               }}
             >
               <div style={styles.modalIcon}>
@@ -4563,110 +4577,163 @@ const contentEditActions = (
 
               <h2 style={styles.modalTitle}>Confirm Website Service Changes</h2>
 
-              <p style={styles.modalText}>Please review the website service content before saving.</p>
+              <p style={styles.modalText}>Please review the changes below before saving.</p>
 
               <div
                 style={{
-                  width: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  fontFamily: "Arial, sans-serif",
-                  marginBottom: 8,
+                  border: "1px solid #dbe3ef",
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  marginBottom: 20,
+                  background: "#fff",
                 }}
               >
-                {websiteServiceSaveConfirmModal.details.filter(
-                  (detail) => detail.changed
-                ).length === 0 ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "220px 1fr",
+                    background: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontWeight: 600,
+                    color: "#1e3a5f",
+                    fontSize: 14,
+                  }}
+                >
                   <div
                     style={{
-                      color: "#64748b",
-                      fontSize: 13,
-                      padding: "8px 0",
+                      padding: "14px 18px",
+                      textAlign: "center",
                     }}
                   >
-                    No content changes detected.
+                    Field
                   </div>
-                ) : (
-                  websiteServiceSaveConfirmModal.details
-                    .filter((detail) => detail.changed)
-                    .map((detail) => (
-                      <div
-                        key={detail.key}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          padding: "10px 0",
-                          borderBottom: "1px solid #f1f5f9",
-                          fontSize: 13,
-                          textAlign: "left",
-                        }}
-                      >
+
+                  <div
+                    style={{
+                      padding: "14px 18px",
+                      textAlign: "center",
+                    }}
+                  >
+                    New Value
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    maxHeight: 380,
+                    overflowY: "auto",
+                  }}
+                >
+                  {websiteServiceSaveConfirmModal.details.filter(
+                    (detail) => detail.changed
+                  ).length === 0 ? (
+                    <div
+                      style={{
+                        padding: 24,
+                        textAlign: "center",
+                        color: "#64748b",
+                        fontSize: 14,
+                      }}
+                    >
+                      No content changes detected.
+                    </div>
+                  ) : (
+                    websiteServiceSaveConfirmModal.details
+                      .filter((detail) => detail.changed)
+                      .map((detail) => (
                         <div
+                          key={detail.key}
                           style={{
-                            flex: 1,
-                            minWidth: 0,
+                            display: "grid",
+                            gridTemplateColumns: "220px 1fr",
+                            borderBottom: "1px solid #eef2f7",
                           }}
                         >
-                          <span
+                          <div
                             style={{
-                              color: "#64748b",
-                              fontWeight: 600,
+                              padding: "16px",
+                              display: "flex",
+                              flexDirection: "column",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              textAlign: "center",
                             }}
                           >
-                            {detail.label}
-                          </span>
+                            <div
+                              style={{
+                                color: "#64748b",
+                                fontWeight: 600,
+                                fontSize: 14,
+                                marginBottom: 4,
+                              }}
+                            >
+                              {detail.label}
+                            </div>
 
-                          <small
+                            <div
+                              style={{
+                                color:
+                                  detail.previousValue === "Not set"
+                                    ? "#16a34a"
+                                    : "#d97706",
+                                fontSize: 12,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {detail.previousValue === "Not set"
+                                ? "Added"
+                                : "Changed"}
+                            </div>
+                          </div>
+
+                          <div
                             style={{
-                              display: "block",
-                              color: "#94a3b8",
-                              marginTop: 3,
-                              marginBottom: 6,
-                            }}
-                          >
-                            {detail.previousValue === "Not set"
-                              ? "Added"
-                              : "Changed"}
-                          </small>
-
-                          {detail.previousValue !== undefined &&
-                            detail.previousValue !== detail.value && (
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  color: "#94a3b8",
-                                  textDecoration: "line-through",
-                                  overflowWrap: "anywhere",
-                                }}
-                              >
-                                {detail.previousValue}
-                              </div>
-                            )}
-                        </div>
-
-                        <div
-                          style={{
-                            flex: 1,
-                            textAlign: "right",
-                            display: "flex",
-                            justifyContent: "flex-end",
-                            alignItems: "center",
-                          }}
-                        >
-                          <strong
-                            style={{
+                              padding: "16px 18px",
                               color: "#0f172a",
+                              fontSize: 13,
+                              fontWeight: 500,
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-word",
                               overflowWrap: "anywhere",
-                              maxWidth: 240,
+                              lineHeight: 1.6,
+                              textAlign: "left",
                             }}
                           >
                             {detail.value}
-                          </strong>
+                          </div>
                         </div>
-                      </div>
-                    ))
-                )}
+                      ))
+                  )}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "14px 16px",
+                  marginBottom: 20,
+                  border: "1px solid #fde68a",
+                  borderRadius: 12,
+                  background: "#fffbeb",
+                  color: "#b45309",
+                  fontSize: 14,
+                  textAlign: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <i
+                  className="fi fi-rr-info"
+                  style={{
+                    fontSize: 18,
+                  }}
+                ></i>
+
+                <span>
+                  Please verify all changes before saving. Once saved, these updates
+                  will immediately appear on your website.
+                </span>
               </div>
 
               <div style={styles.modalActions}>
@@ -4678,7 +4745,7 @@ const contentEditActions = (
                   }}
                   onClick={() => setWebsiteServiceSaveConfirmModal(null)}
                 >
-                  Cancel
+                  Review Changes
                 </button>
 
                 <button
@@ -8467,15 +8534,15 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
                     </>
                   ) : f.type === "image" ? (
                     <>
-                      <div
-                        style={{
-                          border: errors[f.key] ? "1px solid #dc2626" : "1px solid #d1d5db",
-                          borderRadius: 14,
-                          padding: "10px 14px",
-                          background: "#fff",
-                          marginBottom: 12,
-                        }}
-                      >
+                        <div
+                          style={{
+                            border: errors[f.key] ? "1px solid #dc2626" : "1px solid #d1d5db",
+                            borderRadius: 14,
+                            padding: "10px 14px",
+                            background: "#fff",
+                            marginBottom: 12,
+                          }}
+                        >
                         <input
                           type="file"
                           accept=".jpg,.jpeg,.png"
@@ -8490,6 +8557,30 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
                             cursor: "pointer",
                           }}
                         />
+
+                        <div
+                          style={{
+                            marginTop: 8,
+                            fontSize: 13,
+                            color: "#64748b",
+                            fontFamily: "Arial, sans-serif",
+                          }}
+                        >
+                          {form[f.key] instanceof File ? (
+                            <>
+                              <strong>Selected file:</strong> {form[f.key].name}
+                            </>
+                          ) : form[f.key] ? (
+                            <>
+                              <strong>Current file:</strong>{" "}
+                              {String(form[f.key]).split("/").pop()}
+                            </>
+                          ) : (
+                            <>
+                              <strong>No image uploaded yet.</strong>
+                            </>
+                          )}
+                        </div>
                       </div>
 
                       <div
