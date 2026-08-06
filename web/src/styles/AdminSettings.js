@@ -1287,7 +1287,7 @@
       backgroundColor: '#d4af37',
       color: '#ffffff',
       cursor: 'pointer',
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
       boxShadow: '0 10px 20px rgba(139, 101, 8, 0.18)',
@@ -1358,13 +1358,13 @@
     },
 
     modalButton: {
-      minWidth: 120,
+      minWidth: 130,
       height: 44,
       borderRadius: 12,
       border: 'none',
       cursor: 'pointer',
       fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 14,
+      fontSize: 13,
     },
 
     logoutBtn: {
