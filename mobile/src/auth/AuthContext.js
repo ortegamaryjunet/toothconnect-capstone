@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import api, {
   setAccessToken,
   setOnAuthChange,
@@ -18,6 +19,38 @@ export function AuthProvider({ children }) {
     setOnAuthChange(setUser);
     bootstrap();
   }, []);
+
+  useEffect(() => {
+    if (loading || !user) return undefined;
+
+    let cancelled = false;
+
+    async function registerPush(reason) {
+      try {
+        const result = await registerForPushNotificationsAsync();
+        if (!cancelled) {
+          console.log(`[push] Registration ${reason}:`, result);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.log(`[push] Registration failed ${reason}:`, err.message);
+        }
+      }
+    }
+
+    const timer = setTimeout(() => registerPush('after user session ready'), 500);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        registerPush('after app became active');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      subscription.remove();
+    };
+  }, [loading, user?.id]);
 
   async function bootstrap() {
     try {

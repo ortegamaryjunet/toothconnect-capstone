@@ -16,10 +16,12 @@ router.post('/token', async (req, res) => {
       'UPDATE users SET push_token = NULL, push_token_updated_at = NOW() WHERE id = ?',
       [userId]
     );
+    console.log(`[push] Token cleared for user ${userId}`);
     return res.json({ message: 'Push token cleared' });
   }
 
   if (!push.isValidExpoPushToken(push_token)) {
+    console.log(`[push] Invalid token registration attempt for user ${userId}`);
     return res.status(400).json({ message: 'Invalid Expo push token format' });
   }
 
@@ -28,9 +30,10 @@ router.post('/token', async (req, res) => {
       'UPDATE users SET push_token = ?, push_token_updated_at = NOW() WHERE id = ?',
       [push_token, userId]
     );
+    console.log(`[push] Token registered for user ${userId}`);
     res.json({ message: 'Push token registered' });
   } catch (err) {
-    console.error(err);
+    console.error(`[push] Failed to register token for user ${userId}:`, err);
     res.status(500).json({ message: 'Server error' });
   }
 });
