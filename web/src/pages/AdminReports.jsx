@@ -263,58 +263,125 @@ function getReportInterpretation(report, metrics = {}) {
   const totalRows = rows.length;
   const totalMainValue = values.reduce((sum, value) => sum + value, 0);
   const totalStatusValue = statusValues.reduce((sum, value) => sum + value, 0);
+
   const topGraph = getTopValue(labels, values);
   const topStatus = getTopValue(statusLabels, statusValues);
 
-  const firstHeader = headers[0] || 'records';
-  const lastHeader = headers[headers.length - 1] || 'status';
+  const firstHeader = headers[0] || "records";
+  const lastHeader = headers[headers.length - 1] || "status";
+
   const tableScope =
     headers.length > 0
-      ? `${headers.slice(0, 4).join(', ')}${headers.length > 4 ? ', and more details' : ''}`
-      : 'report details';
+      ? `${headers.slice(0, 4).join(", ")}${
+          headers.length > 4 ? ", and more details" : ""
+        }`
+      : "report details";
 
   const isFinancialReport = metrics.isRevenueReport === true;
+  const title = (report?.title || "").toLowerCase();
 
   if (isFinancialReport) {
     const netStatus =
       metrics.netRevenue > 0
-        ? 'positive'
+        ? "positive"
         : metrics.netRevenue < 0
-          ? 'negative'
-          : 'break-even';
+        ? "negative"
+        : "break-even";
 
     return {
-      overview: `${report.title} contains ${totalRows} financial record(s) for the selected filter.`,
-      graph: `The graph compares income, expenses, and revenue across ${totalRows} period(s).`,
-      pie: `The chart summary uses total income, total expenses, and net revenue to show the financial composition.`,
-      table: `The table export focuses on period, income, expenses, and revenue values.`,
-      insight: `Total income is ${formatPeso(metrics.totalIncome)}, total expenses are ${formatPeso(metrics.totalExpense)}, and net revenue is ${formatPeso(metrics.netRevenue)}. The current result is ${netStatus}.`,
-      recommendation:
-        metrics.netRevenue < 0
-          ? 'Review expense records and identify which cost items should be reduced or monitored.'
-          : 'Continue monitoring income and expenses to keep revenue stable and support financial planning.',
+      overview: `${report.title} contains ${totalRows} financial record(s) for the selected reporting period.`,
+      graph: `The financial graph compares total income of ${formatPeso(metrics.totalIncome)}, total expenses of ${formatPeso(metrics.totalExpense)}, and the resulting net revenue across the selected reporting period, providing an overview of the clinic's financial performance.`,
+      pie: `The doughnut chart illustrates the proportion of income, expenses, and net revenue, allowing the financial distribution of the clinic to be compared visually.`,
+      table: "The table presents detailed financial records, including the reporting period, income, expenses, net revenue, and transaction status for each recorded entry.",
+      insight: `The clinic recorded a total income of ${formatPeso(metrics.totalIncome)}, total expenses of ${formatPeso(metrics.totalExpense)}, and a net revenue of ${formatPeso(metrics.netRevenue)}, resulting in an overall ${netStatus} financial performance for the selected reporting period.`,
+      recommendation: metrics.netRevenue < 0 ? "Review expense records to identify unnecessary operational costs and improve the clinic's overall financial performance." : "Continue maintaining a balance between income and expenses to sustain positive financial performance and support future clinic operations.",
+    };
+  }
+
+  if (title.includes("clinic") || title.includes("dentist")) {
+    return {
+      overview: `${report.title} contains ${totalRows} recorded dentist performance entries for the selected period.`,
+      graph: totalMainValue > 0 ? `${topGraph.label} recorded the highest number of completed appointments with ${formatNumber(topGraph.value)} completed service(s), indicating the strongest clinical performance during the selected period.` : "No dentist performance data is available for the selected filters.",
+      pie: totalStatusValue > 0 ? `${topStatus.label} received the highest number of performance rating records with ${formatNumber(topStatus.value)} recorded evaluation(s).` : "No performance rating data is available.",
+      table: "The table lists each dentist together with completed appointments, patients served, average rating, and reporting period, providing a detailed summary of individual performance.",
+      insight: totalRows > 0 ? `${topGraph.label} achieved the highest overall performance based on the recorded number of completed services, indicating the strongest contribution among all dentists during the selected period.` : "No clinic performance records are available.",
+      recommendation: "Continue monitoring dentist performance to recognize outstanding service, identify improvement opportunities, and maintain consistent quality of patient care.",
+    };
+  }
+
+  if (title.includes("satisfaction")) {
+    return {
+      overview: `${report.title} contains ${totalRows} patient satisfaction record(s) collected during the selected reporting period.`,
+      graph: totalMainValue > 0 ? `${topGraph.label} recorded the highest average satisfaction rating with ${formatNumber(topGraph.value)} response(s), indicating the strongest level of patient satisfaction.` : "No patient satisfaction data is available for the selected filters.",
+      pie: totalStatusValue > 0 ? `${topStatus.label} represents the largest proportion of submitted patient ratings with ${formatNumber(topStatus.value)} recorded response(s).` : "No patient rating distribution is available.",
+      table: "The table presents patient satisfaction ratings, written feedback, assigned dentist, appointment date, and submission details for each response.",
+      insight: totalRows > 0 ? `The collected feedback indicates that ${topGraph.label} achieved the highest patient satisfaction rating, reflecting a positive patient experience during the selected reporting period.` : "No patient feedback records are available.",
+      recommendation: "Continue evaluating patient feedback to maintain service quality, improve patient experience, and address recurring concerns identified in the report.",
+    };
+  }
+
+  if (title.includes("visit")) {
+    return {
+      overview: `${report.title} contains ${totalRows} patient visit record(s) for the selected reporting period.`,
+      graph: totalMainValue > 0 ? `${topGraph.label} recorded the highest number of patient visits with ${formatNumber(topGraph.value)} visit(s), indicating the busiest reporting period.` : "No patient visit data is available for the selected filters.",
+      pie: totalStatusValue > 0 ? `${topStatus.label} represents the largest appointment status category with ${formatNumber(topStatus.value)} recorded visit(s).` : "No appointment status data is available.",
+      table: "The table provides detailed patient visit records, including patient information, assigned dentist, branch, visit date, purpose of visit, and appointment status.",
+      insight: totalRows > 0 ? `${topGraph.label} recorded the highest patient visit count, indicating increased clinic activity during the selected reporting period.` : "No patient visit records are available.",
+      recommendation: "Monitor patient visit trends to improve appointment scheduling, manage clinic workload efficiently, and support future operational planning.",
+    };
+  }
+
+  if (title.includes("treatment")) {
+    return {
+      overview: `${report.title} contains ${totalRows} patient treatment record(s).`,
+      graph: totalMainValue > 0 ? `${topGraph.label} was the most frequently performed treatment with ${formatNumber(topGraph.value)} recorded procedure(s).` : "No treatment records are available.",
+      pie: totalStatusValue > 0 ? `${topStatus.label} represents the largest treatment status category with ${formatNumber(topStatus.value)} record(s).` : "No treatment status data is available.",
+      table: "The table lists every treatment record, including patient, dentist, treatment performed, affected tooth, treatment date, notes, and treatment status.",
+      insight: totalRows > 0 ? `${topGraph.label} was the most commonly performed dental procedure during the selected reporting period.` : "No treatment data is available.",
+      recommendation: "Review treatment trends to support service planning and ensure adequate clinical resources.",
+    };
+  }
+
+  if (title.includes("stock")) {
+    return {
+      overview: `${report.title} contains ${totalRows} inventory stock record(s).`,
+      graph: totalMainValue > 0 ? `${topGraph.label} recorded the highest available quantity with ${formatNumber(topGraph.value)} item(s) currently in stock.` : "No inventory stock data is available.",
+      pie: totalStatusValue > 0 ? `${topStatus.label} represents the largest inventory status category with ${formatNumber(topStatus.value)} item(s).` : "No inventory status data is available.",
+      table: "The table lists inventory items together with branch location, category, available quantity, unit of measurement, and stock status.",
+      insight: totalRows > 0 ? `Inventory records indicate that ${topGraph.label} currently has the highest available stock level among all recorded inventory items.` : "No inventory records are available.",
+      recommendation: "Regularly monitor stock availability to prevent shortages and maintain sufficient inventory levels.",
+    };
+  }
+
+  if (title.includes("consumption")) {
+    return {
+      overview: `${report.title} contains ${totalRows} inventory consumption record(s).`,
+      graph: totalMainValue > 0 ? `${topGraph.label} recorded the highest consumption with ${formatNumber(topGraph.value)} item(s) used during the selected reporting period.` : "No inventory consumption data is available.",
+      pie: totalStatusValue > 0 ? `${topStatus.label} represents the largest inventory consumption status category.` : "No inventory consumption status data is available.",
+      table: "The table lists each consumed inventory item together with its branch, category, reporting month, quarter, consumed quantity, and status.",
+      insight: totalRows > 0 ? `${topGraph.label} recorded the highest inventory consumption, indicating increased usage during the selected reporting period.` : "No inventory consumption records are available.",
+      recommendation: "Monitor inventory consumption trends to improve purchasing decisions and maintain adequate stock levels.",
+    };
+  }
+
+  if (title.includes("audit")) {
+    return {
+      overview: `${report.title} contains ${totalRows} recorded audit log entries for the selected reporting period.`,
+      graph: totalMainValue > 0 ? `${topGraph.label} recorded the highest number of logged system activities with ${formatNumber(topGraph.value)} event(s), indicating that this module had the greatest level of user interaction.` : "No audit log activity is available.",
+      pie: totalStatusValue > 0 ? `${topStatus.label} represents the largest audit status category with ${formatNumber(topStatus.value)} recorded event(s).` : "No audit status data is available.",
+      table: "The table provides detailed audit records, including timestamp, user role, user name, action performed, affected module, IP address, and activity status.",
+      insight: totalRows > 0 ? `The audit trail indicates consistent system activity during the selected reporting period, with ${topGraph.label} generating the highest number of recorded events.` : "No audit log records are available.",
+      recommendation: "Review audit trail records regularly to verify user activities, improve accountability, and detect unusual system events.",
     };
   }
 
   return {
-    overview: `${report.title} contains ${totalRows} record(s) based on the selected report type and filters.`,
-    graph:
-      totalMainValue > 0
-        ? `The bar graph total is ${formatNumber(totalMainValue)}. The highest value is ${topGraph.label} with ${formatNumber(topGraph.value)}.`
-        : 'The bar graph has no measurable value for the selected filters.',
-    pie:
-      totalStatusValue > 0
-        ? `The doughnut chart total is ${formatNumber(totalStatusValue)}. The largest group is ${topStatus.label} with ${formatNumber(topStatus.value)}.`
-        : 'The doughnut chart has no status value for the selected filters.',
-    table: `The table is based on ${tableScope}. It starts with ${firstHeader} and ends with ${lastHeader}.`,
-    insight:
-      totalRows > 0
-        ? `The report has enough table data to compare chart results with actual records. The strongest chart category is ${topGraph.label}.`
-        : 'No records are available for the current filters.',
-    recommendation:
-      totalRows > 0
-        ? 'Use the chart summary and table records together to review trends, status counts, and areas that need action.'
-        : 'Try selecting another report type, changing the date range, or clearing optional filters.',
+    overview: `${report.title} contains ${totalRows} record(s) for the selected filters.`,
+    graph: totalMainValue > 0 ? `The graph summarizes ${formatNumber(totalMainValue)} recorded value(s), with ${topGraph.label} having the highest recorded result.` : "No graph data is available.",
+    pie: totalStatusValue > 0 ? `The doughnut chart summarizes ${formatNumber(totalStatusValue)} status record(s), with ${topStatus.label} representing the largest category.` : "No status data is available.",
+    table: `The report table contains ${totalRows} detailed record(s), including ${tableScope}.`,
+    insight: totalRows > 0 ? "The available records provide sufficient information for evaluating the selected report." : "No records are available for the selected filters.",
+    recommendation: totalRows > 0 ? "Continue reviewing report results together with the detailed records to support informed decision-making." : "Adjust the selected filters or reporting period to generate report data.",
   };
 }
 
@@ -1077,53 +1144,63 @@ export default function AdminReports() {
     }
   }
 
-  function getStatusStyle(value) {
-    const successStatus = [
-      'Success',
-      'Active',
-      'Available',
-      'Excellent',
-      'Good',
-      'Positive',
-      'Completed',
-      'Used',
-      'Normal',
-    ];
+function getStatusStyle(value) {
+  const status = String(value || "").trim().toLowerCase();
 
-    const warningStatus = [
-      'Low Stock',
-      'Pending',
-      'Ongoing',
-      'Follow Up',
-      'High',
-      'Needs Improvement',
-      'Neutral',
-    ];
+  const stylesMap = {
+    completed: styles.statusSuccess,
+    complete: styles.statusSuccess,
+    success: styles.statusSuccess,
+    paid: styles.statusSuccess,
+    approved: styles.statusSuccess,
+    verified: styles.statusSuccess,
+    delivered: styles.statusSuccess,
+    received: styles.statusSuccess,
+    available: styles.statusSuccess,
+    active: styles.statusSuccess,
+    normal: styles.statusSuccess,
+    excellent: styles.statusSuccess,
+    positive: styles.statusSuccess,
 
-    const failedStatus = [
-      'Failed',
-      'Inactive',
-      'Expired',
-      'Cancelled',
-      'Negative',
-      'Critical',
-      'Out of Stock',
-    ];
+    scheduled: styles.statusInfo,
+    arrived: styles.statusInfo,
+    processing: styles.statusInfo,
+    ongoing: styles.statusInfo,
+    waiting: styles.statusInfo,
 
-    if (successStatus.includes(value)) {
-      return { ...styles.statusBadge, ...styles.statusSuccess };
-    }
+    pending: styles.statusWarning,
+    "low stock": styles.statusWarning,
+    high: styles.statusWarning,
+    medium: styles.statusWarning,
+    "needs improvement": styles.statusWarning,
+    "follow up": styles.statusWarning,
+    "follow-up": styles.statusWarning,
 
-    if (warningStatus.includes(value)) {
-      return { ...styles.statusBadge, ...styles.statusWarning };
-    }
+    cancelled: styles.statusDanger,
+    rejected: styles.statusDanger,
+    failed: styles.statusDanger,
+    unpaid: styles.statusDanger,
+    expired: styles.statusDanger,
+    overdue: styles.statusDanger,
+    error: styles.statusDanger,
+    declined: styles.statusDanger,
+    void: styles.statusDanger,
 
-    if (failedStatus.includes(value)) {
-      return { ...styles.statusBadge, ...styles.statusFailed };
-    }
+    "no show": styles.statusPurple,
+    "no_show": styles.statusPurple,
 
-    return null;
-  }
+    inactive: styles.statusGray,
+    absent: styles.statusGray,
+    "out of stock": styles.statusGray,
+  };
+
+  return stylesMap[status]
+    ? {
+        ...styles.statusBadge,
+        ...stylesMap[status],
+      }
+    : null;
+}
 
   function createFileName(title, extension) {
     return (
@@ -1591,7 +1668,7 @@ export default function AdminReports() {
               <div>
                 <h3 style={styles.interpretationTitle}>Report Interpretation</h3>
                 <p style={styles.interpretationSubtitle}>
-                  Explanation of the graph, doughnut chart, table, and recommended action.
+                  Summary of the report findings based on the charts and table data.
                 </p>
               </div>
             </div>
@@ -1788,15 +1865,15 @@ export default function AdminReports() {
                         paginatedRows.map((row, rowIndex) => (
                           <tr key={`${appliedReportType}-${rowIndex}`}>
                             {row.map((cell, cellIndex) => {
-                              const statusStyle = getStatusStyle(cell);
+                              const isStatusColumn = currentReport.headers[cellIndex]?.toLowerCase() === "status";
 
                               return (
-                                <td
-                                  key={`${cell}-${cellIndex}`}
-                                  style={styles.tableCell}
-                                >
-                                  {statusStyle ? (
-                                    <span style={statusStyle}>{cell}</span>
+                                <td key={`${cell}-${cellIndex}`} style={styles.tableCell}>
+                                  {isStatusColumn ? (
+                                    <span
+                                      style={{ ...styles.statusBadge, ...getStatusStyle(cell), }}>
+                                      {cell}
+                                    </span>
                                   ) : (
                                     cell
                                   )}
@@ -1816,15 +1893,16 @@ export default function AdminReports() {
                       disabled={currentPage === 1}
                       style={{
                         ...styles.pageBtn,
+                        ...styles.prevPageBtn,
                         ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
                       }}
                     >
-                      Prev
+                      Previous
                     </button>
 
                     <span style={styles.pageInfo}>
                       {filteredRows.length === 0
-                        ? 'Page 0 of 0'
+                        ? "Page 0 of 0"
                         : `Page ${currentPage} of ${totalPages}`}
                     </span>
 
@@ -1834,9 +1912,8 @@ export default function AdminReports() {
                       disabled={currentPage >= totalPages}
                       style={{
                         ...styles.pageBtn,
-                        ...(currentPage >= totalPages
-                          ? styles.pageBtnDisabled
-                          : {}),
+                        ...styles.nextPageBtn,
+                        ...(currentPage >= totalPages ? styles.pageBtnDisabled : {}),
                       }}
                     >
                       Next
