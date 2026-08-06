@@ -764,7 +764,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function showMessage(title, text, type = "error") {
         if (!messageModal || !messageTitle || !messageText || !messageIcon) {
-            alert(text || title);
+            console.log({
+                messageModal,
+                messageTitle,
+                messageText,
+                messageIcon
+            });
+
             return;
         }
 
@@ -874,6 +880,12 @@ function setFieldState(input, valid, message = "") {
 
 function validateName() {
     const input = document.getElementById("inquiryName");
+
+    if (!input.value.trim()) {
+        setFieldState(input, false, "Full name is required.");
+        return false;
+    }
+
     const words = input.value.trim().split(/\s+/).filter(Boolean);
 
     if (words.length < 2) {
@@ -888,6 +900,11 @@ function validateName() {
 function validateEmail() {
     const input = document.getElementById("inquiryEmail");
     const value = input.value.trim();
+
+    if (!value) {
+        setFieldState(input, false, "Email address is required.");
+        return false;
+    }
 
     if (!isValidEmail(value)) {
         setFieldState(input, false, "Enter a valid email address.");
@@ -935,6 +952,11 @@ function validatePhone() {
     const value = input.value.trim();
     const phone = parsePhoneNumber(value, country);
     const isValid = phone ? phone.isValid() : isFallbackValidPhone(value, country);
+
+    if (!value) {
+        setFieldState(input, false, "Phone number is required.");
+        return false;
+    }
 
     if (!isValid) {
         setFieldState(input, false, "Please enter a valid phone number.");
@@ -992,6 +1014,11 @@ document.querySelectorAll('input[name="branch"]').forEach((radio) => {
 function validateMessage() {
     const input = document.getElementById("inquiryMessage");
     const value = input.value.trim();
+
+    if (!value) {
+        setFieldState(input, false, "Message is required.");
+        return false;
+    }
 
     if (value.length < 10) {
         setFieldState(input, false, "Message must be at least 10 characters.");
@@ -1083,69 +1110,43 @@ function validateMessage() {
             const concern = concernInput ? concernInput.value.trim() : "";
             const message = messageInput ? messageInput.value.trim() : "";
 
-            const allFieldsEmpty =
-                !fullName &&
-                !emailAddress &&
-                !phoneNumber &&
-                !branch &&
-                !concern &&
-                !message;
+        const allFieldsEmpty =
+            !fullName &&
+            !emailAddress &&
+            !phoneNumber &&
+            !branch &&
+            !concern &&
+            !message;
 
-            const isValid =
-                validateName() &&
-                validateEmail() &&
-                validatePhone() &&
-                validateConcern() &&
-                validateBranch() &&
-                validateMessage();
+        if (allFieldsEmpty) {
+            showMessage(
+                "Unable to Send Inquiry",
+                "Please provide all required information before sending your inquiry."
+            );
 
-            if (allFieldsEmpty) {
-                showMessage(
-                    "Incomplete Information",
-                    "Please complete all required fields."
-                );
-                return;
-            }
+            return;
+        }
 
-            if (!isValid) {
-                return;
-            }
+        const validName = validateName();
+        const validEmail = validateEmail();
+        const validPhone = validatePhone();
+        const validConcern = validateConcern();
+        const validBranch = validateBranch();
+        const validMessage = validateMessage();
 
-            if (fullName.length < 2) {
-                showMessage(
-                    "Invalid Full Name",
-                    "Please enter a valid full name."
-                );
-                return;
-            }
+        const isValid =
+            validName &&
+            validEmail &&
+            validPhone &&
+            validConcern &&
+            validBranch &&
+            validMessage;
 
-            if (!isValidEmail(emailAddress)) {
-                showMessage(
-                    "Invalid Email Address",
-                    "Please enter a valid email address."
-                );
-                return;
-            }
+        if (!isValid) {
+            return;
+        }
 
-            const parsedPhone = parsePhoneNumber(phoneNumber, country);
-
-            if (parsedPhone ? !parsedPhone.isValid() : !isFallbackValidPhone(phoneNumber, country)) {
-                showMessage(
-                    "Invalid Phone Number",
-                    "Please enter a valid phone number."
-                );
-                return;
-            }
-
-            const internationalPhone = toInternationalPhone(phoneNumber, country);
-
-            if (message.length < 5) {
-                showMessage(
-                    "Invalid Message",
-                    "Please enter a message with at least 5 characters."
-                );
-                return;
-            }
+        const internationalPhone = toInternationalPhone(phoneNumber, country);
 
             try {
                 const response = await fetch(`${API_BASE_URL}/api/website/saveInquiry`, {
