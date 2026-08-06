@@ -31,6 +31,7 @@ export default function OTP() {
   const [noticeMessage, setNoticeMessage] = useState('');
   const [currentCodeExhausted, setCurrentCodeExhausted] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(null);
+  const [redirectCooldownUntil, setRedirectCooldownUntil] = useState(null);
   const [showCancelOtpPrompt, setShowCancelOtpPrompt] = useState(false);
   const inputRefs = useRef([]);
   const attemptsRemaining = Math.max(0, MAX_VERIFY_ATTEMPTS - verifyAttempts);
@@ -52,7 +53,7 @@ export default function OTP() {
       const cooldownMessage = isAdminRegisterOtp
         ? 'Too many failed attempts. Please wait 10 minutes before trying to register an admin account again.'
         : 'Too many failed attempts. Please wait 10 minutes before trying to reset your password again.';
-      const cooldownUntil = Date.now() + 10 * 60 * 1000;
+      const cooldownUntil = Number(redirectCooldownUntil) || Date.now() + 10 * 60 * 1000;
       navigate('/login', {
         replace: true,
         state: {
@@ -70,7 +71,30 @@ export default function OTP() {
 
     const timeout = setTimeout(() => setRedirectCountdown((current) => Math.max(0, Number(current || 0) - 1)), 1000);
     return () => clearTimeout(timeout);
-  }, [redirectCountdown, email, navigate, purpose]);
+  }, [redirectCountdown, redirectCooldownUntil, email, navigate, purpose]);
+
+  function startOtpCooldown(err) {
+    setCurrentCodeExhausted(true);
+    setResendCount(MAX_RESENDS);
+    const retryAfterMs = Number(err.response?.data?.retry_after_seconds || 0) * 1000;
+    const responseCooldownUntil = err.response?.data?.cooldown_until
+      ? new Date(err.response.data.cooldown_until).getTime()
+      : 0;
+    const cooldownUntil = Number.isFinite(responseCooldownUntil) && responseCooldownUntil > Date.now()
+      ? responseCooldownUntil
+      : Date.now() + (retryAfterMs > 0 ? retryAfterMs : 10 * 60 * 1000);
+    setRedirectCooldownUntil(cooldownUntil);
+    try {
+      window.localStorage.setItem(purpose === 'admin-register' ? 'adminRegisterCooldown' : 'forgotPasswordCooldown', JSON.stringify({
+        email: String(email || '').trim(),
+        until: cooldownUntil,
+      }));
+    } catch {
+      // Ignore storage errors; backend still enforces cooldown.
+    }
+    setError('OTP verification failed. Too many incorrect attempts. You will be redirected to the login page in 5 seconds.');
+    setRedirectCountdown(5);
+  }
 
   function handleDigitChange(index, value) {
     const char = value.replace(/\D/g, '').slice(-1);
@@ -132,30 +156,15 @@ export default function OTP() {
       const isLockableOtp = purpose === 'reset_password' || purpose === 'admin-register';
       const usedAllResends = resendCount >= MAX_RESENDS;
       const usedAllVerifyAttempts = nextAttempts >= MAX_VERIFY_ATTEMPTS;
+      const backendLocked = err.response?.status === 429 || err.response?.data?.locked;
       const isOtpLocked =
         isLockableOtp &&
-        (
-          err.response?.status === 429 ||
-          err.response?.data?.locked ||
-          (usedAllResends && (usedAllVerifyAttempts || err.response?.data?.code_exhausted))
-        );
+        (purpose === 'admin-register'
+          ? backendLocked
+          : backendLocked || (usedAllResends && (usedAllVerifyAttempts || err.response?.data?.code_exhausted)));
 
       if (isOtpLocked) {
-        setCurrentCodeExhausted(true);
-        setResendCount(MAX_RESENDS);
-        const cooldownUntil = err.response?.data?.cooldown_until
-          ? new Date(err.response.data.cooldown_until).getTime()
-          : Date.now() + 10 * 60 * 1000;
-        try {
-          window.localStorage.setItem(purpose === 'admin-register' ? 'adminRegisterCooldown' : 'forgotPasswordCooldown', JSON.stringify({
-            email: String(email || '').trim(),
-            until: Number.isFinite(cooldownUntil) ? cooldownUntil : Date.now() + 10 * 60 * 1000,
-          }));
-        } catch {
-          // Ignore storage errors; backend still enforces cooldown.
-        }
-        setError('OTP verification failed. Too many incorrect attempts. You will be redirected to the login page in 5 seconds.');
-        setRedirectCountdown(5);
+        startOtpCooldown(err);
       } else if (err.response?.data?.code_exhausted) {
         setCurrentCodeExhausted(true);
         setVerifyAttempts(MAX_VERIFY_ATTEMPTS);
@@ -189,7 +198,11 @@ export default function OTP() {
       setDigits(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } catch (err) {
-      setNoticeMessage(err.response?.data?.message || 'Failed to resend OTP. Please try again.');
+      if (purpose === 'admin-register' && (err.response?.status === 429 || err.response?.data?.locked)) {
+        startOtpCooldown(err);
+      } else {
+        setNoticeMessage(err.response?.data?.message || 'Failed to resend OTP. Please try again.');
+      }
     } finally {
       setResending(false);
     }
