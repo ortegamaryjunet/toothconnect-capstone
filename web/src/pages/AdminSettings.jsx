@@ -556,13 +556,14 @@ export default function AdminSettings() {
 
       /* Sunday Note */
       else if (key === "hours_sunday_note") {
-        newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()-]/g, "");
+        newValue = newValue.replace(/[^\p{L}0-9\s&:.,'()-]/gu, "");
 
         if (
           newValue &&
-          !/^[A-Za-z0-9\s&:.,'()-]+$/.test(newValue)
+          !/^[\p{L}0-9\s&:.,'()-]+$/u.test(newValue)
         ) {
-          error = "Sunday note contains invalid characters.";
+          error =
+            "Only letters, numbers, spaces, and supported punctuation are allowed.";
         }
       }
 
@@ -575,7 +576,8 @@ export default function AdminSettings() {
         newValue = newValue.replace(/[^0-9%+]/g, "");
 
         if (newValue && !/^\d+[%+]?$/.test(newValue)) {
-          error = "Only numbers with an optional % or + are allowed.";
+          error =
+            "Only numbers with an optional % or + symbol are allowed.";
         }
       }
 
@@ -593,10 +595,11 @@ export default function AdminSettings() {
         key === "hero_booking_title" ||
         key === "hero_booking_subtitle"
       ) {
-        newValue = newValue.replace(/[^A-Za-z\s&.,'()!?:-]/g, "");
+        newValue = newValue.replace(/[^\p{L}\s&.,'()!?:-]/gu, "");
 
-        if (newValue && !/^[A-Za-z\s&.,'()!?:-]+$/.test(newValue)) {
-          error = "Contains invalid characters.";
+        if (newValue && !/^[\p{L}\s&.,'()!?:-]+$/u.test(newValue)) {
+          error =
+            "Only letters, spaces, and supported punctuation are allowed.";
         }
       }
 
@@ -635,9 +638,10 @@ export default function AdminSettings() {
       ) {
         if (
           newValue &&
-          !/^[A-Za-z0-9\s&.,'()!?:/%+\-]+$/.test(newValue.trim())
+          !/^[\p{L}0-9\s&.,'()!?:/%+\-]+$/u.test(newValue.trim())
         ) {
-          error = "Contains invalid characters.";
+          error =
+            "Only letters, numbers, spaces, and supported punctuation are allowed.";
         }
       }
 
@@ -649,9 +653,12 @@ export default function AdminSettings() {
         key === "care_content" ||
         key === "map_section_description"
       ) {
-        if (newValue && !/^[A-Za-z0-9\s&.,'"()!?:;%+\-\/\n\r]+$/.test(newValue)
+        if (
+          newValue &&
+          !/^[\p{L}0-9\s&.,'"()!?:;%+\-\/\n\r]+$/u.test(newValue)
         ) {
-          error = "Contains invalid characters.";
+          error =
+            "Only letters, numbers, spaces, and supported punctuation are allowed.";
         }
       }
 
@@ -669,9 +676,12 @@ export default function AdminSettings() {
         key === "makati_branch_map_button" ||
         key === "las_pinas_branch_map_button"
       ) {
-        if (newValue && !/^[A-Za-z0-9\s&.,'"()!?:#/%+\-]+$/.test(newValue)
+        if (
+          newValue &&
+          !/^[\p{L}0-9\s&.,'"()!?:#/%+\-]+$/u.test(newValue)
         ) {
-          error = "Contains invalid characters.";
+          error =
+            "Only letters, numbers, spaces, and supported punctuation are allowed.";
         }
       }
 
