@@ -454,29 +454,29 @@ const createAdminTransactionsStyles = ({
       minWidth: 44,
       padding: '5px 9px',
       borderRadius: 8,
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: 700,
       fontFamily: 'Arial, sans-serif',
     },
 
     badgePaid: {
-      background: '#bbf7d0',
-      color: '#15803d',
+      background: '#ECFDF5',
+      color: '#059669',
     },
 
     badgePending: {
-      background: '#fde68a',
-      color: '#92400e',
+      background: '#FFF7ED',
+      color: '#D97706',
     },
 
     badgeRejected: {
-      background: '#fecaca',
-      color: '#b91c1c',
+      background: '#FEF2F2',
+      color: '#DC2626',
     },
 
     badgeDefault: {
-      background: '#e2e8f0',
-      color: '#334155',
+      background: '#F8FAFC',
+      color: '#64748B',
     },
 
     errorText: {
@@ -487,42 +487,62 @@ const createAdminTransactionsStyles = ({
     },
 
     pagination: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: isMobile ? 'center' : 'flex-end',
+      display: "flex",
+      alignItems: "center",
+      justifyContent: isMobile ? "center" : "flex-end",
       gap: 12,
-      marginTop: 18,
-      flexWrap: 'wrap',
+      marginTop: 20,
+      flexWrap: "nowrap",
     },
 
     pageBtn: {
-      minWidth: 52,
-      height: isMobile ? 33 : 35,
-      border: '1px solid #dbeafe',
-      borderRadius: 11,
-      background: '#eff6ff',
-      color: '#b8860b',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      cursor: 'pointer',
-      flexShrink: 0,
-      padding: '0 10px',
-      fontFamily: 'Arial, sans-serif',
+      minWidth: 100,
+      height: 40,
+      padding: "0 18px",
+      borderRadius: 10,
+      border: "1px solid transparent",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
       fontSize: 13,
+      fontWeight: 700,
+      fontFamily: "Arial, sans-serif",
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      transition: "0.2s ease",
+    },
+
+    prevPageBtn: {
+      background: "#ffffff",
+      color: "#b8860b",
+      border: "1px solid #d4af37",
+    },
+
+    nextPageBtn: {
+      background: "linear-gradient(135deg, #d4af37 0%, #b8860b 100%)",
+      color: "#ffffff",
     },
 
     pageBtnDisabled: {
-      opacity: 0.5,
-      cursor: 'not-allowed',
+      background: "#f8fafc",
+      color: "#94a3b8",
+      border: "1px solid #e2e8f0",
+      cursor: "not-allowed",
     },
 
     pageInfo: {
       minWidth: 100,
-      textAlign: 'center',
-      fontSize: 14,
-      color: '#475569',
-      fontFamily: 'Arial, sans-serif',
+      height: 40,
+      padding: "0 18px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 10,
+      color: "#334155",
+      fontSize: 13,
+      fontWeight: 700,
+      fontFamily: "Arial, sans-serif",
+      whiteSpace: "nowrap",
     },
 
     modal: {
