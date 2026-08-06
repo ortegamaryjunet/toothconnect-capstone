@@ -71,6 +71,19 @@ export default function Register() {
     return String(value || '').trim() ? '' : 'This field is required';
   }
 
+  function validateFullName(value) {
+    const fullName = String(value || '').trim();
+    const requiredError = validateRequired(fullName);
+    if (requiredError) return requiredError;
+    if (!/^[a-zA-Z\s]+$/.test(fullName)) {
+      return 'Full name must not contain numbers or special characters.';
+    }
+    if (fullName.split(/\s+/).length < 2) {
+      return 'Full name must contain first and last name.';
+    }
+    return '';
+  }
+
   function validateEmail(value) {
     const requiredError = validateRequired(value);
     if (requiredError) return requiredError;
@@ -110,7 +123,7 @@ export default function Register() {
   function validateField(field, value, nextValues = {}) {
     const nextPassword = nextValues.password ?? password;
 
-    if (field === 'name') return validateRequired(value);
+    if (field === 'name') return validateFullName(value);
     if (field === 'email') return validateEmail(value);
     if (field === 'password') return validatePassword(value);
     if (field === 'confirmPassword') return validateConfirmPassword(value, nextPassword);
@@ -119,7 +132,7 @@ export default function Register() {
 
   function validateForm() {
     return {
-      name: validateRequired(name),
+      name: validateFullName(name),
       email: validateEmail(email),
       password: validatePassword(password),
       confirmPassword: validateConfirmPassword(confirmPassword, password),
@@ -147,13 +160,14 @@ export default function Register() {
     const shouldShowRequiredError =
       !String(value || '').trim() &&
       (String(value || '').length > 0 || String(previousValue || '').length > 0);
+    const shouldShowNameFormatError = field === 'name' && Boolean(String(value || '').trim());
 
-    if (shouldShowRequiredError) {
+    if (shouldShowRequiredError || shouldShowNameFormatError) {
       setTouched((current) => ({ ...current, [field]: true }));
     }
 
     setFieldErrors((current) => {
-      const shouldValidateField = touched[field] || submittedOnce || shouldShowRequiredError;
+      const shouldValidateField = touched[field] || submittedOnce || shouldShowRequiredError || shouldShowNameFormatError;
       const nextErrors = { ...current };
       const nextValues = field === 'password' ? { password: value } : {};
 

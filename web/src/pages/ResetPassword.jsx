@@ -23,6 +23,8 @@ export default function ResetPassword() {
   const [touched, setTouched] = useState({ newPassword: false, confirmPassword: false });
   const [fieldErrors, setFieldErrors] = useState({ newPassword: '', confirmPassword: '' });
   const [submittedOnce, setSubmittedOnce] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmResetPrompt, setShowConfirmResetPrompt] = useState(false);
@@ -33,6 +35,30 @@ export default function ResetPassword() {
   const visibleNewPasswordError = (touched.newPassword || submittedOnce) ? fieldErrors.newPassword : '';
   const visibleConfirmPasswordError =
     (touched.confirmPassword || submittedOnce) ? fieldErrors.confirmPassword : '';
+  const newPasswordInputStyle = {
+    ...styles.input,
+    ...(visibleNewPasswordError ? styles.inputError : {}),
+    paddingRight: 74,
+  };
+  const confirmPasswordInputStyle = {
+    ...styles.input,
+    ...(visibleConfirmPasswordError ? styles.inputError : {}),
+    paddingRight: 74,
+  };
+  const toggleBtnStyle = {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    height: 54,
+    display: 'flex',
+    alignItems: 'center',
+    border: 'none',
+    background: 'transparent',
+    color: '#8b6508',
+    fontWeight: 900,
+    cursor: 'pointer',
+    padding: '6px 8px',
+  };
 
   function validatePassword(value) {
     const passwordValue = String(value || '');
@@ -211,22 +237,29 @@ export default function ResetPassword() {
         <label style={styles.label}>
           New Password <span style={styles.requiredMark}>*</span>
         </label>
-        <input
-          ref={newPasswordRef}
-          type="password"
-          placeholder="At least 8 characters"
-          style={{
-            ...styles.input,
-            ...(visibleNewPasswordError ? styles.inputError : {}),
-          }}
-          value={newPassword}
-          onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-          onKeyDown={(e) => handlePasswordKeyDown('newPassword', e)}
-          onBlur={() => handlePasswordBlur('newPassword')}
-          autoComplete="new-password"
-          aria-invalid={Boolean(visibleNewPasswordError)}
-          aria-describedby={visibleNewPasswordError ? 'reset-password-new-error' : undefined}
-        />
+        <div style={{ position: 'relative', width: '100%' }}>
+          <input
+            ref={newPasswordRef}
+            type={showNewPassword ? 'text' : 'password'}
+            placeholder="At least 8 characters"
+            style={newPasswordInputStyle}
+            value={newPassword}
+            onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+            onKeyDown={(e) => handlePasswordKeyDown('newPassword', e)}
+            onBlur={() => handlePasswordBlur('newPassword')}
+            autoComplete="new-password"
+            aria-invalid={Boolean(visibleNewPasswordError)}
+            aria-describedby={visibleNewPasswordError ? 'reset-password-new-error' : undefined}
+          />
+          <button
+            type="button"
+            onClick={() => setShowNewPassword((v) => !v)}
+            style={toggleBtnStyle}
+            aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+          >
+            {showNewPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
         <p
           id="reset-password-new-error"
           style={{
@@ -240,22 +273,29 @@ export default function ResetPassword() {
         <label style={styles.label}>
           Confirm Password <span style={styles.requiredMark}>*</span>
         </label>
-        <input
-          ref={confirmPasswordRef}
-          type="password"
-          placeholder="Confirm new password"
-          style={{
-            ...styles.input,
-            ...(visibleConfirmPasswordError ? styles.inputError : {}),
-          }}
-          value={confirmPassword}
-          onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-          onKeyDown={(e) => handlePasswordKeyDown('confirmPassword', e)}
-          onBlur={() => handlePasswordBlur('confirmPassword')}
-          autoComplete="new-password"
-          aria-invalid={Boolean(visibleConfirmPasswordError)}
-          aria-describedby={visibleConfirmPasswordError ? 'reset-password-confirm-error' : undefined}
-        />
+        <div style={{ position: 'relative', width: '100%' }}>
+          <input
+            ref={confirmPasswordRef}
+            type={showConfirmPassword ? 'text' : 'password'}
+            placeholder="Confirm new password"
+            style={confirmPasswordInputStyle}
+            value={confirmPassword}
+            onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+            onKeyDown={(e) => handlePasswordKeyDown('confirmPassword', e)}
+            onBlur={() => handlePasswordBlur('confirmPassword')}
+            autoComplete="new-password"
+            aria-invalid={Boolean(visibleConfirmPasswordError)}
+            aria-describedby={visibleConfirmPasswordError ? 'reset-password-confirm-error' : undefined}
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword((v) => !v)}
+            style={toggleBtnStyle}
+            aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+          >
+            {showConfirmPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
         <p
           id="reset-password-confirm-error"
           style={{
