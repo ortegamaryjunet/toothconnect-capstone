@@ -4510,8 +4510,8 @@ const contentEditActions = (
             fields={[
               { key: "name", label: "Service Name", required: true },
               { key: "image_path", label: "Service Image", type: "image", required: true },
-              { key: "before_image", label: "Before Image", type: "image", required: true },
-              { key: "after_image", label: "After Image", type: "image", required: true },
+              { key: "before_image", label: "Before Image", type: "image" },
+              { key: "after_image", label: "After Image", type: "image" },
               { key: "intro", label: "Hero Introduction", type: "textarea", required: true },
               { key: "heading", label: "Main Heading", required: true },
               { key: "overview", label: "Overview", type: "textarea", required: true },
@@ -4561,13 +4561,9 @@ const contentEditActions = (
                 ></i>
               </div>
 
-              <h2 style={styles.modalTitle}>
-                Confirm Content Changes
-              </h2>
+              <h2 style={styles.modalTitle}>Confirm Website Service Changes</h2>
 
-              <p style={styles.modalText}>
-                Please review the website service details before saving.
-              </p>
+              <p style={styles.modalText}>Please review the website service content before saving.</p>
 
               <div
                 style={{
@@ -4578,7 +4574,9 @@ const contentEditActions = (
                   marginBottom: 8,
                 }}
               >
-                {websiteServiceSaveConfirmModal.details.filter((detail) => detail.changed).length === 0 ? (
+                {websiteServiceSaveConfirmModal.details.filter(
+                  (detail) => detail.changed
+                ).length === 0 ? (
                   <div
                     style={{
                       color: "#64748b",
@@ -4598,37 +4596,74 @@ const contentEditActions = (
                           display: "flex",
                           justifyContent: "space-between",
                           gap: 12,
-                          padding: "7px 0",
+                          padding: "10px 0",
                           borderBottom: "1px solid #f1f5f9",
                           fontSize: 13,
                           textAlign: "left",
                         }}
                       >
-                        <span style={{ color: "#64748b" }}>
-                          {detail.label}
+                        <div
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: "#64748b",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {detail.label}
+                          </span>
+
                           <small
                             style={{
                               display: "block",
                               color: "#94a3b8",
-                              marginTop: 2,
+                              marginTop: 3,
+                              marginBottom: 6,
                             }}
                           >
                             {detail.previousValue === "Not set"
                               ? "Added"
                               : "Changed"}
                           </small>
-                        </span>
 
-                        <strong
+                          {detail.previousValue !== undefined &&
+                            detail.previousValue !== detail.value && (
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: "#94a3b8",
+                                  textDecoration: "line-through",
+                                  overflowWrap: "anywhere",
+                                }}
+                              >
+                                {detail.previousValue}
+                              </div>
+                            )}
+                        </div>
+
+                        <div
                           style={{
-                            color: "#0f172a",
+                            flex: 1,
                             textAlign: "right",
-                            maxWidth: 260,
-                            overflowWrap: "anywhere",
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            alignItems: "center",
                           }}
                         >
-                          {detail.value}
-                        </strong>
+                          <strong
+                            style={{
+                              color: "#0f172a",
+                              overflowWrap: "anywhere",
+                              maxWidth: 240,
+                            }}
+                          >
+                            {detail.value}
+                          </strong>
+                        </div>
                       </div>
                     ))
                 )}
@@ -8011,17 +8046,6 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
     setHasChanges(true);
 
     let newValue = value;
-    let error = validateWebsiteField(key, newValue);
-
-    setWebsiteContentForm(prev => ({
-      ...prev,
-      [key]: newValue,
-    }));
-
-    setWebsiteContentErrors(prev => ({
-      ...prev,
-      [key]: error,
-    }));
 
     if (
       field.key === "contact_phone1" ||
@@ -8084,7 +8108,7 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
       newValue = newValue.replace(/[^A-Za-z0-9\s&:.,'()-]/g, "");
     }
 
-    error = validateField(field, newValue);
+    let error = validateField(field, newValue);
 
     if (
       field.key === "contact_email" &&
