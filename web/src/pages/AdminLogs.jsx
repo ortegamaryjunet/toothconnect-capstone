@@ -548,12 +548,11 @@ export default function AdminLogs() {
                 type="button"
                 onClick={prevPage}
                 disabled={currentPage === 1}
-                style={{
-                  ...styles.pageBtn,
+                style={{ ...styles.pageBtn, ...styles.prevPageBtn,
                   ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
                 }}
               >
-                Prev
+                Previous
               </button>
 
               <span style={styles.pageInfo}>
@@ -566,8 +565,7 @@ export default function AdminLogs() {
                 type="button"
                 onClick={nextPage}
                 disabled={currentPage >= totalPages}
-                style={{
-                  ...styles.pageBtn,
+                style={{ ...styles.pageBtn, ...styles.nextPageBtn,
                   ...(currentPage >= totalPages ? styles.pageBtnDisabled : {}),
                 }}
               >
