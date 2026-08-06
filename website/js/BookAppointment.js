@@ -969,12 +969,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 clearFieldError("timeSubmitError");
             }
 
+            const allRequiredFieldsEmpty =
+                !patientName.value.trim() &&
+                !emailInput.value.trim() &&
+                !phoneInput.value.trim() &&
+                !selectedLocation &&
+                (!selectedReason.value || reasonText.textContent === "Select reason") &&
+                !appointmentDateInput.value &&
+                !appointmentTimeInput.value;
+
             if (hasError) {
-                showMessage(
-                    "Required Fields",
-                    "Please complete all required fields before scheduling your appointment.",
-                    "error"
-                );
+                if (allRequiredFieldsEmpty) {
+                    showMessage(
+                        "Appointment Details Required",
+                        "Please complete the appointment form before scheduling.",
+                        "error"
+                    );
+                }
+
                 return;
             }
 
