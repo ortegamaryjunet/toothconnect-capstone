@@ -474,7 +474,18 @@ footer {
     font-weight: 700;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1440px) {
+    .service-hero {
+        width: min(1200px, calc(100% - 40px));
+    }
+
+    .service-details {
+        width: min(1200px, 100%);
+        padding: 0 24px;
+    }
+}
+
+@media (max-width: 1200px) {
     .service-hero {
         min-height: 440px;
         padding: 30px;
@@ -504,18 +515,62 @@ footer {
     }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 992px) {
+    .back-home-btn {
+        top: 18px;
+        left: 18px;
+    }
+
+    .service-hero {
+        width: calc(100% - 36px);
+        min-height: 400px;
+        margin-top: 80px;
+        padding: 24px;
+        border-radius: 30px;
+    }
+
+    .hero-box {
+        padding: 34px 28px;
+        border-radius: 28px;
+    }
+
+    .hero-box h1 {
+        font-size: 42px;
+    }
+
+    .service-details {
+        padding: 0 20px;
+    }
+
+    .detail-section {
+        padding: 32px;
+    }
+
+    .content h2 {
+        font-size: 34px;
+    }
+
+    .content h3 {
+        font-size: 24px;
+    }
+
+    .tooth-comparison {
+        height: 340px;
+    }
+}
+
+@media (max-width: 768px) {
     .back-home-btn {
         top: 16px;
         left: 16px;
         height: 40px;
         padding: 0 14px;
-        font-size: 13px;
+        font-size: 12px;
     }
 
     .service-hero {
         width: calc(100% - 32px);
-        min-height: 400px;
+        min-height: 390px;
         margin-top: 76px;
         padding: 22px;
         border-radius: 28px;
@@ -528,17 +583,10 @@ footer {
 
     .hero-box {
         padding: 30px 24px;
-        border-radius: 24px;
     }
 
     .hero-box h1 {
         font-size: 38px;
-        letter-spacing: -1px;
-    }
-
-    .service-details {
-        padding: 0 16px;
-        margin: 44px auto;
     }
 
     .summary-card {
@@ -547,47 +595,28 @@ footer {
     }
 
     .summary-toggle {
-        padding: 4px 0;
         display: flex;
         align-items: center;
         justify-content: space-between;
         cursor: pointer;
     }
 
-    .summary-toggle span {
-        font-size: 24px;
-    }
-
     .summary-toggle i {
         display: block;
-        font-size: 18px;
-        color: var(--gold-dark);
     }
 
     .summary-links {
         display: none;
-        margin-top: 18px;
         grid-template-columns: 1fr;
-        gap: 12px;
     }
 
     .summary-card.active .summary-links {
         display: grid;
     }
 
-    .summary-card a {
-        min-height: 50px;
-        margin-bottom: 0;
-    }
-
     .detail-section {
         padding: 28px;
-        border-radius: 26px;
-    }
-
-    .detail-section::before {
-        left: 28px;
-        right: 28px;
+        border-radius: 24px;
     }
 
     .content h2 {
@@ -599,35 +628,13 @@ footer {
     }
 
     .tooth-comparison {
-        height: 320px;
-        border-radius: 24px;
-    }
-
-    .comparison-line span {
-        width: 42px;
-        height: 42px;
-        font-size: 13px;
-    }
-
-    .comparison-tag {
-        top: 14px;
-        min-width: 70px;
-        font-size: 11px;
-        padding: 7px 12px;
-    }
-
-    .before-tag {
-        left: 14px;
-    }
-
-    .after-tag {
-        right: 14px;
+        height: 300px;
     }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 576px) {
     .service-hero {
-        min-height: 360px;
+        min-height: 350px;
         padding: 18px;
     }
 
@@ -644,6 +651,10 @@ footer {
         font-size: 14px;
     }
 
+    .summary-links {
+        grid-template-columns: 1fr;
+    }
+
     .summary-card a {
         min-height: 48px;
         font-size: 13px;
@@ -653,43 +664,63 @@ footer {
         padding: 22px;
     }
 
-    .detail-section::before {
-        left: 22px;
-        right: 22px;
-    }
-
     .section-label,
     .hero-label {
         font-size: 11px;
     }
 
     .tooth-comparison {
-        height: 260px;
+        height: 250px;
         border-radius: 20px;
-    }
-
-    .comparison-line {
-        width: 2px;
     }
 
     .comparison-line span {
         width: 38px;
         height: 38px;
-        border-width: 3px;
+    }
+}
+
+@media (max-width: 400px) {
+    .service-hero {
+        min-height: 320px;
+    }
+
+    .hero-box {
+        padding: 20px 16px;
+    }
+
+    .hero-box h1 {
+        font-size: 28px;
+    }
+
+    .hero-box p,
+    .content p {
+        font-size: 13px;
+    }
+
+    .summary-toggle span {
+        font-size: 20px;
+    }
+
+    .content h2 {
+        font-size: 26px;
+    }
+
+    .content h3 {
+        font-size: 20px;
+    }
+
+    .tooth-comparison {
+        height: 220px;
+    }
+
+    .comparison-line span {
+        width: 34px;
+        height: 34px;
     }
 
     .comparison-tag {
-        top: 10px;
-        min-width: 62px;
         font-size: 10px;
-        padding: 6px 10px;
-    }
-
-    .before-tag {
-        left: 10px;
-    }
-
-    .after-tag {
-        right: 10px;
+        padding: 5px 8px;
     }
 }
