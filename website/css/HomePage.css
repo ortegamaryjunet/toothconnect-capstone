@@ -2323,7 +2323,7 @@ section {
 }
 
 /* RESPONSIVE */
-@media (max-width: 1440px) {
+@media (max-width: 1400px) {
     .hero,
     .benefits,
     .about,
@@ -2334,9 +2334,9 @@ section {
     }
 
     .hero {
-        padding: 150px 6% 80px;
-        gap: 70px;
+        padding: 140px 6% 80px;
         text-align: center;
+        gap: 60px;
     }
 
     .hero-left {
@@ -2356,15 +2356,8 @@ section {
         justify-content: center;
     }
 
-    .hero-stats {
-        max-width: 820px;
-        width: 100%;
-        grid-template-columns: repeat(3, 1fr);
-    }
-
     .hero-right {
         min-height: auto;
-        justify-content: center;
     }
 
     .image-panel {
@@ -2372,68 +2365,61 @@ section {
         height: 560px;
     }
 
-    .steps-grid {
+    .steps-grid,
+    .dentist-grid {
         grid-template-columns: repeat(2, 1fr);
-    }
-
-    .contact {
-        padding: 50px 40px;
     }
 }
 
 @media (max-width: 1200px) {
-    .hero,
-    .benefits,
-    .about,
-    .faq-wrapper,
-    .contact,
-    .footer-top {
-        grid-template-columns: 1fr;
+    .header {
+        width: calc(100% - 28px);
     }
 
     .hero {
-        gap: 60px;
+        gap: 50px;
     }
 
-    .about {
-        gap: 70px;
+    .about,
+    .benefits {
+        gap: 60px;
     }
 
     .about-content {
         text-align: center;
     }
 
-    .dentist-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
     .service-carousel {
-        min-height: 620px;
+        min-height: 560px;
         padding: 0 70px;
     }
 
     .service-stack {
-        max-width: 900px;
         width: 100%;
-        height: 560px;
+        max-width: 720px;
+        height: 500px;
     }
 
     .service-card {
-        width: 320px;
-        height: 460px;
+        width: 290px;
+        height: 410px;
     }
 
     .service-card.active {
-        width: 390px;
-        height: 520px;
+        width: 340px;
+        height: 470px;
+    }
+
+    .contact {
+        padding: 45px 35px;
     }
 }
 
 @media (max-width: 992px) {
     .header {
-        width: calc(100% - 22px);
         top: 12px;
-        padding: 16px 18px;
+        padding: 15px 18px;
+        border-radius: 22px;
     }
 
     .menu-btn {
@@ -2443,14 +2429,16 @@ section {
 
     .nav {
         position: absolute;
-        top: 88px;
+        top: 86px;
         left: 0;
         right: 0;
         display: none;
         flex-direction: column;
-        padding: 18px;
-        gap: 10px;
-        border-radius: 24px;
+        gap: 12px;
+        padding: 20px;
+        background: #fff;
+        border-radius: 22px;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.08);
     }
 
     .nav.show {
@@ -2458,68 +2446,11 @@ section {
     }
 
     .hero {
-        padding-top: 150px;
-        gap: 60px;
+        padding-top: 145px;
     }
 
     .hero h1 {
-        font-size: clamp(42px, 7vw, 62px);
-    }
-
-    .hero-stats {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    .service-carousel {
-        min-height: 560px;
-        padding: 0 55px;
-    }
-
-    .service-stack {
-        height: 500px;
-    }
-
-    .contact {
-        margin: 40px 5% 70px;
-        padding: 40px 26px;
-    }
-
-    .footer-bottom {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-}
-
-@media (max-width: 768px) {
-    .hero,
-    .services,
-    .steps,
-    .dentists,
-    .benefits,
-    .about,
-    .faq-section {
-        padding-left: 5%;
-        padding-right: 5%;
-    }
-
-    .hero {
-        padding-top: 135px;
-        gap: 50px;
-    }
-
-    .hero h1 {
-        font-size: clamp(36px, 9vw, 50px);
-    }
-
-    .hero p {
-        font-size: 15px;
-    }
-
-    .primary-btn,
-    .outline-btn,
-    .header-btn {
-        width: 100%;
-        max-width: 320px;
+        font-size: 48px;
     }
 
     .hero-stats {
@@ -2527,59 +2458,278 @@ section {
     }
 
     .steps-grid,
+    .benefit-grid,
+    .dentist-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .service-carousel {
+        min-height: 500px;
+        padding: 0 60px;
+    }
+
+    .service-stack {
+        height: 430px;
+    }
+
+    .service-card {
+        width: 240px;
+        height: 340px;
+    }
+
+    .service-card.active {
+        width: 290px;
+        height: 400px;
+    }
+
+    .service-card.prev {
+        transform: translate(-105%, -50%) scale(.82);
+    }
+
+    .service-card.next {
+        transform: translate(5%, -50%) scale(.82);
+    }
+
+    .contact {
+        margin: 40px 5%;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero,
+    .services,
+    .steps,
+    .benefits,
+    .about,
+    .dentists,
+    .faq-section,
+    .contact {
+        padding-left: 5%;
+        padding-right: 5%;
+    }
+
+    .hero {
+        padding-top: 130px;
+        gap: 40px;
+        text-align: center;
+    }
+
+    .hero h1 {
+        font-size: 40px;
+        line-height: 1.15;
+    }
+
+    .hero p {
+        font-size: 15px;
+        max-width: 100%;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        width: 100%;
+        gap: 14px;
+    }
+
+    .primary-btn,
+    .outline-btn,
+    .header-btn {
+        width: 100%;
+        max-width: none;
+    }
+
+    .hero-stats,
+    .steps-grid,
+    .benefit-grid,
+    .dentist-grid,
     .footer-top,
     .form-row {
         grid-template-columns: 1fr;
     }
 
-    .image-panel {
-        max-width: 360px;
-        height: 400px;
+    .hero-stats {
+        gap: 16px;
     }
 
-    .float-card {
+    .image-panel {
+        width: 100%;
+        max-width: 340px;
+        height: 380px;
+    }
+
+    .float-card,
+    .experience-card,
+    .benefit-floating-card {
         display: none;
+    }
+
+    .about,
+    .benefits {
+        gap: 45px;
+    }
+
+    .about-gallery,
+    .benefit-img {
+        min-height: auto;
+    }
+
+    .gallery-bg,
+    .gallery-pattern {
+        display: none;
+    }
+
+    .main-image,
+    .floating-image {
+        position: static;
+        width: 100%;
+        height: auto;
+        margin-bottom: 18px;
+        border-width: 5px;
+    }
+
+    .about-content {
+        padding: 30px 22px;
+        text-align: center;
     }
 
     .section-title h2,
     .benefit-content h2,
     .about-content h2,
     .contact h2 {
-        font-size: 36px;
+        font-size: 34px;
+    }
+
+    .section-title p,
+    .benefit-content>p,
+    .about-content p {
+        font-size: 15px;
+        line-height: 1.8;
     }
 
     .service-carousel {
-        min-height: 500px;
-        padding: 0 45px;
+        min-height: 400px;
+        padding: 0 30px;
+    }
+
+    .service-stack {
+        height: 320px;
+    }
+
+    .service-card {
+        width: 180px;
+        height: 250px;
+    }
+
+    .service-card.active {
+        width: 220px;
+        height: 300px;
+    }
+
+    .service-card.prev,
+    .service-card.next {
+        opacity: .18;
+        filter: blur(4px);
+    }
+
+    .service-arrow {
+        width: 44px;
+        height: 44px;
+    }
+
+    .faq-wrapper {
+        grid-template-columns: 1fr;
+        gap: 22px;
+    }
+
+    .faq-item button {
+        padding: 18px;
+    }
+
+    .faq-item button span {
+        font-size: 17px;
+    }
+
+    .faq-answer {
+        padding: 0 18px 18px;
+    }
+
+    .help-card,
+    .hours-card,
+    .call-card {
+        padding: 22px;
+        border-radius: 22px;
+    }
+
+    .hours-card p {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .call-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .call-content h4,
+    .call-email {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        font-size: 15px;
     }
 
     .contact {
-        margin: 30px 5% 60px;
-        padding: 30px 18px;
+        padding: 28px 18px;
+        border-radius: 28px;
+        gap: 28px;
+        margin: 35px 5%;
+    }
+
+    .contact-content {
+        text-align: center;
+    }
+
+    .contact-socials {
+        justify-content: center;
     }
 
     .inquiry-form {
         padding: 20px 16px;
     }
+
+    .footer-bottom {
+        flex-direction: column;
+        gap: 14px;
+        text-align: center;
+    }
 }
 
 @media (max-width: 576px) {
     .header {
-        padding: 12px 14px;
+        padding: 12px;
         border-radius: 18px;
     }
 
-    .logo-text h2 {
-        font-size: 12px;
+    .brand-mark {
+        width: 48px;
+        height: 48px;
     }
 
-    .brand-mark {
-        width: 50px;
-        height: 50px;
+    .logo-text h2 {
+        font-size: 13px;
+    }
+
+    .logo-subline {
+        display: none;
     }
 
     .hero {
-        padding-top: 125px;
+        padding-top: 120px;
     }
 
     .hero h1 {
@@ -2591,28 +2741,91 @@ section {
     }
 
     .hero-stats {
-        grid-template-columns: 1fr;
-        gap: 10px;
+        gap: 12px;
+    }
+
+    .hero-stats div {
+        padding: 16px;
+        min-height: auto;
+    }
+
+    .hero-stats strong {
+        font-size: 26px;
     }
 
     .image-panel {
-        height: 330px;
+        width: 100%;
+        max-width: 280px;
+        height: 300px;
+    }
+
+    .about-content {
+        padding: 24px 18px;
     }
 
     .section-title h2,
     .benefit-content h2,
     .about-content h2,
     .contact h2 {
-        font-size: 30px;
+        font-size: 28px;
     }
 
     .service-carousel {
-        min-height: 430px;
-        padding: 0 35px;
+        min-height: 340px;
+        padding: 0 20px;
+    }
+
+    .service-stack {
+        height: 270px;
+    }
+
+    .service-card {
+        width: 150px;
+        height: 210px;
+    }
+
+    .service-card.active {
+        width: 185px;
+        height: 250px;
+    }
+
+    .service-arrow {
+        width: 40px;
+        height: 40px;
+    }
+
+    .faq-item button {
+        padding: 16px;
+    }
+
+    .faq-item button span {
+        font-size: 16px;
+    }
+
+    .help-card,
+    .hours-card,
+    .call-card {
+        padding: 18px;
+    }
+
+    .help-card h3 {
+        font-size: 22px;
+    }
+
+    .call-content h4,
+    .call-email {
+        font-size: 14px;
     }
 
     .contact {
-        border-radius: 24px;
+        padding: 22px 16px;
+        border-radius: 22px;
+    }
+
+    .contact-socials a {
+        width: 44px;
+        height: 44px;
+        font-size: 20px;
     }
 }
 
@@ -2625,27 +2838,46 @@ section {
         font-size: 13px;
     }
 
+    .hero-stats strong {
+        font-size: 22px;
+    }
+
+    .image-panel {
+        height: 240px;
+    }
+
     .service-carousel {
-        min-height: 380px;
-        padding: 0 25px;
+        min-height: 290px;
+        padding: 0 14px;
     }
 
     .service-stack {
-        height: 330px;
+        height: 220px;
     }
 
     .service-card {
-        width: 160px;
-        height: 230px;
+        width: 130px;
+        height: 180px;
     }
 
     .service-card.active {
-        width: 220px;
-        height: 300px;
+        width: 160px;
+        height: 215px;
     }
 
     .service-arrow {
-        width: 40px;
-        height: 40px;
+        width: 34px;
+        height: 34px;
+        font-size: 13px;
+    }
+
+    .hours-card p,
+    .call-content h4,
+    .call-email {
+        font-size: 13px;
+    }
+
+    .contact {
+        padding: 18px 14px;
     }
 }
