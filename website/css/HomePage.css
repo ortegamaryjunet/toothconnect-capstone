@@ -2323,7 +2323,7 @@ section {
 }
 
 /* RESPONSIVE */
-@media (max-width: 1200px) {
+@media (max-width: 1440px) {
     .hero,
     .benefits,
     .about,
@@ -2348,8 +2348,7 @@ section {
     .hero p,
     .section-title p,
     .contact p {
-        margin-left: auto;
-        margin-right: auto;
+        margin-inline: auto;
     }
 
     .hero-actions,
@@ -2358,97 +2357,31 @@ section {
     }
 
     .hero-stats {
-        width: 100%;
         max-width: 820px;
+        width: 100%;
         grid-template-columns: repeat(3, 1fr);
     }
 
     .hero-right {
         min-height: auto;
-        width: 100%;
         justify-content: center;
-    }
-
-    .service-card.prev {
-        z-index: 2;
-        transform: translate(-105%, -50%) rotate(-10deg) scale(.84);
-        opacity: .55;
-        filter: blur(1px);
-    }
-
-    .service-card.next {
-        z-index: 2;
-        transform: translate(5%, -50%) rotate(10deg) scale(.84);
-        opacity: .55;
-        filter: blur(1px);
     }
 
     .image-panel {
         width: min(500px, 100%);
         height: 560px;
-        border-radius: 36px;
-    }
-
-    .image-panel::before {
-        border-radius: 28px;
-    }
-
-    .image-panel img {
-        object-fit: cover;
-        object-position: center top;
-    }
-
-    .top-card {
-        top: 90px;
-        left: -10px;
-    }
-
-    .bottom-card {
-        right: -10px;
-        bottom: 50px;
     }
 
     .steps-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .about {
-        gap: 70px;
-    }
-
-    .about-images {
-        grid-template-columns: repeat(2, 1fr);
-        align-items: stretch;
-        gap: 18px;
-    }
-
-    .about-images img:first-child,
-    .about-images img:last-child {
-        height: 440px;
-        width: 100%;
-        margin: 0;
-        object-fit: cover;
-        object-position: center;
-    }
-
-    .benefit-img img {
-        width: 100%;
-        max-width: 550px;
-        height: 500px;
-        object-fit: cover;
-        object-position: center;
-    }
-
     .contact {
         padding: 50px 40px;
     }
-
-    .footer-top {
-        gap: 40px;
-    }
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1200px) {
     .hero,
     .benefits,
     .about,
@@ -2459,76 +2392,19 @@ section {
     }
 
     .hero {
-        gap: 70px;
-        text-align: center;
-    }
-
-    .hero p,
-    .contact p,
-    .section-title p {
-        margin-left: auto;
-        margin-right: auto;
-    }
-
-    .hero-actions,
-    .contact-socials {
-        justify-content: center;
-    }
-
-    .hero-right {
-        min-height: auto;
-    }
-
-    .image-panel {
-        width: min(500px, 100%);
-        height: 520px;
-    }
-
-    .benefit-img img {
-        width: 100%;
-        max-width: 550px;
-        height: 500px;
-        object-fit: cover;
-        object-position: center;
+        gap: 60px;
     }
 
     .about {
-        gap: 80px;
-    }
-
-    .about-images {
-        grid-template-columns: repeat(2, 1fr);
-        align-items: stretch;
-        gap: 18px;
-    }
-
-    .about-images img:first-child,
-    .about-images img:last-child {
-        height: 460px;
-        width: 100%;
-        margin: 0;
-        object-fit: cover;
-        object-position: center;
+        gap: 70px;
     }
 
     .about-content {
         text-align: center;
     }
 
-    .steps-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
     .dentist-grid {
         grid-template-columns: repeat(2, 1fr);
-    }
-
-    .footer-top {
-        gap: 40px;
-    }
-
-    .contact {
-        padding: 52px 40px;
     }
 
     .service-carousel {
@@ -2537,8 +2413,8 @@ section {
     }
 
     .service-stack {
-        width: 100%;
         max-width: 900px;
+        width: 100%;
         height: 560px;
     }
 
@@ -2551,23 +2427,13 @@ section {
         width: 390px;
         height: 520px;
     }
-
-    .service-card.prev {
-        transform: translate(-92%, -50%) rotate(-10deg) scale(0.82);
-        opacity: .45;
-    }
-
-    .service-card.next {
-        transform: translate(-8%, -50%) rotate(10deg) scale(0.82);
-        opacity: .45;
-    }
 }
 
 @media (max-width: 992px) {
     .header {
         width: calc(100% - 22px);
-        padding: 16px 18px;
         top: 12px;
+        padding: 16px 18px;
     }
 
     .menu-btn {
@@ -2582,22 +2448,13 @@ section {
         right: 0;
         display: none;
         flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
         padding: 18px;
+        gap: 10px;
         border-radius: 24px;
-        background: var(--white);
-        border: 1px solid var(--line);
-        box-shadow: var(--shadow);
     }
 
     .nav.show {
         display: flex;
-    }
-
-    .nav a {
-        text-align: center;
-        padding: 14px;
     }
 
     .hero {
@@ -2607,30 +2464,10 @@ section {
 
     .hero h1 {
         font-size: clamp(42px, 7vw, 62px);
-        line-height: 1.08;
-    }
-
-    .hero p {
-        font-size: 17px;
     }
 
     .hero-stats {
         grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-    }
-
-    .hero-stats div {
-        min-height: 92px;
-        padding: 18px 12px;
-    }
-
-    .image-panel {
-        max-width: 460px;
-        height: 500px;
-    }
-
-    .float-card {
-        transform: scale(0.9);
     }
 
     .service-carousel {
@@ -2639,222 +2476,12 @@ section {
     }
 
     .service-stack {
-        max-width: 760px;
         height: 500px;
-    }
-
-    .service-card {
-        width: 280px;
-        height: 400px;
-    }
-
-    .service-card.active {
-        width: 340px;
-        height: 470px;
-    }
-
-    .service-card.prev {
-        transform: translate(-88%, -50%) rotate(-9deg) scale(0.8);
-    }
-
-    .service-card.next {
-        transform: translate(-12%, -50%) rotate(9deg) scale(0.8);
-    }
-
-    .service-card span {
-        top: 18px;
-        right: 18px;
-        padding: 10px 16px;
-        font-size: 14px;
-    }
-
-    .benefit-img img {
-        width: 100%;
-        max-width: none;
-        height: 430px;
-        object-fit: cover;
-        object-position: center;
-    }
-
-    .faq-wrapper {
-        grid-template-columns: 1fr;
     }
 
     .contact {
         margin: 40px 5% 70px;
         padding: 40px 26px;
-        border-radius: 34px;
-    }
-
-    .footer-bottom {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-}
-
-@media (max-width: 860px) {
-    .header {
-        width: calc(100% - 20px);
-        padding: 16px 18px;
-        top: 10px;
-    }
-
-    .menu-btn {
-        display: grid;
-        place-items: center;
-    }
-
-    .nav {
-        position: absolute;
-        top: 86px;
-        left: 0;
-        right: 0;
-        display: none;
-        padding: 16px;
-        border-radius: 24px;
-        background: var(--white);
-        border: 1px solid var(--line);
-        box-shadow: var(--shadow);
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .nav.show {
-        display: flex;
-    }
-
-    .nav a {
-        text-align: center;
-        padding: 14px;
-    }
-
-    .hero {
-        padding-top: 150px;
-        gap: 60px;
-    }
-
-    .hero-stats {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    .steps-grid,
-    .dentist-grid,
-    .footer-top {
-        grid-template-columns: 1fr;
-    }
-
-    .hero h1 {
-        font-size: clamp(42px, 8vw, 60px);
-    }
-
-    .image-panel {
-        height: 440px;
-        border-radius: 34px;
-    }
-
-    .float-card {
-        transform: scale(0.9);
-    }
-
-    .service-carousel {
-        min-height: 430px;
-        padding: 0 36px;
-    }
-
-    .service-stack {
-        width: 100%;
-        max-width: 440px;
-        height: 390px;
-    }
-
-    .service-card {
-        width: 200px;
-        height: 280px;
-    }
-
-    .service-card.active {
-        width: 280px;
-        height: 360px;
-    }
-
-    .service-card.prev {
-        z-index: 2;
-        transform: translate(-92%, -50%) rotate(-8deg) scale(.78);
-        opacity: .5;
-        filter: blur(1px);
-    }
-
-    .service-card.next {
-        z-index: 2;
-        transform: translate(-8%, -50%) rotate(8deg) scale(.78);
-        opacity: .5;
-        filter: blur(1px);
-    }
-
-    .service-card span {
-        font-size: 13px;
-        padding: 9px 14px;
-    }
-
-    .service-arrow.left {
-        left: 0;
-    }
-
-    .service-arrow.right {
-        right: 0;
-    }
-
-    .benefit-img img {
-        width: 100%;
-        max-width: none;
-        height: 400px;
-        object-fit: cover;
-        object-position: center;
-    }
-
-    .about-images {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 14px;
-    }
-
-    .about-images img:first-child,
-    .about-images img:last-child {
-        height: 300px;
-        width: 100%;
-        margin: 0;
-        object-fit: cover;
-        object-position: center;
-    }
-
-    .faq-wrapper {
-        grid-template-columns: 1fr;
-    }
-
-    .contact {
-        margin: 40px 5% 70px;
-        padding: 40px 24px;
-        border-radius: 30px;
-    }
-
-    .contact span {
-        align-items: center;
-        justify-content: center;
-    }
-
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-
-    .service-modal-card {
-        padding: 28px 22px;
-    }
-
-    .service-modal-card h2 {
-        font-size: 34px;
-    }
-
-    .modal-img-box {
-        height: 220px;
     }
 
     .footer-bottom {
@@ -2875,20 +2502,6 @@ section {
         padding-right: 5%;
     }
 
-    .logo-text h2 {
-        font-size: 15px;
-    }
-
-    .logo-subline p {
-        font-size: 9px;
-        letter-spacing: 2px;
-    }
-
-    .brand-mark {
-        width: 58px;
-        height: 58px;
-    }
-
     .hero {
         padding-top: 135px;
         gap: 50px;
@@ -2896,13 +2509,10 @@ section {
 
     .hero h1 {
         font-size: clamp(36px, 9vw, 50px);
-        line-height: 1.1;
-        letter-spacing: -1px;
     }
 
     .hero p {
         font-size: 15px;
-        line-height: 1.8;
     }
 
     .primary-btn,
@@ -2914,22 +2524,6 @@ section {
 
     .hero-stats {
         grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-    }
-
-    .hero-stats div {
-        min-height: 82px;
-        padding: 14px 8px;
-        border-radius: 20px;
-    }
-
-    .hero-stats strong {
-        font-size: 24px;
-    }
-
-    .hero-stats span {
-        font-size: 11px;
-        line-height: 1.2;
     }
 
     .steps-grid,
@@ -2938,25 +2532,9 @@ section {
         grid-template-columns: 1fr;
     }
 
-    .hero-right {
-        width: 100%;
-    }
-
     .image-panel {
-        width: 100%;
         max-width: 360px;
         height: 400px;
-        border-radius: 28px;
-    }
-
-    .image-panel::before {
-        inset: 10px;
-        border-radius: 22px;
-    }
-
-    .image-panel img {
-        object-fit: cover;
-        object-position: center top;
     }
 
     .float-card {
@@ -2968,11 +2546,6 @@ section {
     .about-content h2,
     .contact h2 {
         font-size: 36px;
-        line-height: 1.2;
-    }
-
-    .section-title p {
-        font-size: 15px;
     }
 
     .service-carousel {
@@ -2980,172 +2553,29 @@ section {
         padding: 0 45px;
     }
 
-    .service-stack {
-        max-width: 620px;
-        height: 440px;
-    }
-
-    .service-card {
-        width: 240px;
-        height: 340px;
-    }
-
-    .service-card.active {
-        width: 300px;
-        height: 410px;
-    }
-
-    .service-card.prev {
-        z-index: 2;
-        transform: translate(-88%, -50%) rotate(-8deg) scale(.75);
-        opacity: .5;
-        filter: blur(1px);
-    }
-
-    .service-card.next {
-        z-index: 2;
-        transform: translate(-12%, -50%) rotate(8deg) scale(.75);
-        opacity: .5;
-        filter: blur(1px);
-    }
-
-    .service-card span {
-        top: 14px;
-        right: 14px;
-        padding: 8px 12px;
-        font-size: 12px;
-    }
-
-    .service-arrow {
-        width: 50px;
-        height: 50px;
-    }
-
-    .benefit-img img {
-        width: 100%;
-        height: 320px;
-        max-width: none;
-        object-fit: cover;
-        object-position: center;
-        border-radius: 24px;
-    }
-
-    .about {
-        gap: 45px;
-    }
-
-    .about-images {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-
-    .about-images img:first-child,
-    .about-images img:last-child {
-        height: 260px;
-        width: 100%;
-        margin: 0;
-        border-radius: 24px;
-        object-fit: cover;
-        object-position: center;
-    }
-
-    .help-card,
-    .hours-card,
-    .call-card {
-        padding: 22px;
-        border-radius: 22px;
-    }
-
-    .help-card h3 {
-        font-size: 24px;
-    }
-
-    .hours-card p {
-        flex-direction: column;
-        gap: 6px;
-    }
-
     .contact {
         margin: 30px 5% 60px;
         padding: 30px 18px;
     }
 
-    .contact-socials {
-        justify-content: center;
-    }
-
     .inquiry-form {
         padding: 20px 16px;
-        border-radius: 22px;
-    }
-
-    .phone-field .iti__country-list {
-        width: 100% !important;
-    }
-
-    .service-modal {
-        padding: 16px;
-    }
-
-    .service-modal-card {
-        padding: 24px 18px;
-        border-radius: 22px;
-    }
-
-    .service-modal-card h2 {
-        font-size: 28px;
-    }
-
-    .modal-img-box {
-        height: 180px;
-    }
-
-    .quote-btn {
-        width: 100%;
-    }
-
-    .footer {
-        padding: 55px 5% 24px;
-    }
-
-    .footer-brand h2 {
-        font-size: 30px;
-    }
-
-    .footer-column h4 {
-        font-size: 18px;
-    }
-
-    .footer-column a,
-    .footer-column p,
-    .footer-bottom p {
-        font-size: 14px;
     }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 576px) {
     .header {
         padding: 12px 14px;
         border-radius: 18px;
-    }
-
-    .logo-box {
-        gap: 10px;
     }
 
     .logo-text h2 {
         font-size: 12px;
     }
 
-    .logo-subline p {
-        font-size: 7px;
-        letter-spacing: 1.5px;
-    }
-
     .brand-mark {
         width: 50px;
         height: 50px;
-        border-radius: 16px;
     }
 
     .hero {
@@ -3161,40 +2591,12 @@ section {
     }
 
     .hero-stats {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-    }
-
-    .hero-stats div {
-        min-height: 74px;
-        padding: 12px 5px;
-        border-radius: 18px;
-    }
-
-    .hero-stats strong {
-        font-size: 22px;
-    }
-
-    .hero-stats span {
-        font-size: 10px;
-        margin-top: 6px;
-        line-height: 1.2;
+        grid-template-columns: 1fr;
+        gap: 10px;
     }
 
     .image-panel {
-        max-width: 100%;
         height: 330px;
-        border-radius: 24px;
-    }
-
-    .image-panel::before {
-        inset: 8px;
-        border-radius: 18px;
-    }
-
-    .image-panel img {
-        object-fit: cover;
-        object-position: center top;
     }
 
     .section-title h2,
@@ -3209,114 +2611,26 @@ section {
         padding: 0 35px;
     }
 
-    .service-stack {
-        max-width: 420px;
-        height: 380px;
-    }
-
-    .service-card {
-        width: 190px;
-        height: 280px;
-    }
-
-    .service-card.active {
-        width: 250px;
-        height: 350px;
-    }
-
-    .service-card.prev {
-        z-index: 2;
-        transform: translate(-80%, -50%) rotate(-7deg) scale(.72);
-        opacity: .49;
-        filter: blur(1px);
-    }
-
-    .service-card.next {
-        z-index: 2;
-        transform: translate(-20%, -50%) rotate(7deg) scale(.72);
-        opacity: .49;
-        filter: blur(1px);
-    }
-
-    .service-arrow {
-        width: 44px;
-        height: 44px;
-    }
-
-    .service-card span {
-        top: 14px;
-        right: 14px;
-        font-size: 12px;
-        padding: 8px 12px;
-    }
-
-    .benefit-img img {
-        width: 100%;
-        height: 260px;
-        max-width: none;
-        object-fit: cover;
-        object-position: center;
-        border-radius: 20px;
-    }
-
-    .about-images {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
-
-    .about-images img:first-child,
-    .about-images img:last-child {
-        height: 220px;
-        width: 100%;
-        margin: 0;
-        border-radius: 20px;
-        object-fit: cover;
-        object-position: center;
-    }
-
     .contact {
         border-radius: 24px;
     }
+}
 
-    .step-modal-card {
-        padding: 26px 20px;
-        border-radius: 22px;
+@media (max-width: 400px) {
+    .hero h1 {
+        font-size: 28px;
     }
 
-    .step-modal-card h3 {
-        font-size: 23px;
-    }
-
-    .step-modal-card p {
-        font-size: 14px;
-    }
-
-    .step-feature-list div {
+    .hero p {
         font-size: 13px;
     }
 
-    .message-box {
-        max-width: 94%;
-        padding: 24px 18px;
-    }
-
-    .message-box h3 {
-        font-size: 22px;
-    }
-
-    .message-box p {
-        font-size: 14px;
-    }
-} 
-
-@media (max-width: 420px) {
     .service-carousel {
         min-height: 380px;
         padding: 0 25px;
     }
 
     .service-stack {
-        max-width: 320px;
         height: 330px;
     }
 
@@ -3328,20 +2642,6 @@ section {
     .service-card.active {
         width: 220px;
         height: 300px;
-    }
-
-    .service-card.prev {
-        z-index: 2;
-        transform: translate(-74%, -50%) rotate(-6deg) scale(.68);
-        opacity: .45;
-        filter: blur(1px);
-    }
-
-    .service-card.next {
-        z-index: 2;
-        transform: translate(-26%, -50%) rotate(6deg) scale(.68);
-        opacity: .45;
-        filter: blur(1px);
     }
 
     .service-arrow {
