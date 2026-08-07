@@ -752,6 +752,18 @@ body {
 }
 
 /* RESPONSIVE */
+@media (max-width: 1440px) {
+
+    .page-wrapper {
+        padding: 42px 6%;
+    }
+
+    .booking-layout {
+        gap: 30px;
+    }
+
+}
+
 @media (max-width: 1200px) {
 
     .page-wrapper {
@@ -798,6 +810,45 @@ body {
     .time-slots {
         grid-template-columns: repeat(2, 1fr);
     }
+
+}
+
+@media (max-width: 992px) {
+
+    .page-wrapper {
+        padding: 80px 24px 30px;
+    }
+
+    .hero-card h1 {
+        font-size: 32px;
+    }
+
+    .hero-card p {
+        font-size: 15px;
+    }
+
+    .booking-layout {
+        gap: 24px;
+    }
+
+    .form-card {
+        padding: 24px;
+    }
+
+    .calendar-nav {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .calendar-nav strong {
+        flex: 1;
+        text-align: center;
+    }
+
+    .time-slots {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
 }
 
 @media (max-width: 768px) {
@@ -829,17 +880,6 @@ body {
         padding: 22px;
     }
 
-    .calendar-nav {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .calendar-nav strong {
-        flex: 1;
-        min-width: auto;
-        text-align: center;
-    }
-
     .weekdays,
     .calendar-days {
         gap: 6px;
@@ -857,17 +897,17 @@ body {
         flex-direction: column;
         align-items: flex-start;
     }
+
 }
 
-@media (max-width: 480px) {
+@media (max-width: 576px) {
 
     .page-wrapper {
-        padding: 72px 14px 20px;
+        padding: 72px 16px 20px;
     }
 
     .hero-card h1 {
         font-size: 26px;
-        line-height: 1.15;
     }
 
     .hero-card p {
@@ -896,8 +936,18 @@ body {
         font-size: 13px;
     }
 
+    .phone-input-wrapper {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #phoneCountry,
+    #phoneNumber {
+        width: 100%;
+    }
+
     .phone-field input {
-        padding-left: 90px !important;
+        padding-left: 14px !important;
     }
 
     .location-option {
@@ -910,13 +960,13 @@ body {
     }
 
     .day {
-        height: 36px;
-        font-size: 11px;
+        height: 38px;
+        font-size: 12px;
     }
 
     .time-slot {
-        height: 44px;
-        font-size: 12px;
+        height: 46px;
+        font-size: 13px;
     }
 
     .booking-note {
@@ -936,4 +986,59 @@ body {
     .message-box p {
         font-size: 13px;
     }
+
+}
+
+@media (max-width: 400px) {
+
+    .page-wrapper {
+        padding: 68px 12px 18px;
+    }
+
+    .hero-card h1 {
+        font-size: 22px;
+    }
+
+    .hero-card p {
+        font-size: 12px;
+    }
+
+    .form-card {
+        padding: 16px;
+    }
+
+    .summary-box h2,
+    .card-heading h2,
+    .step-box h2,
+    .time-title h2 {
+        font-size: 17px;
+    }
+
+    .calendar-nav strong {
+        font-size: 13px;
+    }
+
+    .weekdays span {
+        font-size: 10px;
+    }
+
+    .day {
+        height: 34px;
+        font-size: 11px;
+    }
+
+    .time-slot {
+        height: 42px;
+        font-size: 12px;
+    }
+
+    .booking-note {
+        font-size: 12px;
+    }
+
+    .schedule-btn {
+        height: 48px;
+        font-size: 14px;
+    }
+
 }
