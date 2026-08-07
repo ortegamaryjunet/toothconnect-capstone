@@ -592,41 +592,37 @@ footer {
     font-weight: 700;
 }
 
-@media (max-width: 1440px) {
-
+/* RESPONSIVE */
+@media (max-width: 1400px) {
     .hero {
-        padding: 140px 6% 90px;
-        gap: 42px;
+        padding: 140px 6% 80px;
+        gap: 60px;
     }
 
     .owner-card,
-    .branches-grid,
-    .team-grid {
-        max-width: 1200px;
+    .hero {
+        grid-template-columns: 1fr;
     }
 
-}
+    .hero-text {
+        text-align: center;
+    }
 
-@media (max-width: 1200px) {
+    .hero-text p {
+        margin-inline: auto;
+    }
 
-    .hero {
-        min-height: auto;
-        padding: 130px 6% 80px;
-        grid-template-columns: 1fr;
-        gap: 42px;
+    .hero-actions {
+        justify-content: center;
     }
 
     .hero-panel {
-        max-width: 720px;
-        width: 100%;
-        padding: 36px;
+        width: min(700px, 100%);
         margin: auto;
     }
+}
 
-    .hero-mini-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
+@media (max-width: 1200px) {
     .about-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -635,41 +631,46 @@ footer {
         grid-template-columns: repeat(3, 1fr);
     }
 
+    .branches-grid,
+    .map-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .owner-photo {
+        min-height: 420px;
+    }
+
+    .owner-content {
+        padding: 38px;
+    }
 }
 
 @media (max-width: 992px) {
-
     .hero {
         padding: 120px 5% 70px;
     }
 
     .hero h1 {
         font-size: 48px;
-        letter-spacing: -1.5px;
     }
 
     .hero-text p {
         font-size: 17px;
     }
 
-    .hero-panel {
-        padding: 32px;
-        border-radius: 30px;
+    .hero-actions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
     }
 
-    .hero-panel::before {
-        inset: 14px;
-        border-radius: 24px;
-    }
-
-    .hero-mini-grid {
-        gap: 12px;
+    .hero-actions .btn {
+        width: 100%;
     }
 
     .about-grid,
+    .owner-card,
     .branches-grid,
-    .map-grid,
-    .owner-card {
+    .map-grid {
         grid-template-columns: 1fr;
     }
 
@@ -677,62 +678,75 @@ footer {
         grid-template-columns: repeat(2, 1fr);
     }
 
-}
-
-@media (max-width: 768px) {
-
-    .hero {
-        padding: 105px 22px 60px;
-        gap: 30px;
-    }
-
-    .hero h1 {
-        font-size: 40px;
-        line-height: 1.08;
-    }
-
-    .hero-text p {
-        font-size: 16px;
-        line-height: 1.7;
-    }
-
-    .hero-actions {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-
-    .hero-actions .btn {
-        width: 100%;
-        height: 50px;
-        font-size: 14px;
-    }
-
-    .hero-panel {
-        padding: 28px;
-    }
-
-    .hero-mini-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
     .section,
     .team-section,
     .branch-section,
     .map-section {
-        padding: 65px 22px;
+        padding: 70px 5%;
     }
 
+    .owner-photo {
+        min-height: 360px;
+    }
+
+    .owner-content {
+        text-align: center;
+        align-items: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero {
+        padding: 105px 22px 60px;
+    }
+
+    .hero h1 {
+        font-size: 40px;
+        line-height: 1.15;
+    }
+
+    .hero-text p {
+        font-size: 16px;
+    }
+
+    .hero-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-panel {
+        padding: 24px;
+    }
+
+    .hero-mini-grid,
+    .about-grid,
+    .team-grid,
+    .branches-grid,
+    .map-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .section-title h2,
+    .branch-header h2 {
+        font-size: 34px;
+    }
+
+    .owner-photo {
+        min-height: 320px;
+    }
+
+    .team-card img {
+        height: 320px;
+    }
+
+    .map-wrapper {
+        height: 320px;
+    }
 }
 
 @media (max-width: 576px) {
-
     .back-home-btn {
         top: 14px;
         left: 14px;
-        height: 38px;
-        padding: 0 14px;
-        font-size: 12px;
     }
 
     .hero {
@@ -740,21 +754,18 @@ footer {
     }
 
     .hero h1 {
-        font-size: 34px;
+        font-size: 32px;
     }
 
-    .hero-actions {
-        grid-template-columns: 1fr;
+    .hero-text p {
+        font-size: 15px;
+    }
+
+    .hero-panel {
+        padding: 20px;
     }
 
     .hero-mini-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .about-grid,
-    .team-grid,
-    .branches-grid,
-    .map-grid {
         grid-template-columns: 1fr;
     }
 
@@ -770,28 +781,28 @@ footer {
         font-size: 28px;
     }
 
+    .about-card,
+    .branch-box,
     .owner-content {
-        padding: 24px;
-    }
-
-    .branch-box {
         padding: 22px;
     }
 
-    .map-wrapper {
+    .team-card img {
         height: 280px;
     }
 
+    .map-wrapper {
+        height: 260px;
+    }
 }
 
 @media (max-width: 400px) {
-
     .hero {
         padding: 85px 15px 50px;
     }
 
     .hero h1 {
-        font-size: 30px;
+        font-size: 28px;
     }
 
     .hero-text p {
@@ -799,41 +810,32 @@ footer {
     }
 
     .hero-panel {
-        padding: 20px;
+        padding: 18px;
     }
 
     .hero-icon {
-        width: 52px;
-        height: 52px;
-        font-size: 22px;
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
     }
 
     .hero-panel h3 {
-        font-size: 21px;
-    }
-
-    .hero-mini-grid div {
-        padding: 14px;
+        font-size: 22px;
     }
 
     .hero-mini-grid strong {
         font-size: 22px;
     }
 
-    .hero-mini-grid span {
-        font-size: 12px;
+    .owner-photo {
+        min-height: 240px;
     }
 
     .team-card img {
-        height: 280px;
-    }
-
-    .owner-photo {
-        min-height: 260px;
+        height: 240px;
     }
 
     .map-wrapper {
         height: 220px;
     }
-
 }
