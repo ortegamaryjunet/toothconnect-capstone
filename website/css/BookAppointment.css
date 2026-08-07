@@ -752,36 +752,33 @@ body {
 }
 
 /* RESPONSIVE */
-@media (max-width: 1440px) {
-
+@media (max-width: 1400px) {
     .page-wrapper {
-        padding: 42px 6%;
+        padding: 40px 6%;
     }
 
     .booking-layout {
-        gap: 30px;
+        gap: 32px;
     }
-
 }
 
 @media (max-width: 1200px) {
-
     .page-wrapper {
-        padding: 42px 5%;
+        padding: 40px 5%;
     }
 
     .hero-card {
-        justify-content: flex-start;
+        justify-content: center;
     }
 
-    .hero-card > div:first-child {
+    .hero-card>div:first-child {
         max-width: 100%;
-        align-items: flex-start;
-        text-align: left;
+        align-items: center;
+        text-align: center;
     }
 
-    .hero-card h1 {
-        font-size: 34px;
+    .hero-card p {
+        margin-inline: auto;
     }
 
     .booking-layout {
@@ -800,7 +797,7 @@ body {
     }
 
     .form-card {
-        padding: 28px;
+        padding: 30px;
     }
 
     .location-grid {
@@ -808,27 +805,21 @@ body {
     }
 
     .time-slots {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
-
 }
 
 @media (max-width: 992px) {
-
     .page-wrapper {
         padding: 80px 24px 30px;
     }
 
     .hero-card h1 {
-        font-size: 32px;
+        font-size: 34px;
     }
 
     .hero-card p {
         font-size: 15px;
-    }
-
-    .booking-layout {
-        gap: 24px;
     }
 
     .form-card {
@@ -849,20 +840,20 @@ body {
         grid-template-columns: repeat(2, 1fr);
     }
 
+    .weekdays,
+    .calendar-days {
+        gap: 8px;
+    }
 }
 
 @media (max-width: 768px) {
-
     .back-home-btn {
         top: 14px;
         left: 14px;
-        height: 40px;
-        padding: 0 14px;
-        font-size: 12px;
     }
 
     .page-wrapper {
-        padding: 78px 18px 24px;
+        padding: 76px 20px 24px;
     }
 
     .hero-card h1 {
@@ -890,20 +881,19 @@ body {
     }
 
     .time-slots {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
 
     .booking-note {
         flex-direction: column;
         align-items: flex-start;
     }
-
 }
 
 @media (max-width: 576px) {
-
     .page-wrapper {
-        padding: 72px 16px 20px;
+        padding: 70px 16px 20px;
     }
 
     .hero-card h1 {
@@ -964,6 +954,10 @@ body {
         font-size: 12px;
     }
 
+    .time-slots {
+        grid-template-columns: 1fr;
+    }
+
     .time-slot {
         height: 46px;
         font-size: 13px;
@@ -974,7 +968,6 @@ body {
     }
 
     .message-box {
-        width: 100%;
         max-width: 100%;
         padding: 22px 18px;
     }
@@ -986,13 +979,11 @@ body {
     .message-box p {
         font-size: 13px;
     }
-
 }
 
 @media (max-width: 400px) {
-
     .page-wrapper {
-        padding: 68px 12px 18px;
+        padding: 66px 12px 18px;
     }
 
     .hero-card h1 {
@@ -1040,5 +1031,4 @@ body {
         height: 48px;
         font-size: 14px;
     }
-
 }
