@@ -1372,35 +1372,30 @@ export default function AdminSettings() {
   }
 
   async function saveWebsiteContent(sectionFields, requiredKeys = []) {
-    console.log("websiteContentForm:", websiteContentForm);
-    console.log("sectionFields:", sectionFields);
-    console.log("Saving fields:", sectionFields);
-    console.log(sectionFields);
-
     if (!validateWebsiteFields(sectionFields, requiredKeys)) {
       return;
     }
 
     setWebsiteContentSaving(true);
-    setWebsiteContentMsg({ text: '', type: '' });
+    setWebsiteContentMsg({ text: "", type: "" });
 
     try {
-      const res = await api.put('/website/content', { fields: sectionFields });
+      const res = await api.put("/website/content", { fields: sectionFields });
       const updated = res.data.content || {};
 
-      console.log(sectionFields);
       setWebsiteContent(updated);
       setWebsiteContentForm(updated);
       setWebsiteContentEditing(false);
+
       showWebsiteValidationModal(
-        'Content Saved',
-        'Website content has been updated successfully.',
-        'success'
+        "Content Saved",
+        "Website content has been updated successfully.",
+        "success"
       );
     } catch (err) {
       showWebsiteValidationModal(
-        'Save Failed',
-        err.response?.data?.message || 'Failed to save website content.'
+        "Save Failed",
+        err.response?.data?.message || "Failed to save website content."
       );
     } finally {
       setWebsiteContentSaving(false);
@@ -1441,8 +1436,6 @@ export default function AdminSettings() {
       }
     });
 
-    console.log("CLEAR", clearedFields);
-
     setWebsiteContentForm((prev) => ({
       ...prev,
       ...clearedFields,
@@ -1457,7 +1450,6 @@ export default function AdminSettings() {
   }
 
   function handleWebsiteContentClearRequest(sectionFields) {
-    console.log(sectionFields);
 
     setWebsiteContentClearConfirmModal({
       sectionFields,
@@ -1756,30 +1748,28 @@ export default function AdminSettings() {
   }
 
   async function saveAnnouncement(data) {
-  const payload = {
-    title: String(data.title || "").trim(),
-    message: String(data.message || "").trim(),
+    const payload = {
+      title: String(data.title || "").trim(),
+      message: String(data.message || "").trim(),
 
-    title_font_family: data.title_font_family || "",
-    title_font_size: data.title_font_size || "",
-    title_font_weight: data.title_font_weight || "",
-    title_color: data.title_color || "#000000",
-    title_alignment: data.title_alignment || "left",
+      title_font_family: data.title_font_family || "",
+      title_font_size: data.title_font_size || "",
+      title_font_weight: data.title_font_weight || "",
+      title_color: data.title_color || "#000000",
+      title_alignment: data.title_alignment || "left",
 
-    message_font_family: data.message_font_family || "",
-    message_font_size: data.message_font_size || "",
-    message_font_weight: data.message_font_weight || "",
-    message_color: data.message_color || "#000000",
-    message_alignment: data.message_alignment || "left",
+      message_font_family: data.message_font_family || "",
+      message_font_size: data.message_font_size || "",
+      message_font_weight: data.message_font_weight || "",
+      message_color: data.message_color || "#000000",
+      message_alignment: data.message_alignment || "left",
 
-    start_date: data.start_date || "",
-    start_time: data.start_time || "",
-    end_date: data.end_date || "",
-    end_time: data.end_time || "",
-    status: data.status || "active",
-  };
-
-  console.log(payload);
+      start_date: data.start_date || "",
+      start_time: data.start_time || "",
+      end_date: data.end_date || "",
+      end_time: data.end_time || "",
+      status: data.status || "active",
+    };
 
     if (
       !payload.title ||
@@ -3627,26 +3617,7 @@ const contentEditActions = (
       type="button"
       style={styles.clearBtn}
       disabled={websiteContentSaving}
-      onClick={() => {
-        console.log(
-          "Current Website Section:",
-          websiteContentSection
-        );
-
-        console.log(
-          "Section Fields:",
-          sectionFields
-        );
-
-        console.log(
-          "Section Keys:",
-          Object.keys(sectionFields)
-        );
-
-        handleWebsiteContentClearRequest(
-          sectionFields
-        );
-      }}
+      onClick={() => handleWebsiteContentClearRequest(sectionFields)}
     >
       Clear
     </button>
@@ -3663,8 +3634,6 @@ const contentEditActions = (
 );
 
   function getContentSectionFields() {
-    console.log("Admin getStatusStyle:", getStatusStyle);
-
     return (
       <WebsiteContentRenderer
         api={api}
@@ -7932,8 +7901,6 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
 
     setForm(updated);
     setErrors({});
-
-    console.log("Website Service Data:", data);
 
     setImagePreview({
       image_path: getImagePreview(data?.image_path),
