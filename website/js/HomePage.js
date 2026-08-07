@@ -53,8 +53,6 @@ function applyTextDesign(id, prefix, c) {
         return;
     }
 
-    console.log("Text Alignment:", c[`${prefix}_text_alignment`]);
-
     element.style.fontFamily = c[`${prefix}_font_family`] || "";
     element.style.fontSize = c[`${prefix}_font_size`] || "";
     element.style.fontWeight = c[`${prefix}_font_weight`] || "";
@@ -72,12 +70,8 @@ function applyTextDesign(id, prefix, c) {
     .trim()
     .toLowerCase();
 
-    console.log("Normalized Alignment:", alignment);
-
     if (id === "hero-button-label") {
         const button = element.closest(".header-btn");
-
-        console.log("Button Found:", !!button);
 
         if (button) {
             switch (alignment) {
@@ -100,11 +94,6 @@ function applyTextDesign(id, prefix, c) {
         }
     } else {
         element.style.textAlign = alignment;
-
-        console.log(
-            "Applied textAlign:",
-            element.style.textAlign
-        );
     }
 }
 
@@ -764,12 +753,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function showMessage(title, text, type = "error") {
         if (!messageModal || !messageTitle || !messageText || !messageIcon) {
-            console.log({
-                messageModal,
-                messageTitle,
-                messageText,
-                messageIcon
-            });
 
             return;
         }
