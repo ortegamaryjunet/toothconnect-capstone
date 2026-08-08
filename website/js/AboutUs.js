@@ -1,3 +1,8 @@
+const PROD_API = "https://api.smileempressdentalhub.com";
+const hostname = String(window.location.hostname || "").toLowerCase();
+const port = String(window.location.port || "");
+const API_BASE_URL = hostname === "localhost" || hostname === "127.0.0.1" ? (port === "4000" ? window.location.origin : "http://localhost:4000") : PROD_API;
+
 document.addEventListener("DOMContentLoaded", function () {
     initializeRevealAnimation();
     initializeTeamHoverEffect();
@@ -52,10 +57,6 @@ function initializeTeamHoverEffect() {
 
 async function loadAboutPageContent() {
     try {
-        const PROD_API = "https://api.smileempressdentalhub.com";
-        const hostname = String(window.location.hostname || "").toLowerCase();
-        const port = String(window.location.port || "");
-        const API_BASE_URL = hostname === "localhost" || hostname === "127.0.0.1" ? (port === "4000" ? window.location.origin : "http://localhost:4000") : PROD_API;
         const response = await fetch(`${API_BASE_URL}/api/website/content`);
 
         if (!response.ok) {
@@ -268,25 +269,16 @@ function setText(id, value) {
 
 function setImage(id, value, alt = "") {
     const element = document.getElementById(id);
-
-    if (!element) {
-        return;
-    }
-
+    if (!element) return;
     if (value) {
-        if (
-            value.startsWith("http://") ||
-            value.startsWith("https://") ||
-            value.startsWith("blob:")
-        ) {
+        if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("blob:")) {
             element.src = value;
         } else {
-            element.src = `${API_BASE_URL}${value}`;
+            element.src = `${API_BASE_URL}${value.startsWith("/") ? value : `/${value}`}`;
         }
     } else {
         element.removeAttribute("src");
     }
-
     element.alt = alt || "";
 }
 
