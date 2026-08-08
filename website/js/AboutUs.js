@@ -52,7 +52,11 @@ function initializeTeamHoverEffect() {
 
 async function loadAboutPageContent() {
     try {
-        const response = await fetch("http://localhost:4000/api/website/content")
+        const PROD_API = "https://api.smileempressdentalhub.com";
+        const hostname = String(window.location.hostname || "").toLowerCase();
+        const port = String(window.location.port || "");
+        const API_BASE_URL = hostname === "localhost" || hostname === "127.0.0.1" ? (port === "4000" ? window.location.origin : "http://localhost:4000") : PROD_API;
+        const response = await fetch(`${API_BASE_URL}/api/website/content`);
 
         if (!response.ok) {
             throw new Error("Failed to load website content.");
@@ -137,46 +141,37 @@ async function loadAboutPageContent() {
 
         setText("ownerPosition", content.owner_position);
         applyTextStyle("ownerPosition", content, "owner_position");
-
+        
         setText("ownerMessage1", content.owner_message1);
         applyTextStyle("ownerMessage1", content, "owner_message1");
 
         setText("ownerMessage2", content.owner_message2);
         applyTextStyle("ownerMessage2", content, "owner_message2");
-
-        setImage("ownerImage", content.owner_image, content.owner_name);
+        setImage("ownerImage", content.owner_image, content.owner_name, API_BASE_URL);
 
         setText("doctor1Name", content.doctor1_name);
         applyTextStyle("doctor1Name", content, "doctor1_name");
-
         setText("doctor1Position", content.doctor1_position);
         applyTextStyle("doctor1Position", content, "doctor1_position");
-
-        setImage("doctor1Image", content.doctor1_image, content.doctor1_name);
+        setImage("doctor1Image", content.doctor1_image, content.doctor1_name, API_BASE_URL);
 
         setText("doctor2Name", content.doctor2_name);
         applyTextStyle("doctor2Name", content, "doctor2_name");
-
         setText("doctor2Position", content.doctor2_position);
         applyTextStyle("doctor2Position", content, "doctor2_position");
-
-        setImage("doctor2Image", content.doctor2_image, content.doctor2_name);
-
+        setImage("doctor2Image", content.doctor2_image, content.doctor2_name, API_BASE_URL);
+        
         setText("assistant1Name", content.assistant1_name);
         applyTextStyle("assistant1Name", content, "assistant1_name");
-
         setText("assistant1Position", content.assistant1_position);
         applyTextStyle("assistant1Position", content, "assistant1_position");
-
-        setImage("assistant1Image", content.assistant1_image, content.assistant1_name);
+        setImage("assistant1Image", content.assistant1_image, content.assistant1_name, API_BASE_URL);
 
         setText("assistant2Name", content.assistant2_name);
         applyTextStyle("assistant2Name", content, "assistant2_name");
-
         setText("assistant2Position", content.assistant2_position);
         applyTextStyle("assistant2Position", content, "assistant2_position");
-
-        setImage("assistant2Image", content.assistant2_image, content.assistant2_name);
+        setImage("assistant2Image", content.assistant2_image, content.assistant2_name, API_BASE_URL);
 
         setText("branchSectionTag", content.branch_section_tag);
         applyTextStyle("branchSectionTag", content, "branch_section_tag");
@@ -204,12 +199,12 @@ async function loadAboutPageContent() {
 
         setText("makatiMapBranchName", content.makati_branch_name);
         applyTextStyle("makatiMapBranchName", content, "makati_branch_name");
-        document.getElementById("makatiMapBranchName").style.color = "#222";
 
+        document.getElementById("makatiMapBranchName").style.color = "#222";
         setText("makatiMapBranchAddress", content.makati_branch_address);
+
         applyTextStyle("makatiMapBranchAddress", content, "makati_branch_address");
         document.getElementById("makatiMapBranchAddress").style.color = "#666";
-
         setIframe("makatiBranchMap", getMapUrl(content.makati_branch_address));
 
         setText("lasPinasBranchName", content.las_pinas_branch_name);
@@ -220,21 +215,21 @@ async function loadAboutPageContent() {
 
         setText("lasPinasBranchAddress", content.las_pinas_branch_address);
         applyTextStyle("lasPinasBranchAddress", content, "las_pinas_branch_address");
-
+        
         setText("lasPinasBranchHours", content.las_pinas_branch_hours);
         applyTextStyle("lasPinasBranchHours", content, "las_pinas_branch_hours");
 
         setLink("lasPinasBranchMapButton", content.las_pinas_branch_map_button, "#laspinas-map");
-        applyTextStyle("lasPinasBranchMapButton", content, "las_pinas_branch_map_button");
+        applyTextStyle("lasPinasBranchMapButton", content, "laspinas_branch_map_button");
 
         setText("lasPinasMapBranchName", content.las_pinas_branch_name);
         applyTextStyle("lasPinasMapBranchName", content, "las_pinas_branch_name");
-        document.getElementById("lasPinasMapBranchName").style.color = "#222";
 
+        document.getElementById("lasPinasMapBranchName").style.color = "#222";
         setText("lasPinasMapBranchAddress", content.las_pinas_branch_address);
+
         applyTextStyle("lasPinasMapBranchAddress", content, "las_pinas_branch_address");
         document.getElementById("lasPinasMapBranchAddress").style.color = "#666";
-
         setIframe("lasPinasBranchMap", getMapUrl(content.las_pinas_branch_address));
 
         setText("mapSectionTag", content.map_section_tag);
@@ -245,10 +240,9 @@ async function loadAboutPageContent() {
 
         setText("mapSectionDescription", content.map_section_description);
         applyTextStyle("mapSectionDescription", content, "map_section_description");
-
+        
         setText("footerCopyright", content.footer_copyright);
         applyTextStyle("footerCopyright", content, "footer_copyright");
-
     } catch (error) {
         console.error("Error loading About page content:", error);
     }
@@ -287,7 +281,7 @@ function setImage(id, value, alt = "") {
         ) {
             element.src = value;
         } else {
-            element.src = `http://localhost:4000${value}`;
+            element.src = `${API_BASE_URL}${value}`;
         }
     } else {
         element.removeAttribute("src");
