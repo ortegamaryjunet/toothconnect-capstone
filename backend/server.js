@@ -19,6 +19,7 @@ const { loginLimiter, registerLimiter, passwordResetLimiter } = require('./src/m
 const websiteRoutes = require('./src/routes/websiteRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 const allowedOrigins = [
   ...(process.env.WEB_ORIGIN      || '').split(','),
