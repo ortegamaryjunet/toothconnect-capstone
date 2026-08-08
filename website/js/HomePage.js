@@ -487,18 +487,25 @@ function loadWebsiteServices() {
         });
 }
 
-function buildImage(path) {
-    if (!path) return "";
+function buildImage(imagePath) {
+    if (!imagePath) return "";
 
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-        return `${path}?v=${Date.now()}`;
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+        return `${imagePath}?v=${Date.now()}`;
     }
 
-    if (path.startsWith("/uploads/")) {
-        return `${API_BASE_URL}${path}?v=${Date.now()}`;
+    if (imagePath.startsWith("/uploads/")) {
+        return `${API_BASE_URL}${imagePath}?v=${Date.now()}`;
     }
 
-    return `${path}?v=${Date.now()}`;
+    if (imagePath.startsWith("./images/") || imagePath.startsWith("/images/")) {
+        const fileName = imagePath
+            .replace(/^\.?\/images\//, "");
+
+        return `${API_BASE_URL}/uploads/services/${fileName}?v=${Date.now()}`;
+    }
+
+    return `${API_BASE_URL}/${imagePath.replace(/^\/+/, "")}?v=${Date.now()}`;
 }
 
 function rewireServiceCarousel() {
