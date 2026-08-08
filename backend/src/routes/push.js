@@ -38,6 +38,35 @@ router.post('/token', async (req, res) => {
   }
 });
 
+router.post('/registration-status', async (req, res) => {
+  const userId = req.user.user_id;
+  const {
+    success,
+    reason,
+    stage,
+    error,
+    existing_status,
+    final_status,
+    project_id,
+    device_name,
+    os,
+  } = req.body || {};
+
+  console.log(
+    `[push] Registration status for user ${userId}: ` +
+    `success=${Boolean(success)} ` +
+    `reason=${reason || 'none'} ` +
+    `stage=${stage || 'unknown'} ` +
+    `permission=${final_status || existing_status || 'unknown'} ` +
+    `project_id=${project_id || 'missing'} ` +
+    `os=${os || 'unknown'} ` +
+    `device=${device_name || 'unknown'} ` +
+    `error=${error || 'none'}`
+  );
+
+  res.json({ message: 'Push registration status logged' });
+});
+
 router.post('/_test', requireRole('admin'), async (req, res) => {
   const { user_id, title, body } = req.body;
 

@@ -15,10 +15,24 @@ Notifications.setNotificationHandler({
   }),
 });
 
+async function reportPushRegistrationStatus(status) {
+  try {
+    await api.post('/push/registration-status', {
+      os: Platform.OS,
+      device_name: Device.deviceName || Device.modelName || null,
+      ...status,
+    });
+  } catch (err) {
+    console.log('[push] Failed to report registration status:', err.message);
+  }
+}
+
 export async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) {
     console.log('[push] Not a physical device, skipping');
-    return { success: false, reason: 'not_physical_device' };
+    const result = { success: false, reason: 'not_physical_device', stage: 'device_check' };
+    await reportPushRegistrationStatus(result);
+    return result;
   }
 
   if (Platform.OS === 'android') {
@@ -34,6 +48,12 @@ export async function registerForPushNotificationsAsync() {
       });
     } catch (err) {
       console.log('[push] Failed to set Android channel:', err.message);
+      await reportPushRegistrationStatus({
+        success: false,
+        reason: 'channel_setup_failed',
+        stage: 'android_channel',
+        error: err.message,
+      });
     }
   }
 
@@ -47,14 +67,22 @@ export async function registerForPushNotificationsAsync() {
 
   if (finalStatus !== 'granted') {
     console.log('[push] Permission not granted');
-    return { success: false, reason: 'permission_denied' };
+    const result = {
+      success: false,
+      reason: 'permission_denied',
+      stage: 'permission',
+      existing_status: existingStatus,
+      final_status: finalStatus,
+    };
+    await reportPushRegistrationStatus(result);
+    return result;
   }
 
-  try {
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId;
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.easConfig?.projectId;
 
+  try {
     const tokenResponse = await Notifications.getExpoPushTokenAsync(
       projectId && projectId !== 'PLACEHOLDER-WILL-FILL-AT-EAS-SETUP'
         ? { projectId }
@@ -67,14 +95,39 @@ export async function registerForPushNotificationsAsync() {
     try {
       await api.post('/push/token', { push_token: token });
       console.log('[push] Token saved to backend');
+      await reportPushRegistrationStatus({
+        success: true,
+        stage: 'backend_save',
+        final_status: finalStatus,
+        project_id: projectId || null,
+      });
       return { success: true, token };
     } catch (err) {
       console.log('[push] Failed to save token to backend:', err.message);
-      return { success: false, reason: 'backend_save_failed', token };
+      const result = {
+        success: false,
+        reason: 'backend_save_failed',
+        stage: 'backend_save',
+        error: err.response?.data?.message || err.message,
+        final_status: finalStatus,
+        project_id: projectId || null,
+        token,
+      };
+      await reportPushRegistrationStatus(result);
+      return result;
     }
   } catch (err) {
     console.log('[push] Failed to get push token:', err.message);
-    return { success: false, reason: 'token_fetch_failed', error: err.message };
+    const result = {
+      success: false,
+      reason: 'token_fetch_failed',
+      stage: 'token_fetch',
+      error: err.message,
+      final_status: finalStatus,
+      project_id: projectId || null,
+    };
+    await reportPushRegistrationStatus(result);
+    return result;
   }
 }
 
