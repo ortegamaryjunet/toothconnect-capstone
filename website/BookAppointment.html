@@ -90,6 +90,8 @@
 
             <div class="calendar-days" id="calendarDays"></div>
 
+            <span class="field-error-text" id="dateSubmitError"></span>
+
             <div class="time-card" data-move="step3">
 
                 <div class="step-lock-notice" id="step3Notice">
@@ -98,15 +100,11 @@
                 </div>
 
                 <div id="step3Content">
-
                     <div class="time-title">
-
                         <div>
                             <span>Step 3 · Select Your Preferred Time</span>
-
                             <h2>Select your preferred time.</h2>
                         </div>
-
                     </div>
 
                     <div class="time-slots" id="timeSlots">
@@ -114,20 +112,17 @@
                     </div>
 
                     <span class="field-error-text" id="timeError"></span>
-
                 </div>
             </div>
         </div>
 
         <div class="form-card">
-
             <div class="step-lock-notice" id="step2Notice">
                 <i class="fa-solid fa-lock"></i>
                 <span>Complete required details in <strong>Step 1</strong> to unlock date selection.</span>
             </div>
 
             <div id="step2Content">
-
                 <div class="summary-box">
                     <div class="step-box">
                         <span>Step 1 · Complete Your Appointment Details</span>
@@ -148,7 +143,6 @@
                         <i class="fa-solid fa-hourglass-half"></i>
                         <span>30 minutes duration</span>
                     </p>
-
                 </div>
 
                 <form id="appointmentForm" novalidate>
@@ -256,8 +250,6 @@
 
                         <p>Please wait for a clinic representative to contact you and confirm your appointment.</p>
                     </div>
-
-                    <span class="field-error-text" id="timeSubmitError"></span>
 
                     <button type="submit" class="schedule-btn">Schedule Appointment</button>
                 </form>
