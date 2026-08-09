@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "645069000988",
+    "project_id": "toothconnect-809f6",
+    "storage_bucket": "toothconnect-809f6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:645069000988:android:c61facaaed652d310baad9",
+        "android_client_info": {
+          "package_name": "com.capstone.toothconnect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsnRPYs0IOOsDyS7LXsF1fGWBV7LkGQug"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
