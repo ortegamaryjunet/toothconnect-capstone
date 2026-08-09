@@ -945,6 +945,7 @@ export default function AdminEmployeeForm() {
 
     setProfilePhoto(file);
     setProfilePhotoPreview(URL.createObjectURL(file));
+    clearSubmitError('profilePhoto');
   }
 
   function handleSupportingDocumentFiles(fileList) {
@@ -1121,6 +1122,7 @@ export default function AdminEmployeeForm() {
     const prefix = employeeType === 'dentist' ? 'doctor'
       : employeeType === 'dentalAssistant' ? 'da' : 'recep';
     const errors = new Set();
+    if (!profilePhoto) errors.add('profilePhoto');
     [`${prefix}FirstName`, `${prefix}LastName`, `${prefix}Address`,
       `${prefix}Contact`, `${prefix}Email`, `${prefix}Birthday`, `${prefix}Gender`]
       .forEach((name) => { if (!formData.get(name)) errors.add(name); });
@@ -1151,7 +1153,7 @@ export default function AdminEmployeeForm() {
   function getSectionsWithErrors(errors) {
     const prefix = employeeType === 'dentist' ? 'doctor'
       : employeeType === 'dentalAssistant' ? 'da' : 'recep';
-    const sec1 = [`${prefix}FirstName`, `${prefix}LastName`, `${prefix}Address`,
+    const sec1 = ['profilePhoto', `${prefix}FirstName`, `${prefix}LastName`, `${prefix}Address`,
       `${prefix}Contact`, `${prefix}Email`, `${prefix}Birthday`, `${prefix}Gender`];
     const sec2 = employeeType === 'dentist'
       ? ['medicalDegree', 'licenseNumber', 'experienceYears', 'supportingDocuments']
@@ -1201,10 +1203,13 @@ export default function AdminEmployeeForm() {
       Object.keys(fieldErrors).some((name) => name !== activeContactName) ||
       Boolean(contactError);
     if (errors.size > 0 || hasFormatErrors) {
+      const onlyProfilePhotoMissing = errors.size === 1 && errors.has('profilePhoto') && !hasFormatErrors;
       setFormErrors(errors);
       setOpenSections((prev) => ({ ...prev, ...getSectionsWithErrors(errors) }));
       setErrorModalMessage(
-        errors.size > 0
+        onlyProfilePhotoMissing
+          ? 'Please upload an employee photo.'
+          : errors.size > 0
           ? 'Please fill in all required fields before submitting.'
           : 'Please fix the highlighted errors before submitting.'
       );
@@ -1367,11 +1372,21 @@ export default function AdminEmployeeForm() {
   }
 
   function renderProfilePhotoUpload() {
+    const hasError = formErrors.has('profilePhoto');
+
     return (
-      <div style={styles.photoUploadWrap}>
+      <div
+        style={{
+          ...styles.photoUploadWrap,
+          ...(hasError ? { borderColor: '#dc2626', borderWidth: 2 } : {}),
+        }}
+      >
         <button
           type="button"
-          style={styles.photoUploadBtn}
+          style={{
+            ...styles.photoUploadBtn,
+            ...(hasError ? { borderColor: '#dc2626' } : {}),
+          }}
           onClick={() => photoInputRef.current?.click()}
           title="Upload profile photo"
         >
@@ -1385,8 +1400,15 @@ export default function AdminEmployeeForm() {
           </span>
         </button>
         <div>
-          <strong style={styles.photoUploadTitle}>Profile Photo</strong>
+          <strong style={styles.photoUploadTitle}>
+            Profile Photo{hasError && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+          </strong>
           <p style={styles.photoUploadHint}>JPG or PNG, max 5MB</p>
+          {hasError && (
+            <span style={{ color: '#dc2626', fontSize: '11px', marginTop: '3px', display: 'block' }}>
+              {REQUIRED_FIELD_MESSAGE}
+            </span>
+          )}
         </div>
         <input
           ref={photoInputRef}
