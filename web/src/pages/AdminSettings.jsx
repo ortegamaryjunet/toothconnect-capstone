@@ -2813,9 +2813,13 @@ export default function AdminSettings() {
       const updated = { ...row };
       if (field === 'category') updated.category = value ? '' : 'Category is required';
       if (field === 'item_name') updated.item_name = value ? '' : 'Item is required';
-      if (field === 'default_quantity') {
-        const n = Number(value || 0);
-        const stock = serviceKitItems[index]?.current_stock;
+      if (field === 'default_quantity' || field === 'current_stock') {
+        const n = Number(
+          field === 'default_quantity'
+            ? value || 0
+            : serviceKitItems[index]?.default_quantity || 0
+        );
+        const stock = field === 'current_stock' ? value : serviceKitItems[index]?.current_stock;
         if (n < 1) {
           updated.default_quantity = 'Default quantity must be at least 1';
         } else if (stock !== null && stock !== undefined && n > Number(stock)) {
@@ -2898,6 +2902,7 @@ export default function AdminSettings() {
     try {
       await saveManageServiceKit(Number(serviceKitServiceId), payload);
       setShowServiceKitSaveConfirmModal(false);
+      setServiceKitOverlay(false);
       setServiceKitServiceId('');
       setServiceKitItems([]);
       setServiceKitItemErrors([]);
@@ -6378,12 +6383,7 @@ const contentEditActions = (
               <select
                 value={serviceKitServiceId}
                 onChange={(e) => reloadServiceKitService(e.target.value)}
-                style={{
-                  ...styles.formInput,
-                  borderColor: errors[f.key] ? "#dc2626" : "#d1d5db",
-                  boxShadow: errors[f.key] ? "0 0 0 1px #dc2626" : "none",
-                }}
-
+                style={styles.formInput}
                 disabled={!serviceKitBranchSelected}
               >
                 <option value="" disabled>
@@ -6488,7 +6488,7 @@ const contentEditActions = (
                       flexShrink: 0, padding: 0,
                     }}
                   >
-                    −
+                    -
                   </button>
                   <input
                     value={item.default_quantity}
