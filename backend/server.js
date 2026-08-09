@@ -327,6 +327,7 @@ pool.query(`
     date_from DATE NULL,
     date_to DATE NULL,
     reason TEXT NULL,
+    rejection_reason TEXT NULL,
     requested_branch_id INT NULL,
     transfer_type ENUM('permanent', 'temporary') NULL,
     duration VARCHAR(100) NULL,

@@ -14,6 +14,14 @@ function normalizeDate(value) {
   return String(value).split('T')[0];
 }
 
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
 function formatReadableDate(value) {
   const cleanValue = normalizeDate(value);
 
@@ -153,6 +161,11 @@ export default function DentistSchedule() {
     isTablet,
     isSmallScreen,
   });
+
+  const todayDateKey = getLocalDateKey();
+  const toDateMin = leaveForm.dateFrom && leaveForm.dateFrom > todayDateKey
+    ? leaveForm.dateFrom
+    : todayDateKey;
 
   const leaveDays = useMemo(() => {
     return getLeaveDays(leaveForm.dateFrom, leaveForm.dateTo);
@@ -430,18 +443,28 @@ export default function DentistSchedule() {
     setSubmitError('');
 
     setLeaveForm((prev) => {
+      let nextValue = value;
+
+      if ((field === 'dateFrom' || field === 'dateTo') && nextValue) {
+        nextValue = nextValue < todayDateKey ? todayDateKey : nextValue;
+      }
+
+      if (field === 'dateTo' && nextValue && prev.dateFrom && nextValue < prev.dateFrom) {
+        nextValue = prev.dateFrom;
+      }
+
       const nextForm = {
         ...prev,
-        [field]: value,
+        [field]: nextValue,
       };
 
       if (
         field === 'dateFrom' &&
         nextForm.dateTo &&
-        value &&
-        nextForm.dateTo < value
+        nextValue &&
+        nextForm.dateTo < nextValue
       ) {
-        nextForm.dateTo = value;
+        nextForm.dateTo = nextValue;
       }
 
       return nextForm;
@@ -461,6 +484,14 @@ export default function DentistSchedule() {
       openValidationModal(
         'Incomplete Leave Date',
         'Please select both From Date and To Date before submitting your leave request.'
+      );
+      return false;
+    }
+
+    if (leaveForm.dateFrom < todayDateKey || leaveForm.dateTo < todayDateKey) {
+      openValidationModal(
+        'Invalid Leave Date',
+        'Leave dates must be today or a future date.'
       );
       return false;
     }
@@ -949,6 +980,7 @@ export default function DentistSchedule() {
                 <input
                   type="date"
                   value={leaveForm.dateFrom}
+                  min={todayDateKey}
                   onChange={(event) =>
                     handleLeaveChange('dateFrom', event.target.value)
                   }
@@ -962,7 +994,7 @@ export default function DentistSchedule() {
                 <input
                   type="date"
                   value={leaveForm.dateTo}
-                  min={leaveForm.dateFrom || undefined}
+                  min={toDateMin}
                   onChange={(event) =>
                     handleLeaveChange('dateTo', event.target.value)
                   }
@@ -1246,6 +1278,16 @@ export default function DentistSchedule() {
                   {selectedRequest.reason?.trim() || 'No reason provided.'}
                 </div>
               </div>
+
+              {String(selectedRequest.status || '').toLowerCase() === 'rejected' &&
+                selectedRequest.rejection_reason?.trim() && (
+                  <div style={{ ...styles.detailsField, ...styles.detailsFieldFull }}>
+                    <div style={styles.detailsLabel}>Rejection Reason</div>
+                    <div style={styles.detailsTextarea}>
+                      {selectedRequest.rejection_reason.trim()}
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
         </div>

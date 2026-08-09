@@ -733,14 +733,15 @@ export default function createDentistScheduleStyles({
     submitLeaveButton: {
       flex: 1,
       height: 42,
-      border: 'none',
+      border: '1px solid #d4af37',
       borderRadius: 10,
       fontSize: 14,
       fontWeight: 700,
       padding: '0 24px',
       cursor: 'pointer',
-      background: 'linear-gradient(135deg, #8b6508, #d4af37)',
+      background: '#d4af37',
       color: '#ffffff',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
       width: isMobile ? '100%' : 'auto',
     },
 

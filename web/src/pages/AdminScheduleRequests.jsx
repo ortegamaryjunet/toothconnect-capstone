@@ -60,6 +60,10 @@ export default function AdminScheduleRequests({
   const [loading, setLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [approveRequest, setApproveRequest] = useState(null);
+  const [rejectRequest, setRejectRequest] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectReasonError, setRejectReasonError] = useState('');
 
   async function loadRequests(selectedStatus = statusFilter) {
     setLoading(true);
@@ -115,6 +119,7 @@ export default function AdminScheduleRequests({
         request.date_from,
         request.date_to,
         request.reason,
+        request.rejection_reason,
         request.current_branch_address,
         request.requested_branch_name,
         request.transfer_type,
@@ -146,7 +151,41 @@ export default function AdminScheduleRequests({
     return ['approved', 'rejected', 'cancelled', 'canceled'].includes(normalized);
   }
 
-  async function updateRequestStatus(request, nextStatus) {
+  function getRequestSummaryRows(request) {
+    if (!request) return [];
+
+    return [
+      ['Dentist', request.dentist_name || 'N/A'],
+      ['Request Type', formatRequestType(request.request_type)],
+      ['From Date', formatDate(request.date_from)],
+      ['To Date', formatDate(request.date_to)],
+      ['Working Days', request.working_days ?? 'N/A'],
+      ['Current Branch', request.current_branch_address || 'N/A'],
+      ['Requested Branch', request.requested_branch_name || 'N/A'],
+      ['Reason', request.reason || 'N/A'],
+      ['Submitted', formatDateTime(request.submitted_at)],
+    ];
+  }
+
+  function closeApproveModal() {
+    if (actionLoadingId) return;
+    setApproveRequest(null);
+  }
+
+  function closeRejectModal() {
+    if (actionLoadingId) return;
+    setRejectRequest(null);
+    setRejectReason('');
+    setRejectReasonError('');
+  }
+
+  function handleModalOverlayClick(event, closeHandler) {
+    if (event.target === event.currentTarget) {
+      closeHandler();
+    }
+  }
+
+  async function updateRequestStatus(request, nextStatus, rejectionReason = '') {
     const currentStatus = String(request.status || '').toLowerCase();
 
     if (isFinalStatus(currentStatus)) {
@@ -163,7 +202,12 @@ export default function AdminScheduleRequests({
     try {
       const res = await api.patch(
         `/dentist-dashboard/admin/schedule-requests/${request.id}`,
-        { status: nextStatus }
+        {
+          status: nextStatus,
+          ...(nextStatus === 'rejected'
+            ? { rejection_reason: rejectionReason }
+            : {}),
+        }
       );
 
       setMessage({
@@ -172,14 +216,43 @@ export default function AdminScheduleRequests({
       });
 
       await loadRequests(statusFilter);
+      return true;
     } catch (err) {
       console.error('Failed to update schedule request', err);
       setMessage({
         text: err.response?.data?.message || 'Failed to update request status.',
         type: 'error',
       });
+      return false;
     } finally {
       setActionLoadingId(null);
+    }
+  }
+
+  async function confirmApproveRequest() {
+    if (!approveRequest) return;
+
+    const updated = await updateRequestStatus(approveRequest, 'approved');
+
+    if (updated) {
+      setApproveRequest(null);
+    }
+  }
+
+  async function confirmRejectRequest() {
+    if (!rejectRequest) return;
+
+    const cleanReason = rejectReason.trim();
+
+    if (!cleanReason) {
+      setRejectReasonError('Please enter the reason for rejecting this leave request.');
+      return;
+    }
+
+    const updated = await updateRequestStatus(rejectRequest, 'rejected', cleanReason);
+
+    if (updated) {
+      closeRejectModal();
     }
   }
 
@@ -204,7 +277,7 @@ export default function AdminScheduleRequests({
             cursor: actionLoadingId === request.id ? 'not-allowed' : 'pointer',
           }}
           disabled={actionLoadingId === request.id}
-          onClick={() => updateRequestStatus(request, 'approved')}
+          onClick={() => setApproveRequest(request)}
         >
           <i className="fi fi-rr-check"></i>
           <span>{actionLoadingId === request.id ? 'Saving...' : 'Approve'}</span>
@@ -218,7 +291,11 @@ export default function AdminScheduleRequests({
             cursor: actionLoadingId === request.id ? 'not-allowed' : 'pointer',
           }}
           disabled={actionLoadingId === request.id}
-          onClick={() => updateRequestStatus(request, 'rejected')}
+          onClick={() => {
+            setRejectRequest(request);
+            setRejectReason('');
+            setRejectReasonError('');
+          }}
         >
           <i className="fi fi-rr-cross"></i>
           <span>{actionLoadingId === request.id ? 'Saving...' : 'Reject'}</span>
@@ -403,6 +480,111 @@ export default function AdminScheduleRequests({
           </button>
         </div>
       </section>
+
+      {approveRequest && (
+        <div
+          style={styles.modal}
+          onClick={(event) => handleModalOverlayClick(event, closeApproveModal)}
+        >
+          <div style={{ ...styles.modalContent, ...styles.leaveDecisionModalContent }}>
+            <h2 style={styles.modalTitle}>Approve Leave Request</h2>
+            <p style={styles.modalText}>
+              Review the leave request details before approving this request.
+            </p>
+
+            <div style={styles.leaveDecisionDetails}>
+              {getRequestSummaryRows(approveRequest).map(([label, value]) => (
+                <div key={label} style={styles.leaveDecisionRow}>
+                  <div style={styles.leaveDecisionLabel}>{label}</div>
+                  <div style={styles.leaveDecisionValue}>{value}</div>
+                </div>
+              ))}
+            </div>
+
+            <p style={styles.leaveDecisionQuestion}>
+              Do you want to approve this leave request?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeApproveModal}
+                disabled={actionLoadingId === approveRequest.id}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.approveConfirmBtn }}
+                onClick={confirmApproveRequest}
+                disabled={actionLoadingId === approveRequest.id}
+              >
+                {actionLoadingId === approveRequest.id ? 'Approving...' : 'Approve'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectRequest && (
+        <div
+          style={styles.modal}
+          onClick={(event) => handleModalOverlayClick(event, closeRejectModal)}
+        >
+          <div style={{ ...styles.modalContent, ...styles.leaveDecisionModalContent }}>
+            <h2 style={styles.modalTitle}>Reject Leave Request</h2>
+            <p style={styles.modalText}>
+              Enter the reason for rejecting this leave request.
+            </p>
+
+            <div style={styles.leaveDecisionDetails}>
+              {getRequestSummaryRows(rejectRequest)
+                .filter(([label]) => ['Dentist', 'From Date', 'To Date', 'Reason'].includes(label))
+                .map(([label, value]) => (
+                  <div key={label} style={styles.leaveDecisionRow}>
+                    <div style={styles.leaveDecisionLabel}>{label}</div>
+                    <div style={styles.leaveDecisionValue}>{value}</div>
+                  </div>
+                ))}
+            </div>
+
+            <textarea
+              rows={4}
+              value={rejectReason}
+              onChange={(event) => {
+                setRejectReason(event.target.value);
+                setRejectReasonError('');
+              }}
+              placeholder="Reason for rejection..."
+              style={styles.leaveRejectTextarea}
+            />
+
+            {rejectReasonError ? (
+              <p style={styles.errorText}>{rejectReasonError}</p>
+            ) : null}
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeRejectModal}
+                disabled={actionLoadingId === rejectRequest.id}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.rejectConfirmBtn }}
+                onClick={confirmRejectRequest}
+                disabled={actionLoadingId === rejectRequest.id}
+              >
+                {actionLoadingId === rejectRequest.id ? 'Rejecting...' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

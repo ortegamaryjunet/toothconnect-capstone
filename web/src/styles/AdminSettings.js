@@ -1317,6 +1317,71 @@
       boxSizing: 'border-box',
     },
 
+    leaveDecisionModalContent: {
+      width: isMobile ? '100%' : 520,
+      maxWidth: 520,
+      textAlign: 'left',
+    },
+
+    leaveDecisionDetails: {
+      display: 'grid',
+      gridTemplateColumns: '1fr',
+      gap: 10,
+      marginBottom: 18,
+    },
+
+    leaveDecisionRow: {
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : '135px 1fr',
+      gap: isMobile ? 4 : 12,
+      alignItems: 'start',
+      padding: '10px 12px',
+      border: '1px solid #e2e8f0',
+      borderRadius: 10,
+      background: '#f8fafc',
+    },
+
+    leaveDecisionLabel: {
+      color: '#64748b',
+      fontSize: 12,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '0.04em',
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    leaveDecisionValue: {
+      color: '#0f172a',
+      fontSize: 14,
+      lineHeight: 1.4,
+      wordBreak: 'break-word',
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    leaveDecisionQuestion: {
+      color: '#334155',
+      fontSize: 15,
+      lineHeight: 1.5,
+      margin: '0 0 20px',
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    leaveRejectTextarea: {
+      width: '100%',
+      minHeight: 110,
+      resize: 'vertical',
+      border: '1px solid #cbd5e1',
+      borderRadius: 10,
+      padding: 12,
+      color: '#0f172a',
+      fontSize: 14,
+      lineHeight: 1.5,
+      outline: 'none',
+      boxSizing: 'border-box',
+      fontFamily: 'Arial, sans-serif',
+      marginBottom: 10,
+    },
+
     modalIcon: {
       width: 70,
       height: 70,
@@ -1368,6 +1433,18 @@
     },
 
     logoutBtn: {
+      background: '#dc2626',
+      color: '#ffffff',
+      fontWeight: 'bold',
+    },
+
+    approveConfirmBtn: {
+      background: '#16a34a',
+      color: '#ffffff',
+      fontWeight: 'bold',
+    },
+
+    rejectConfirmBtn: {
       background: '#dc2626',
       color: '#ffffff',
       fontWeight: 'bold',

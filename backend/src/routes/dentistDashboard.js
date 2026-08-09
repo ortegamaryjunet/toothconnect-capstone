@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(authenticate);
 
 let scheduleRequestCancelledStatusReady = false;
+let scheduleRequestRejectionReasonReady = false;
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -68,9 +69,37 @@ async function ensureScheduleRequestCancelledStatus() {
   scheduleRequestCancelledStatusReady = true;
 }
 
-async function notifyDentistAboutRequestDecision(dentistId, status, requestType) {
+async function ensureScheduleRequestRejectionReasonColumn() {
+  if (scheduleRequestRejectionReasonReady) {
+    return;
+  }
+
+  try {
+    await pool.query(
+      `ALTER TABLE schedule_requests
+       ADD COLUMN rejection_reason TEXT NULL AFTER reason`
+    );
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      throw err;
+    }
+  }
+
+  scheduleRequestRejectionReasonReady = true;
+}
+
+async function ensureScheduleRequestReviewSchema() {
+  await ensureScheduleRequestCancelledStatus();
+  await ensureScheduleRequestRejectionReasonColumn();
+}
+
+async function notifyDentistAboutRequestDecision(dentistId, status, requestType, rejectionReason = '') {
   const title = status === 'approved' ? 'Schedule request approved' : 'Schedule request rejected';
-  const body = `Your ${requestType === 'leave' ? 'leave' : 'schedule transfer'} request was ${status}.`;
+  const reasonText = String(rejectionReason || '').trim();
+  const body =
+    status === 'rejected' && reasonText
+      ? `Your ${requestType === 'leave' ? 'leave' : 'schedule transfer'} request was rejected. Reason: ${reasonText}`
+      : `Your ${requestType === 'leave' ? 'leave' : 'schedule transfer'} request was ${status}.`;
 
   await pool.query(
     `INSERT INTO notifications (user_id, type, title, body, related_type)
@@ -507,8 +536,11 @@ router.get('/schedule-requests', requireRole('dentist'), async (req, res) => {
   const dentistId = getUserId(req);
 
   try {
+    await ensureScheduleRequestRejectionReasonColumn();
+
     const [rows] = await pool.query(
       `SELECT sr.id, sr.request_type, sr.status, sr.date_from, sr.date_to, sr.reason,
+              sr.rejection_reason,
               sr.transfer_type, sr.duration, sr.submitted_at,
               b.name AS requested_branch_name
        FROM schedule_requests sr
@@ -534,7 +566,7 @@ router.patch('/schedule-requests/:id/cancel', requireRole('dentist'), async (req
   }
 
   try {
-    await ensureScheduleRequestCancelledStatus();
+    await ensureScheduleRequestReviewSchema();
 
     const [existingRows] = await pool.query(
       `SELECT id, dentist_id, request_type, status
@@ -578,6 +610,8 @@ router.get('/admin/schedule-requests', requireRole('admin'), async (req, res) =>
   const status = String(req.query.status || '').trim().toLowerCase();
 
   try {
+    await ensureScheduleRequestReviewSchema();
+
     const conditions = [];
     const params = [];
 
@@ -590,7 +624,7 @@ router.get('/admin/schedule-requests', requireRole('admin'), async (req, res) =>
 
     const [rows] = await pool.query(
       `SELECT sr.id, sr.dentist_id, sr.request_type, sr.status, sr.date_from, sr.date_to,
-              sr.reason, sr.requested_branch_id, sr.transfer_type, sr.duration,
+              sr.reason, sr.rejection_reason, sr.requested_branch_id, sr.transfer_type, sr.duration,
               sr.submitted_at,
               u.name AS dentist_name,
               home_branch.address AS current_branch_address,
@@ -672,6 +706,7 @@ router.get('/admin/schedule-requests', requireRole('admin'), async (req, res) =>
 router.patch('/admin/schedule-requests/:id', requireRole('admin'), async (req, res) => {
   const id = Number.parseInt(req.params.id, 10);
   const status = String(req.body.status || '').trim().toLowerCase();
+  const rejectionReason = String(req.body.rejection_reason || '').trim();
 
   if (!id) {
     return res.status(400).json({ message: 'Invalid request id' });
@@ -681,7 +716,13 @@ router.patch('/admin/schedule-requests/:id', requireRole('admin'), async (req, r
     return res.status(400).json({ message: 'status must be approved or rejected' });
   }
 
+  if (status === 'rejected' && !rejectionReason) {
+    return res.status(400).json({ message: 'Rejection reason is required.' });
+  }
+
   try {
+    await ensureScheduleRequestReviewSchema();
+
     const [existingRows] = await pool.query(
       `SELECT id, dentist_id, request_type, status
        FROM schedule_requests
@@ -703,16 +744,18 @@ router.patch('/admin/schedule-requests/:id', requireRole('admin'), async (req, r
     await pool.query(
       `UPDATE schedule_requests
        SET status = ?,
+           rejection_reason = ?,
            reviewed_at = CURRENT_TIMESTAMP,
            reviewed_by = ?
        WHERE id = ?`,
-      [status, getUserId(req), id]
+      [status, status === 'rejected' ? rejectionReason : null, getUserId(req), id]
     );
 
     await notifyDentistAboutRequestDecision(
       request.dentist_id,
       status,
-      request.request_type
+      request.request_type,
+      rejectionReason
     );
 
     return res.json({ message: `Request ${status}.` });
