@@ -276,6 +276,7 @@ export default function DentistProfile() {
   const [photoRemoveConfirm, setPhotoRemoveConfirm] = useState(false);
 
   const [previousWork, setPreviousWork] = useState([]);
+  const [showWorkConfirmModal, setShowWorkConfirmModal] = useState(false);
   const [showWorkModal, setShowWorkModal] = useState(false);
   const [workForm, setWorkForm] = useState({
     company_name: '',
@@ -284,7 +285,9 @@ export default function DentistProfile() {
     end_month: '',
     reason_for_leaving: '',
   });
+
   const [savingWork, setSavingWork] = useState(false);
+  const [workErrors, setWorkErrors] = useState({});
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -348,11 +351,16 @@ export default function DentistProfile() {
     loadPreviousWork();
   }, []);
 
-  function loadPreviousWork() {
-    api
-      .get('/auth/staff-profile/me/previous-work')
-      .then((res) => setPreviousWork(res.data.previousWork || []))
-      .catch(() => {});
+  async function loadPreviousWork() {
+      try {
+          const res = await api.get(
+              '/auth/staff-profile/me/previous-work'
+          );
+
+          setPreviousWork(res.data.previousWork || []);
+      } catch {
+          setPreviousWork([]);
+      }
   }
 
   useEffect(() => {
@@ -385,31 +393,33 @@ export default function DentistProfile() {
   }, []);
 
   useEffect(() => {
-    if (
-      showLogoutModal ||
-      showEditModal ||
-      showWorkModal ||
-      showProfileCloseConfirmModal ||
-      profileSaveConfirmModal
-      || documentDeleteConfirm ||
-      photoRemoveConfirm
-    ) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+      if (
+          showLogoutModal ||
+          showEditModal ||
+          showWorkModal ||
+          showWorkConfirmModal ||
+          showProfileCloseConfirmModal ||
+          profileSaveConfirmModal ||
+          documentDeleteConfirm ||
+          photoRemoveConfirm
+      ) {
+          document.body.style.overflow = 'hidden';
+      } else {
+          document.body.style.overflow = '';
+      }
 
-    return () => {
-      document.body.style.overflow = '';
-    };
+      return () => {
+          document.body.style.overflow = '';
+      };
   }, [
-    showLogoutModal,
-    showEditModal,
-    showWorkModal,
-    showProfileCloseConfirmModal,
-    profileSaveConfirmModal,
-    documentDeleteConfirm,
-    photoRemoveConfirm,
+      showLogoutModal,
+      showEditModal,
+      showWorkModal,
+      showWorkConfirmModal,
+      showProfileCloseConfirmModal,
+      profileSaveConfirmModal,
+      documentDeleteConfirm,
+      photoRemoveConfirm,
   ]);
 
   useEffect(() => {
@@ -493,18 +503,26 @@ export default function DentistProfile() {
   }
 
   function openWorkModal() {
-    setWorkForm({
-      company_name: '',
-      position: '',
-      start_month: '',
-      end_month: '',
-      reason_for_leaving: '',
-    });
-    setShowWorkModal(true);
+      setWorkForm({
+          company_name: '',
+          position: '',
+          start_month: '',
+          end_month: '',
+          reason_for_leaving: '',
+      });
+
+      setWorkErrors({});
+      setShowWorkModal(true);
   }
 
   function closeWorkModal() {
-    setShowWorkModal(false);
+      if (savingWork) {
+          return;
+      }
+
+      setWorkErrors({});
+      setShowWorkConfirmModal(false);
+      setShowWorkModal(false);
   }
 
   function handleWorkOverlayClick(event) {
@@ -513,31 +531,146 @@ export default function DentistProfile() {
     }
   }
 
-  async function handleAddWork(event) {
-    event.preventDefault();
+  function getWorkSaveDetails() {
+      return [
+          {
+              label: 'Company Name',
+              value: workForm.company_name.trim() || 'Not entered',
+          },
+          {
+              label: 'Position',
+              value: workForm.position.trim() || 'Not entered',
+          },
+          {
+              label: 'Start Month',
+              value: workForm.start_month
+                  ? formatWorkMonth(workForm.start_month)
+                  : 'Not entered',
+          },
+          {
+              label: 'End Month',
+              value: workForm.end_month
+                  ? formatWorkMonth(workForm.end_month)
+                  : 'Not entered',
+          },
+          {
+              label: 'Reason for Leaving',
+              value:
+                  workForm.reason_for_leaving.trim() ||
+                  'Not provided',
+          },
+      ];
+  }
 
-    if (!workForm.company_name.trim()) {
-      return;
-    }
+  function closeWorkConfirmModal() {
+      if (savingWork) {
+          return;
+      }
 
-    setSavingWork(true);
+      setShowWorkConfirmModal(false);
+  }
 
-    try {
-      await api.post('/auth/staff-profile/me/previous-work', {
-        company_name: workForm.company_name.trim(),
-        position: workForm.position.trim() || null,
-        start_month: workForm.start_month || null,
-        end_month: workForm.end_month || null,
-        reason_for_leaving: workForm.reason_for_leaving.trim() || null,
-      });
+  async function confirmSaveWork() {
+      if (savingWork) {
+          return;
+      }
 
-      loadPreviousWork();
-      closeWorkModal();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to save work history.');
-    } finally {
-      setSavingWork(false);
-    }
+      const companyName = workForm.company_name.trim();
+      const position = workForm.position.trim();
+      const startMonth = workForm.start_month;
+      const endMonth = workForm.end_month;
+      const reasonForLeaving = workForm.reason_for_leaving.trim();
+
+      setSavingWork(true);
+
+      try {
+          await api.post('/auth/staff-profile/me/previous-work', {
+              company_name: companyName,
+              position: position,
+              start_month: startMonth,
+              end_month: endMonth,
+              reason_for_leaving: reasonForLeaving || null,
+          });
+
+          await loadPreviousWork();
+
+          setShowWorkConfirmModal(false);
+          closeWorkModal();
+      } catch (err) {
+          setWorkErrors({
+              form:
+                  err.response?.data?.message ||
+                  'Failed to save work history.',
+          });
+
+          setShowWorkConfirmModal(false);
+      } finally {
+          setSavingWork(false);
+      }
+  }
+
+  function handleAddWork(event) {
+      event.preventDefault();
+
+      const errors = {};
+
+      const companyName = workForm.company_name.trim();
+      const position = workForm.position.trim();
+      const startMonth = workForm.start_month;
+      const endMonth = workForm.end_month;
+      const reasonForLeaving = workForm.reason_for_leaving.trim();
+
+      // Validate Company Name
+      if (!companyName) {
+          errors.company_name = 'Company name is required.';
+      } else if (companyName.length < 2) {
+          errors.company_name =
+              'Company name must be at least 2 characters.';
+      } else if (!/^[A-Za-z\s.'&,()-]+$/.test(companyName)) {
+          errors.company_name =
+              'Company name must contain letters and spaces only.';
+      }
+
+      // Validate Position
+      if (!position) {
+          errors.position = 'Position is required.';
+      } else if (position.length < 2) {
+          errors.position =
+              'Position must be at least 2 characters.';
+      } else if (!/^[A-Za-z\s.'&,()-]+$/.test(position)) {
+          errors.position =
+              'Position must contain letters and spaces only.';
+      }
+
+      // Validate Start Month
+      if (!startMonth) {
+          errors.start_month = 'Start month is required.';
+      }
+
+      // Validate End Month
+      if (!endMonth) {
+          errors.end_month = 'End month is required.';
+      } else if (startMonth && endMonth < startMonth) {
+          errors.end_month =
+              'End month cannot be earlier than the start month.';
+      }
+
+      // Validate Reason for Leaving
+      if (
+          reasonForLeaving &&
+          !/^[A-Za-z\s.'&,()-]+$/.test(reasonForLeaving)
+      ) {
+          errors.reason_for_leaving =
+              'Reason for leaving must contain letters and spaces only.';
+      }
+
+      setWorkErrors(errors);
+
+      if (Object.keys(errors).length > 0) {
+          return;
+      }
+
+      setShowWorkConfirmModal(true);
   }
 
   async function handleDeleteWork(id) {
@@ -1126,8 +1259,7 @@ export default function DentistProfile() {
       nextY
     );
 
-    const previousWorkRows =
-      previousWork.length === 0
+    const previousWorkRows = previousWork.length === 0
         ? [['Previous Work', 'No previous work found.']]
         : previousWork.map((entry, index) => [
             `Work ${index + 1}`,
@@ -1258,359 +1390,415 @@ export default function DentistProfile() {
             </div>
           </section>
 
-          {loadingProfile ? (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '80px 0',
-                color: '#64748b',
-                fontSize: '15px',
-              }}
-            >
-              <i className="fi fi-rr-spinner" style={{ marginRight: 8 }}></i>
-              Loading profile...
-            </div>
-          ) : (
-            <>
-              <section style={styles.profileHeader}>
-                <div style={styles.profileLeft}>
+      {loadingProfile ? (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '80px 0',
+            color: '#64748b',
+            fontSize: '15px',
+          }}
+        >
+          <i
+            className="fi fi-rr-spinner"
+            style={{ marginRight: 8 }}
+          ></i>
+          Loading profile...
+        </div>
+      ) : (
+        <>
+          <section style={styles.profileHeader}>
+            <div style={styles.profileLeft}>
+              <button
+                type="button"
+                style={styles.profileAvatarButton}
+                onClick={() => profilePhotoInputRef.current?.click()}
+                title="Change profile photo"
+                disabled={uploadingProfilePhoto}
+              >
+                {profilePhotoUrl ? (
+                  <img
+                    src={profilePhotoUrl}
+                    alt=""
+                    style={styles.profileAvatarImg}
+                  />
+                ) : (
+                  <span>{avatarLetter}</span>
+                )}
+
+                <span style={styles.profileAvatarCamera}>
+                  <i
+                    className={
+                      uploadingProfilePhoto
+                        ? 'fi fi-rr-spinner'
+                        : 'fi fi-rr-camera'
+                    }
+                  ></i>
+                </span>
+              </button>
+
+              <input
+                ref={profilePhotoInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                style={{ display: 'none' }}
+                onChange={(event) =>
+                  handleProfilePhotoFile(event.target.files?.[0])
+                }
+              />
+
+              <div>
+                <h1 style={styles.profileName}>
+                  {profile.fullName}
+                </h1>
+
+                <p style={styles.profileSubtext}>
+                  {profile.role}
+                </p>
+
+                {profilePhotoUrl && (
                   <button
                     type="button"
-                    style={styles.profileAvatarButton}
-                    onClick={() => profilePhotoInputRef.current?.click()}
-                    title="Change profile photo"
+                    style={styles.removePhotoBtn}
+                    onClick={() => setPhotoRemoveConfirm(true)}
                     disabled={uploadingProfilePhoto}
                   >
-                    {profilePhotoUrl ? (
-                      <img src={profilePhotoUrl} alt="" style={styles.profileAvatarImg} />
-                    ) : (
-                      <span>{avatarLetter}</span>
-                    )}
-                    <span style={styles.profileAvatarCamera}>
-                      <i className={uploadingProfilePhoto ? 'fi fi-rr-spinner' : 'fi fi-rr-camera'}></i>
-                    </span>
+                    <i className="fi fi-rr-trash"></i>
+                    Remove Photo
                   </button>
-                  <input
-                    ref={profilePhotoInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png"
-                    style={{ display: 'none' }}
-                    onChange={(event) => handleProfilePhotoFile(event.target.files?.[0])}
-                  />
+                )}
+              </div>
+            </div>
 
-                  <div>
-                    <h1 style={styles.profileName}>{profile.fullName}</h1>
-                    <p style={styles.profileSubtext}>{profile.role}</p>
-                    {profilePhotoUrl && (
-                      <button
-                        type="button"
-                        style={styles.removePhotoBtn}
-                        onClick={() => setPhotoRemoveConfirm(true)}
-                        disabled={uploadingProfilePhoto}
-                      >
-                        <i className="fi fi-rr-trash"></i>
-                        Remove Photo
-                      </button>
-                    )}
+            <div style={styles.profileActions}>
+              <button
+                type="button"
+                style={styles.editBtn}
+                onClick={openEditModal}
+              >
+                <i className="fi fi-rr-edit"></i>
+                Edit Profile
+              </button>
+
+              <button
+                type="button"
+                style={styles.pdfBtn}
+                onClick={exportProfileToPDF}
+              >
+                <i
+                  className="fi fi-rr-file-pdf"
+                  style={styles.pdfBtnIcon}
+                ></i>
+                PDF
+              </button>
+            </div>
+          </section>
+
+          <section style={styles.profileGrid}>
+            <div style={styles.card}>
+              <CardTitle
+                styles={styles}
+                icon="fi fi-rr-user"
+                title="Personal Information"
+              />
+
+              <div style={styles.infoGrid}>
+                <InfoItem
+                  styles={styles}
+                  label="Full Name"
+                  value={profile.fullName}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Preferred Nickname"
+                  value={profile.preferredNickname}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Suffix"
+                  value={displaySuffix}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Birthday"
+                  value={profile.birthday || 'N/A'}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Age"
+                  value={age}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Religion"
+                  value={profile.religion}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Nationality"
+                  value={profile.nationality}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Home Address"
+                  value={profile.homeAddress}
+                  full
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Contact Number"
+                  value={profile.contactNumber}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Email Address"
+                  value={profile.emailAddress}
+                />
+              </div>
+            </div>
+
+            <div style={styles.card}>
+              <CardTitle
+                styles={styles}
+                icon="fi fi-rr-calendar-clock"
+                title="Work Details"
+              />
+
+              <div style={styles.infoGrid}>
+                <InfoItem
+                  styles={styles}
+                  label="Specialization"
+                  value={profile.specialization}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Start Date"
+                  value={profile.startDate}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Employment Type"
+                  value={profile.employmentType}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Shift Type"
+                  value={profile.shiftType}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Work Schedule Days"
+                  value={profile.workScheduleDays}
+                  full
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Work Hours"
+                  value={profile.workHours}
+                />
+              </div>
+            </div>
+
+            <div
+              style={{
+                ...styles.card,
+                ...styles.fullCard,
+              }}
+            >
+              <CardTitle
+                styles={styles}
+                icon="fi fi-rr-briefcase"
+                title="Professional Information"
+              />
+
+              <div style={styles.infoGridFour}>
+                <InfoItem
+                  styles={styles}
+                  label="Medical Degree"
+                  value={profile.medicalDegree}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Medical License Number"
+                  value={profile.medicalLicenseNumber}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Specialization"
+                  value={profile.specialization}
+                />
+
+                <InfoItem
+                  styles={styles}
+                  label="Years of Experience"
+                  value={profile.yearsOfExperience}
+                />
+              </div>
+
+              <DentistAttachments
+                styles={styles}
+                documents={profile.supportingDocuments}
+                inputRef={documentInputRef}
+                uploading={uploadingDocuments}
+                onAddFiles={handleDocumentFiles}
+                onDelete={setDocumentDeleteConfirm}
+              />
+
+              <div style={styles.previousWorkSection}>
+                <div style={styles.previousWorkHeader}>
+                  <div style={styles.previousWorkTitleGroup}>
+                    <div style={styles.previousWorkTitleIcon}>
+                      <i className="fi fi-rr-briefcase"></i>
+                    </div>
+
+                    <div style={styles.previousWorkTitleContent}>
+                      <div style={styles.previousWorkTitleRow}>
+                        <h3 style={styles.previousWorkTitle}>
+                          Previous Work
+                        </h3>
+
+                        <span style={styles.previousWorkCount}>
+                          {previousWork.length}
+                        </span>
+                      </div>
+
+                      <p style={styles.previousWorkSubtitle}>
+                        Your previous employment history.
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div style={styles.profileActions}>
                   <button
                     type="button"
-                    style={styles.editBtn}
-                    onClick={openEditModal}
+                    onClick={openWorkModal}
+                    style={styles.addWorkBtn}
                   >
-                    <i className="fi fi-rr-edit"></i>
-                    Edit Profile
-                  </button>
-
-                  <button
-                    type="button"
-                    style={styles.pdfBtn}
-                    onClick={exportProfileToPDF}
-                  >
-                    <i className="fi fi-rr-file-pdf" style={styles.pdfBtnIcon}></i>
-                    PDF
+                    <i className="fi fi-rr-plus"></i>
+                    <span>Add Work</span>
                   </button>
                 </div>
-              </section>
 
-              <section style={styles.profileGrid}>
-                <div style={styles.card}>
-                  <CardTitle
-                    styles={styles}
-                    icon="fi fi-rr-user"
-                    title="Personal Information"
-                  />
+                {previousWork.length === 0 ? (
+                  <div style={styles.previousWorkEmpty}>
+                    <div style={styles.previousWorkEmptyIcon}>
+                      <i className="fi fi-rr-briefcase"></i>
+                    </div>
 
-                  <div style={styles.infoGrid}>
-                    <InfoItem
-                      styles={styles}
-                      label="Full Name"
-                      value={profile.fullName}
-                    />
+                    <h4 style={styles.previousWorkEmptyTitle}>
+                      No previous work found
+                    </h4>
 
-                    <InfoItem
-                      styles={styles}
-                      label="Preferred Nickname"
-                      value={profile.preferredNickname}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Suffix"
-                      value={displaySuffix}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Birthday"
-                      value={profile.birthday || 'N/A'}
-                    />
-
-                    <InfoItem styles={styles} label="Age" value={age} />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Religion"
-                      value={profile.religion}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Nationality"
-                      value={profile.nationality}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Home Address"
-                      value={profile.homeAddress}
-                      full
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Contact Number"
-                      value={profile.contactNumber}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Email Address"
-                      value={profile.emailAddress}
-                    />
-                  </div>
-                </div>
-
-                <div style={styles.card}>
-                  <CardTitle
-                    styles={styles}
-                    icon="fi fi-rr-calendar-clock"
-                    title="Work Details"
-                  />
-
-                  <div style={styles.infoGrid}>
-                    <InfoItem
-                      styles={styles}
-                      label="Specialization"
-                      value={profile.specialization}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Start Date"
-                      value={profile.startDate}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Employment Type"
-                      value={profile.employmentType}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Shift Type"
-                      value={profile.shiftType}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Work Schedule Days"
-                      value={profile.workScheduleDays}
-                      full
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Work Hours"
-                      value={profile.workHours}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ ...styles.card, ...styles.fullCard }}>
-                  <CardTitle
-                    styles={styles}
-                    icon="fi fi-rr-briefcase"
-                    title="Professional Information"
-                  />
-
-                  <div style={styles.infoGridFour}>
-                    <InfoItem
-                      styles={styles}
-                      label="Medical Degree"
-                      value={profile.medicalDegree}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Medical License Number"
-                      value={profile.medicalLicenseNumber}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Specialization"
-                      value={profile.specialization}
-                    />
-
-                    <InfoItem
-                      styles={styles}
-                      label="Years of Experience"
-                      value={profile.yearsOfExperience}
-                    />
-                  </div>
-
-                  <DentistAttachments
-                    styles={styles}
-                    documents={profile.supportingDocuments}
-                    inputRef={documentInputRef}
-                    uploading={uploadingDocuments}
-                    onAddFiles={handleDocumentFiles}
-                    onDelete={setDocumentDeleteConfirm}
-                  />
-
-                  <div
-                    style={{
-                      ...styles.subTitle,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    Previous Work
+                    <p style={styles.previousWorkEmptyText}>
+                      Add your previous employment details to your profile.
+                    </p>
 
                     <button
                       type="button"
                       onClick={openWorkModal}
-                      style={styles.addWorkBtn}
+                      style={styles.previousWorkEmptyBtn}
                     >
-                      + Add
+                      <i className="fi fi-rr-plus"></i>
+                      Add Your First Work
                     </button>
                   </div>
-
-                  {previousWork.length === 0 ? (
-                    <div style={styles.emptyBox}>No previous work found.</div>
-                  ) : (
-                    previousWork.map((entry) => (
+                ) : (
+                  <div style={styles.previousWorkList}>
+                    {previousWork.map((entry, index) => (
                       <div
                         key={entry.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          justifyContent: 'space-between',
-                          gap: 12,
-                          background: '#fffdf7',
-                          border: '1px solid #f3d879',
-                          borderLeft: '4px solid #d4af37',
-                          borderRadius: 12,
-                          padding: '14px 16px',
-                          marginBottom: 10,
-                          boxShadow: '0 8px 18px rgba(139, 101, 8, 0.06)',
-                        }}
+                        style={styles.previousWorkCard}
                       >
-                        <div style={{ flex: 1 }}>
-                          <div
-                            style={{
-                              fontWeight: 700,
-                              fontSize: 14,
-                              color: '#0f172a',
-                              fontFamily: 'Arial, sans-serif',
-                            }}
-                          >
-                            {entry.company_name}
+                        <div style={styles.previousWorkCardIcon}>
+                          <i className="fi fi-rr-briefcase"></i>
+                        </div>
+
+                        <div style={styles.previousWorkCompanyBlock}>
+                          <span style={styles.previousWorkNumber}>
+                            Work {index + 1}
+                          </span>
+
+                          <h4 style={styles.previousWorkCompany}>
+                            {entry.company_name || 'N/A'}
+                          </h4>
+
+                          <p style={styles.previousWorkPosition}>
+                            {entry.position || 'N/A'}
+                          </p>
+                        </div>
+
+                        <div style={styles.previousWorkPeriodBlock}>
+                          <span style={styles.previousWorkSectionLabel}>
+                            Employment Period
+                          </span>
+
+                          <div style={styles.previousWorkMeta}>
+                            <span style={styles.previousWorkMetaItem}>
+                              <i
+                                className="fi fi-rr-calendar"
+                                style={styles.previousWorkMetaIcon}
+                              ></i>
+
+                              <span>
+                                {entry.start_month
+                                  ? formatWorkMonth(entry.start_month)
+                                  : 'N/A'}
+
+                                {' - '}
+
+                                {entry.end_month
+                                  ? formatWorkMonth(entry.end_month)
+                                  : 'Present'}
+                              </span>
+                            </span>
                           </div>
+                        </div>
 
-                          {entry.position && (
-                            <div
-                              style={{
-                                fontSize: 13,
-                                color: '#475569',
-                                marginTop: 2,
-                                fontFamily: 'Arial, sans-serif',
-                              }}
-                            >
-                              {entry.position}
-                            </div>
-                          )}
+                        <div style={styles.previousWorkReasonBlock}>
+                          <span style={styles.previousWorkSectionLabel}>
+                            Reason for Leaving
+                          </span>
 
-                          {(entry.start_month || entry.end_month) && (
-                            <div
-                              style={{
-                                fontSize: 13,
-                                color: '#64748b',
-                                marginTop: 2,
-                                fontFamily: 'Arial, sans-serif',
-                              }}
-                            >
-                              {formatWorkMonth(entry.start_month)}
-                              {entry.end_month
-                                ? ` - ${formatWorkMonth(entry.end_month)}`
-                                : ' - Present'}
-                            </div>
-                          )}
-
-                          {entry.reason_for_leaving && (
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: '#94a3b8',
-                                marginTop: 4,
-                                fontFamily: 'Arial, sans-serif',
-                              }}
-                            >
-                              Reason: {entry.reason_for_leaving}
-                            </div>
-                          )}
+                          <span style={styles.previousWorkReasonText}>
+                            {entry.reason_for_leaving || 'N/A'}
+                          </span>
                         </div>
 
                         <button
                           type="button"
-                          onClick={() => handleDeleteWork(entry.id)}
-                          style={{
-                            border: 'none',
-                            background: 'transparent',
-                            color: '#ef4444',
-                            cursor: 'pointer',
-                            fontSize: 16,
-                            padding: 4,
-                          }}
-                          title="Remove"
+                          onClick={() =>
+                            handleDeleteWork(entry.id)
+                          }
+                          style={styles.previousWorkDeleteBtn}
+                          title="Remove work history"
+                          aria-label={`Remove ${entry.company_name} work history`}
                         >
                           <i className="fi fi-rr-trash"></i>
                         </button>
                       </div>
-                    ))
-                  )}
-                </div>
-              </section>
-            </>
-          )}
-        </main>
-      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
       {showEditModal && (
         <div style={styles.editOverlay} onClick={handleEditOverlayClick}>
@@ -1983,6 +2171,13 @@ export default function DentistProfile() {
                 </FormGroup>
               </div>
 
+              {workErrors.form && (
+                  <div style={styles.workFormError}>
+                      <i className="fi fi-rr-circle-exclamation"></i>
+                      <span>{workErrors.form}</span>
+                  </div>
+              )}
+
               <div style={styles.editModalActions}>
                 <button
                   type="submit"
@@ -2095,107 +2290,268 @@ export default function DentistProfile() {
         </div>
       )}
 
-      {showWorkModal && (
+      {showWorkModal && !showWorkConfirmModal && (
         <div style={styles.editOverlay} onClick={handleWorkOverlayClick}>
-          <div style={{ ...styles.editModalBox, maxWidth: 520 }}>
+          <div style={{ ...styles.editModalBox, maxWidth: 560 }}>
             <div style={styles.editModalHeader}>
-              <h2 style={styles.editModalTitle}>Add Work History</h2>
+              <div style={styles.editModalHeading}>
+                <div style={styles.editModalIcon}>
+                  <i className="fi fi-rr-briefcase"></i>
+                </div>
+
+                <div>
+                  <h2 style={styles.editModalTitle}>Add Work History</h2>
+                  <p style={styles.editModalSubtitle}>
+                    Add your previous employment details to your profile.
+                  </p>
+                </div>
+              </div>
 
               <button
                 type="button"
                 style={styles.modalClose}
                 onClick={closeWorkModal}
+                disabled={savingWork}
+                aria-label="Close"
               >
                 <i className="fi fi-rr-cross-small"></i>
               </button>
             </div>
 
             <form style={styles.editForm} onSubmit={handleAddWork}>
-              <div style={styles.formGrid}>
-                <FormGroup styles={styles} label="Company Name *" full>
-                  <input
-                    type="text"
-                    value={workForm.company_name}
-                    onChange={(event) =>
-                      setWorkForm((form) => ({
-                        ...form,
-                        company_name: event.target.value,
-                      }))
-                    }
-                    style={styles.formInput}
-                    required
-                  />
-                </FormGroup>
+              <div style={styles.formSection}>
+                <div style={styles.formSectionHeader}>
+                  <span style={styles.formStep}>01</span>
 
-                <FormGroup styles={styles} label="Position">
-                  <input
-                    type="text"
-                    value={workForm.position}
-                    onChange={(event) =>
-                      setWorkForm((form) => ({
-                        ...form,
-                        position: event.target.value,
-                      }))
-                    }
-                    style={styles.formInput}
-                  />
-                </FormGroup>
+                  <div>
+                    <h3 style={styles.formSectionTitle}>Employment Details</h3>
+                    <p style={styles.formSectionText}>
+                      Enter the company and position you held.
+                    </p>
+                  </div>
+                </div>
 
-                <FormGroup styles={styles} label="Start Month">
-                  <input
-                    type="month"
-                    value={workForm.start_month}
-                    onChange={(event) =>
-                      setWorkForm((form) => ({
-                        ...form,
-                        start_month: event.target.value,
-                      }))
-                    }
-                    style={styles.formInput}
-                  />
-                </FormGroup>
+                <div style={styles.formGrid}>
+                  <FormGroup
+                      styles={styles}
+                      label="Company Name"
+                      required
+                      error={workErrors.company_name}
+                  >
+                      <input
+                          type="text"
+                          value={workForm.company_name}
+                          onChange={(event) => {
+                              const value = event.target.value;
 
-                <FormGroup styles={styles} label="End Month">
-                  <input
-                    type="month"
-                    value={workForm.end_month}
-                    onChange={(event) =>
-                      setWorkForm((form) => ({
-                        ...form,
-                        end_month: event.target.value,
-                      }))
-                    }
-                    style={styles.formInput}
-                  />
-                </FormGroup>
+                              setWorkForm((form) => ({
+                                  ...form,
+                                  company_name: value,
+                              }));
 
-                <FormGroup styles={styles} label="Reason for Leaving" full>
-                  <input
-                    type="text"
-                    value={workForm.reason_for_leaving}
-                    onChange={(event) =>
-                      setWorkForm((form) => ({
-                        ...form,
-                        reason_for_leaving: event.target.value,
-                      }))
-                    }
-                    style={styles.formInput}
-                  />
-                </FormGroup>
+                              let error = '';
+
+                              if (!value.trim()) {
+                                  error = 'Company name is required.';
+                              } else if (value.trim().length < 2) {
+                                  error = 'Company name must be at least 2 characters.';
+                              } else if (!/^[A-Za-z\s.'&,()-]+$/.test(value.trim())) {
+                                  error =
+                                      'Company name must contain letters and spaces only.';
+                              }
+
+                              setWorkErrors((errors) => ({
+                                  ...errors,
+                                  company_name: error,
+                              }));
+                          }}
+                          style={{
+                              ...styles.formInput,
+                              ...(workErrors.company_name
+                                  ? styles.formInputInvalid
+                                  : {}),
+                          }}
+                          placeholder="Enter company name"
+                      />
+                  </FormGroup>
+
+                  <FormGroup
+                      styles={styles}
+                      label="Position"
+                      required
+                      error={workErrors.position}
+                  >
+                      <input
+                          type="text"
+                          value={workForm.position}
+                          onChange={(event) => {
+                              const value = event.target.value;
+
+                              setWorkForm((form) => ({
+                                  ...form,
+                                  position: value,
+                              }));
+
+                              let error = '';
+
+                              if (!value.trim()) {
+                                  error = 'Position is required.';
+                              } else if (value.trim().length < 2) {
+                                  error = 'Position must be at least 2 characters.';
+                              } else if (!/^[A-Za-z\s.'&,()-]+$/.test(value.trim())) {
+                                  error =
+                                      'Position must contain letters and spaces only.';
+                              }
+
+                              setWorkErrors((errors) => ({
+                                  ...errors,
+                                  position: error,
+                              }));
+                          }}
+                          style={{
+                              ...styles.formInput,
+                              ...(workErrors.position
+                                  ? styles.formInputInvalid
+                                  : {}),
+                          }}
+                          placeholder="e.g. Dental Assistant"
+                      />
+                  </FormGroup>
+
+                  <FormGroup
+                      styles={styles}
+                      label="Reason for Leaving"
+                      error={workErrors.reason_for_leaving}
+                      full
+                  >
+                      <input
+                          type="text"
+                          value={workForm.reason_for_leaving}
+                          onChange={(event) => {
+                              const value = event.target.value;
+
+                              setWorkForm((form) => ({
+                                  ...form,
+                                  reason_for_leaving: value,
+                              }));
+
+                              let error = '';
+
+                              if (
+                                  value.trim() &&
+                                  !/^[A-Za-z\s.'&,()-]+$/.test(value.trim())
+                              ) {
+                                  error =
+                                      'Reason for leaving must contain letters and spaces only.';
+                              }
+
+                              setWorkErrors((errors) => ({
+                                  ...errors,
+                                  reason_for_leaving: error,
+                              }));
+                          }}
+                          style={{
+                              ...styles.formInput,
+                              ...(workErrors.reason_for_leaving
+                                  ? styles.formInputInvalid
+                                  : {}),
+                          }}
+                          placeholder="Optional"
+                      />
+                  </FormGroup>
+                </div>
               </div>
 
-              <div style={styles.editModalActions}>
-                <button
-                  type="submit"
-                  style={{
-                    ...styles.saveBtn,
-                    ...(savingWork ? styles.disabledBtn : {}),
-                  }}
-                  disabled={savingWork}
-                >
-                  {savingWork ? 'Saving...' : 'Save'}
-                </button>
+              <div style={styles.formSection}>
+                <div style={styles.formSectionHeader}>
+                  <span style={styles.formStep}>02</span>
 
+                  <div>
+                    <h3 style={styles.formSectionTitle}>Employment Period</h3>
+                    <p style={styles.formSectionText}>
+                      Specify when you started and ended this position.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={styles.formGrid}>
+                  <FormGroup
+                      styles={styles}
+                      label="Start Month"
+                      required
+                      error={workErrors.start_month}
+                  >
+                      <input
+                          type="month"
+                          value={workForm.start_month}
+                          onChange={(event) => {
+                              const value = event.target.value;
+
+                              setWorkForm((form) => ({
+                                  ...form,
+                                  start_month: value,
+                              }));
+
+                              if (workErrors.start_month) {
+                                  setWorkErrors((errors) => ({
+                                      ...errors,
+                                      start_month: '',
+                                  }));
+                              }
+                          }}
+                          style={{
+                              ...styles.formInput,
+                              ...(workErrors.start_month
+                                  ? styles.formInputInvalid
+                                  : {}),
+                          }}
+                      />
+                  </FormGroup>
+
+                  <FormGroup
+                      styles={styles}
+                      label="End Month"
+                      required
+                      error={workErrors.end_month}
+                  >
+                      <input
+                          type="month"
+                          value={workForm.end_month}
+                          min={workForm.start_month || undefined}
+                          onChange={(event) => {
+                              const value = event.target.value;
+
+                              setWorkForm((form) => ({
+                                  ...form,
+                                  end_month: value,
+                              }));
+
+                              if (workErrors.end_month) {
+                                  setWorkErrors((errors) => ({
+                                      ...errors,
+                                      end_month: '',
+                                  }));
+                              }
+                          }}
+                          style={{
+                              ...styles.formInput,
+                              ...(workErrors.end_month
+                                  ? styles.formInputInvalid
+                                  : {}),
+                          }}
+                      />
+                  </FormGroup>
+                </div>
+              </div>
+
+              {workErrors.form && (
+                  <div style={styles.workFormError}>
+                      <i className="fi fi-rr-circle-exclamation"></i>
+                      <span>{workErrors.form}</span>
+                  </div>
+              )}
+
+              <div style={styles.editModalActions}>
                 <button
                   type="button"
                   style={styles.cancelEditBtn}
@@ -2204,10 +2560,251 @@ export default function DentistProfile() {
                 >
                   Cancel
                 </button>
+
+                <button
+                  type="submit"
+                  style={{
+                    ...styles.saveBtn,
+                    ...(savingWork ? styles.disabledBtn : {}),
+                  }}
+                  disabled={savingWork}
+                >
+                  {savingWork ? 'Saving...' : 'Save Work History'}
+                </button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {showWorkConfirmModal && (
+          <div
+              style={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 9999,
+                  backgroundColor: 'rgba(15, 23, 42, 0.58)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 20,
+                  boxSizing: 'border-box',
+              }}
+              onClick={(event) => {
+                  if (event.target === event.currentTarget) {
+                      closeWorkConfirmModal();
+                  }
+              }}
+          >
+              <div
+                  style={{
+                      width: '100%',
+                      maxWidth: 500,
+                      maxHeight: '90vh',
+                      overflowY: 'auto',
+                      backgroundColor: '#ffffff',
+                      borderRadius: 18,
+                      padding: '28px 30px',
+                      boxSizing: 'border-box',
+                      boxShadow: '0 24px 70px rgba(15, 23, 42, 0.22)',
+                      fontFamily: 'Arial, sans-serif',
+                  }}
+              >
+                  <div
+                      style={{
+                          width: 52,
+                          height: 52,
+                          margin: '0 auto 14px',
+                          borderRadius: 14,
+                          backgroundColor: '#fff8df',
+                          border: '1px solid #ead9a6',
+                          color: '#b8860b',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 20,
+                      }}
+                  >
+                      <i className="fi fi-rr-briefcase"></i>
+                  </div>
+
+                  <h2
+                      style={{
+                          margin: '0 0 7px',
+                          textAlign: 'center',
+                          color: '#172033',
+                          fontSize: 20,
+                          fontWeight: 800,
+                      }}
+                  >
+                      Confirm Work History
+                  </h2>
+
+                  <p
+                      style={{
+                          margin: '0 auto',
+                          maxWidth: 380,
+                          textAlign: 'center',
+                          color: '#64748b',
+                          fontSize: 12,
+                          lineHeight: 1.5,
+                      }}
+                  >
+                      Please review all work history details before saving.
+                  </p>
+
+                  <div
+                      style={{
+                          marginTop: 22,
+                          marginBottom: 20,
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                          backgroundColor: '#ffffff',
+                      }}
+                  >
+                      {getWorkSaveDetails().map((detail, index) => (
+                          <div
+                              key={detail.label}
+                              style={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  justifyContent: 'space-between',
+                                  gap: 16,
+                                  padding: '12px 14px',
+                                  backgroundColor:
+                                      index % 2 === 0 ? '#f8fafc' : '#ffffff',
+                                  borderBottom:
+                                      index <
+                                      getWorkSaveDetails().length - 1
+                                          ? '1px solid #edf0f4'
+                                          : 'none',
+                                  boxSizing: 'border-box',
+                              }}
+                          >
+                              <span
+                                  style={{
+                                      color: '#64748b',
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      flexShrink: 0,
+                                  }}
+                              >
+                                  {detail.label}
+                              </span>
+
+                              <strong
+                                  style={{
+                                      color: '#172033',
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                      textAlign: 'right',
+                                      maxWidth: '60%',
+                                      wordBreak: 'break-word',
+                                      lineHeight: 1.4,
+                                  }}
+                              >
+                                  {detail.value}
+                              </strong>
+                          </div>
+                      ))}
+                  </div>
+
+                  {workErrors.form && (
+                      <div
+                          style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 8,
+                              marginBottom: 16,
+                              padding: '10px 12px',
+                              borderRadius: 10,
+                              backgroundColor: '#fef2f2',
+                              border: '1px solid #fecaca',
+                              color: '#dc2626',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              lineHeight: 1.4,
+                          }}
+                      >
+                          <i className="fi fi-rr-circle-exclamation"></i>
+                          <span>{workErrors.form}</span>
+                      </div>
+                  )}
+
+                  <div
+                      style={{
+                          display: 'flex',
+                          justifyContent: 'flex-end',
+                          alignItems: 'center',
+                          gap: 10,
+                          paddingTop: 4,
+                      }}
+                  >
+                      <button
+                          type="button"
+                          onClick={closeWorkConfirmModal}
+                          disabled={savingWork}
+                          style={{
+                              height: 42,
+                              minWidth: 120,
+                              padding: '0 16px',
+                              border: '1px solid #dbe2ea',
+                              borderRadius: 10,
+                              backgroundColor: '#ffffff',
+                              color: '#475569',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: savingWork
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                              opacity: savingWork ? 0.6 : 1,
+                              fontFamily: 'Arial, sans-serif',
+                              boxSizing: 'border-box',
+                          }}
+                      >
+                          Review
+                      </button>
+
+                      <button
+                          type="button"
+                          onClick={confirmSaveWork}
+                          disabled={savingWork}
+                          style={{
+                              height: 42,
+                              minWidth: 145,
+                              padding: '0 18px',
+                              border: '1px solid #b8860b',
+                              borderRadius: 10,
+                              backgroundColor: '#b8860b',
+                              color: '#ffffff',
+                              fontSize: 12,
+                              fontWeight: 800,
+                              cursor: savingWork
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                              opacity: savingWork ? 0.7 : 1,
+                              fontFamily: 'Arial, sans-serif',
+                              boxSizing: 'border-box',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 7,
+                          }}
+                      >
+                          {savingWork ? (
+                              <>
+                                  Saving...
+                              </>
+                          ) : (
+                              <>
+                                  Confirm
+                              </>
+                          )}
+                      </button>
+                  </div>
+              </div>
+          </div>
       )}
 
       {documentDeleteConfirm && (
@@ -2305,12 +2902,18 @@ export default function DentistProfile() {
             </div>
 
             <h2 style={styles.modalTitle}>Confirm Logout</h2>
-            <p style={styles.modalText}>Are you sure you want to log out?</p>
+
+            <p style={styles.modalText}>
+              Are you sure you want to log out?
+            </p>
 
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                style={{
+                  ...styles.modalButton,
+                  ...styles.cancelBtn,
+                }}
                 onClick={closeLogoutModal}
               >
                 Cancel
@@ -2318,7 +2921,10 @@ export default function DentistProfile() {
 
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                style={{
+                  ...styles.modalButton,
+                  ...styles.logoutBtn,
+                }}
                 onClick={handleLogout}
               >
                 Logout
@@ -2327,8 +2933,10 @@ export default function DentistProfile() {
           </div>
         </div>
       )}
-    </div>
-  );
+    </main>
+  </div>
+</div>
+);
 }
 
 function DentistAttachments({
@@ -2373,7 +2981,17 @@ function DentistAttachments({
       </div>
 
       {files.length === 0 ? (
-        <div style={styles.attachmentEmpty}>No attachments uploaded.</div>
+        <div style={styles.attachmentEmpty}>
+          <div style={styles.attachmentEmptyIcon}>
+            <i className="fi fi-rr-folder-open"></i>
+          </div>
+          <strong style={styles.attachmentEmptyTitle}>
+            No attachments uploaded
+          </strong>
+          <span style={styles.attachmentEmptyText}>
+            Upload your license, certifications, or resume.
+          </span>
+        </div>
       ) : (
         <div style={styles.attachmentList}>
           {files.map((document) => {
@@ -2392,29 +3010,43 @@ function DentistAttachments({
                   <strong style={styles.attachmentName}>
                     {document.file_name || 'Attachment'}
                   </strong>
-                  <span style={styles.attachmentMeta}>
-                    {formatProfileFileSize(document.file_size)}
-                  </span>
+
+                  <div style={styles.attachmentMetaRow}>
+                    <span style={styles.attachmentMeta}>
+                      {formatProfileFileSize(document.file_size)}
+                    </span>
+
+                    <span style={styles.attachmentDot}>•</span>
+
+                    <span style={styles.attachmentType}>
+                      Document
+                    </span>
+                  </div>
                 </div>
 
-                <a
-                  href={fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={styles.attachmentActionBtn}
-                  title="View attachment"
-                >
-                  <i className="fi fi-rr-eye"></i>
-                </a>
+                <div style={styles.attachmentActions}>
+                  <a
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={styles.attachmentViewBtn}
+                    title="View attachment"
+                    aria-label={`View ${document.file_name || 'attachment'}`}
+                  >
+                    <i className="fi fi-rr-eye"></i>
+                    <span>View</span>
+                  </a>
 
-                <button
-                  type="button"
-                  style={{ ...styles.attachmentActionBtn, ...styles.attachmentDeleteBtn }}
-                  onClick={() => onDelete(document)}
-                  title="Delete attachment"
-                >
-                  <i className="fi fi-rr-trash"></i>
-                </button>
+                  <button
+                    type="button"
+                    style={styles.attachmentDeleteBtn}
+                    onClick={() => onDelete(document)}
+                    title="Delete attachment"
+                    aria-label={`Delete ${document.file_name || 'attachment'}`}
+                  >
+                    <i className="fi fi-rr-trash"></i>
+                  </button>
+                </div>
               </div>
             );
           })}
