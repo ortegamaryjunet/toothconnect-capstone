@@ -601,13 +601,21 @@ body {
     display: none;
     margin: 6px 0 0;
     color: #dc2626;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     line-height: 1.4;
 }
 
 .field-error-text.active {
     display: block;
+}
+
+#timeError {
+    margin-top: 6px;
+}
+
+#dateSubmitError {
+    margin-top: 6px;
 }
 
 /* NOTE */
