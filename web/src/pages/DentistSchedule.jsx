@@ -106,8 +106,7 @@ export default function DentistSchedule() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
-  const [showLeaveCancelConfirmModal, setShowLeaveCancelConfirmModal] =
-    useState(false);
+  const [showLeaveCancelConfirmModal, setShowLeaveCancelConfirmModal] = useState(false);
   const [showLeaveConflictModal, setShowLeaveConflictModal] = useState(false);
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
 
@@ -649,26 +648,17 @@ export default function DentistSchedule() {
 
         <nav style={styles.menu}>
           <Link to="/dentist" style={styles.menuItem}>
-            <i
-              className="fi fi-rr-chart-histogram"
-              style={styles.menuItemIcon}
-            ></i>
+            <i className="fi fi-rr-chart-histogram" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Dashboard</span>
           </Link>
 
           <Link to="/dentistAppointment" style={styles.menuItem}>
-            <i
-              className="fi fi-rr-calendar-clock"
-              style={styles.menuItemIcon}
-            ></i>
+            <i className="fi fi-rr-calendar-clock" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Appointment</span>
           </Link>
 
           <Link to="/dentistRecords" style={styles.menuItem}>
-            <i
-              className="fi fi-rr-clipboard-user"
-              style={styles.menuItemIcon}
-            ></i>
+            <i className="fi fi-rr-clipboard-user" style={styles.menuItemIcon}s></i>
             <span style={styles.menuItemText}>Patient Records</span>
           </Link>
 
@@ -677,10 +667,7 @@ export default function DentistSchedule() {
             <span style={styles.menuItemText}>View Profile</span>
           </Link>
 
-          <Link
-            to="/dentistSchedule"
-            style={{ ...styles.menuItem, ...styles.menuItemActive }}
-          >
+          <Link to="/dentistSchedule" style={{ ...styles.menuItem, ...styles.menuItemActive }}>
             <i className="fi fi-rr-calendar" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>My Schedule</span>
           </Link>
@@ -693,15 +680,8 @@ export default function DentistSchedule() {
         </nav>
 
         <div style={styles.logoutSection}>
-          <button
-            type="button"
-            style={{ ...styles.menuItem, ...styles.logoutItem, width: '100%' }}
-            onClick={openLogoutModal}
-          >
-            <i
-              className="fi fi-rr-sign-out-alt"
-              style={styles.menuItemIcon}
-            ></i>
+          <button type="button" style={{ ...styles.menuItem, ...styles.logoutItem, width: '100%' }} onClick={openLogoutModal}>
+            <i className="fi fi-rr-sign-out-alt" style={styles.menuItemIcon}></i>
             <span style={styles.menuItemText}>Logout</span>
           </button>
         </div>
@@ -710,11 +690,7 @@ export default function DentistSchedule() {
       <div style={styles.mainContainer}>
         <header style={styles.topHeader}>
           <div style={styles.headerActions}>
-            <DentistProfileMenu
-              styles={styles}
-              dentistName={user?.name || 'Dentist'}
-              specialization="Dentist"
-            />
+            <DentistProfileMenu styles={styles} dentistName={user?.name || 'Dentist'} specialization="Dentist"/>
           </div>
         </header>
 
@@ -723,13 +699,9 @@ export default function DentistSchedule() {
             <div>
               <span style={styles.heroBadge}>Schedule Overview</span>
 
-              <h2 style={styles.heroTitle}>
-                Manage your branch, working days, and schedule requests
-              </h2>
+              <h2 style={styles.heroTitle}>Manage your branch, working days, and schedule requests</h2>
 
-              <p style={styles.heroText}>
-                View your weekly schedule and track leave and transfer requests.
-              </p>
+              <p style={styles.heroText}>View your weekly schedule and track leave and transfer requests.</p>
             </div>
 
             <div style={styles.heroIcon}>
