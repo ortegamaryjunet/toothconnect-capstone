@@ -2643,6 +2643,18 @@ export default function AdminEmployeeForm() {
     );
   }
 
+  function getErrorModalTitle() {
+    if (errorModalMessage === 'Only up to 5MB per file is allowed.') {
+      return 'File Too Large';
+    }
+
+    if (errorModalMessage === 'Unsupported file format. Please upload a PDF, JPG, JPEG, or PNG File only.') {
+      return 'Upload Failed';
+    }
+
+    return 'Incomplete Form';
+  }
+
   // ─── Page render ──────────────────────────────────────────────────────────
 
   return (
@@ -2734,7 +2746,7 @@ export default function AdminEmployeeForm() {
             <div style={{ ...styles.modalIcon, background: '#fee2e2', color: '#dc2626' }}>
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
-            <h2 style={styles.modalTitle}>Incomplete Form</h2>
+            <h2 style={styles.modalTitle}>{getErrorModalTitle()}</h2>
             <p style={styles.modalText}>{errorModalMessage}</p>
             <div style={styles.modalActions}>
               <button
