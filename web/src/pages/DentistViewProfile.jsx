@@ -432,20 +432,11 @@ export default function DentistViewProfile() {
               styles={styles}
               rows={paginatedTreatmentHistory}
               emptyText="No treatment history found."
-              pageInfo={
-                filteredTreatmentHistory.length === 0
-                  ? 'Page 0 of 0'
-                  : `Page ${historyCurrentPage} of ${historyTotalPages}`
-              }
+              pageInfo={filteredTreatmentHistory.length === 0 ? 'Page 0 of 0' : `Page ${historyCurrentPage} of ${historyTotalPages}`}
               onPrev={prevHistoryPage}
               onNext={nextHistoryPage}
-              prevDisabled={
-                filteredTreatmentHistory.length === 0 || historyCurrentPage === 1
-              }
-              nextDisabled={
-                filteredTreatmentHistory.length === 0 ||
-                historyCurrentPage >= historyTotalPages
-              }
+              prevDisabled={filteredTreatmentHistory.length === 0 || historyCurrentPage === 1}
+              nextDisabled={filteredTreatmentHistory.length === 0 || historyCurrentPage >= historyTotalPages}
               getStatusStyle={getStatusStyle}
               onOpenAttachments={setHistoryAttachmentModal}
               onOpenReschedules={setHistoryRescheduleModal}
@@ -721,19 +712,7 @@ function normalizeHistory(items, plans = []) {
   return collapseCompletedHistoryRows(rows);
 }
 
-function TreatmentHistoryTable({
-  styles,
-  rows,
-  emptyText,
-  pageInfo,
-  onPrev,
-  onNext,
-  prevDisabled,
-  nextDisabled,
-  getStatusStyle,
-  onOpenAttachments,
-  onOpenReschedules,
-}) {
+function TreatmentHistoryTable({ styles, rows, emptyText, pageInfo, onPrev, onNext, prevDisabled, nextDisabled, getStatusStyle, onOpenAttachments, onOpenReschedules, }) {
   return (
     <div style={styles.tableCard}>
       <div style={styles.tableWrapper}>
@@ -795,12 +774,11 @@ function TreatmentHistoryTable({
           type="button"
           onClick={onPrev}
           disabled={prevDisabled}
-          style={{
-            ...styles.pageBtn,
+          style={{ ...styles.pageBtn, ...styles.prevPageBtn,
             ...(prevDisabled ? styles.pageBtnDisabled : {}),
           }}
         >
-          Prev
+          Previous
         </button>
 
         <span style={styles.pageInfo}>{pageInfo}</span>
@@ -809,8 +787,7 @@ function TreatmentHistoryTable({
           type="button"
           onClick={onNext}
           disabled={nextDisabled}
-          style={{
-            ...styles.pageBtn,
+          style={{ ...styles.pageBtn, ...styles.nextPageBtn,
             ...(nextDisabled ? styles.pageBtnDisabled : {}),
           }}
         >
