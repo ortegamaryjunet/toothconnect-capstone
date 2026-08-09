@@ -958,7 +958,7 @@ export default function AdminEmployeeForm() {
     if (invalidType || oversized) {
       setErrorModalMessage(
         invalidType
-          ? 'Unsupported file format. Please upload a PDF, JPG, JPEG, or PNG File only.'
+          ? 'Unsupported file format. Please upload a PDF, JPG, JPEG, or PNG file only.'
           : 'Only up to 5MB per file is allowed.'
       );
       setShowErrorModal(true);
@@ -2662,7 +2662,7 @@ export default function AdminEmployeeForm() {
       return 'File Too Large';
     }
 
-    if (errorModalMessage === 'Unsupported file format. Please upload a PDF, JPG, JPEG, or PNG File only.') {
+    if (errorModalMessage === 'Unsupported file format. Please upload a PDF, JPG, JPEG, or PNG file only.') {
       return 'Upload Failed';
     }
 
