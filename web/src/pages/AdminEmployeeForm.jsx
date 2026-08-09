@@ -1366,7 +1366,9 @@ export default function AdminEmployeeForm() {
           </button>
           <h2 style={styles.sectionTitle}>{title}</h2>
         </div>
-        {open && <div style={styles.content}>{children}</div>}
+        <div style={{ ...styles.content, display: open ? undefined : 'none' }}>
+          {children}
+        </div>
       </div>
     );
   }
@@ -2644,6 +2646,10 @@ export default function AdminEmployeeForm() {
   }
 
   function getErrorModalTitle() {
+    if (errorModalMessage === 'Please upload an employee photo.') {
+      return 'Employee Photo Required';
+    }
+
     if (errorModalMessage === 'Only up to 5MB per file is allowed.') {
       return 'File Too Large';
     }
