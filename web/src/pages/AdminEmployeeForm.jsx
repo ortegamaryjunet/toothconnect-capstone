@@ -2651,7 +2651,7 @@ export default function AdminEmployeeForm() {
 
   function getErrorModalTitle() {
     if (errorModalMessage === 'Email already in use') {
-      return 'Email already in use';
+      return 'Email Address Already In Use';
     }
 
     if (errorModalMessage === 'Please upload an employee photo.') {
@@ -2675,6 +2675,10 @@ export default function AdminEmployeeForm() {
 
   function shouldShowErrorModalMessage() {
     return errorModalMessage !== 'Email already in use';
+  }
+
+  function shouldShowErrorModalTitle() {
+    return errorModalMessage !== 'Please fix the highlighted errors before submitting.';
   }
 
   // ─── Page render ──────────────────────────────────────────────────────────
@@ -2768,7 +2772,7 @@ export default function AdminEmployeeForm() {
             <div style={{ ...styles.modalIcon, background: '#fee2e2', color: '#dc2626' }}>
               <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
             </div>
-            <h2 style={styles.modalTitle}>{getErrorModalTitle()}</h2>
+            {shouldShowErrorModalTitle() && <h2 style={styles.modalTitle}>{getErrorModalTitle()}</h2>}
             {shouldShowErrorModalMessage() && <p style={styles.modalText}>{errorModalMessage}</p>}
             <div style={styles.modalActions}>
               <button
