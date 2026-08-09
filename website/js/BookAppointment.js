@@ -182,7 +182,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ---- Inline error helpers ----
-
     function showFieldError(errorId, message) {
         const el = document.getElementById(errorId);
         if (!el) return;
@@ -207,7 +206,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ---- Validation ----
-
     function validateFullName(value) {
         const name = value.trim();
         if (!name) return "Full name is required.";
@@ -388,7 +386,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ---- Services from DB ----
-
     async function loadServices() {
         servicesLoading = true;
         servicesLoadFailed = false;
@@ -416,7 +413,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ---- Branch selection → filter services + unlock step 3 ----
-
     function renderReasonOptions() {
         if (!reasonOptions) return;
         reasonOptions.innerHTML = "";
@@ -495,7 +491,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // ---- Calendar ----
-
     function formatDateForDatabase(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -651,8 +646,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 appointmentDateInput.value = formatDateForDatabase(selectedDate);
                 appointmentTimeInput.value = "";
 
+                clearFieldError("dateSubmitError");
                 clearFieldError("timeError");
-                clearFieldError("timeSubmitError");
 
                 updateStepLocks();
                 renderCalendar();
@@ -727,7 +722,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     summaryTime.textContent = slot;
                     appointmentTimeInput.value = selectedTime24;
                     clearFieldError("timeError");
-                    clearFieldError("timeSubmitError");
                     renderTimeSlots();
                 });
             }
@@ -869,8 +863,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // ---- Form submission ----
-
     if (appointmentForm) {
         appointmentForm.addEventListener("submit", async function (event) {
             event.preventDefault();
@@ -886,6 +878,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Validate Full Name
             const nameError = validateFullName(patientName.value);
             setInputError(patientName, Boolean(nameError));
+
             if (nameError) {
                 showFieldError("nameError", nameError);
                 hasError = true;
@@ -896,6 +889,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Validate Email
             const emailError = validateEmail(emailInput.value);
             setInputError(emailInput, Boolean(emailError));
+
             if (emailError) {
                 showFieldError("emailError", emailError);
                 hasError = true;
@@ -909,12 +903,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 phoneCountry?.value || "PH"
             );
 
-            const parsedPhone =
-                parsePhoneNumber(
-                    phoneInput.value.trim(),
-                    phoneCountry?.value || "PH"
-                );
-
             const internationalPhoneNumber = toInternationalPhone(
                 phoneInput.value.trim(),
                 phoneCountry?.value || "PH"
@@ -923,6 +911,7 @@ document.addEventListener("DOMContentLoaded", function () {
             fullPhoneNumber.value = internationalPhoneNumber;
 
             setInputError(phoneInput, Boolean(phoneError));
+
             if (phoneError) {
                 showFieldError("phoneError", phoneError);
                 hasError = true;
@@ -932,7 +921,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             // Validate Location
             if (!selectedLocation) {
-                showFieldError("locationError", "Please select your preferred branch.");
+                showFieldError(
+                    "locationError",
+                    "Please select your preferred branch."
+                );
                 hasError = true;
             } else {
                 clearFieldError("locationError");
@@ -940,41 +932,102 @@ document.addEventListener("DOMContentLoaded", function () {
 
             // Validate Reason
             if (servicesLoading) {
-                showFieldError("reasonError", "Services are still loading. Please wait a moment.");
-                if (reasonBtn) reasonBtn.classList.add("input-error");
+                showFieldError(
+                    "reasonError",
+                    "Services are still loading. Please wait a moment."
+                );
+
+                if (reasonBtn) {
+                    reasonBtn.classList.add("input-error");
+                }
+
                 hasError = true;
-            } else if (servicesLoadFailed || !Array.isArray(cachedServices) || cachedServices.length === 0) {
-                showFieldError("reasonError", "Services are temporarily unavailable. Please try again later or contact the clinic.");
-                if (reasonBtn) reasonBtn.classList.add("input-error");
+
+            } else if (
+                servicesLoadFailed ||
+                !Array.isArray(cachedServices) ||
+                cachedServices.length === 0
+            ) {
+                showFieldError(
+                    "reasonError",
+                    "Services are temporarily unavailable. Please try again later or contact the clinic."
+                );
+
+                if (reasonBtn) {
+                    reasonBtn.classList.add("input-error");
+                }
+
                 hasError = true;
-            } else if (!selectedReason.value || reasonText.textContent === "Select reason") {
-                showFieldError("reasonError", "Please select a reason for booking.");
-                if (reasonBtn) reasonBtn.classList.add("input-error");
+
+            } else if (
+                !selectedReason.value ||
+                reasonText.textContent === "Select reason"
+            ) {
+                showFieldError(
+                    "reasonError",
+                    "Please select a reason for booking."
+                );
+
+                if (reasonBtn) {
+                    reasonBtn.classList.add("input-error");
+                }
+
                 hasError = true;
+
             } else {
                 clearFieldError("reasonError");
-                if (reasonBtn) reasonBtn.classList.remove("input-error");
+
+                if (reasonBtn) {
+                    reasonBtn.classList.remove("input-error");
+                }
             }
 
-            // Validate Date (step 1)
-            if (!selectedDate || !appointmentDateInput.value) {
-                hasError = true;
+            // Validate Step 2 Date
+            const dateSelected = Boolean(
+                selectedDate && appointmentDateInput.value
+            );
+
+            if (!dateSelected) {
+                clearFieldError("dateSubmitError");
+                clearFieldError("timeError");
+
+                showMessage(
+                    "Appointment Date Required",
+                    "Please select your appointment date in Step 2 before scheduling.",
+                    "error"
+                );
+
+                return;
             }
 
-            // Validate Time (step 3)
-            if (!selectedTime || !appointmentTimeInput.value) {
-                showFieldError("timeSubmitError", "Please select your appointment time in Step 3.");
-                hasError = true;
-            } else {
-                clearFieldError("timeSubmitError");
+            clearFieldError("dateSubmitError");
+
+            // Validate Step 3 Time only after a date is selected
+            const timeSelected = Boolean(
+                selectedTime && appointmentTimeInput.value
+            );
+
+            if (!timeSelected) {
+                clearFieldError("timeError");
+
+                showMessage(
+                    "Appointment Time Required",
+                    "Please select your appointment time in Step 3 before scheduling.",
+                    "error"
+                );
+
+                return;
             }
+
+            clearFieldError("timeError");
 
             const allRequiredFieldsEmpty =
                 !patientName.value.trim() &&
                 !emailInput.value.trim() &&
                 !phoneInput.value.trim() &&
                 !selectedLocation &&
-                (!selectedReason.value || reasonText.textContent === "Select reason") &&
+                (!selectedReason.value ||
+                    reasonText.textContent === "Select reason") &&
                 !appointmentDateInput.value &&
                 !appointmentTimeInput.value;
 
@@ -1007,13 +1060,16 @@ document.addEventListener("DOMContentLoaded", function () {
             submitButton.textContent = "Scheduling...";
 
             try {
-                const response = await fetch(`${API_BASE_URL}/api/website/saveAppointment`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(appointmentData)
-                });
+                const response = await fetch(
+                    `${API_BASE_URL}/api/website/saveAppointment`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(appointmentData)
+                    }
+                );
 
                 const result = await response.json();
 
@@ -1043,11 +1099,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 reasonText.textContent = "Select reason";
                 selectedReason.value = "";
-                if (reasonOptions) reasonOptions.innerHTML = "";
 
-                ["nameError", "emailError", "phoneError", "locationError", "reasonError", "timeError", "timeSubmitError"].forEach(clearFieldError);
-                [patientName, emailInput, phoneInput].forEach(function (el) { setInputError(el, false); });
-                if (reasonBtn) reasonBtn.classList.remove("input-error");
+                if (reasonOptions) {
+                    reasonOptions.innerHTML = "";
+                }
+
+                [
+                    "nameError",
+                    "emailError",
+                    "phoneError",
+                    "locationError",
+                    "reasonError",
+                    "dateSubmitError",
+                    "timeError"
+                ].forEach(clearFieldError);
+
+                [
+                    patientName,
+                    emailInput,
+                    phoneInput
+                ].forEach(function (el) {
+                    setInputError(el, false);
+                });
+
+                if (reasonBtn) {
+                    reasonBtn.classList.remove("input-error");
+                }
 
                 updateStepLocks();
                 renderCalendar();
@@ -1066,6 +1143,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     "Something went wrong while submitting your appointment request.",
                     "error"
                 );
+
             } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = "Schedule Appointment";
