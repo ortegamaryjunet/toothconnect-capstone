@@ -363,46 +363,61 @@ function formatPhone(phone) {
 
 function loadWebsiteFaqs() {
     fetch(API_BASE_URL + "/api/website/faqs")
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (data) {
             var faqs = data.faqs || [];
             if (!faqs.length) return;
 
             var container = document.getElementById("faq-list");
             if (!container) return;
 
-            container.innerHTML = faqs.map(function(faq, i) {
-                return '<div class="faq-item' + (i === 0 ? ' active' : '') + '">' +
+            container.innerHTML = faqs.map(function (faq) {
+                return '<div class="faq-item">' +
                     '<button type="button">' +
                     '<span>' + escapeHtml(faq.question) + '</span>' +
-                    '<i class="fa-solid ' + (i === 0 ? 'fa-xmark' : 'fa-plus') + '"></i>' +
+                    '<i class="fa-solid fa-plus"></i>' +
                     '</button>' +
-                    '<div class="faq-answer"><p>' + escapeHtml(faq.answer) + '</p></div>' +
+                    '<div class="faq-answer"><p>' +
+                        escapeHtml(faq.answer) +
+                    '</p></div>' +
                     '</div>';
             }).join('');
 
-            // Re-attach accordion behaviour to the newly rendered items
             var items = container.querySelectorAll(".faq-item");
-            items.forEach(function(item) {
-                var btn  = item.querySelector("button");
+
+            items.forEach(function (item) {
+                var btn = item.querySelector("button");
                 var icon = item.querySelector("i");
+
                 if (!btn || !icon) return;
-                btn.addEventListener("click", function() {
-                    items.forEach(function(other) {
+
+                btn.addEventListener("click", function () {
+
+                    items.forEach(function (other) {
                         if (other !== item) {
                             other.classList.remove("active");
-                            var oi = other.querySelector("i");
-                            if (oi) { oi.classList.remove("fa-minus"); oi.classList.add("fa-plus"); }
+
+                            var otherIcon = other.querySelector("i");
+
+                            if (otherIcon) {
+                                otherIcon.classList.remove("fa-minus");
+                                otherIcon.classList.add("fa-plus");
+                            }
                         }
                     });
+
                     item.classList.toggle("active");
+
                     var isActive = item.classList.contains("active");
+
                     icon.classList.toggle("fa-plus", !isActive);
                     icon.classList.toggle("fa-minus", isActive);
                 });
             });
         })
-        .catch(function() {});
+        .catch(function () {});
 }
 
 function loadWebsiteServices() {
