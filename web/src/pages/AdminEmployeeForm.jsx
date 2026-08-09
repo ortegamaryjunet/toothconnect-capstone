@@ -1204,11 +1204,15 @@ export default function AdminEmployeeForm() {
       Boolean(contactError);
     if (errors.size > 0 || hasFormatErrors) {
       const onlyProfilePhotoMissing = errors.size === 1 && errors.has('profilePhoto') && !hasFormatErrors;
+      const onlySupportingDocumentsMissing =
+        errors.size === 1 && errors.has('supportingDocuments') && !hasFormatErrors;
       setFormErrors(errors);
       setOpenSections((prev) => ({ ...prev, ...getSectionsWithErrors(errors) }));
       setErrorModalMessage(
         onlyProfilePhotoMissing
           ? 'Please upload an employee photo.'
+          : onlySupportingDocumentsMissing
+          ? 'Please upload supporting documents.'
           : errors.size > 0
           ? 'Please fill in all required fields before submitting.'
           : 'Please fix the highlighted errors before submitting.'
@@ -2648,6 +2652,10 @@ export default function AdminEmployeeForm() {
   function getErrorModalTitle() {
     if (errorModalMessage === 'Please upload an employee photo.') {
       return 'Employee Photo Required';
+    }
+
+    if (errorModalMessage === 'Please upload supporting documents.') {
+      return 'Supporting Documents Required';
     }
 
     if (errorModalMessage === 'Only up to 5MB per file is allowed.') {
