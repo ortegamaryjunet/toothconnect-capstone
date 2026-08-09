@@ -226,6 +226,10 @@ function getProfileFieldErrorNext(field, value, phoneCountry = 'PH') {
     return 'Full name must contain letters and spaces only.';
   }
 
+  if (field === 'preferredNickname' && !/^[a-zA-ZÀ-ÿ\s/]+$/.test(fieldValue)) {
+    return 'Preferred nickname must contain letters, spaces, and / only.';
+  }
+
   if (field === 'contactNumber') {
     return validateProfilePhoneNumber(fieldValue, phoneCountry);
   }
@@ -268,6 +272,7 @@ export default function DentistProfile() {
   const [profileError, setProfileError] = useState('');
   const [profileEditError, setProfileEditError] = useState('');
   const [profileTouchedFields, setProfileTouchedFields] = useState({});
+  const [profileInputErrors, setProfileInputErrors] = useState({});
   const [editPhoneCountry, setEditPhoneCountry] = useState('PH');
   const [editPhoneNumber, setEditPhoneNumber] = useState('');
   const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
@@ -275,6 +280,7 @@ export default function DentistProfile() {
   const [documentDeleteConfirm, setDocumentDeleteConfirm] = useState(null);
   const [photoRemoveConfirm, setPhotoRemoveConfirm] = useState(false);
 
+  const [showProfileSuccessModal, setShowProfileSuccessModal] = useState(false);
   const [previousWork, setPreviousWork] = useState([]);
   const [showWorkConfirmModal, setShowWorkConfirmModal] = useState(false);
   const [showWorkModal, setShowWorkModal] = useState(false);
@@ -394,18 +400,19 @@ export default function DentistProfile() {
 
   useEffect(() => {
       if (
-          showLogoutModal ||
-          showEditModal ||
-          showWorkModal ||
-          showWorkConfirmModal ||
-          showProfileCloseConfirmModal ||
-          profileSaveConfirmModal ||
-          documentDeleteConfirm ||
-          photoRemoveConfirm
+        showLogoutModal ||
+        showEditModal ||
+        showWorkModal ||
+        showWorkConfirmModal ||
+        showProfileCloseConfirmModal ||
+        profileSaveConfirmModal ||
+        showProfileSuccessModal ||
+        documentDeleteConfirm ||
+        photoRemoveConfirm
       ) {
-          document.body.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
       } else {
-          document.body.style.overflow = '';
+        document.body.style.overflow = '';
       }
 
       return () => {
@@ -416,6 +423,7 @@ export default function DentistProfile() {
       showEditModal,
       showWorkModal,
       showWorkConfirmModal,
+      showProfileSuccessModal,
       showProfileCloseConfirmModal,
       profileSaveConfirmModal,
       documentDeleteConfirm,
@@ -426,12 +434,15 @@ export default function DentistProfile() {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
+
         if (showEditModal) {
           requestCloseEditModal();
         }
+
         closeWorkModal();
         setShowProfileCloseConfirmModal(false);
         setProfileSaveConfirmModal(null);
+        setShowProfileSuccessModal(false);
         setDocumentDeleteConfirm(null);
         setPhotoRemoveConfirm(false);
       }
@@ -458,21 +469,25 @@ export default function DentistProfile() {
 
   function openEditModal() {
     const phoneValue = getProfilePhoneFormValue(profile.contactNumber, 'PH');
+
     setEditForm(profile);
     setEditPhoneCountry(phoneValue.country);
     setEditPhoneNumber(phoneValue.number);
     setProfileEditError('');
     setProfileTouchedFields({});
+    setProfileInputErrors({});
     setShowEditModal(true);
   }
 
   function closeEditModal() {
     const phoneValue = getProfilePhoneFormValue(profile.contactNumber, 'PH');
+
     setEditForm(profile);
     setEditPhoneCountry(phoneValue.country);
     setEditPhoneNumber(phoneValue.number);
     setProfileEditError('');
     setProfileTouchedFields({});
+    setProfileInputErrors({});
     setShowProfileCloseConfirmModal(false);
     setProfileSaveConfirmModal(null);
     setShowEditModal(false);
@@ -700,21 +715,49 @@ export default function DentistProfile() {
   }
 
   function handleEditChange(name, value) {
-    const nextValue =
-      name === 'fullName'
-        ? String(value || '').replace(/[^a-zA-ZÀ-ÿ\s]/g, '')
-        : filterProfileFieldValue(name, value);
+    const rawValue = String(value || '');
+    let nextValue = rawValue;
+    let inputError = '';
+
+    if (name === 'fullName') {
+      if (/[^a-zA-ZÀ-ÿ\s]/.test(rawValue)) {
+        inputError = 'Full name must contain letters and spaces only.';
+      }
+
+      nextValue = rawValue;
+    } else if (name === 'preferredNickname') {
+      if (/[^a-zA-ZÀ-ÿ\s/]/.test(rawValue)) {
+        inputError =
+          'Preferred nickname must contain letters, spaces, and / only.';
+      }
+
+      nextValue = rawValue;
+    } else {
+      nextValue = filterProfileFieldValue(name, value);
+    }
 
     setEditForm((prev) => ({
       ...prev,
       [name]: nextValue,
     }));
+
     setProfileTouchedFields((prev) => ({
       ...prev,
       [name]: true,
     }));
-    const nextError = getProfileFieldErrorNext(name, nextValue, editPhoneCountry);
-    if (!nextError) {
+
+    setProfileInputErrors((prev) => ({
+      ...prev,
+      [name]: inputError,
+    }));
+
+    const nextError = getProfileFieldErrorNext(
+      name,
+      nextValue,
+      editPhoneCountry
+    );
+
+    if (!nextError && !inputError) {
       setProfileEditError('');
     }
   }
@@ -762,14 +805,25 @@ export default function DentistProfile() {
 
   function getVisibleProfileFieldError(field) {
     if (!profileTouchedFields[field]) return '';
+
+    if (profileInputErrors[field]) {
+      return profileInputErrors[field];
+    }
+
     if (field === 'contactNumber') {
       return validateProfilePhoneNumber(editPhoneNumber, editPhoneCountry);
     }
-    return getProfileFieldErrorNext(field, editForm[field], editPhoneCountry);
+
+    return getProfileFieldErrorNext(
+      field,
+      editForm[field],
+      editPhoneCountry
+    );
   }
 
   function getProfileInputStyle(field, extraStyle = {}) {
     const error = getVisibleProfileFieldError(field);
+
     return {
       ...styles.formInput,
       ...extraStyle,
@@ -841,13 +895,13 @@ export default function DentistProfile() {
     setProfileSaveConfirmModal(null);
 
     try {
-      const res = await api.patch(
-        '/auth/staff-profile/me',
-        dentistProfileToStaffPayload(nextProfile)
-      );
+      const res = await api.patch('/auth/staff-profile/me', dentistProfileToStaffPayload(nextProfile));
 
       const mappedProfile = staffProfileToDentistProfile(res.data.profile);
-      const phoneValue = getProfilePhoneFormValue(mappedProfile.contactNumber, editPhoneCountry);
+      const phoneValue = getProfilePhoneFormValue(
+        mappedProfile.contactNumber,
+        editPhoneCountry
+      );
 
       setProfileId(res.data.profile.profileId || profileId);
       setProfile(mappedProfile);
@@ -855,12 +909,13 @@ export default function DentistProfile() {
       setEditPhoneCountry(phoneValue.country);
       setEditPhoneNumber(phoneValue.number);
       setProfileTouchedFields({});
+      setProfileInputErrors({});
       setShowEditModal(false);
+      setShowProfileSuccessModal(true);
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to save dentist profile.';
-      setProfileError(
-        message
-      );
+
+      setProfileError(message);
       setProfileEditError(message);
     } finally {
       setSavingProfile(false);
@@ -1841,7 +1896,7 @@ export default function DentistProfile() {
                   />
                 </FormGroup>
 
-                <FormGroup styles={styles} label="Preferred Nickname">
+                <FormGroup styles={styles} label="Preferred Nickname" error={getVisibleProfileFieldError('preferredNickname')}>
                   <input
                     type="text"
                     name="preferredNickname"
@@ -1849,7 +1904,13 @@ export default function DentistProfile() {
                     onChange={(event) =>
                       handleEditChange('preferredNickname', event.target.value)
                     }
-                    style={styles.formInput}
+                    onBlur={() =>
+                      setProfileTouchedFields((prev) => ({
+                        ...prev,
+                        preferredNickname: true,
+                      }))
+                    }
+                    style={getProfileInputStyle('preferredNickname')}
                   />
                 </FormGroup>
 
@@ -2193,6 +2254,48 @@ export default function DentistProfile() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showProfileSuccessModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowProfileSuccessModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                background: '#ecfdf3',
+                color: '#16a34a',
+              }}
+            >
+              <span style={styles.modalIconText}>✓</span>
+            </div>
+
+            <h2 style={styles.modalTitle}>Profile Updated Successfully</h2>
+
+            <p style={styles.modalText}>
+              Your dentist profile has been updated successfully.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{
+                  ...styles.modalButton,
+                  ...styles.saveBtn,
+                }}
+                onClick={() => setShowProfileSuccessModal(false)}
+              >
+                OK
+              </button>
+            </div>
           </div>
         </div>
       )}
