@@ -1071,9 +1071,7 @@ export default function DentistAppointment() {
                 <div style={styles.calendarSelects}>
                   <select
                     value={selectedMonth}
-                    onChange={(event) =>
-                      handleMonthChange(event.target.value)
-                    }
+                    onChange={(event) => handleMonthChange(event.target.value)}
                     style={styles.calendarSelect}
                   >
                     {monthNames.map((month, index) => (
@@ -1208,8 +1206,7 @@ export default function DentistAppointment() {
                     type="button"
                     onClick={prevUpcomingPage}
                     disabled={upcomingPage === 1}
-                    style={{
-                      ...styles.pageBtn,
+                    style={{ ...styles.pageBtn, ...styles.prevPageBtn,
                       ...(upcomingPage === 1 ? styles.pageBtnDisabled : {}),
                     }}
                   >
@@ -1226,8 +1223,7 @@ export default function DentistAppointment() {
                     type="button"
                     onClick={nextUpcomingPage}
                     disabled={upcomingPage >= upcomingTotalPages}
-                    style={{
-                      ...styles.pageBtn,
+                    style={{ ...styles.pageBtn, ...styles.nextPageBtn,
                       ...(upcomingPage >= upcomingTotalPages
                         ? styles.pageBtnDisabled
                         : {}),
@@ -1302,8 +1298,7 @@ export default function DentistAppointment() {
                     type="button"
                     onClick={prevHistoryPage}
                     disabled={historyPage === 1}
-                    style={{
-                      ...styles.pageBtn,
+                    style={{ ...styles.pageBtn, ...styles.prevPageBtn,
                       ...(historyPage === 1 ? styles.pageBtnDisabled : {}),
                     }}
                   >
@@ -1320,8 +1315,7 @@ export default function DentistAppointment() {
                     type="button"
                     onClick={nextHistoryPage}
                     disabled={historyPage >= historyTotalPages}
-                    style={{
-                      ...styles.pageBtn,
+                    style={{ ...styles.pageBtn, ...styles.nextPageBtn,
                       ...(historyPage >= historyTotalPages
                         ? styles.pageBtnDisabled
                         : {}),
