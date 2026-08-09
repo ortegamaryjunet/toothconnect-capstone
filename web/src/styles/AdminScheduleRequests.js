@@ -140,30 +140,60 @@ const createAdminScheduleRequestsStyles = ({
     pagination: adminSettingsStyles.pagination || {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: 10,
-      marginTop: 18,
+      justifyContent: isMobile ? 'center' : 'flex-end',
+      gap: 12,
+      marginTop: 20,
+      flexWrap: 'nowrap',
     },
 
     pageBtn: adminSettingsStyles.pageBtn || {
-      width: 38,
-      height: 38,
-      borderRadius: 12,
-      border: '1px solid #dbe3ef',
-      background: '#ffffff',
-      color: '#2563eb',
+      minWidth: 100,
+      height: 40,
+      padding: '0 18px',
+      borderRadius: 10,
+      border: '1px solid transparent',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 13,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
       cursor: 'pointer',
+      whiteSpace: 'nowrap',
+      transition: '0.2s ease',
+    },
+
+    prevPageBtn: adminSettingsStyles.prevPageBtn || {
+      background: '#ffffff',
+      color: '#b8860b',
+      border: '1px solid #d4af37',
+    },
+
+    nextPageBtn: adminSettingsStyles.nextPageBtn || {
+      background: 'linear-gradient(135deg, #d4af37 0%, #b8860b 100%)',
+      color: '#ffffff',
     },
 
     pageBtnDisabled: adminSettingsStyles.pageBtnDisabled || {
-      opacity: 0.45,
+      background: '#f8fafc',
+      color: '#94a3b8',
+      border: '1px solid #e2e8f0',
       cursor: 'not-allowed',
     },
 
     pageInfo: adminSettingsStyles.pageInfo || {
+      minWidth: 100,
+      height: 40,
+      padding: '0 18px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 10,
       fontSize: 13,
-      color: '#64748b',
+      fontWeight: 700,
+      color: '#334155',
       fontFamily: 'Arial, sans-serif',
+      whiteSpace: 'nowrap',
     },
 
     modalOverlay: {

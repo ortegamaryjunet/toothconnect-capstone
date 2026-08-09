@@ -2019,10 +2019,11 @@ export default function InventoryPage() {
             disabled={currentPages.search === 1}
             style={{
               ...styles.pageBtn,
+              ...styles.prevPageBtn,
               ...(currentPages.search === 1 ? styles.pageBtnDisabled : {}),
             }}
           >
-            Prev
+            Previous
           </button>
           <span style={styles.pageInfo}>
             {crossCategoryResults.length === 0
@@ -2035,6 +2036,7 @@ export default function InventoryPage() {
             disabled={currentPages.search >= searchTotalPages}
             style={{
               ...styles.pageBtn,
+              ...styles.nextPageBtn,
               ...(currentPages.search >= searchTotalPages ? styles.pageBtnDisabled : {}),
             }}
           >
@@ -2988,10 +2990,11 @@ export default function InventoryPage() {
                     disabled={currentPage === 1}
                     style={{
                       ...styles.pageBtn,
+                      ...styles.prevPageBtn,
                       ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
                     }}
                   >
-                    Prev
+                    Previous
                   </button>
 
                   <span style={styles.pageInfo}>
@@ -3006,6 +3009,7 @@ export default function InventoryPage() {
                     disabled={currentPage >= totalPages}
                     style={{
                       ...styles.pageBtn,
+                      ...styles.nextPageBtn,
                       ...(currentPage >= totalPages ? styles.pageBtnDisabled : {}),
                     }}
                   >

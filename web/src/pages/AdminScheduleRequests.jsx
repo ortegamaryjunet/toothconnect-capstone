@@ -455,12 +455,13 @@ export default function AdminScheduleRequests({
             type="button"
             style={{
               ...styles.pageBtn,
+              ...styles.prevPageBtn,
               ...(page <= 1 ? styles.pageBtnDisabled : {}),
             }}
             disabled={page <= 1}
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
           >
-            Prev
+            Previous
           </button>
 
           <span style={styles.pageInfo}>
@@ -471,6 +472,7 @@ export default function AdminScheduleRequests({
             type="button"
             style={{
               ...styles.pageBtn,
+              ...styles.nextPageBtn,
               ...(page >= totalPages ? styles.pageBtnDisabled : {}),
             }}
             disabled={page >= totalPages}

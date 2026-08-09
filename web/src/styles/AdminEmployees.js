@@ -566,12 +566,12 @@
     },
 
     pagination: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: isMobile ? 'center' : 'flex-end',
+      display: "flex",
+      alignItems: "center",
+      justifyContent: isMobile ? "center" : "flex-end",
       gap: 12,
-      marginTop: 18,
-      flexWrap: 'wrap',
+      marginTop: 20,
+      flexWrap: "nowrap",
     },
 
     pageBtn: {
