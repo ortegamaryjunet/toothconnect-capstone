@@ -598,38 +598,44 @@ export default function RecepInquiries() {
               </div>
             )}
 
-            {!loading && totalPages > 1 && (
+            {!loading && (
               <div style={s.pagination}>
                 <button
                   type="button"
                   style={{
                     ...s.pageBtn,
-                    ...(currentPage <= 1 ? s.pageBtnDisabled : {}),
+                    ...s.prevPageBtn,
+                    ...(currentPage <= 1 || totalPages === 0
+                      ? s.pageBtnDisabled
+                      : {}),
                   }}
-                  disabled={currentPage <= 1}
+                  disabled={currentPage <= 1 || totalPages === 0}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 >
-                  ‹ Prev
+                  Previous
                 </button>
 
                 <span style={s.pageInfo}>
-                  Page {currentPage} of {totalPages}
+                  Page {totalPages === 0 ? 0 : currentPage} of {totalPages}
                 </span>
 
                 <button
                   type="button"
                   style={{
                     ...s.pageBtn,
-                    ...(currentPage >= totalPages
+                    ...s.nextPageBtn,
+                    ...(totalPages === 0 || currentPage >= totalPages
                       ? s.pageBtnDisabled
                       : {}),
                   }}
-                  disabled={currentPage >= totalPages}
+                  disabled={totalPages === 0 || currentPage >= totalPages}
                   onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    setCurrentPage((p) =>
+                      totalPages === 0 ? 1 : Math.min(totalPages, p + 1)
+                    )
                   }
                 >
-                  Next ›
+                  Next
                 </button>
               </div>
             )}
