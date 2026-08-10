@@ -93,12 +93,12 @@ function filterProfileFieldValue(name, value) {
   const rawValue = String(value || '');
 
   if (name === 'fullName') {
-    return rawValue.replace(/[^a-zA-ZÃ€-Ã¿\s'\-]/g, '');
+    return rawValue.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '');
   }
 
   if (name === 'contactNumber') {
     let nextValue = rawValue.replace(/[^0-9+]/g, '');
-    nextValue = nextValue.replace(/(.)\+/g, '$1');
+    nextValue = nextValue.replace(/(?!^)\+/g, '');
     return nextValue.slice(0, nextValue.startsWith('+') ? 13 : 11);
   }
 
@@ -216,17 +216,23 @@ function validateProfilePhoneNumber(value, country = 'PH') {
 function getProfileFieldErrorNext(field, value, phoneCountry = 'PH') {
   const fieldValue = String(value || '').trim();
 
-  if (PROFILE_REQUIRED_FIELDS.includes(field) && (!fieldValue || fieldValue === 'N/A')) {
+  if (
+    PROFILE_REQUIRED_FIELDS.includes(field) &&
+    (!fieldValue || fieldValue === 'N/A')
+  ) {
     return 'This field is required.';
   }
 
   if (!fieldValue) return '';
 
-  if (field === 'fullName' && !/^[a-zA-ZÃ€-Ã¿\s]+$/.test(fieldValue)) {
+  if (field === 'fullName' && !/^[a-zA-ZÀ-ÿ\s]+$/.test(fieldValue)) {
     return 'Full name must contain letters and spaces only.';
   }
 
-  if (field === 'preferredNickname' && !/^[a-zA-ZÃ€-Ã¿\s/]+$/.test(fieldValue)) {
+  if (
+    field === 'preferredNickname' &&
+    !/^[a-zA-ZÀ-ÿ\s/]+$/.test(fieldValue)
+  ) {
     return 'Preferred nickname must contain letters, spaces, and / only.';
   }
 
@@ -720,13 +726,13 @@ export default function DentistProfile() {
     let inputError = '';
 
     if (name === 'fullName') {
-      if (/[^a-zA-ZÃ€-Ã¿\s]/.test(rawValue)) {
+      if (/[^a-zA-ZÀ-ÿ\s]/.test(rawValue)) {
         inputError = 'Full name must contain letters and spaces only.';
       }
 
       nextValue = rawValue;
     } else if (name === 'preferredNickname') {
-      if (/[^a-zA-ZÃ€-Ã¿\s/]/.test(rawValue)) {
+      if (/[^a-zA-ZÀ-ÿ\s/]/.test(rawValue)) {
         inputError =
           'Preferred nickname must contain letters, spaces, and / only.';
       }
