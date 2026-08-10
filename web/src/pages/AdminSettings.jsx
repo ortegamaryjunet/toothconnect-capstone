@@ -7263,7 +7263,7 @@ const contentEditActions = (
 
             <h2 style={styles.modalTitle}>Email Address Already Exists</h2>
             <p style={styles.modalText}>
-              A user account with this Email Address already exists.
+              A user account with this email already exists.
             </p>
 
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
