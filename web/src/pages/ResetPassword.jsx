@@ -227,7 +227,7 @@ export default function ResetPassword() {
   if (!email || !code) return null;
 
   return (
-    <div style={styles.page}>
+    <main style={styles.page}>
       <form onSubmit={handleSubmit} noValidate style={styles.card}>
         <img
           src={clinicLogo}
@@ -394,6 +394,6 @@ export default function ResetPassword() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

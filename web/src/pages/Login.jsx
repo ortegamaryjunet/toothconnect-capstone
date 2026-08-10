@@ -419,7 +419,7 @@ export default function Login() {
   }
 
   return (
-    <div style={styles.page}>
+    <main style={styles.page}>
       <form onSubmit={handleSubmit} noValidate style={styles.card}>
         <img
           src={clinicLogo}
@@ -608,7 +608,7 @@ export default function Login() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
 

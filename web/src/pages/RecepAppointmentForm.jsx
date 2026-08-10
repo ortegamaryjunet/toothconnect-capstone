@@ -827,7 +827,7 @@ export default function RecepAppointmentForm() {
   }
 
   return (
-    <div style={styles.pageWrapper}>
+    <main style={styles.pageWrapper}>
       <div style={styles.container}>
         <div style={styles.header}>
           <button type="button" style={styles.backBtn} onClick={openConfirmModal}>
@@ -1376,7 +1376,7 @@ export default function RecepAppointmentForm() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
 

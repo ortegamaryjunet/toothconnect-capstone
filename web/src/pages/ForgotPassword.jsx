@@ -163,7 +163,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div style={styles.page}>
+    <main style={styles.page}>
       {showCancelPasswordPrompt && (
         <div style={styles.confirmOverlay} onClick={(e) => { if (e.target === e.currentTarget) closeCancelPasswordPrompt(); }}>
           <div style={styles.confirmModal}>
@@ -285,6 +285,6 @@ export default function ForgotPassword() {
           </span>
         </p>
       </form>
-    </div>
+    </main>
   );
 }

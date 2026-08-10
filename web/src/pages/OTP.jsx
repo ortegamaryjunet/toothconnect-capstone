@@ -246,7 +246,7 @@ export default function OTP() {
           : 'No OTP verification attempts remaining.');
 
   return (
-    <div style={styles.page}>
+    <main style={styles.page}>
       <div style={styles.card}>
         <img
           src={clinicLogo}
@@ -356,6 +356,6 @@ export default function OTP() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

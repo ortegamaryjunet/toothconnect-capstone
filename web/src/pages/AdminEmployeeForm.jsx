@@ -2684,7 +2684,7 @@ export default function AdminEmployeeForm() {
   // ─── Page render ──────────────────────────────────────────────────────────
 
   return (
-    <div style={styles.pageWrapper}>
+    <main style={styles.pageWrapper}>
       <form style={styles.employeeForm} onSubmit={handleSubmit}>
         <div style={styles.container}>
           <div style={styles.header}>
@@ -2786,6 +2786,6 @@ export default function AdminEmployeeForm() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

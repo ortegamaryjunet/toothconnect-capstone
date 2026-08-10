@@ -318,7 +318,7 @@ export default function RecepPatientForm() {
   }
 
   return (
-    <div style={styles.pageWrapper}>
+    <main style={styles.pageWrapper}>
       <div style={styles.container}>
         <div style={styles.header}>
           <button type="button" style={styles.backBtn} onClick={handleBackClick}>
@@ -1002,7 +1002,7 @@ export default function RecepPatientForm() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
 

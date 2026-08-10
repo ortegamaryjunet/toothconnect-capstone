@@ -305,7 +305,7 @@ export default function AdminScheduleRequests({
   }
 
   return (
-    <>
+    <main>
       <section style={styles.toolbar}>
         <div style={styles.searchBox}>
           <i className="fi fi-rr-search" style={styles.searchIcon}></i>
@@ -587,6 +587,6 @@ export default function AdminScheduleRequests({
           </div>
         </div>
       )}
-    </>
+    </main>
   );
 }
