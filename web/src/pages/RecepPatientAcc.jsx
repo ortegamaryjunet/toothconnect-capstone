@@ -992,13 +992,7 @@ export default function RecepPatientAcc() {
                           />
                         </td>
                         <td style={{ ...styles.td, ...styles.actionTd }}>
-                          <button
-                            type="button"
-                            style={styles.editBtn}
-                            onClick={() => openUpdateOverlay(account)}
-                          >
-                            Edit
-                          </button>
+                          <button type="button" style={styles.editBtn} onClick={() => openUpdateOverlay(account)}>Edit</button>
                         </td>
                       </tr>
                     ))
@@ -1033,14 +1027,6 @@ export default function RecepPatientAcc() {
                   Edit patient account details and status.
                 </p>
               </div>
-
-              <button
-                type="button"
-                style={styles.closeBtn}
-                onClick={closeUpdateOverlay}
-              >
-                Ã—
-              </button>
             </div>
 
             <form style={styles.overlayBody} onSubmit={handleUpdateSubmit} noValidate>
@@ -1566,14 +1552,13 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
     <div style={styles.pagination}>
       <button
         type="button"
-        style={{
-          ...styles.pageBtn,
+        style={{ ...styles.pageBtn, ...styles.prevPageBtn,
           ...(page <= 1 ? styles.pageBtnDisabled : {}),
         }}
         disabled={page <= 1}
         onClick={onPrev}
       >
-        Prev
+        Previous
       </button>
 
       <span style={styles.pageInfo}>
@@ -1582,8 +1567,7 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
 
       <button
         type="button"
-        style={{
-          ...styles.pageBtn,
+        style={{ ...styles.pageBtn, ...styles.nextPageBtn,
           ...(page >= totalPages || totalPages === 0
             ? styles.pageBtnDisabled
             : {}),
