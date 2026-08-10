@@ -1025,7 +1025,8 @@ export default function AdminSettings() {
   const isUserFormComplete =
     userRequiredFields.every((field) => String(userForm[field] ?? '').trim() !== '') &&
     USER_EMAIL_REGEX.test(String(userForm.email || '').trim()) &&
-    (userForm.role === 'Admin' || String(userForm.branch_id || '').trim() !== '');
+    (userForm.role === 'Admin' || String(userForm.branch_id || '').trim() !== '') &&
+    (userForm.id || String(userForm.password || '').trim() !== '');
 
   useEffect(() => {
     function handleResize() {
@@ -2445,6 +2446,10 @@ export default function AdminSettings() {
       return userForm.role !== 'Admin';
     }
 
+    if (name === 'password') {
+      return !userForm.id;
+    }
+
     return userRequiredFields.includes(name);
   }
 
@@ -3046,6 +3051,7 @@ export default function AdminSettings() {
         email: true,
         role: true,
         branch_id: true,
+        password: true,
         status: true,
       });
       return;
@@ -7123,7 +7129,7 @@ const contentEditActions = (
               </Field>
 
               {!userForm.id && (
-                <Field label="Password" styles={styles}>
+                <Field label={renderUserRequiredLabel('Password', 'password')} styles={styles}>
                   <div style={{ position: 'relative' }}>
                     <input
                       className="admin-settings-user-password-input"
@@ -7373,7 +7379,7 @@ const contentEditActions = (
                   'Assigned Branch',
                   getUserBranchLabel(userForm),
                 ],
-                ['Password', userForm.id ? 'Unchanged' : userForm.password ? 'Manually entered' : 'Auto-generated'],
+                ['Password', userForm.id ? 'Unchanged' : 'Manually entered'],
                 ['Status', userForm.status || 'Not selected'],
               ].map(([label, value]) => (
                 <div

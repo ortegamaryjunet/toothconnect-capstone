@@ -2195,6 +2195,7 @@ router.get('/users', authenticate, requireRole('admin'), async (req, res) => {
 router.post('/users', authenticate, requireRole('admin'), async (req, res) => {
   const { fullName, email, role, branch_id, password, status = 'Active' } = req.body;
   const normalizedRole = String(role || '').toLowerCase();
+  const temporaryPassword = String(password || '').trim();
 
   if (!fullName || !email || !normalizedRole) {
     return res.status(400).json({ message: 'Full name, email, and access role are required' });
@@ -2208,6 +2209,9 @@ router.post('/users', authenticate, requireRole('admin'), async (req, res) => {
   if (!['Active', 'Inactive'].includes(status)) {
     return res.status(400).json({ message: 'Invalid account status' });
   }
+  if (!temporaryPassword) {
+    return res.status(400).json({ message: 'Password is required' });
+  }
 
   try {
     const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
@@ -2215,14 +2219,13 @@ router.post('/users', authenticate, requireRole('admin'), async (req, res) => {
       return res.status(409).json({ message: 'Email already in use' });
     }
 
-    const generatedPassword = password || crypto.randomBytes(6).toString('base64').replace(/[+/=]/g, '').slice(0, 10) + '!1';
-    const passwordHash = await bcrypt.hash(generatedPassword, 10);
+    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
     const homeBranchId = branch_id || null;
 
     const [result] = await pool.query(
       `INSERT INTO users (role, home_branch_id, name, email, password_hash, status, email_verified, must_change_password)
        VALUES (?, ?, ?, ?, ?, ?, TRUE, ?)`,
-      [normalizedRole, homeBranchId, fullName, email, passwordHash, status, !password]
+      [normalizedRole, homeBranchId, fullName, email, passwordHash, status, false]
     );
 
     if (homeBranchId) {
@@ -2235,7 +2238,7 @@ router.post('/users', authenticate, requireRole('admin'), async (req, res) => {
 
     res.status(201).json({
       message: 'User account created.',
-      tempPassword: generatedPassword,
+      tempPassword: temporaryPassword,
       user: {
         id: result.insertId,
         fullName,
