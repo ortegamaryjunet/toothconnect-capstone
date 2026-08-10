@@ -1,10 +1,10 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { roleHomePath } from '../pages/Login';
+import { roleHomePath } from '../utils/routes';
 import ProtectedRoute from '../auth/ProtectedRoute';
-import Login from '../pages/Login';
 
+const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
 const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const OTP = lazy(() => import('../pages/OTP'));

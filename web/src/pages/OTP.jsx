@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/axios';
+import { useIconStyles } from '../utils/iconStyles';
 import createOTPStyles from '../styles/OTP';
 import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
@@ -35,6 +36,8 @@ export default function OTP() {
   const [showCancelOtpPrompt, setShowCancelOtpPrompt] = useState(false);
   const inputRefs = useRef([]);
   const attemptsRemaining = Math.max(0, MAX_VERIFY_ATTEMPTS - verifyAttempts);
+
+  useIconStyles(showCancelOtpPrompt);
 
   useEffect(() => {
     inputRefs.current[0]?.focus();

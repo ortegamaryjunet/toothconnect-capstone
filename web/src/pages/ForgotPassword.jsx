@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { useIconStyles } from '../utils/iconStyles';
 import createForgotPasswordStyles from '../styles/ForgotPassword';
 import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
@@ -19,6 +20,8 @@ export default function ForgotPassword() {
   const [sending, setSending] = useState(false);
   const [showCancelPasswordPrompt, setShowCancelPasswordPrompt] = useState(false);
   const emailRef = useRef(null);
+
+  useIconStyles(Boolean(confirm) || showCancelPasswordPrompt);
 
   const visibleEmailError = (emailTouched || submittedOnce) ? emailError : '';
 

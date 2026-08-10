@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { useIconStyles } from '../utils/iconStyles';
+import { roleHomePath } from '../utils/routes';
 import createLoginStyles from '../styles/Login.js';
 import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
@@ -41,6 +43,8 @@ export default function Login() {
   const stateMessageType = location.state?.messageType ?? 'success';
   const [banner, setBanner] = useState(stateMessage);
   const [bannerType, setBannerType] = useState(stateMessageType);
+
+  useIconStyles(showRegisterPrompt || showForgotPasswordPrompt);
 
   useEffect(() => {
     if (prefillEmail) {
@@ -600,9 +604,3 @@ export default function Login() {
   );
 }
 
-export function roleHomePath(role) {
-  if (role === 'admin') return '/admin';
-  if (role === 'dentist') return '/dentist';
-  if (role === 'receptionist') return '/receptionist';
-  return '/login';
-}

@@ -1,9 +1,13 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { roleHomePath } from '../pages/Login';
+import { useIconStyles } from '../utils/iconStyles';
+import { roleHomePath } from '../utils/routes';
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
+  const isAllowed = Boolean(user && (!allowedRoles || allowedRoles.includes(user.role)));
+
+  useIconStyles(!loading && isAllowed);
 
   if (loading) {
     return <div style={{ padding: 40, fontFamily: 'system-ui, sans-serif' }}>Loading...</div>;
@@ -13,7 +17,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (!isAllowed) {
     return <Navigate to={roleHomePath(user.role)} replace />;
   }
 

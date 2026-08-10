@@ -1,8 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import api, { setAccessToken, setOnAuthChange } from '../api/axios';
 
 const AuthContext = createContext(null);
 const WEB_INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+
+async function getAuthApi() {
+  return import('../api/axios');
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -11,6 +14,7 @@ export function AuthProvider({ children }) {
 
   const bootstrap = useCallback(async () => {
     try {
+      const { default: api, setAccessToken } = await getAuthApi();
       const refreshRes = await api.post('/auth/refresh', { platform: 'web' });
       setAccessToken(refreshRes.data.accessToken);
       const meRes = await api.get('/auth/me');
@@ -25,6 +29,7 @@ export function AuthProvider({ children }) {
         must_change_password: meRes.data.must_change_password,
       });
     } catch {
+      const { setAccessToken } = await getAuthApi();
       setAccessToken(null);
       setUser(null);
     } finally {
@@ -33,14 +38,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    setOnAuthChange(setUser);
     const timeout = window.setTimeout(() => {
+      getAuthApi().then(({ setOnAuthChange }) => {
+        setOnAuthChange(setUser);
+      });
       bootstrap();
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [bootstrap]);
 
   async function login(email, password) {
+    const { default: api, setAccessToken } = await getAuthApi();
     const res = await api.post('/auth/login', { email, password, platform: 'web' });
     setAccessToken(res.data.accessToken);
     setUser(res.data.user);
@@ -49,10 +57,12 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
+      const { default: api } = await getAuthApi();
       await api.post('/auth/logout', { platform: 'web' });
     } catch {
       // even if backend logout fails, clear local state
     }
+    const { setAccessToken } = await getAuthApi();
     setAccessToken(null);
     setUser(null);
   }, []);

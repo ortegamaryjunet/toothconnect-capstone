@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { useIconStyles } from '../utils/iconStyles';
 import createRegisterStyles from '../styles/Register';
 import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
@@ -36,6 +37,8 @@ export default function Register() {
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const confirmPasswordRef = useRef(null);
+
+  useIconStyles(showCreateAdminPrompt || showCancelRegistrationPrompt);
 
   const visibleNameError = (touched.name || submittedOnce) ? fieldErrors.name : '';
   const visibleEmailError = (touched.email || submittedOnce) ? fieldErrors.email : '';

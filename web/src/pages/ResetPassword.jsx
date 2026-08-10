@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/axios';
+import { useIconStyles } from '../utils/iconStyles';
 import createResetPasswordStyles from '../styles/ResetPassword';
 import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
@@ -31,6 +32,8 @@ export default function ResetPassword() {
   const [showCancelPasswordPrompt, setShowCancelPasswordPrompt] = useState(false);
   const newPasswordRef = useRef(null);
   const confirmPasswordRef = useRef(null);
+
+  useIconStyles(showConfirmResetPrompt || showCancelPasswordPrompt);
 
   const visibleNewPasswordError = (touched.newPassword || submittedOnce) ? fieldErrors.newPassword : '';
   const visibleConfirmPasswordError =
