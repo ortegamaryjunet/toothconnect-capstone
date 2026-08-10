@@ -1921,22 +1921,20 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
     <div style={styles.pagination}>
       <button
         type="button"
-        style={{
-          ...styles.pageBtn,
+        style={{ ...styles.pageBtn, ...styles.prevPageBtn,
           ...(page <= 1 ? styles.pageBtnDisabled : {}),
         }}
         disabled={page <= 1}
         onClick={onPrev}
       >
-        Prev
+        Previous
       </button>
 
       <span style={styles.pageInfo}>Page {page} of {totalPages}</span>
 
       <button
         type="button"
-        style={{
-          ...styles.pageBtn,
+        style={{ ...styles.pageBtn, ...styles.nextPageBtn,
           ...(page >= totalPages || totalPages === 0
             ? styles.pageBtnDisabled
             : {}),
