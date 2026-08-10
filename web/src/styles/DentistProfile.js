@@ -558,25 +558,24 @@
     },
 
     infoItemFull: {
-      gridColumn: isMobile ? 'span 1' : '1 / 3',
+      gridColumn: isSmallScreen ? 'span 1' : 'span 3',
     },
 
     infoLabel: {
       display: 'block',
+      fontSize: 12,
       color: '#64748b',
-      fontSize: 13,
-      marginBottom: 7,
-      fontFamily: 'Arial, sans-serif',
-      lineHeight: 1.3,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+      fontWeight: 700,
     },
 
     infoValue: {
-      color: '#172033',
       fontSize: 15,
-      fontWeight: 700,
-      lineHeight: 1.4,
-      fontFamily: 'Arial, sans-serif',
+      color: '#0f172a',
+      fontWeight: 600,
       wordBreak: 'break-word',
+      lineHeight: 1.6,
     },
 
     subTitle: {
