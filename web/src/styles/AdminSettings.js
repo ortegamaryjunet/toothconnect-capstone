@@ -789,6 +789,16 @@
       fontFamily: 'Arial, sans-serif',
     },
 
+    fieldErrorText: {
+      display: 'block',
+      marginTop: 6,
+      color: '#dc2626',
+      fontSize: 12,
+      lineHeight: 1.35,
+      fontWeight: 500,
+      fontFamily: 'Arial, sans-serif',
+    },
+
     accountDetailsGrid: {
       display: 'grid',
       gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',

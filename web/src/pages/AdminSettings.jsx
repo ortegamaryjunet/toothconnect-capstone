@@ -156,6 +156,14 @@ const initialUserForm = {
 };
 const USER_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const userRequiredFields = ['fullName', 'email', 'role', 'status'];
+const USER_FIELD_LABELS = {
+  fullName: 'Full name',
+  email: 'Email address',
+  role: 'Access role',
+  branch_id: 'Assigned branch',
+  password: 'Password',
+  status: 'Status',
+};
 const ADMIN_NAME_REGEX = /^[a-zA-Z\s]+$/;
 const adminAccountRequiredFields = ['name', 'email', 'phone', 'status'];
 const phoneCountryOptions = getCountries().map((country) => ({
@@ -955,6 +963,10 @@ export default function AdminSettings() {
     useState(false);
   const [showUserSaveConfirmModal, setShowUserSaveConfirmModal] =
     useState(false);
+  const [showInactiveUserConfirmModal, setShowInactiveUserConfirmModal] =
+    useState(false);
+  const [showUserPassword, setShowUserPassword] = useState(false);
+  const [duplicateUserModal, setDuplicateUserModal] = useState(null);
 
   const [filters, setFilters] = useState({
     branchSearch: '',
@@ -1066,6 +1078,8 @@ export default function AdminSettings() {
       showServiceKitSaveConfirmModal ||
       showUserCancelConfirmModal ||
       showUserSaveConfirmModal ||
+      showInactiveUserConfirmModal ||
+      duplicateUserModal ||
       serviceKitOverlay ||
       showServiceKitHistory
     ) {
@@ -1096,6 +1110,8 @@ export default function AdminSettings() {
     showServiceKitSaveConfirmModal,
     showUserCancelConfirmModal,
     showUserSaveConfirmModal,
+    showInactiveUserConfirmModal,
+    duplicateUserModal,
     serviceKitOverlay,
     showServiceKitHistory,
   ]);
@@ -1120,6 +1136,8 @@ export default function AdminSettings() {
         setShowServiceKitSaveConfirmModal(false);
         setShowUserCancelConfirmModal(false);
         setShowUserSaveConfirmModal(false);
+        setShowInactiveUserConfirmModal(false);
+        setDuplicateUserModal(null);
         setServiceKitOverlay(false);
       }
     }
@@ -2026,6 +2044,9 @@ export default function AdminSettings() {
     setServiceTouchedFields({});
     setShowUserCancelConfirmModal(false);
     setShowUserSaveConfirmModal(false);
+    setShowInactiveUserConfirmModal(false);
+    setDuplicateUserModal(null);
+    setShowUserPassword(false);
     setUserTouchedFields({});
   }
 
@@ -2160,6 +2181,9 @@ export default function AdminSettings() {
   function openUserForm(user = null) {
     setShowUserCancelConfirmModal(false);
     setShowUserSaveConfirmModal(false);
+    setShowInactiveUserConfirmModal(false);
+    setDuplicateUserModal(null);
+    setShowUserPassword(false);
     setUserTouchedFields({});
 
     if (user) {
@@ -2178,6 +2202,36 @@ export default function AdminSettings() {
     }
 
     setActiveOverlay('users');
+  }
+
+  function getUserBranchLabel(user) {
+    if (!user || user.role === 'Admin') {
+      return 'Not required';
+    }
+
+    return (
+      user.branch_address ||
+      user.branch_name ||
+      branches.find((branch) => String(branch.id) === String(user.branch_id))?.name ||
+      branches.find((branch) => String(branch.id) === String(user.branch_id))?.address ||
+      'Not selected'
+    );
+  }
+
+  function findDuplicateUserAccount() {
+    const email = String(userForm.email || '').trim().toLowerCase();
+    const currentUserId = String(userForm.id || '');
+
+    if (!email) {
+      return null;
+    }
+
+    return users.find((user) => {
+      const sameEmail = String(user.email || '').trim().toLowerCase() === email;
+      const sameRecord = currentUserId && String(user.id || '') === currentUserId;
+
+      return sameEmail && !sameRecord;
+    }) || null;
   }
 
   function handleBranchChange(name, value) {
@@ -2395,21 +2449,7 @@ export default function AdminSettings() {
   }
 
   function isUserFieldInvalid(name) {
-    if (!userTouchedFields[name] || !isUserFieldRequired(name)) {
-      return false;
-    }
-
-    const value = String(userForm[name] ?? '').trim();
-
-    if (!value) {
-      return true;
-    }
-
-    if (name === 'email') {
-      return !USER_EMAIL_REGEX.test(value);
-    }
-
-    return false;
+    return !!getUserFieldError(name);
   }
 
   function getUserFieldStyle(name) {
@@ -2430,22 +2470,41 @@ export default function AdminSettings() {
     );
   }
 
-  function getUserEmailError() {
-    if (!userTouchedFields.email) {
+  function getUserFieldError(name, { force = false } = {}) {
+    if (!force && !userTouchedFields[name]) {
       return '';
     }
 
-    const email = String(userForm.email || '').trim();
-
-    if (!email) {
-      return 'Email address is required.';
+    if (!isUserFieldRequired(name)) {
+      return '';
     }
 
-    if (!USER_EMAIL_REGEX.test(email)) {
+    const value = String(userForm[name] ?? '').trim();
+    const label = USER_FIELD_LABELS[name] || 'This field';
+
+    if (!value) {
+      return `${label} is required.`;
+    }
+
+    if (name === 'email' && !USER_EMAIL_REGEX.test(value)) {
       return 'Please enter a valid email address format.';
     }
 
     return '';
+  }
+
+  function renderUserFieldError(name) {
+    const error = getUserFieldError(name);
+
+    if (!error) {
+      return null;
+    }
+
+    return (
+      <span style={{ ...styles.fieldErrorText }}>
+        {error}
+      </span>
+    );
   }
 
   function handleAdminAccountChange(name, value) {
@@ -2992,6 +3051,18 @@ export default function AdminSettings() {
       return;
     }
 
+    const duplicateUser = findDuplicateUserAccount();
+
+    if (duplicateUser) {
+      setDuplicateUserModal(duplicateUser);
+      return;
+    }
+
+    if (!userForm.id && userForm.status === 'Inactive') {
+      setShowInactiveUserConfirmModal(true);
+      return;
+    }
+
     setShowUserSaveConfirmModal(true);
   }
 
@@ -3018,6 +3089,7 @@ export default function AdminSettings() {
 
       await loadUsers();
       setShowUserSaveConfirmModal(false);
+      setShowInactiveUserConfirmModal(false);
       closeOverlay();
     } catch (err) {
       console.error('Failed to save user account', err);
@@ -5496,6 +5568,15 @@ const contentEditActions = (
 
   return (
     <div style={styles.page}>
+      <style>
+        {`
+          .admin-settings-user-password-input::-ms-reveal,
+          .admin-settings-user-password-input::-ms-clear {
+            display: none;
+          }
+        `}
+      </style>
+
       <aside style={styles.sidebar}>
         <div style={styles.logo}>
           <img src={clinicLogo} alt="Clinic Logo" style={styles.logoImg} />
@@ -6949,6 +7030,7 @@ const contentEditActions = (
                   style={getUserFieldStyle('fullName')}
                   required
                 />
+                {renderUserFieldError('fullName')}
               </Field>
 
               <Field label={renderUserRequiredLabel('Email Address', 'email')} styles={styles}>
@@ -6962,11 +7044,7 @@ const contentEditActions = (
                   style={getUserFieldStyle('email')}
                   required
                 />
-                {getUserEmailError() && (
-                  <span style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>
-                    {getUserEmailError()}
-                  </span>
-                )}
+                {renderUserFieldError('email')}
               </Field>
 
               <Field label={renderUserRequiredLabel('Access Role', 'role')} styles={styles}>
@@ -6987,6 +7065,7 @@ const contentEditActions = (
                   <option value="Patient">Patient</option>
                   <option value="Receptionist">Receptionist</option>
                 </select>
+                {renderUserFieldError('role')}
               </Field>
 
               <Field label={renderUserRequiredLabel('Assigned Branch', 'branch_id')} styles={styles}>
@@ -7009,20 +7088,46 @@ const contentEditActions = (
                     </option>
                   ))}
                 </select>
+                {renderUserFieldError('branch_id')}
               </Field>
 
               {!userForm.id && (
                 <Field label="Password" styles={styles}>
-                  <input
-                    type="password"
-                    value={userForm.password}
-                    onChange={(event) =>
-                      handleUserChange('password', event.target.value)
-                    }
-                    onBlur={() => handleUserFieldBlur('password')}
-                    style={styles.formInput}
-                    placeholder="Leave blank to generate"
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="admin-settings-user-password-input"
+                      type={showUserPassword ? 'text' : 'password'}
+                      value={userForm.password}
+                      onChange={(event) =>
+                        handleUserChange('password', event.target.value)
+                      }
+                      onBlur={() => handleUserFieldBlur('password')}
+                      style={{ ...styles.formInput, paddingRight: 76 }}
+                      placeholder="Please enter a temporary password."
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowUserPassword((prev) => !prev)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#64748b',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: '4px 6px',
+                      }}
+                      aria-label={showUserPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showUserPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  {renderUserFieldError('password')}
                 </Field>
               )}
 
@@ -7042,6 +7147,7 @@ const contentEditActions = (
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
+                {renderUserFieldError('status')}
               </Field>
             </div>
 
@@ -7110,6 +7216,104 @@ const contentEditActions = (
         </div>
       )}
 
+      {duplicateUserModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setDuplicateUserModal(null);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Email Address Already Exists</h2>
+            <p style={styles.modalText}>
+              A user account with this Email Address already exists.
+            </p>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
+              {[
+                ['Full Name', duplicateUserModal.fullName || 'Not entered'],
+                ['Access Role', duplicateUserModal.role || 'Not selected'],
+                ['Assigned Branch', getUserBranchLabel(duplicateUserModal)],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '6px 0',
+                    borderBottom: '1px solid #f1f5f9',
+                    fontSize: 13,
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ color: '#64748b' }}>{label}</span>
+                  <strong style={{ color: '#0f172a', textAlign: 'right' }}>
+                    {value}
+                  </strong>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setDuplicateUserModal(null)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInactiveUserConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowInactiveUserConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Inactive User Account</h2>
+            <p style={styles.modalText}>
+              This new user account will be inactive. Are you sure you want to save this user account?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={() => setShowInactiveUserConfirmModal(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={saveUser}
+              >
+                Yes, Save User Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showUserSaveConfirmModal && (
         <div
           style={styles.modal}
@@ -7136,11 +7340,7 @@ const contentEditActions = (
                 ['Access Role', userForm.role || 'Not selected'],
                 [
                   'Assigned Branch',
-                  userForm.role === 'Admin'
-                    ? 'Not required'
-                    : branches.find((branch) => String(branch.id) === String(userForm.branch_id))?.name ||
-                      branches.find((branch) => String(branch.id) === String(userForm.branch_id))?.address ||
-                      'Not selected',
+                  getUserBranchLabel(userForm),
                 ],
                 ['Password', userForm.id ? 'Unchanged' : userForm.password ? 'Manually entered' : 'Auto-generated'],
                 ['Status', userForm.status || 'Not selected'],
