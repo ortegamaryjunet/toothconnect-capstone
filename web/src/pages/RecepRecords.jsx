@@ -1,4 +1,4 @@
-﻿import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getCountries,
@@ -19,7 +19,7 @@ import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepRecordsStyles from '../styles/RecepRecords';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 async function loadPdfTools() {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([

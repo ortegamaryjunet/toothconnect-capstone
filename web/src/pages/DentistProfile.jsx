@@ -11,7 +11,7 @@ import DentistProfileMenu from '../components/DentistProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createDentistProfileStyles from '../styles/DentistProfile';
 
-import clinicLogo from '../assets/dentistImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 async function loadPdfTools() {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
@@ -93,7 +93,7 @@ function filterProfileFieldValue(name, value) {
   const rawValue = String(value || '');
 
   if (name === 'fullName') {
-    return rawValue.replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
+    return rawValue.replace(/[^a-zA-ZÃ€-Ã¿\s'\-]/g, '');
   }
 
   if (name === 'contactNumber') {
@@ -222,11 +222,11 @@ function getProfileFieldErrorNext(field, value, phoneCountry = 'PH') {
 
   if (!fieldValue) return '';
 
-  if (field === 'fullName' && !/^[a-zA-ZÀ-ÿ\s]+$/.test(fieldValue)) {
+  if (field === 'fullName' && !/^[a-zA-ZÃ€-Ã¿\s]+$/.test(fieldValue)) {
     return 'Full name must contain letters and spaces only.';
   }
 
-  if (field === 'preferredNickname' && !/^[a-zA-ZÀ-ÿ\s/]+$/.test(fieldValue)) {
+  if (field === 'preferredNickname' && !/^[a-zA-ZÃ€-Ã¿\s/]+$/.test(fieldValue)) {
     return 'Preferred nickname must contain letters, spaces, and / only.';
   }
 
@@ -720,13 +720,13 @@ export default function DentistProfile() {
     let inputError = '';
 
     if (name === 'fullName') {
-      if (/[^a-zA-ZÀ-ÿ\s]/.test(rawValue)) {
+      if (/[^a-zA-ZÃ€-Ã¿\s]/.test(rawValue)) {
         inputError = 'Full name must contain letters and spaces only.';
       }
 
       nextValue = rawValue;
     } else if (name === 'preferredNickname') {
-      if (/[^a-zA-ZÀ-ÿ\s/]/.test(rawValue)) {
+      if (/[^a-zA-ZÃ€-Ã¿\s/]/.test(rawValue)) {
         inputError =
           'Preferred nickname must contain letters, spaces, and / only.';
       }

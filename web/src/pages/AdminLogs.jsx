@@ -7,7 +7,7 @@ import { useAuth } from '../auth/AuthContext';
 import AdminProfileMenu from '../components/AdminProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 export default function AdminLogs() {
   const { user } = useAuth();

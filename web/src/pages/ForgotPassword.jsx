@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useIconStyles } from '../utils/iconStyles';
 import createForgotPasswordStyles from '../styles/ForgotPassword';
-import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-auth.png';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -224,7 +224,15 @@ export default function ForgotPassword() {
       )}
 
       <form onSubmit={handleSubmit} noValidate style={styles.card}>
-        <img src={clinicLogo} alt="Clinic Logo" style={styles.logo} />
+        <img
+          src={clinicLogo}
+          alt="Clinic Logo"
+          width="200"
+          height="150"
+          fetchPriority="high"
+          decoding="async"
+          style={styles.logo}
+        />
         <h1 style={styles.title}>Forgot Password</h1>
         <p style={styles.subtitle}>
           Enter your email address and we will send you a verification code.

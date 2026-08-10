@@ -7,7 +7,7 @@ import AdminProfileMenu from '../components/AdminProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminEmployeesStyles from '../styles/AdminEmployees';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 import doctorIcon from '../assets/adminImages/doctor.png';
 import dentalAssistantIcon from '../assets/adminImages/dental-assistant.png';
@@ -70,7 +70,7 @@ const SUPPORTING_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_EMPLOYEE_FILE_SIZE = 5 * 1024 * 1024;
 
 function filterNameVal(val) {
-  return val.replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
+  return val.replace(/[^a-zA-ZÃ€-Ã¿\s'\-]/g, '');
 }
 
 function filterContactVal(val) {
@@ -87,7 +87,7 @@ function filterEmailVal(val) {
 }
 
 function filterProfTextVal(val) {
-  return val.replace(/[^a-zA-ZÀ-ÿ\s'\-.,()&/:]/g, '');
+  return val.replace(/[^a-zA-ZÃ€-Ã¿\s'\-.,()&/:]/g, '');
 }
 
 function isValidContactNumber(value) {
@@ -2939,7 +2939,7 @@ export default function AdminEmployees() {
                 }}
                 onClick={() => setShowEmployeeCloseConfirmModal(true)}
               >
-                ×
+                Ã—
               </button>
             </div>
 

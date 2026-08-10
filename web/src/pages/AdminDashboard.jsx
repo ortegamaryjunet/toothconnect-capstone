@@ -7,7 +7,7 @@ import AdminProfileMenu from '../components/AdminProfileMenu';
 import LazyChart from '../components/LazyChart';
 import createAdminDashboardStyles from '../styles/AdminDashboard';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 import patientsIcon from '../assets/adminImages/patients.png';
 import appointmentIcon from '../assets/adminImages/appt.png';
 import staffIcon from '../assets/adminImages/clinic-staff.png';

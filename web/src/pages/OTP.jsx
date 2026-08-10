@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/axios';
 import { useIconStyles } from '../utils/iconStyles';
 import createOTPStyles from '../styles/OTP';
-import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-auth.png';
 
 const MAX_RESENDS = 3;
 const MAX_VERIFY_ATTEMPTS = 3;
@@ -248,7 +248,15 @@ export default function OTP() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <img src={clinicLogo} alt="Clinic Logo" style={styles.logo} />
+        <img
+          src={clinicLogo}
+          alt="Clinic Logo"
+          width="200"
+          height="150"
+          fetchPriority="high"
+          decoding="async"
+          style={styles.logo}
+        />
         <h1 style={styles.title}>OTP Verification</h1>
         <p style={styles.subtitle}>
           Enter the 6-digit code sent to <strong>{email}</strong>.

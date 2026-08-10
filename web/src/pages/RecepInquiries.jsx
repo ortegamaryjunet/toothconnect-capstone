@@ -6,7 +6,7 @@ import api from '../api/axios';
 import MessageUnreadBadge from '../components/MessageUnreadBadge';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 import createRecepInquiriesStyles from '../styles/RecepInquiries';
 
 const rowsPerPage = 10;

@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useIconStyles } from '../utils/iconStyles';
 import { roleHomePath } from '../utils/routes';
 import createLoginStyles from '../styles/Login.js';
-import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-auth.png';
 
 const styles = createLoginStyles({ isMobile: window.innerWidth < 520 });
 const LOGIN_LOCKOUT_STORAGE_KEY = 'loginLockout';
@@ -421,7 +421,15 @@ export default function Login() {
   return (
     <div style={styles.page}>
       <form onSubmit={handleSubmit} noValidate style={styles.card}>
-        <img src={clinicLogo} alt="Clinic Logo" style={styles.logo} />
+        <img
+          src={clinicLogo}
+          alt="Clinic Logo"
+          width="200"
+          height="150"
+          fetchPriority="high"
+          decoding="async"
+          style={styles.logo}
+        />
         <h1 style={styles.title}>ToothConnect</h1>
         <p style={styles.subtitle}>Staff sign-in</p>
 

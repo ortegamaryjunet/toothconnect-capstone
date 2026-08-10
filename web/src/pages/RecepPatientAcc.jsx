@@ -17,7 +17,7 @@ import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepPatientAccStyles from '../styles/RecepPatientAcc';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 const rowsPerPage = 8;
 
@@ -1039,7 +1039,7 @@ export default function RecepPatientAcc() {
                 style={styles.closeBtn}
                 onClick={closeUpdateOverlay}
               >
-                ×
+                Ã—
               </button>
             </div>
 

@@ -18,7 +18,7 @@ import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepAppointmentsStyles from '../styles/RecepAppointments';
 import createRecepAppointmentFormStyles from '../styles/RecepAppointmentForm';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 const pendingPerPage = 4;
 const queuePerPage = 3;

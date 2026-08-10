@@ -17,7 +17,7 @@ import AdminProfileMenu from '../components/AdminProfileMenu';
 import LazyChart from '../components/LazyChart';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminReportsStyles from '../styles/AdminReports';
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 async function loadPdfTools() {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([

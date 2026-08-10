@@ -14,7 +14,7 @@ import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepReceiptsStyles from '../styles/RecepReceipts';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 function getReceiptStatusLabel(status) {
   const labels = {

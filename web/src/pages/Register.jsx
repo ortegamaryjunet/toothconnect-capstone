@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useIconStyles } from '../utils/iconStyles';
 import createRegisterStyles from '../styles/Register';
-import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-auth.png';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -317,7 +317,15 @@ export default function Register() {
   return (
     <div style={styles.page}>
       <form onSubmit={handleSubmit} noValidate style={styles.card}>
-        <img src={clinicLogo} alt="Clinic Logo" style={styles.logo} />
+        <img
+          src={clinicLogo}
+          alt="Clinic Logo"
+          width="200"
+          height="150"
+          fetchPriority="high"
+          decoding="async"
+          style={styles.logo}
+        />
         <h1 style={styles.title}>Admin Registration</h1>
         <p style={styles.subtitle}>
           Create an admin account for Smile Empress Dental Hub.

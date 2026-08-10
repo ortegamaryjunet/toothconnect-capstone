@@ -9,7 +9,7 @@ import api from '../api/axios';
 import DentistProfileMenu from '../components/DentistProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
-import clinicLogo from '../assets/dentistImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 const rowsPerPage = 5;
 
@@ -1392,7 +1392,7 @@ export default function DentistAppointment() {
                   onClick={() => setShowKitCloseConfirmModal(true)}
                   disabled={kitSubmitting}
                 >
-                  ×
+                  Ã—
                 </button>
               )}
             </div>
@@ -1810,7 +1810,7 @@ export default function DentistAppointment() {
                 style={styles.noteModalClose}
                 onClick={requestCloseNoteModal}
               >
-                ×
+                Ã—
               </button>
             </div>
 

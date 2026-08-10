@@ -9,7 +9,7 @@ import AdminProfileMenu from '../components/AdminProfileMenu';
 import createAdminSettingsStyles from '../styles/AdminSettings';
 import WebsiteContentRenderer from "../components/WebsiteContentRenderer";
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 import AdminScheduleRequests from './AdminScheduleRequests';
 
 const rowsPerPage = 10;
@@ -6910,7 +6910,7 @@ const contentEditActions = (
                                 <span style={{ fontWeight: 600 }}>{item.item_name}</span>
                                 {' '}
                                 <span style={{ color: '#94a3b8' }}>({item.category})</span>
-                                <span style={{ color: '#475569' }}>{' ×'}{item.default_quantity}</span>
+                                <span style={{ color: '#475569' }}>{' Ã—'}{item.default_quantity}</span>
                               </span>
                             ))
                         }

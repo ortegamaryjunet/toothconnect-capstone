@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 import createAdminNotifStyles from '../styles/AdminNotifications';
 import api from '../api/axios';
 import { markAllNotificationsRead } from '../api/notifications';

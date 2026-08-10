@@ -14,7 +14,7 @@ import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import { useAuth } from '../auth/AuthContext';
 import createRecepDashboardStyles from '../styles/RecepDashboard';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 export default function RecepDashboard() {
   const { user } = useAuth();

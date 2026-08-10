@@ -18,7 +18,7 @@ import api from '../api/axios';
 import AdminProfileMenu from '../components/AdminProfileMenu';
 import createInventoryPageStyles from '../styles/InventoryPage';
 
-import clinicLogo from '../assets/adminImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 function formatDateOnly(value) {
   if (!value) return 'N/A';
@@ -3418,7 +3418,7 @@ export default function InventoryPage() {
                 onClick={closeEditModal}
                 style={styles.closeBtn}
               >
-                ×
+                Ã—
               </button>
               )}
             </div>
@@ -3749,7 +3749,7 @@ export default function InventoryPage() {
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px', fontFamily: 'Arial, sans-serif' }}>
               <p style={{ margin: 0, fontSize: 12, color: '#64748b', fontWeight: 800 }}>Total Expense</p>
               <h4 style={{ margin: '4px 0 0', fontSize: 15, color: '#0f172a', fontWeight: 800 }}>
-                {expenseForm.orderQuantity || 0} × {formatPeso(expenseForm.pricePerItem || 0)} = {formatPeso(computedExpense)}
+                {expenseForm.orderQuantity || 0} Ã— {formatPeso(expenseForm.pricePerItem || 0)} = {formatPeso(computedExpense)}
               </h4>
             </div>
 

@@ -9,7 +9,7 @@ import api from '../api/axios';
 import DentistProfileMenu from '../components/DentistProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
-import clinicLogo from '../assets/dentistImages/clinic-logo.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
 async function loadPdfTools() {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
@@ -206,7 +206,7 @@ export default function DentistRecords() {
   }
 
   function handleSearchChange(value) {
-    const lettersOnly = value.replace(/[^a-zA-ZñÑ\s]/g, '');
+    const lettersOnly = value.replace(/[^a-zA-ZÃ±Ã‘\s]/g, '');
     setSearchValue(lettersOnly);
   }
 
