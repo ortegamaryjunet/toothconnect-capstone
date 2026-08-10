@@ -91,7 +91,7 @@ const createRecepPatientProfileStyles = ({
       justifyContent: isMobile ? 'center' : 'flex-start',
       gap: 14,
       fontSize: 15,
-      fontWeight: 600,
+      fontWeight: 500,
       padding: isMobile ? '15px' : '15px 18px',
       marginBottom: 10,
       borderRadius: 16,
@@ -202,7 +202,6 @@ const createRecepPatientProfileStyles = ({
       justifyContent: 'center',
       fontSize: isVerySmall ? 34 : 42,
       flexShrink: 0,
-      boxShadow: '0 10px 25px rgba(212,175,55,.2)',
     },
 
     patientName: {
@@ -243,17 +242,15 @@ const createRecepPatientProfileStyles = ({
 
     subsectionTitle: {
       margin: '20px 0 14px',
-      fontSize: 13,
+      fontSize: 12,
       color: primaryDark,
-      fontWeight: 700,
+      fontWeight: 600,
       textTransform: 'uppercase',
     },
 
     infoGrid: {
       display: 'grid',
-      gridTemplateColumns: isSmallScreen
-        ? '1fr'
-        : 'repeat(auto-fit, minmax(240px,1fr))',
+      gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(auto-fit, minmax(240px,1fr))',
       gap: 18,
     },
 
@@ -279,7 +276,6 @@ const createRecepPatientProfileStyles = ({
       marginBottom: 8,
       textTransform: 'uppercase',
       fontWeight: 700,
-      letterSpacing: '.4px',
     },
 
     infoItemValue: {
@@ -292,9 +288,7 @@ const createRecepPatientProfileStyles = ({
 
     conditionList: {
       display: 'grid',
-      gridTemplateColumns: isSmallScreen
-        ? '1fr'
-        : 'repeat(auto-fit, minmax(220px,1fr))',
+      gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(auto-fit, minmax(220px,1fr))',
       gap: 16,
     },
 
@@ -327,9 +321,7 @@ const createRecepPatientProfileStyles = ({
 
     balanceCard: {
       display: 'grid',
-      gridTemplateColumns: isSmallScreen
-        ? '1fr'
-        : 'repeat(auto-fit, minmax(230px,1fr))',
+      gridTemplateColumns: isSmallScreen  ? '1fr' : 'repeat(auto-fit, minmax(230px,1fr))',
       gap: 20,
       marginBottom: 24,
     },
