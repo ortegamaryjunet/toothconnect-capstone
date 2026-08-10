@@ -431,7 +431,6 @@
       color: '#334155',
       cursor: 'pointer',
       boxSizing: 'border-box',
-      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     addAppt: {
@@ -688,39 +687,62 @@
     },
 
     pagination: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: isMobile ? 'center' : 'flex-end',
+      display: "flex",
+      alignItems: "center",
+      justifyContent: isMobile ? "center" : "flex-end",
       gap: 12,
-      marginTop: 18,
-      flexWrap: 'wrap',
+      marginTop: 20,
+      flexWrap: "nowrap",
     },
 
     pageBtn: {
-      width: 35,
-      height: 35,
-      border: '1px solid #f3d46b',
-      borderRadius: 11,
-      background: '#fff8e1',
-      color: '#b8860b',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      cursor: 'pointer',
-      flexShrink: 0,
+      minWidth: 100,
+      height: 40,
+      padding: "0 18px",
+      borderRadius: 10,
+      border: "1px solid transparent",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 13,
+      fontWeight: 700,
+      fontFamily: "Arial, sans-serif",
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      transition: "0.2s ease",
+    },
+
+    prevPageBtn: {
+      background: "#ffffff",
+      color: "#b8860b",
+      border: "1px solid #d4af37",
+    },
+
+    nextPageBtn: {
+      background: "linear-gradient(135deg, #d4af37 0%, #b8860b 100%)",
+      color: "#ffffff",
     },
 
     pageBtnDisabled: {
-      opacity: 0.5,
-      cursor: 'not-allowed',
+      background: "#f8fafc",
+      color: "#94a3b8",
+      border: "1px solid #e2e8f0",
+      cursor: "not-allowed",
     },
 
     pageInfo: {
       minWidth: 100,
-      textAlign: 'center',
-      fontSize: 14,
-      color: '#475569',
-      fontFamily: 'Arial, sans-serif',
+      height: 40,
+      padding: "0 18px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 10,
+      color: "#334155",
+      fontSize: 13,
+      fontWeight: 700,
+      fontFamily: "Arial, sans-serif",
+      whiteSpace: "nowrap",
     },
 
     calendarActions: {
@@ -1052,7 +1074,6 @@
       fontSize: 13,
       textTransform: 'none',
       cursor: 'pointer',
-      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     scheduleName: {
