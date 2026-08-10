@@ -153,20 +153,27 @@ export default function DentistNotifications() {
   }, []);
 
   const filteredNotifications = useMemo(() => {
+    const search = searchValue.toLowerCase().trim();
+
     return notifications.filter((notification) => {
-      const search = searchValue.toLowerCase().trim();
       const status = String(notification.status || '').toLowerCase();
 
-      const title = String(notification.title || '').toLowerCase();
-      const message = String(notification.message || '').toLowerCase();
-      const time = String(notification.time || '').toLowerCase();
+      const searchableText = [
+        notification.title,
+        notification.message,
+        notification.time,
+        notification.relatedType,
+        notification.relatedId
+      ]
+        .filter(value => value !== null && value !== undefined)
+        .join(' ')
+        .toLowerCase();
 
-      const matchesStatus = activeTab === 'all' || status === activeTab;
+      const matchesStatus =
+        activeTab === 'all' || status === activeTab;
 
       const matchesSearch =
-        title.includes(search) ||
-        message.includes(search) ||
-        time.includes(search);
+        search === '' || searchableText.includes(search);
 
       return matchesStatus && matchesSearch;
     });
@@ -386,10 +393,16 @@ export default function DentistNotifications() {
               <i className="fi fi-rr-search" style={styles.searchIcon}></i>
 
               <input
-                type="text"
+                type="search"
                 placeholder="Search notification"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    setSearchValue('');
+                  }
+                }}
+                aria-label="Search notifications"
                 style={styles.searchInput}
               />
             </div>
