@@ -70,7 +70,7 @@ const SUPPORTING_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const MAX_EMPLOYEE_FILE_SIZE = 5 * 1024 * 1024;
 
 function filterNameVal(val) {
-  return val.replace(/[^a-zA-ZÃ€-Ã¿\s'\-]/g, '');
+  return val.replace(/[^a-zA-Z\u00C0-\u00FF\s'-]/g, '');
 }
 
 function filterContactVal(val) {
@@ -87,7 +87,7 @@ function filterEmailVal(val) {
 }
 
 function filterProfTextVal(val) {
-  return val.replace(/[^a-zA-ZÃ€-Ã¿\s'\-.,()&/:]/g, '');
+  return val.replace(/[^a-zA-Z\u00C0-\u00FF\s'.,()&/:-]/g, '');
 }
 
 function isValidContactNumber(value) {
