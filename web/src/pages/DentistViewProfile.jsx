@@ -236,9 +236,7 @@ export default function DentistViewProfile() {
   return (
     <div style={styles.page}>
       <header style={styles.topHeader}>
-        <button type="button" style={styles.backLink} onClick={openBackModal}>
-          Back
-        </button>
+        <button type="button" style={styles.backLink} onClick={openBackModal}>Back</button>
 
         <h2 style={styles.headerTitle}>Patient Information Record</h2>
       </header>
@@ -247,10 +245,7 @@ export default function DentistViewProfile() {
         <button
           type="button"
           onClick={() => setActiveSection('profile')}
-          style={{
-            ...styles.menuItem,
-            ...(activeSection === 'profile' ? styles.menuItemActive : {}),
-          }}
+          style={{ ...styles.menuItem, ...(activeSection === 'profile' ? styles.menuItemActive : {}), }}
         >
           <i className="fi fi-rr-id-badge" style={styles.menuItemIcon}></i>
           <span style={styles.menuItemText}>Patient Details</span>
@@ -289,9 +284,7 @@ export default function DentistViewProfile() {
         )}
 
         {loadingPatient && (
-          <div style={styles.loadingBox}>
-            Loading patient information...
-          </div>
+          <div style={styles.loadingBox}>Loading patient information...</div>
         )}
 
         {activeSection === 'profile' && (
