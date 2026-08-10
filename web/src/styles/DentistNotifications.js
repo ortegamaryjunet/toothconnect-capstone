@@ -383,15 +383,21 @@
     },
 
     markAllBtn: {
-      border: 'none',
-      borderRadius: 12,
-      background: '#eff6ff',
+      border: '1px solid #d4af37',
+      borderRadius: 10,
+      background: '#fffaf0',
       color: '#b8860b',
-      padding: '10px 13px',
+      padding: '9px 14px',
       cursor: 'pointer',
-      fontWeight: 700,
+      fontWeight: 600,
       fontSize: 13,
       fontFamily: 'Arial, sans-serif',
+      transition: 'all 0.2s ease',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      boxShadow: '0 2px 6px rgba(184, 134, 11, 0.08)',
     },
 
     cardTitle: {
