@@ -1727,13 +1727,13 @@ export default function RecepAppointments() {
                                 right: 14,
                                 bottom: 14,
                                 margin: 0,
-                                borderColor: '#cbd5e1',
-                                background: '#ffffff',
-                                color: '#334155',
+                                border: '1px solid #b8860b',
+                                background: '#fff9e8',
+                                color: '#8b6508',
                               }}
                               onClick={() => toggleCalendarDetails(appointment.id)}
                             >
-                              {showDetails ? 'Hide Details' : 'Details'}
+                              {showDetails ? 'Hide Details' : 'View Details'}
                             </button>
                           </div>
                         );
@@ -2200,7 +2200,7 @@ export default function RecepAppointments() {
                       style={scheduleStyles.calendarNav}
                       onClick={handleReschedulePreviousMonth}
                     >
-                      Prev
+                      Previous
                     </button>
 
                     <div style={scheduleStyles.calendarDropdowns}>
@@ -3171,14 +3171,13 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
     <div style={styles.pagination}>
       <button
         type="button"
-        style={{
-          ...styles.pageBtn,
+        style={{ ...styles.pageBtn, ...styles.prevPageBtn,
           ...(page <= 1 ? styles.pageBtnDisabled : {}),
         }}
         disabled={page <= 1}
         onClick={onPrev}
       >
-        Prev
+        Previous
       </button>
 
       <span style={styles.pageInfo}>
@@ -3187,8 +3186,7 @@ function Pagination({ styles, page, totalPages, onPrev, onNext }) {
 
       <button
         type="button"
-        style={{
-          ...styles.pageBtn,
+        style={{ ...styles.pageBtn, ...styles.nextPageBtn,
           ...(page >= totalPages || totalPages === 0
             ? styles.pageBtnDisabled
             : {}),
