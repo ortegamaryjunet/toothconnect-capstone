@@ -2218,7 +2218,7 @@ export default function AdminSettings() {
     );
   }
 
-  function findDuplicateUserAccount() {
+  function findDuplicateUserAccount(userList = users) {
     const email = String(userForm.email || '').trim().toLowerCase();
     const currentUserId = String(userForm.id || '');
 
@@ -2226,7 +2226,7 @@ export default function AdminSettings() {
       return null;
     }
 
-    return users.find((user) => {
+    return userList.find((user) => {
       const sameEmail = String(user.email || '').trim().toLowerCase() === email;
       const sameRecord = currentUserId && String(user.id || '') === currentUserId;
 
@@ -3093,7 +3093,38 @@ export default function AdminSettings() {
       closeOverlay();
     } catch (err) {
       console.error('Failed to save user account', err);
-      alert(err.response?.data?.message || 'Failed to save user account');
+      const message = String(err.response?.data?.message || '');
+
+      if (err.response?.status === 409 || /email already in use/i.test(message)) {
+        let duplicateUser = findDuplicateUserAccount();
+
+        try {
+          const res = await api.get('/auth/users');
+          const latestUsers = res.data.users || [];
+          setUsers(latestUsers);
+          duplicateUser = findDuplicateUserAccount(latestUsers) || duplicateUser;
+        } catch (loadErr) {
+          console.error('Failed to reload users after duplicate email error', loadErr);
+        }
+
+        setShowUserSaveConfirmModal(false);
+        setShowInactiveUserConfirmModal(false);
+        setDuplicateUserModal(
+          duplicateUser || {
+            fullName: userForm.fullName || 'Existing user account',
+            email: userForm.email,
+            role: userForm.role,
+            branch_id: userForm.branch_id,
+            branch_name: '',
+            branch_address: '',
+          }
+        );
+        return;
+      }
+
+      setShowUserSaveConfirmModal(false);
+      setShowInactiveUserConfirmModal(false);
+      alert(message || 'Failed to save user account');
     }
   }
 
