@@ -444,6 +444,7 @@ export default function Login() {
         <input
           ref={emailRef}
           type="email"
+          placeholder="Enter your email address"
           value={email}
           onChange={(e) => handleFieldChange('email', e.target.value)}
           onKeyDown={(e) => handleRequiredKeyDown('email', e)}
@@ -471,6 +472,7 @@ export default function Login() {
           <input
             ref={passwordRef}
             type={showPassword ? 'text' : 'password'}
+            placeholder="Enter your password"
             value={password}
             onChange={(e) => handleFieldChange('password', e.target.value)}
             onKeyDown={(e) => handleRequiredKeyDown('password', e)}
