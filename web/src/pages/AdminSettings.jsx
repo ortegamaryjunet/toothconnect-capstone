@@ -2507,6 +2507,31 @@ export default function AdminSettings() {
     return userRequiredFields.includes(name);
   }
 
+  function getUserFullNameWordCount(value = userForm.fullName) {
+    return String(value || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+  }
+
+  function getUserFullNameError({ force = false } = {}) {
+    const value = String(userForm.fullName || '').trim();
+
+    if (!force && !value && !userTouchedFields.fullName) {
+      return '';
+    }
+
+    if (!value) {
+      return 'Full name is required.';
+    }
+
+    if (getUserFullNameWordCount(value) < USER_FULL_NAME_MIN_WORDS) {
+      return 'Please enter your first and last name.';
+    }
+
+    return '';
+  }
+
   function isUserFieldInvalid(name) {
     return !!getUserFieldError(name);
   }
@@ -2530,6 +2555,10 @@ export default function AdminSettings() {
   }
 
   function getUserFieldError(name, { force = false } = {}) {
+    if (name === 'fullName') {
+      return getUserFullNameError({ force });
+    }
+
     if (!force && !userTouchedFields[name]) {
       return '';
     }
@@ -2543,13 +2572,6 @@ export default function AdminSettings() {
 
     if (!value) {
       return `${label} is required.`;
-    }
-
-    if (
-      name === 'fullName' &&
-      value.split(/\s+/).filter(Boolean).length < USER_FULL_NAME_MIN_WORDS
-    ) {
-      return 'Please enter your first and last name.';
     }
 
     if (name === 'email' && !USER_EMAIL_REGEX.test(value)) {
