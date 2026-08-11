@@ -3,6 +3,10 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../api/axios';
 
 const rowsPerPage = 10;
+const REJECTION_REASON_MIN_LENGTH = 10;
+const REJECTION_REASON_MAX_LENGTH = 500;
+const REJECTION_REASON_ALLOWED_REGEX = /^[a-zA-Z0-9\s]+$/;
+const REJECTION_REASON_WORD_REGEX = /[a-zA-Z]{2,}/;
 
 const STATUS_OPTIONS = ['All', 'pending', 'approved', 'rejected', 'cancelled'];
 
@@ -64,6 +68,7 @@ export default function AdminScheduleRequests({
   const [rejectRequest, setRejectRequest] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectReasonError, setRejectReasonError] = useState('');
+  const [rejectSuccessModal, setRejectSuccessModal] = useState(null);
 
   async function loadRequests(selectedStatus = statusFilter) {
     setLoading(true);
@@ -102,6 +107,20 @@ export default function AdminScheduleRequests({
       setPage(1);
     }
   }, [highlightRequestId]);
+
+  useEffect(() => {
+    if (!rejectSuccessModal) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setRejectSuccessModal(null);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [rejectSuccessModal]);
 
   const filteredRequests = useMemo(() => {
     const search = searchText.toLowerCase().trim();
@@ -179,6 +198,32 @@ export default function AdminScheduleRequests({
     setRejectReasonError('');
   }
 
+  function getRejectReasonValidationError(value) {
+    const rawValue = String(value || '');
+    const cleanValue = rawValue.trim();
+
+    if (!cleanValue) {
+      return 'Please enter the reason for rejecting this leave request.';
+    }
+
+    if (cleanValue.length < REJECTION_REASON_MIN_LENGTH) {
+      return 'Reason for rejection must be at least 10 characters.';
+    }
+
+    if (rawValue.length > REJECTION_REASON_MAX_LENGTH) {
+      return 'Reason for rejection must not exceed 500 characters.';
+    }
+
+    if (
+      !REJECTION_REASON_ALLOWED_REGEX.test(cleanValue) ||
+      !REJECTION_REASON_WORD_REGEX.test(cleanValue)
+    ) {
+      return 'Please enter a valid reason for rejection. No Special Characters allowed';
+    }
+
+    return '';
+  }
+
   function handleModalOverlayClick(event, closeHandler) {
     if (event.target === event.currentTarget) {
       closeHandler();
@@ -243,9 +288,10 @@ export default function AdminScheduleRequests({
     if (!rejectRequest) return;
 
     const cleanReason = rejectReason.trim();
+    const validationError = getRejectReasonValidationError(rejectReason);
 
-    if (!cleanReason) {
-      setRejectReasonError('Please enter the reason for rejecting this leave request.');
+    if (validationError) {
+      setRejectReasonError(validationError);
       return;
     }
 
@@ -253,6 +299,10 @@ export default function AdminScheduleRequests({
 
     if (updated) {
       closeRejectModal();
+      setRejectSuccessModal({
+        title: 'Leave Request Rejected',
+        message: 'Leave request rejection successful.',
+      });
     }
   }
 
@@ -303,6 +353,13 @@ export default function AdminScheduleRequests({
       </div>
     );
   }
+
+  const rejectReasonLength = rejectReason.length;
+  const rejectReasonValidationError = getRejectReasonValidationError(rejectReason);
+  const isRejectSubmitDisabled =
+    !rejectRequest ||
+    !!rejectReasonValidationError ||
+    actionLoadingId === rejectRequest?.id;
 
   return (
     <main>
@@ -562,6 +619,24 @@ export default function AdminScheduleRequests({
               style={styles.leaveRejectTextarea}
             />
 
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginTop: -6,
+                marginBottom: rejectReasonError ? 4 : 14,
+                color:
+                  rejectReasonLength > REJECTION_REASON_MAX_LENGTH
+                    ? '#dc2626'
+                    : '#64748b',
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: 'Arial, sans-serif',
+              }}
+            >
+              {rejectReasonLength}/{REJECTION_REASON_MAX_LENGTH}
+            </div>
+
             {rejectReasonError ? (
               <p style={styles.errorText}>{rejectReasonError}</p>
             ) : null}
@@ -577,13 +652,44 @@ export default function AdminScheduleRequests({
               </button>
               <button
                 type="button"
-                style={{ ...styles.modalButton, ...styles.rejectConfirmBtn }}
+                style={{
+                  ...styles.modalButton,
+                  ...styles.rejectConfirmBtn,
+                  ...(isRejectSubmitDisabled
+                    ? {
+                        opacity: 0.55,
+                        cursor: 'not-allowed',
+                      }
+                    : {}),
+                }}
                 onClick={confirmRejectRequest}
+                aria-disabled={isRejectSubmitDisabled}
                 disabled={actionLoadingId === rejectRequest.id}
               >
                 {actionLoadingId === rejectRequest.id ? 'Rejecting...' : 'Reject'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {rejectSuccessModal && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                background: '#dcfce7',
+                color: '#16a34a',
+              }}
+            >
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>{rejectSuccessModal.title}</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0 }}>
+              {rejectSuccessModal.message}
+            </p>
           </div>
         </div>
       )}
