@@ -164,6 +164,7 @@ const USER_FIELD_LABELS = {
   password: 'Password',
   status: 'Status',
 };
+const USER_FULL_NAME_MIN_WORDS = 2;
 const ADMIN_NAME_REGEX = /^[a-zA-Z\s]+$/;
 const adminAccountRequiredFields = ['name', 'email', 'phone', 'status'];
 const phoneCountryOptions = getCountries().map((country) => ({
@@ -958,6 +959,7 @@ export default function AdminSettings() {
   const adminProfilePhotoInputRef = useRef(null);
 
   const [userForm, setUserForm] = useState(initialUserForm);
+  const [userFormOriginal, setUserFormOriginal] = useState(initialUserForm);
   const [userTouchedFields, setUserTouchedFields] = useState({});
   const [showUserCancelConfirmModal, setShowUserCancelConfirmModal] =
     useState(false);
@@ -967,6 +969,7 @@ export default function AdminSettings() {
     useState(false);
   const [showUserPassword, setShowUserPassword] = useState(false);
   const [duplicateUserModal, setDuplicateUserModal] = useState(null);
+  const [userSaveResultModal, setUserSaveResultModal] = useState(null);
 
   const [filters, setFilters] = useState({
     branchSearch: '',
@@ -1022,8 +1025,14 @@ export default function AdminSettings() {
     ].sort();
   }, [services, serviceForm.category]);
 
+  const userFullNameWordCount = String(userForm.fullName || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+
   const isUserFormComplete =
     userRequiredFields.every((field) => String(userForm[field] ?? '').trim() !== '') &&
+    userFullNameWordCount >= USER_FULL_NAME_MIN_WORDS &&
     USER_EMAIL_REGEX.test(String(userForm.email || '').trim()) &&
     (userForm.role === 'Admin' || String(userForm.branch_id || '').trim() !== '') &&
     (userForm.id || String(userForm.password || '').trim() !== '');
@@ -1081,6 +1090,7 @@ export default function AdminSettings() {
       showUserSaveConfirmModal ||
       showInactiveUserConfirmModal ||
       duplicateUserModal ||
+      userSaveResultModal ||
       serviceKitOverlay ||
       showServiceKitHistory
     ) {
@@ -1113,9 +1123,24 @@ export default function AdminSettings() {
     showUserSaveConfirmModal,
     showInactiveUserConfirmModal,
     duplicateUserModal,
+    userSaveResultModal,
     serviceKitOverlay,
     showServiceKitHistory,
   ]);
+
+  useEffect(() => {
+    if (!userSaveResultModal) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setUserSaveResultModal(null);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [userSaveResultModal]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -1139,6 +1164,7 @@ export default function AdminSettings() {
         setShowUserSaveConfirmModal(false);
         setShowInactiveUserConfirmModal(false);
         setDuplicateUserModal(null);
+        setUserSaveResultModal(null);
         setServiceKitOverlay(false);
       }
     }
@@ -2184,11 +2210,12 @@ export default function AdminSettings() {
     setShowUserSaveConfirmModal(false);
     setShowInactiveUserConfirmModal(false);
     setDuplicateUserModal(null);
+    setUserSaveResultModal(null);
     setShowUserPassword(false);
     setUserTouchedFields({});
 
     if (user) {
-      setUserForm({
+      const nextUserForm = {
         id: user.id || '',
         fullName: user.fullName || '',
         email: user.email || '',
@@ -2197,12 +2224,39 @@ export default function AdminSettings() {
         password: '',
         status: user.status || 'Active',
         created: user.created || '',
-      });
+      };
+
+      setUserForm(nextUserForm);
+      setUserFormOriginal(nextUserForm);
     } else {
       setUserForm(initialUserForm);
+      setUserFormOriginal(initialUserForm);
     }
 
     setActiveOverlay('users');
+  }
+
+  function normalizeUserFormForComparison(form) {
+    const role = String(form.role || '').trim();
+
+    return {
+      fullName: String(form.fullName || '').trim(),
+      email: String(form.email || '').trim().toLowerCase(),
+      role,
+      branch_id: role === 'Admin' ? '' : String(form.branch_id || '').trim(),
+      status: String(form.status || 'Active').trim(),
+    };
+  }
+
+  function hasUserAccountChanges() {
+    if (!userForm.id) {
+      return true;
+    }
+
+    const current = normalizeUserFormForComparison(userForm);
+    const original = normalizeUserFormForComparison(userFormOriginal);
+
+    return Object.keys(current).some((key) => current[key] !== original[key]);
   }
 
   function getUserBranchLabel(user) {
@@ -2489,6 +2543,13 @@ export default function AdminSettings() {
 
     if (!value) {
       return `${label} is required.`;
+    }
+
+    if (
+      name === 'fullName' &&
+      value.split(/\s+/).filter(Boolean).length < USER_FULL_NAME_MIN_WORDS
+    ) {
+      return 'Please enter your first and last name.';
     }
 
     if (name === 'email' && !USER_EMAIL_REGEX.test(value)) {
@@ -3074,6 +3135,20 @@ export default function AdminSettings() {
 
   async function saveUser() {
     try {
+      if (userForm.id && !hasUserAccountChanges()) {
+        const accountName = String(userForm.fullName || '').trim() || 'this user account';
+
+        setShowUserSaveConfirmModal(false);
+        setShowInactiveUserConfirmModal(false);
+        closeOverlay();
+        setUserSaveResultModal({
+          title: 'No Changes Made',
+          message: `No changes were made to ${accountName}'s user account.`,
+          type: 'info',
+        });
+        return;
+      }
+
       if (userForm.id) {
         await api.patch(`/auth/users/${userForm.id}`, {
           fullName: userForm.fullName,
@@ -3097,6 +3172,14 @@ export default function AdminSettings() {
       setShowUserSaveConfirmModal(false);
       setShowInactiveUserConfirmModal(false);
       closeOverlay();
+
+      if (userForm.id) {
+        setUserSaveResultModal({
+          title: 'User Account Updated',
+          message: 'User account has been updated successfully.',
+          type: 'success',
+        });
+      }
     } catch (err) {
       console.error('Failed to save user account', err);
       const message = String(err.response?.data?.message || '');
@@ -7419,6 +7502,28 @@ const contentEditActions = (
                 Save User Account
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {userSaveResultModal && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i
+                className={
+                  userSaveResultModal.type === 'success'
+                    ? 'fi fi-rr-check-circle'
+                    : 'fi fi-rr-info'
+                }
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>{userSaveResultModal.title}</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0 }}>
+              {userSaveResultModal.message}
+            </p>
           </div>
         </div>
       )}
