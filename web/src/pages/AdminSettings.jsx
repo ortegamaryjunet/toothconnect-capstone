@@ -104,10 +104,12 @@ const branchRequiredFields = [
   'operating_hours',
   'status',
 ];
+const BRANCH_SPECIAL_CHARACTER_FIELDS = ['name', 'address', 'contact_person'];
+const BRANCH_TEXT_FIELD_REGEX = /^[a-zA-Z0-9\s]+$/;
 
 const BRANCH_OPERATING_HOURS_FORMAT = 'Mon - Sat, 10:00 AM - 7:00 PM';
 const BRANCH_OPERATING_HOURS_REGEX =
-  /^[A-Za-z]{3}(?:\s*-\s*[A-Za-z]{3})?,\s*(?:0?[1-9]|1[0-2]):[0-5]\d\s*(?:AM|PM)\s*-\s*(?:0?[1-9]|1[0-2]):[0-5]\d\s*(?:AM|PM)$/i;
+  /^[A-Z][a-z]+(?: - [A-Z][a-z]+)?, (?:0?[1-9]|1[0-2]):[0-5]\d (?:AM|PM) - (?:0?[1-9]|1[0-2]):[0-5]\d (?:AM|PM)$/;
 
 const initialServiceForm = {
   id: '',
@@ -265,13 +267,66 @@ function validatePhoneNumber(value, country = 'PH') {
 }
 
 function calculateYearsActive(dateOpened) {
-  const openedYear = Number(String(dateOpened || '').slice(0, 4));
+  const rawDate = String(dateOpened || '').trim();
+  const isoDateMatch = rawDate.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const slashDateMatch = rawDate.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
 
-  if (!openedYear) {
+  const openedYear = isoDateMatch
+    ? Number(isoDateMatch[1])
+    : slashDateMatch
+      ? Number(slashDateMatch[3])
+      : 0;
+  const openedMonth = isoDateMatch
+    ? Number(isoDateMatch[2])
+    : slashDateMatch
+      ? Number(slashDateMatch[1])
+      : 0;
+  const openedDay = isoDateMatch
+    ? Number(isoDateMatch[3])
+    : slashDateMatch
+      ? Number(slashDateMatch[2])
+      : 0;
+
+  if (!openedYear || !openedMonth || !openedDay) {
     return '';
   }
 
-  return String(Math.max(0, new Date().getFullYear() - openedYear));
+  const today = new Date();
+  const openedDate = new Date(openedYear, openedMonth - 1, openedDay);
+  const todayStart = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+  let months =
+    (today.getFullYear() - openedYear) * 12 +
+    (today.getMonth() + 1 - openedMonth);
+
+  if (today.getDate() < openedDay) {
+    months -= 1;
+  }
+
+  months = Math.max(0, months);
+
+  if (months < 12) {
+    if (months > 0) {
+      return `${months} ${months === 1 ? 'month' : 'months'}`;
+    }
+
+    const days = Math.max(
+      0,
+      Math.floor((todayStart - openedDate) / (1000 * 60 * 60 * 24))
+    );
+    const weeks = Math.floor(days / 7);
+
+    if (weeks > 0) {
+      return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
+    }
+
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  }
+
+  return String(Math.floor(months / 12));
 }
 
 export default function AdminSettings() {
@@ -912,6 +967,7 @@ export default function AdminSettings() {
   const [deleteWebsiteServiceId, setDeleteWebsiteServiceId] = useState(null);
   const [showBranchCancelConfirmModal, setShowBranchCancelConfirmModal] = useState(false);
   const [showBranchSaveConfirmModal, setShowBranchSaveConfirmModal] = useState(false);
+  const [branchSaveResultModal, setBranchSaveResultModal] = useState(null);
   
   const [users, setUsers] = useState([]);
   const [adminAccountForm, setAdminAccountForm] = useState(initialAdminAccountForm);
@@ -1010,10 +1066,8 @@ export default function AdminSettings() {
   const branchYearsActive = calculateYearsActive(branchForm.date_opened);
 
   const isBranchFormComplete = branchRequiredFields.every(
-    (field) => String(branchForm[field] ?? '').trim() !== ''
-  ) &&
-    !validatePhoneNumber(branchForm.phone, branchPhoneCountry) &&
-    BRANCH_OPERATING_HOURS_REGEX.test(String(branchForm.operating_hours || '').trim());
+    (field) => !getBranchFieldError(field, { force: true })
+  );
 
   const serviceCategoryOptions = useMemo(() => {
     return [
@@ -1091,6 +1145,7 @@ export default function AdminSettings() {
       showInactiveUserConfirmModal ||
       duplicateUserModal ||
       userSaveResultModal ||
+      branchSaveResultModal ||
       serviceKitOverlay ||
       showServiceKitHistory
     ) {
@@ -1124,9 +1179,24 @@ export default function AdminSettings() {
     showInactiveUserConfirmModal,
     duplicateUserModal,
     userSaveResultModal,
+    branchSaveResultModal,
     serviceKitOverlay,
     showServiceKitHistory,
   ]);
+
+  useEffect(() => {
+    if (!branchSaveResultModal) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setBranchSaveResultModal(null);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [branchSaveResultModal]);
 
   useEffect(() => {
     if (!userSaveResultModal) {
@@ -2173,6 +2243,7 @@ export default function AdminSettings() {
   function openBranchForm(branch = null) {
     setShowBranchCancelConfirmModal(false);
     setShowBranchSaveConfirmModal(false);
+    setBranchSaveResultModal(null);
     setBranchTouchedFields({});
 
     if (branch) {
@@ -2294,14 +2365,6 @@ export default function AdminSettings() {
 
     let newValue = value;
 
-    if (name === 'name' || name === 'category') {
-      newValue = allowServiceNameText(value);
-    }
-
-    if (name === 'contact_person') {
-      newValue = allowLettersOnly(value);
-    }
-
     if (name === 'phone') {
       newValue = String(value || '').replace(/\D/g, '').slice(0, 15);
     }
@@ -2321,26 +2384,42 @@ export default function AdminSettings() {
     setBranchTouchedFields((prev) => ({ ...prev, phone: true }));
   }
 
-  function isBranchFieldInvalid(name) {
+  function getBranchFieldError(name, { force = false } = {}) {
+    if (!force && !branchTouchedFields[name]) {
+      return '';
+    }
+
+    const value = String(branchForm[name] ?? '');
+    const trimmedValue = value.trim();
+
+    if (branchRequiredFields.includes(name) && !trimmedValue) {
+      return 'This field is required.';
+    }
+
     if (name === 'phone') {
-      return (
-        branchTouchedFields[name] &&
-        !!validatePhoneNumber(branchForm.phone, branchPhoneCountry)
-      );
+      return validatePhoneNumber(branchForm.phone, branchPhoneCountry);
     }
 
     if (name === 'operating_hours') {
-      const value = String(branchForm.operating_hours || '').trim();
-      return (
-        branchTouchedFields[name] &&
-        (!value || !BRANCH_OPERATING_HOURS_REGEX.test(value))
-      );
+      if (!BRANCH_OPERATING_HOURS_REGEX.test(trimmedValue)) {
+        return `Follow this format: ${BRANCH_OPERATING_HOURS_FORMAT}`;
+      }
+
+      return '';
     }
 
-    return (
-      branchTouchedFields[name] &&
-      String(branchForm[name] ?? '').trim() === ''
-    );
+    if (
+      BRANCH_SPECIAL_CHARACTER_FIELDS.includes(name) &&
+      !BRANCH_TEXT_FIELD_REGEX.test(trimmedValue)
+    ) {
+      return 'Special characters are not allowed.';
+    }
+
+    return '';
+  }
+
+  function isBranchFieldInvalid(name) {
+    return !!getBranchFieldError(name);
   }
 
   function getBranchFieldStyle(name) {
@@ -2361,28 +2440,25 @@ export default function AdminSettings() {
   }
 
   function getBranchPhoneError() {
-    if (!branchTouchedFields.phone) {
-      return '';
-    }
-
-    return validatePhoneNumber(branchForm.phone, branchPhoneCountry);
+    return getBranchFieldError('phone');
   }
 
   function getBranchOperatingHoursError() {
-    if (!branchTouchedFields.operating_hours) {
-      return '';
+    return getBranchFieldError('operating_hours');
+  }
+
+  function renderBranchFieldError(name) {
+    const error = getBranchFieldError(name);
+
+    if (!error) {
+      return null;
     }
 
-    const value = String(branchForm.operating_hours || '').trim();
-    if (!value) {
-      return 'This field is required.';
-    }
-
-    if (!BRANCH_OPERATING_HOURS_REGEX.test(value)) {
-      return `Follow this format: ${BRANCH_OPERATING_HOURS_FORMAT}`;
-    }
-
-    return '';
+    return (
+      <span style={{ ...styles.fieldErrorText }}>
+        {error}
+      </span>
+    );
   }
 
   function handleServiceChange(name, value) {
@@ -2788,6 +2864,7 @@ export default function AdminSettings() {
 
   async function saveBranch() {
     try {
+      const isAddingBranch = !branchForm.id;
       const payload = {
         name: branchForm.name,
         address: branchForm.address,
@@ -2804,6 +2881,13 @@ export default function AdminSettings() {
 
       setBranches(res.data.branches || []);
       closeOverlay();
+
+      if (isAddingBranch) {
+        setBranchSaveResultModal({
+          title: 'Branch Added',
+          message: 'This branch has been successfully added.',
+        });
+      }
     } catch (err) {
       console.error('Failed to save branch', err);
       alert(err.response?.data?.message || 'Failed to save branch');
@@ -6017,6 +6101,7 @@ const contentEditActions = (
                   style={getBranchFieldStyle('name')}
                   required
                 />
+                {renderBranchFieldError('name')}
               </Field>
 
               <Field label={renderBranchRequiredLabel('Clinic Location')} styles={styles}>
@@ -6030,6 +6115,7 @@ const contentEditActions = (
                   style={getBranchFieldStyle('address')}
                   required
                 />
+                {renderBranchFieldError('address')}
               </Field>
 
               <Field label={renderBranchRequiredLabel('Date Opened')} styles={styles}>
@@ -6098,6 +6184,7 @@ const contentEditActions = (
                   onBlur={() => handleBranchFieldBlur('contact_person')}
                   style={getBranchFieldStyle('contact_person')}
                 />
+                {renderBranchFieldError('contact_person')}
               </Field>
 
               <Field label={renderBranchRequiredLabel('Operating Hours')} styles={styles}>
@@ -6282,6 +6369,27 @@ const contentEditActions = (
                 Save Branch
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {branchSaveResultModal && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                background: '#dcfce7',
+                color: '#16a34a',
+              }}
+            >
+              <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>{branchSaveResultModal.title}</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0 }}>
+              {branchSaveResultModal.message}
+            </p>
           </div>
         </div>
       )}

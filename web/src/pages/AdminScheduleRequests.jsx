@@ -5,7 +5,7 @@ import api from '../api/axios';
 const rowsPerPage = 10;
 const REJECTION_REASON_MIN_LENGTH = 10;
 const REJECTION_REASON_MAX_LENGTH = 500;
-const REJECTION_REASON_ALLOWED_REGEX = /^[a-zA-Z0-9\s]+$/;
+const REJECTION_REASON_ALLOWED_REGEX = /^[a-zA-Z0-9\s.,]+$/;
 const REJECTION_REASON_WORD_REGEX = /[a-zA-Z]{2,}/;
 
 const STATUS_OPTIONS = ['All', 'pending', 'approved', 'rejected', 'cancelled'];
@@ -218,7 +218,7 @@ export default function AdminScheduleRequests({
       !REJECTION_REASON_ALLOWED_REGEX.test(cleanValue) ||
       !REJECTION_REASON_WORD_REGEX.test(cleanValue)
     ) {
-      return 'Please enter a valid reason for rejection. No Special Characters allowed';
+      return 'Please enter a valid reason for rejection. Special Characters are not allowed.';
     }
 
     return '';
@@ -355,11 +355,7 @@ export default function AdminScheduleRequests({
   }
 
   const rejectReasonLength = rejectReason.length;
-  const rejectReasonValidationError = getRejectReasonValidationError(rejectReason);
-  const isRejectSubmitDisabled =
-    !rejectRequest ||
-    !!rejectReasonValidationError ||
-    actionLoadingId === rejectRequest?.id;
+  const isRejectSubmitting = actionLoadingId === rejectRequest?.id;
 
   return (
     <main>
@@ -608,7 +604,18 @@ export default function AdminScheduleRequests({
                 ))}
             </div>
 
+            <label
+              htmlFor="leave-rejection-remarks"
+              style={{
+                ...styles.leaveDecisionLabel,
+                display: 'block',
+                marginBottom: 8,
+              }}
+            >
+              Remarks
+            </label>
             <textarea
+              id="leave-rejection-remarks"
               rows={4}
               value={rejectReason}
               onChange={(event) => {
@@ -655,18 +662,17 @@ export default function AdminScheduleRequests({
                 style={{
                   ...styles.modalButton,
                   ...styles.rejectConfirmBtn,
-                  ...(isRejectSubmitDisabled
+                  ...(isRejectSubmitting
                     ? {
-                        opacity: 0.55,
+                        opacity: 0.7,
                         cursor: 'not-allowed',
                       }
                     : {}),
                 }}
                 onClick={confirmRejectRequest}
-                aria-disabled={isRejectSubmitDisabled}
-                disabled={actionLoadingId === rejectRequest.id}
+                disabled={isRejectSubmitting}
               >
-                {actionLoadingId === rejectRequest.id ? 'Rejecting...' : 'Reject'}
+                {isRejectSubmitting ? 'Rejecting...' : 'Reject'}
               </button>
             </div>
           </div>
