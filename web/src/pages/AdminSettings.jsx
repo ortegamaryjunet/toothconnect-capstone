@@ -3157,6 +3157,8 @@ export default function AdminSettings() {
 
   async function saveUser() {
     try {
+      const isUpdatingUser = !!userForm.id;
+
       if (userForm.id && !hasUserAccountChanges()) {
         const accountName = String(userForm.fullName || '').trim() || 'this user account';
 
@@ -3171,7 +3173,7 @@ export default function AdminSettings() {
         return;
       }
 
-      if (userForm.id) {
+      if (isUpdatingUser) {
         await api.patch(`/auth/users/${userForm.id}`, {
           fullName: userForm.fullName,
           email: userForm.email,
@@ -3195,13 +3197,13 @@ export default function AdminSettings() {
       setShowInactiveUserConfirmModal(false);
       closeOverlay();
 
-      if (userForm.id) {
-        setUserSaveResultModal({
-          title: 'User Account Updated',
-          message: 'User account has been updated successfully.',
-          type: 'success',
-        });
-      }
+      setUserSaveResultModal({
+        title: isUpdatingUser ? 'User Account Updated' : 'User Account Added',
+        message: isUpdatingUser
+          ? 'User account has been updated successfully.'
+          : 'User account has been added successfully.',
+        type: 'success',
+      });
     } catch (err) {
       console.error('Failed to save user account', err);
       const message = String(err.response?.data?.message || '');
@@ -7531,7 +7533,14 @@ const contentEditActions = (
       {userSaveResultModal && (
         <div style={styles.modal}>
           <div style={styles.modalContent}>
-            <div style={styles.modalIcon}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                ...(userSaveResultModal.type === 'success'
+                  ? { background: '#dcfce7', color: '#16a34a' }
+                  : {}),
+              }}
+            >
               <i
                 className={
                   userSaveResultModal.type === 'success'
