@@ -52,6 +52,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
   const [form, setForm] = useState(emptyForm(null));
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewPlan, setViewPlan] = useState(null);
@@ -165,6 +166,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
     setModalOpen(false);
     setEditingPlan(null);
     setFormError('');
+    setFieldErrors({});
     setSaveEditConfirmOpen(false);
   }
 
@@ -276,12 +278,48 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
 
   function handleFormChange(field, value) {
     setForm(prev => ({ ...prev, [field]: value }));
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setFormError('');
   }
 
   async function handleSave() {
     setFormError('');
+
+    const errors = {};
+
     if (!form.planned_treatment.trim()) {
-      setFormError('Planned treatment is required.');
+      errors.planned_treatment = 'Planned treatment is required.';
+    }
+
+    if (!form.applyToAll && !form.tooth_number) {
+      errors.tooth_number = 'Tooth number is required.';
+    }
+
+    if (form.status === 'completed' && !form.date_completed) {
+      errors.date_completed = 'Date completed is required when status is Completed.';
+    }
+
+    if (form.date_completed) {
+      const selectedDate = new Date(`${form.date_completed}T00:00:00`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (Number.isNaN(selectedDate.getTime())) {
+        errors.date_completed = 'Please enter a valid completion date.';
+      } else if (selectedDate > today) {
+        errors.date_completed = 'Date completed cannot be in the future.';
+      }
+    }
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setFormError('Please correct the highlighted fields before saving.');
       return;
     }
 
@@ -356,11 +394,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
     return <div style={styles.empty}>No patient selected.</div>;
   }
 
-  const modalTitle = editingPlan
-    ? `Edit Plan — Tooth #${form.tooth_number}`
-    : form.applyToAll
-      ? 'Add Plan — All Teeth (Braces / Aligners)'
-      : `Add Plan — Tooth #${form.tooth_number}`;
+  const modalTitle = editingPlan ? `Edit Plan — Tooth #${form.tooth_number}` : form.applyToAll ? 'Add Plan — All Teeth' : `Add Plan — Tooth #${form.tooth_number}`;
 
   return (
     <div style={styles.wrapper}>
@@ -551,7 +585,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
       {choiceModalOpen && (
         <div style={styles.overlay} onClick={() => setChoiceModalOpen(false)}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={() => setChoiceModalOpen(false)}>✕</button>
+            <button type="button" style={styles.closeIconBtn} onClick={() => setChoiceModalOpen(false)} aria-label="Close">×</button>
             <h3 style={styles.modalTitle}>Tooth #{choiceTooth}</h3>
             <p style={styles.mutedText}>
               This tooth already has a treatment plan. What would you like to do?
@@ -572,7 +606,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
       {modalOpen && (
         <div style={styles.overlay} onClick={requestCloseModal}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={requestCloseModal}>x</button>
+            <button type="button" style={styles.closeIconBtn} onClick={requestCloseModal} aria-label="Close">×</button>
             <h3 style={styles.modalTitle}>{modalTitle}</h3>
 
             <div style={styles.formGroup}>
@@ -581,13 +615,16 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
                 style={{ ...styles.input, ...styles.readonlyInput }}
                 value={
                   form.applyToAll
-                    ? 'All Teeth (Braces / Aligners)'
+                    ? 'All Teeth'
                     : form.tooth_number
                       ? `#${form.tooth_number}`
                       : ''
                 }
                 readOnly
               />
+              {fieldErrors.tooth_number && (
+                <div style={styles.fieldError}>{fieldErrors.tooth_number}</div>
+              )}
             </div>
 
             {!editingPlan && (
@@ -614,6 +651,9 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
                 onChange={e => handleFormChange('planned_treatment', e.target.value)}
                 placeholder="e.g. Braces, Root Canal, Filling, Crown..."
               />
+              {fieldErrors.planned_treatment && (
+                <div style={styles.fieldError}>{fieldErrors.planned_treatment}</div>
+              )}
             </div>
 
             <div style={styles.formGroup}>
@@ -648,6 +688,9 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
                 value={form.date_completed}
                 onChange={e => handleFormChange('date_completed', e.target.value)}
               />
+              {fieldErrors.date_completed && (
+                <div style={styles.fieldError}>{fieldErrors.date_completed}</div>
+              )}
             </div>
 
             {formError && <div style={styles.formError}>{formError}</div>}
@@ -717,7 +760,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
       {viewModalOpen && viewPlan && (
         <div style={styles.overlay} onClick={requestCloseViewModal}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={requestCloseViewModal}>x</button>
+            <button type="button" style={styles.closeIconBtn} onClick={requestCloseViewModal} aria-label="Close">×</button>
             <h3 style={styles.modalTitle}>Treatment Plan — Tooth #{viewPlan.tooth_number}</h3>
 
             <div style={styles.viewRow}>
@@ -799,7 +842,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
       {attachmentModalOpen && attachmentPlan && (
         <div style={styles.overlay} onClick={requestCloseAttachmentModal}>
           <div style={styles.attachmentModal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={requestCloseAttachmentModal}>x</button>
+            <button type="button" style={styles.closeIconBtn} onClick={requestCloseAttachmentModal} aria-label="Close">×</button>
             <div style={styles.attachmentHeader}>
               <h3 style={styles.modalTitle}>Tooth #{attachmentPlan.tooth_number}</h3>
               <div style={styles.attachmentMeta}>
@@ -879,7 +922,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
       {previewAttachment && (
         <div style={styles.lightboxOverlay} onClick={() => setPreviewAttachment(null)}>
           <div style={styles.lightboxContent} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={() => setPreviewAttachment(null)}>x</button>
+            <button type="button" style={styles.closeIconBtn} onClick={() => setPreviewAttachment(null)} aria-label="Close">×</button>
             <h3 style={styles.modalTitle}>{previewAttachment.file_name}</h3>
             {isImageAttachment(previewAttachment) ? (
               <img
@@ -1088,4 +1131,3 @@ function AttachmentThumb({ attachment, styles }) {
     </div>
   );
 }
-
