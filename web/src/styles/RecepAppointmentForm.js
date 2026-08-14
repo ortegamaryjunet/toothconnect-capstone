@@ -11,9 +11,9 @@ const createRecepAppointmentFormStyles = ({
       justifyContent: 'center',
       alignItems: 'flex-start',
       background:
-        'radial-gradient(circle at 12% 20%, rgba(212, 175, 55, 0.16), transparent 28%),' +
-        'radial-gradient(circle at 90% 10%, rgba(139, 101, 8, 0.10), transparent 28%),' +
-        'linear-gradient(135deg, #ffffff, #fff8e1)',
+        'radial-gradient(circle at 8% 8%, rgba(212, 175, 55, 0.10), transparent 30%),' +
+        'radial-gradient(circle at 92% 15%, rgba(212, 175, 55, 0.08), transparent 28%),' +
+        'linear-gradient(135deg, #fffdf5, #fff8e1)',
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
     },
@@ -21,10 +21,12 @@ const createRecepAppointmentFormStyles = ({
     container: {
       width: '100%',
       maxWidth: 1180,
-      background: '#ffffff',
-      borderRadius: isVerySmall ? 18 : 22,
-      padding: isMobile ? 20 : 26,
-      boxShadow: '0 18px 45px rgba(139, 101, 8, 0.14)',
+      background: 'rgba(255, 255, 255, 0.96)',
+      border: '1px solid #e2e8f0',
+      borderRadius: isVerySmall ? 18 : 24,
+      padding: isMobile ? 18 : 28,
+      boxShadow: '0 20px 55px rgba(15, 23, 42, 0.08)',
+      backdropFilter: 'blur(10px)',
       boxSizing: 'border-box',
     },
 
@@ -32,7 +34,7 @@ const createRecepAppointmentFormStyles = ({
       position: 'relative',
       textAlign: 'center',
       padding: isVerySmall ? '4px 82px 20px' : '0 86px 24px',
-      borderBottom: '1px solid #e5e7eb',
+      borderBottom: '1px solid #e2e8f0',
       marginBottom: 28,
     },
 
@@ -42,6 +44,7 @@ const createRecepAppointmentFormStyles = ({
       fontSize: isVerySmall ? 22 : 28,
       color: '#0f172a',
       fontWeight: 800,
+      letterSpacing: '-0.02em',
     },
 
     headerText: {
@@ -60,18 +63,18 @@ const createRecepAppointmentFormStyles = ({
       height: 42,
       padding: '0 16px',
       border: '1px solid #d4af37',
-      background: '#d4af37',
-      borderRadius: 14,
+      background: '#fffdf5',
+      borderRadius: 12,
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       transition: '0.2s ease',
-      color: '#ffffff',
+      color: '#8b6508',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
       fontWeight: 700,
-      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+      boxShadow: 'none',
     },
 
     backIcon: {
@@ -80,8 +83,9 @@ const createRecepAppointmentFormStyles = ({
 
     formSection: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : '1fr 1.05fr',
-      gap: 26,
+      gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 0.92fr) minmax(0, 1.08fr)',
+      gap: isMobile ? 18 : 24,
+      alignItems: 'start',
     },
 
     alertBox: {
@@ -103,16 +107,18 @@ const createRecepAppointmentFormStyles = ({
       background: '#ffffff',
       border: '1px solid #e2e8f0',
       borderRadius: 18,
+      boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)',
       padding: isVerySmall ? 18 : 24,
       boxSizing: 'border-box',
     },
 
     panelTitle: {
-      margin: '0 0 22px',
+      margin: '0 0 18px',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 19,
       color: '#0f172a',
       fontWeight: 800,
+      letterSpacing: '-0.02em',
     },
 
     field: {
@@ -187,15 +193,15 @@ const createRecepAppointmentFormStyles = ({
 
     input: {
       width: '100%',
-      border: '1px solid #cbd5e1',
-      borderRadius: 10,
+      border: '1px solid #d7dee8',
+      borderRadius: 12,
       padding: '12px 14px',
       fontSize: 14,
       fontFamily: 'Arial, sans-serif',
       color: '#0f172a',
       background: '#ffffff',
       outline: 'none',
-      transition: '0.2s ease',
+      transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
       boxSizing: 'border-box',
     },
 
@@ -299,10 +305,10 @@ const createRecepAppointmentFormStyles = ({
     },
 
     calendarContainer: {
-      background: '#ffffff',
-      borderRadius: 16,
-      border: '1px solid #e2e8f0',
-      padding: isVerySmall ? 14 : 18,
+      background: 'transparent',
+      borderRadius: 18,
+      border: '1px solid #ead8a7',
+      padding: isVerySmall ? 12 : 16,
       boxSizing: 'border-box',
     },
 
@@ -320,21 +326,23 @@ const createRecepAppointmentFormStyles = ({
     },
 
     calendarNav: {
-      minWidth: 64,
-      height: 38,
-      padding: '0 14px',
-      border: '1px solid #ead8a7',
+      minWidth: isMobile ? 56 : 68,
+      height: isMobile ? 38 : 40,
+      padding: '0 12px',
+      border: '1px solid #e5c978',
       borderRadius: 12,
-      background: '#fff8e1',
+      background: '#fffdf5',
+      color: '#b8860b',
+      cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      cursor: 'pointer',
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 600,
+      fontSize: isMobile ? 11 : 13,
       transition: 'all 0.2s ease',
-      color: '#8b6508',
-      fontFamily: '"Inter Bold", Arial, sans-serif',
-      fontSize: 13,
       flexShrink: 0,
+      boxSizing: 'border-box',
     },
 
     calendarDropdowns: {
@@ -416,14 +424,14 @@ const createRecepAppointmentFormStyles = ({
     },
 
     calendarTdToday: {
-      background: '#fde68a',
-      color: '#92400e',
+      background: '#ead8a7',
+      color: '#8b6508',
       fontWeight: 800,
       boxShadow: 'none',
     },
 
     calendarTdSelected: {
-      background: '#d4af37',
+      background: 'linear-gradient(135deg, #d4af37, #b8860b)',
       color: '#ffffff',
       fontWeight: 800,
       boxShadow: 'none',
@@ -496,7 +504,7 @@ const createRecepAppointmentFormStyles = ({
       height: 42,
       border: '1px solid #cbd5e1',
       borderRadius: 10,
-      background: '#f1f5f9',
+      background: '#f8fafc',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -551,7 +559,7 @@ const createRecepAppointmentFormStyles = ({
 
     slotSuggestionBtn: {
       padding: '5px 14px',
-      background: '#d4af37',
+      background: 'linear-gradient(135deg, #d4af37, #b8860b)',
       color: '#fff',
       border: 'none',
       borderRadius: 6,
@@ -597,7 +605,7 @@ const createRecepAppointmentFormStyles = ({
       border: '1px solid #ead8a7',
       borderRadius: 8,
       background: '#ffffff',
-      color: '#8b6508',
+      color: '#b8860b',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 14,
       cursor: 'pointer',
@@ -617,7 +625,7 @@ const createRecepAppointmentFormStyles = ({
       border: 'none',
       borderRadius: 8,
       background: '#fff8e1',
-      color: '#8b6508',
+      color: '#b8860b',
       fontFamily: 'Arial, sans-serif',
       fontSize: 13,
       fontWeight: 600,
@@ -626,7 +634,7 @@ const createRecepAppointmentFormStyles = ({
     },
 
     slotChipSelected: {
-      background: '#d4af37',
+      background: 'linear-gradient(135deg, #d4af37, #b8860b)',
       color: '#ffffff',
     },
 
@@ -706,7 +714,7 @@ const createRecepAppointmentFormStyles = ({
       border: '1px solid #ead8a7',
       borderRadius: 10,
       background: '#ffffff',
-      color: '#8b6508',
+      color: '#b8860b',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 15,
       fontWeight: 700,
@@ -719,14 +727,14 @@ const createRecepAppointmentFormStyles = ({
       padding: 13,
       border: 'none',
       borderRadius: 10,
-      background: '#d4af37',
+      background: 'linear-gradient(135deg, #d4af37, #b8860b)',
       color: '#ffffff',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 15,
       fontWeight: 700,
       cursor: 'pointer',
       transition: '0.2s ease',
-      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+      boxShadow: '0 8px 20px rgba(139, 101, 8, 0.18)',
     },
 
     buttonDisabled: {
@@ -926,9 +934,9 @@ const createRecepAppointmentFormStyles = ({
       fontSize: 14,
       fontWeight: 700,
       cursor: 'pointer',
-      backgroundColor: '#d4af37',
+      background: 'linear-gradient(135deg, #d4af37, #b8860b)',
       color: '#ffffff',
-      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
+      boxShadow: '0 8px 20px rgba(139, 101, 8, 0.18)',
     },
   };
 };
