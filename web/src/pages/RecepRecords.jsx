@@ -348,7 +348,10 @@ export default function RecepRecords() {
       lastName: sourcePatient.lastName || '',
       email: sourcePatient.email || '',
       dateOfBirth: toDateInputValue(sourcePatient.dateOfBirth),
-      age: sourcePatient.age || '',
+      age:
+        calculateAge(toDateInputValue(sourcePatient.dateOfBirth)) ||
+        sourcePatient.age ||
+        '',
       gender: sourcePatient.gender || '',
       contactCountry: contactFormValue.country,
       emergencyContactCountry: emergencyContactFormValue.country,
@@ -479,26 +482,67 @@ export default function RecepRecords() {
     }
   }
 
+  function getEditFieldError(field, value) {
+    const stringValue = String(value ?? '').trim();
+
+    if (!stringValue) {
+      return '';
+    }
+
+    const nameFields = [
+      'firstName',
+      'middleName',
+      'lastName',
+      'occupation',
+      'emergencyContactName',
+    ];
+
+    if (nameFields.includes(field) && !/^[A-Za-zÀ-ÿ\s'\-]+$/.test(stringValue)) {
+      return 'This field must contain letters, spaces, apostrophes, and hyphens only.';
+    }
+
+    if (field === 'email') {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailPattern.test(stringValue)) {
+        return 'Please enter a valid email address.';
+      }
+    }
+
+    if (field === 'dateOfBirth') {
+      const dobDate = new Date(`${stringValue}T00:00:00`);
+      const todayDate = new Date();
+
+      todayDate.setHours(0, 0, 0, 0);
+
+      if (Number.isNaN(dobDate.getTime()) || dobDate > todayDate) {
+        return 'Date of birth cannot be in the future.';
+      }
+    }
+
+    return '';
+  }
+
   function handleEditChange(field, value) {
-    let sanitized = value;
+    const nextValue = String(value ?? '');
+    const error = getEditFieldError(field, nextValue);
 
-    if (['firstName', 'middleName', 'lastName'].includes(field)) {
-      sanitized = String(value || '').replace(/[^a-zA-ZÀ-ÿ\s'\-]/g, '');
-    }
+    setEditPatient((current) => {
+      const nextPatient = {
+        ...current,
+        [field]: nextValue,
+      };
 
-    if (['occupation', 'emergencyContactName'].includes(field)) {
-      sanitized = String(value || '').replace(/[0-9]/g, '');
-    }
+      if (field === 'dateOfBirth') {
+        nextPatient.age = calculateAge(nextValue);
+      }
 
-    setEditPatient((current) => ({
-      ...current,
-      [field]: sanitized,
-      age: field === 'dateOfBirth' ? calculateAge(sanitized) : current.age,
-    }));
+      return nextPatient;
+    });
 
     setEditErrors((current) => ({
       ...current,
-      [field]: '',
+      [field]: error,
     }));
   }
 
@@ -560,16 +604,23 @@ export default function RecepRecords() {
       }
     });
 
-    if (editPatient.dateOfBirth) {
-      const dobDate = new Date(editPatient.dateOfBirth);
-      const todayDate = new Date();
+    const fieldsToValidate = [
+      'firstName',
+      'middleName',
+      'lastName',
+      'occupation',
+      'emergencyContactName',
+      'email',
+      'dateOfBirth',
+    ];
 
-      todayDate.setHours(0, 0, 0, 0);
+    fieldsToValidate.forEach((field) => {
+      const error = getEditFieldError(field, editPatient[field]);
 
-      if (Number.isNaN(dobDate.getTime()) || dobDate > todayDate) {
-        nextErrors.dateOfBirth = 'Date of birth cannot be in the future.';
+      if (error) {
+        nextErrors[field] = error;
       }
-    }
+    });
 
     const contactError = validatePhoneNumber(
       editPatient.contactNumber,
@@ -1502,6 +1553,7 @@ export default function RecepRecords() {
                 label="Middle Name"
                 value={editPatient.middleName}
                 readOnly={editModalReadOnly}
+                error={editErrors.middleName}
                 onChange={(value) => handleEditChange('middleName', value)}
               />
 
@@ -1666,6 +1718,7 @@ export default function RecepRecords() {
                 label="Emergency Contact Name"
                 value={editPatient.emergencyContactName || ''}
                 readOnly={editModalReadOnly}
+                error={editErrors.emergencyContactName}
                 onChange={(value) =>
                   handleEditChange('emergencyContactName', value)
                 }
@@ -1974,7 +2027,16 @@ function FieldInput({
         }}
       />
 
-      {error && <p style={styles.fieldErrorText}>{error}</p>}
+      {error && (
+        <p
+          style={{
+            ...styles.fieldErrorText,
+            color: '#dc2626',
+          }}
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -2034,7 +2096,16 @@ function PhoneField({
         />
       </div>
 
-      {error && <p style={styles.fieldErrorText}>{error}</p>}
+      {error && (
+        <p
+          style={{
+            ...styles.fieldErrorText,
+            color: '#dc2626',
+          }}
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -2065,7 +2136,16 @@ function TextAreaField({
         }}
       />
 
-      {error && <p style={styles.fieldErrorText}>{error}</p>}
+      {error && (
+        <p
+          style={{
+            ...styles.fieldErrorText,
+            color: '#dc2626',
+          }}
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -2226,23 +2306,39 @@ function splitFullName(fullName) {
 }
 
 function calculateAge(dateValue) {
-  if (!dateValue) {
+  const value = String(dateValue || '').trim();
+
+  if (!value) {
     return '';
   }
 
-  const birthDate = new Date(dateValue);
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
-  if (Number.isNaN(birthDate.getTime())) {
+  if (!match) {
+    return '';
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  const birthDate = new Date(year, month - 1, day);
+
+  if (
+    birthDate.getFullYear() !== year ||
+    birthDate.getMonth() !== month - 1 ||
+    birthDate.getDate() !== day
+  ) {
     return '';
   }
 
   const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDifference = today.getMonth() - birthDate.getMonth();
+
+  let age = today.getFullYear() - year;
 
   if (
-    monthDifference < 0 ||
-    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+    today.getMonth() < month - 1 ||
+    (today.getMonth() === month - 1 && today.getDate() < day)
   ) {
     age -= 1;
   }
