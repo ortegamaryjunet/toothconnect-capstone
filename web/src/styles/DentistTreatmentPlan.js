@@ -161,9 +161,9 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     bracesBtn: {
       minHeight: 38,
-      padding: '0 14px',
+      padding: '0 16px',
       fontSize: 12,
-      fontWeight: 800,
+      fontWeight: 700,
       border: 'none',
       borderRadius: 10,
       background: primaryGradient,
@@ -303,19 +303,20 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     editBtn: {
       minHeight: 40,
-      padding: '0 16px',
+      padding: '0 20px',
+      fontSize: 13,
       borderRadius: 10,
       border: 'none',
       background: primaryGradient,
       color: '#ffffff',
-      fontWeight: 700,
+      fontWeight: 800,
       cursor: 'pointer',
       boxShadow: '0 6px 14px rgba(139, 101, 8, .16)',
     },
 
     deleteBtn: {
       minHeight: 40,
-      padding: '0 16px',
+      padding: '0 20px',
       fontSize: 13,
       fontWeight: 800,
       border: '1px solid #fecaca',
@@ -331,8 +332,8 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       justifyContent: 'center',
       padding: '5px 9px',
       borderRadius: 999,
-      fontSize: 11,
-      fontWeight: 800,
+      fontSize: 12,
+      fontWeight: 700,
       whiteSpace: 'nowrap',
     },
 
@@ -360,7 +361,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       border: '1px solid #fecdd3',
       borderRadius: 10,
       color: '#be123c',
-      fontSize: 13,
+      fontSize: 11,
       marginBottom: 12,
     },
 
@@ -400,7 +401,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 1000,
+      zIndex: 2147483647,
       padding: isMobile ? 14 : 24,
       boxSizing: 'border-box',
       overflow: 'auto',
@@ -607,7 +608,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 1200,
+      zIndex: 2147483646,
       padding: 16,
       boxSizing: 'border-box',
     },
@@ -717,10 +718,10 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     viewModalActions: {
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-      marginTop: 20,
+      justifyContent: 'center',
+      alignItems: 'right',
+      gap: 13,
+      marginTop: 24,
     },
 
     confirmModal: {
@@ -931,8 +932,16 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
 
     viewLabel: {
       fontSize: 12,
-      fontWeight: 800,
+      fontWeight: 700,
       color: muted,
+    },
+
+    fieldError: {
+      marginTop: 6,
+      color: '#dc2626',
+      fontSize: 12,
+      fontWeight: 500,
+      lineHeight: 1.4,
     },
 
     viewValue: {
@@ -945,4 +954,4 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
   };
 };
 
-export default createTreatmentPlanStyles;
+export default createTreatmentPlanStyles; 
