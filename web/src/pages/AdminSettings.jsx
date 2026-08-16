@@ -168,6 +168,7 @@ const USER_FIELD_LABELS = {
 };
 const USER_FULL_NAME_MIN_WORDS = 2;
 const ADMIN_NAME_REGEX = /^[a-zA-Z\s]+$/;
+const ADMIN_PASSWORD_REUSE_ERROR = 'New password must be different from your current password.';
 const adminAccountRequiredFields = ['name', 'email', 'phone', 'status'];
 const phoneCountryOptions = getCountries().map((country) => ({
   country,
@@ -254,7 +255,7 @@ function validatePhoneNumber(value, country = 'PH') {
   const digits = String(value || '').replace(/\D/g, '');
 
   if (!digits || isDialCodeOnly(digits, country)) {
-    return 'This field is required';
+    return 'This field is required.';
   }
 
   const phoneNumber = parseContactNumber(value, country);
@@ -978,10 +979,11 @@ export default function AdminSettings() {
   const [adminAccountPhoneCountry, setAdminAccountPhoneCountry] = useState('PH');
   const [adminAccountOriginalPhoneCountry, setAdminAccountOriginalPhoneCountry] = useState('PH');
   const [adminAccountTouchedFields, setAdminAccountTouchedFields] = useState({});
-  const [adminAccountMessage, setAdminAccountMessage] = useState('');
   const [adminAccountError, setAdminAccountError] = useState('');
+  const [adminAccountPasswordError, setAdminAccountPasswordError] = useState('');
   const [showAdminAccountCancelConfirmModal, setShowAdminAccountCancelConfirmModal] = useState(false);
   const [adminAccountSaveConfirmModal, setAdminAccountSaveConfirmModal] = useState(null);
+  const [adminAccountSaveResultModal, setAdminAccountSaveResultModal] = useState(null);
   const [adminProfilePhotoUploading, setAdminProfilePhotoUploading] = useState(false);
   const [adminPhotoRemoveConfirm, setAdminPhotoRemoveConfirm] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
@@ -1130,6 +1132,48 @@ export default function AdminSettings() {
   }, []);
 
   useEffect(() => {
+    const password = String(adminAccountForm.password || '');
+    const confirmPassword = String(adminAccountForm.confirmPassword || '');
+    const hasPasswordInput = !!password || !!confirmPassword;
+    const passesLocalPasswordRules =
+      password.length >= 8 &&
+      /[a-zA-Z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      /^[a-zA-Z0-9]+$/.test(password) &&
+      password === confirmPassword;
+
+    if (!isEditingAdminAccount || !hasPasswordInput || !passesLocalPasswordRules) {
+      setAdminAccountPasswordError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const res = await api.post('/auth/me/password-reuse', { password });
+        if (cancelled) return;
+        setAdminAccountPasswordError(
+          res.data?.reusesCurrentPassword ? ADMIN_PASSWORD_REUSE_ERROR : ''
+        );
+      } catch (err) {
+        if (cancelled) return;
+        if (err.response?.data?.message === ADMIN_PASSWORD_REUSE_ERROR) {
+          setAdminAccountPasswordError(ADMIN_PASSWORD_REUSE_ERROR);
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    adminAccountForm.confirmPassword,
+    adminAccountForm.password,
+    isEditingAdminAccount,
+  ]);
+
+  useEffect(() => {
     if (
       showLogoutModal ||
       activeOverlay ||
@@ -1146,6 +1190,7 @@ export default function AdminSettings() {
       websiteAboutSaveConfirmModal ||
       showAdminAccountCancelConfirmModal ||
       adminAccountSaveConfirmModal ||
+      adminAccountSaveResultModal ||
       showServiceCancelConfirmModal ||
       showServiceSaveConfirmModal ||
       serviceSaveResultModal ||
@@ -1182,6 +1227,7 @@ export default function AdminSettings() {
     websiteContentSaveConfirmModal,
     showAdminAccountCancelConfirmModal,
     adminAccountSaveConfirmModal,
+    adminAccountSaveResultModal,
     showServiceCancelConfirmModal,
     showServiceSaveConfirmModal,
     serviceSaveResultModal,
@@ -1240,6 +1286,20 @@ export default function AdminSettings() {
   }, [serviceSaveResultModal]);
 
   useEffect(() => {
+    if (!adminAccountSaveResultModal) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setAdminAccountSaveResultModal(null);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [adminAccountSaveResultModal]);
+
+  useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
@@ -1256,6 +1316,7 @@ export default function AdminSettings() {
         setShowWebsiteContentCancelConfirmModal(false);
         setShowAdminAccountCancelConfirmModal(false);
         setAdminAccountSaveConfirmModal(null);
+        setAdminAccountSaveResultModal(null);
         setShowServiceKitCancelConfirmModal(false);
         setShowServiceKitSaveConfirmModal(false);
         setShowUserCancelConfirmModal(false);
@@ -2812,6 +2873,9 @@ export default function AdminSettings() {
 
   function handleAdminAccountChange(name, value) {
     setAdminAccountTouchedFields((prev) => ({ ...prev, [name]: true }));
+    if (name === 'password' || name === 'confirmPassword') {
+      setAdminAccountPasswordError('');
+    }
 
     let newValue = value;
 
@@ -2847,7 +2911,11 @@ export default function AdminSettings() {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
-      return 'This field is required';
+      return 'This field is required.';
+    }
+
+    if (trimmedName.split(/\s+/).filter(Boolean).length < 2) {
+      return 'Please enter your full name.';
     }
 
     if (/[0-9]/.test(name)) {
@@ -2878,7 +2946,7 @@ export default function AdminSettings() {
     }
 
     if (!/^[a-zA-Z0-9]+$/.test(password)) {
-      return 'Password must not contain special characters.';
+      return 'Password must not contain spaces or special characters.';
     }
 
     if (password !== confirmPassword) {
@@ -2892,7 +2960,7 @@ export default function AdminSettings() {
     const email = String(adminAccountForm.email || '').trim();
 
     if (!email) {
-      return 'This field is required';
+      return 'This field is required.';
     }
 
     if (!USER_EMAIL_REGEX.test(email)) {
@@ -2958,8 +3026,8 @@ export default function AdminSettings() {
   function handleAdminAccountSubmit(event) {
     event.preventDefault();
 
-    setAdminAccountMessage('');
     setAdminAccountError('');
+    setAdminAccountSaveResultModal(null);
     setAdminAccountTouchedFields(
       adminAccountRequiredFields.reduce((fields, field) => {
         fields[field] = true;
@@ -2968,7 +3036,7 @@ export default function AdminSettings() {
     );
 
     const nameError = getAdminAccountNameError();
-    const passwordError = validateAdminPassword();
+    const passwordError = adminAccountPasswordError || validateAdminPassword();
     const emailError = getAdminAccountEmailError();
     const phoneError = getAdminAccountPhoneError();
 
@@ -2980,9 +3048,28 @@ export default function AdminSettings() {
       return;
     }
 
-    setAdminAccountSaveConfirmModal({
-      details: getAdminAccountSaveDetails(),
-    });
+    const details = getAdminAccountSaveDetails();
+    if (!details.some((detail) => detail.changed)) {
+      setAdminAccountForm({
+        ...adminAccountOriginal,
+        password: '',
+        confirmPassword: '',
+      });
+      setAdminAccountTouchedFields({});
+      setAdminAccountPasswordError('');
+      setAdminAccountError('');
+      setShowAdminPassword(false);
+      setShowAdminConfirmPassword(false);
+      setIsEditingAdminAccount(false);
+      setAdminAccountSaveResultModal({
+        type: 'info',
+        title: 'No Changes Made',
+        message: 'No changes were made to the admin account',
+      });
+      return;
+    }
+
+    setAdminAccountSaveConfirmModal({ details });
   }
 
   function handleBranchSubmit(event) {
@@ -3573,13 +3660,14 @@ export default function AdminSettings() {
 
   async function saveAdminAccount() {
     try {
-      setAdminAccountMessage('');
       setAdminAccountError('');
+      setAdminAccountSaveResultModal(null);
+      setAdminAccountPasswordError('');
 
       const nameError = getAdminAccountNameError();
       const emailError = getAdminAccountEmailError();
       const phoneError = getAdminAccountPhoneError();
-      const passwordError = validateAdminPassword();
+      const passwordError = adminAccountPasswordError || validateAdminPassword();
 
       if (nameError || emailError || phoneError) {
         setAdminAccountTouchedFields(
@@ -3633,8 +3721,13 @@ export default function AdminSettings() {
       });
       setAdminAccountPhoneCountry(updatedPhone.country);
       setAdminAccountOriginalPhoneCountry(updatedPhone.country);
-      setAdminAccountMessage(res.data.message || 'Admin account updated.');
+      setAdminAccountSaveResultModal({
+        type: 'success',
+        title: 'Updated Successfully',
+        message: 'Admin Account has been updated successfully.',
+      });
       setAdminAccountTouchedFields({});
+      setAdminAccountPasswordError('');
       setAdminAccountSaveConfirmModal(null);
       setIsEditingAdminAccount(false);
       setShowAdminPassword(false);
@@ -3642,14 +3735,25 @@ export default function AdminSettings() {
       await loadUsers();
     } catch (err) {
       console.error('Failed to update admin account', err);
-      setAdminAccountError(err.response?.data?.message || 'Failed to update admin account.');
+      const message = err.response?.data?.message || 'Failed to update admin account.';
+      if (message === ADMIN_PASSWORD_REUSE_ERROR) {
+        setAdminAccountPasswordError(message);
+        setAdminAccountTouchedFields((prev) => ({
+          ...prev,
+          password: true,
+          confirmPassword: true,
+        }));
+        setAdminAccountSaveConfirmModal(null);
+        return;
+      }
+      setAdminAccountError(message);
     }
   }
 
   async function patchAdminProfilePhoto(data, fallbackMessage) {
     setAdminProfilePhotoUploading(true);
     setAdminAccountError('');
-    setAdminAccountMessage('');
+    setAdminAccountSaveResultModal(null);
 
     try {
       const res = await api.patch('/auth/me', data);
@@ -3664,7 +3768,11 @@ export default function AdminSettings() {
         ...prev,
         profilePhotoUrl: updated.profile_photo_url || '',
       }));
-      setAdminAccountMessage(res.data.message || fallbackMessage);
+      setAdminAccountSaveResultModal({
+        type: 'success',
+        title: 'Updated Successfully',
+        message: res.data.message || fallbackMessage,
+      });
       setAdminPhotoRemoveConfirm(false);
     } catch (err) {
       setAdminAccountError(err.response?.data?.message || fallbackMessage);
@@ -5331,7 +5439,7 @@ const contentEditActions = (
     const adminNameError = getAdminAccountNameError();
     const adminEmailError = getAdminAccountEmailError();
     const adminPhoneError = getAdminAccountPhoneError();
-    const adminPasswordError = validateAdminPassword();
+    const adminPasswordError = adminAccountPasswordError || validateAdminPassword();
     const shouldShowAdminNameError =
       !!adminNameError && !!adminAccountTouchedFields.name;
     const shouldShowAdminEmailError =
@@ -5394,10 +5502,6 @@ const contentEditActions = (
           </span>
         </div>
 
-        {adminAccountMessage && (
-          <p style={styles.successText}>{adminAccountMessage}</p>
-        )}
-
         {adminAccountError && (
           <p style={styles.errorText}>{adminAccountError}</p>
         )}
@@ -5418,8 +5522,8 @@ const contentEditActions = (
                 type="button"
                 style={styles.saveBtn}
                 onClick={() => {
-                  setAdminAccountMessage('');
                   setAdminAccountError('');
+                  setAdminAccountSaveResultModal(null);
                   const cleanAdminAccountForm = {
                     ...adminAccountForm,
                     password: '',
@@ -5636,7 +5740,7 @@ const contentEditActions = (
             </div>
 
             <p style={styles.passwordHint}>
-              Password is optional. Use at least 8 letters/numbers, with one letter and one number. Special characters are not allowed.
+              Password is optional. Use at least 8 characters, with one letter and one number. Special characters are not allowed.
             </p>
             {shouldShowAdminPasswordError && (
               <p style={{ ...styles.errorText, marginTop: 10 }}>
@@ -5693,7 +5797,6 @@ const contentEditActions = (
                 type="button"
                 style={{ ...styles.modalButton, ...styles.logoutBtn }}
                 onClick={() => {
-                  setAdminAccountMessage('');
                   setAdminAccountError('');
                   setShowAdminAccountCancelConfirmModal(false);
                   setAdminAccountSaveConfirmModal(null);
@@ -5751,6 +5854,35 @@ const contentEditActions = (
                 {adminProfilePhotoUploading ? 'Removing...' : 'Yes'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {adminAccountSaveResultModal && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                ...(adminAccountSaveResultModal.type === 'success'
+                  ? { background: '#dcfce7', color: '#16a34a' }
+                  : {}),
+              }}
+            >
+              <i
+                className={
+                  adminAccountSaveResultModal.type === 'success'
+                    ? 'fi fi-rr-check-circle'
+                    : 'fi fi-rr-info'
+                }
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>{adminAccountSaveResultModal.title}</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0 }}>
+              {adminAccountSaveResultModal.message}
+            </p>
           </div>
         </div>
       )}

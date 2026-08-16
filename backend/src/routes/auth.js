@@ -2917,6 +2917,33 @@ router.get('/me', authenticate, async (req, res) => {
   res.json({ ...u, home_branch_city: extractCity(u.home_branch_address), branches });
 });
 
+router.post('/me/password-reuse', authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    const password = String(req.body?.password || '');
+
+    if (!password) {
+      return res.json({ reusesCurrentPassword: false });
+    }
+
+    const [users] = await pool.query(
+      `SELECT password_hash
+       FROM users
+       WHERE id = ? AND role = 'admin'
+       LIMIT 1`,
+      [req.user.user_id]
+    );
+
+    const user = users[0] || null;
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const reusesCurrentPassword = await bcrypt.compare(password, user.password_hash || '');
+    res.json({ reusesCurrentPassword });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.patch(
   '/me',
   authenticate,
@@ -2928,7 +2955,7 @@ router.patch(
 
   try {
     const [currentRows] = await pool.query(
-      `SELECT id, role, name, email, phone, status, profile_photo_url
+      `SELECT id, role, name, email, phone, status, profile_photo_url, password_hash
        FROM users
        WHERE id = ? AND role = 'admin'
        LIMIT 1`,
@@ -2974,12 +3001,19 @@ router.patch(
 
   if (password) {
     if (!/^[a-zA-Z0-9]+$/.test(password)) {
-      return res.status(400).json({ message: 'Password must not contain special characters' });
+      return res.status(400).json({ message: 'Password must not contain spaces or special characters.' });
     }
 
     if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
       return res.status(400).json({
         message: 'Password must be at least 8 characters and contain a letter and number',
+      });
+    }
+
+    const matchesCurrentPassword = await bcrypt.compare(password, current.password_hash || '');
+    if (matchesCurrentPassword) {
+      return res.status(400).json({
+        message: 'New password must be different from your current password.',
       });
     }
   }

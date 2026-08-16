@@ -245,8 +245,12 @@ const expenseGold = '#d4af37';
 const expenseGoldDark = '#9a6b00';
 const expenseGoldSoft = '#fff8e1';
 const expenseGoldBorder = '#f3d675';
+const EXPENSE_ITEM_TEXT_REGEX = /^[A-Za-z\s]+$/;
+const EXPENSE_ITEM_TEXT_FIELDS = ['itemName', 'supplier'];
+const EXPENSE_POSITIVE_NUMBER_FIELDS = ['orderQuantity', 'pricePerItem', 'threshold'];
 const LETTERS_AND_SPACES_ONLY = /^[A-Za-z\s]+$/;
-const editLettersOnlyFields = ['genericName', 'form', 'category', 'unit'];
+const LETTERS_NUMBERS_AND_SPACES_ONLY = /^[A-Za-z0-9\s]+$/;
+const editLettersOnlyFields = ['genericName', 'form', 'category'];
 
 function uniqueSortedNames(rows, fieldName) {
   return Array.from(
@@ -316,6 +320,7 @@ export default function InventoryPage() {
   const [editTouchedFields, setEditTouchedFields] = useState({});
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [editResultModal, setEditResultModal] = useState(null);
   const [showItemHistory, setShowItemHistory] = useState(false);
   const [showItemHistoryCloseConfirm, setShowItemHistoryCloseConfirm] = useState(false);
   const [itemHistoryRows, setItemHistoryRows] = useState([]);
@@ -490,7 +495,7 @@ export default function InventoryPage() {
   const isSearchActive = searchValue.trim().length > 0;
   const isStockFilterActive = Boolean(stockStatusFilter);
   const isDateAddedFilterActive = Boolean(dateAddedFromFilter || dateAddedToFilter);
-  const isCrossCategoryActive = isSearchActive || isStockFilterActive || isDateAddedFilterActive;
+  const isCrossCategoryActive = false;
 
   const activeRows = inventoryMap[activeTab].rows;
 
@@ -654,11 +659,16 @@ export default function InventoryPage() {
   const computedExpense =
     Number(expenseForm.orderQuantity || 0) * Number(expenseForm.pricePerItem || 0);
 
-  const isExpenseOrderQuantityValid = Number(expenseForm.orderQuantity || 0) >= 1;
+  const areExpensePositiveNumberFieldsValid = EXPENSE_POSITIVE_NUMBER_FIELDS.every(
+    (field) => Number(expenseForm[field] || 0) > 0
+  );
+  const areExpenseItemTextFieldsValid = EXPENSE_ITEM_TEXT_FIELDS.every((field) =>
+    EXPENSE_ITEM_TEXT_REGEX.test(String(expenseForm[field] || '').trim())
+  );
 
   const isExpenseFormComplete = expenseRequiredFields.every(
     (field) => String(expenseForm[field] ?? '').trim() !== ''
-  ) && isExpenseOrderQuantityValid;
+  ) && areExpensePositiveNumberFieldsValid && areExpenseItemTextFieldsValid;
 
   const selectedExpenseBranch = expenseBranchOptions.find(
     (b) => String(b.id) === String(expenseForm.branchId)
@@ -839,7 +849,8 @@ export default function InventoryPage() {
       showExpenseModal ||
       showExpenseConfirmModal ||
       showExpenseSuccessModal ||
-      showExpenseCancelConfirmModal
+      showExpenseCancelConfirmModal ||
+      editResultModal
     ) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -862,7 +873,22 @@ export default function InventoryPage() {
     showExpenseConfirmModal,
     showExpenseSuccessModal,
     showExpenseCancelConfirmModal,
+    editResultModal,
   ]);
+
+  useEffect(() => {
+    if (!editResultModal) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setEditResultModal(null);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [editResultModal]);
 
   useEffect(() => {
     function handleEscape(event) {
@@ -879,6 +905,7 @@ export default function InventoryPage() {
         closeExpenseConfirmModal();
         closeExpenseSuccessModal();
         closeExpenseCancelConfirmModal();
+        setEditResultModal(null);
       }
     }
 
@@ -1161,12 +1188,40 @@ export default function InventoryPage() {
       return 'This field is required.';
     }
 
+    if (field === 'threshold' && trimmedValue !== '' && Number(trimmedValue) <= 0) {
+      return 'Critical stock level must be greater than 0';
+    }
+
+    if (field === 'maxStock' && trimmedValue !== '' && Number(trimmedValue) <= 0) {
+      return 'Maximum stock must be greater than 0';
+    }
+
+    if (
+      field === 'threshold' &&
+      trimmedValue !== '' &&
+      String(editForm.maxStock ?? '').trim() !== '' &&
+      Number(trimmedValue) > Number(editForm.maxStock)
+    ) {
+      return 'Critical stock level must not exceed the maximum stock.';
+    }
+
     if (
       editLettersOnlyFields.includes(field) &&
       trimmedValue !== '' &&
       !LETTERS_AND_SPACES_ONLY.test(trimmedValue)
     ) {
+      if (['genericName', 'form', 'category'].includes(field)) {
+        return 'Special characters and numbers are not allowed.';
+      }
       return 'Only letters and spaces are allowed.';
+    }
+
+    if (
+      ['dosage', 'unit'].includes(field) &&
+      trimmedValue !== '' &&
+      !LETTERS_NUMBERS_AND_SPACES_ONLY.test(trimmedValue)
+    ) {
+      return 'Special characters are not allowed.';
     }
 
     return '';
@@ -1319,7 +1374,7 @@ export default function InventoryPage() {
     const hasMissingRequiredField = requiredFields.some(
       (field) => String(editForm[field] ?? '').trim() === ''
     );
-    const invalidCharacterFields = editLettersOnlyFields.filter(
+    const invalidCharacterFields = Array.from(new Set([...requiredFields, 'maxStock'])).filter(
       (field) => String(editForm[field] ?? '').trim() !== '' && getEditFieldError(field)
     );
 
@@ -1336,7 +1391,12 @@ export default function InventoryPage() {
     if (!payload) return;
 
     if (!getEditChangeSummary().length) {
-      setEditError('No changes to save.');
+      closeEditModal();
+      setEditResultModal({
+        type: 'info',
+        title: 'No Changes Made',
+        message: 'No changes were made to this item',
+      });
       return;
     }
 
@@ -1366,6 +1426,11 @@ export default function InventoryPage() {
       await loadInventory();
       setShowEditConfirmModal(false);
       closeEditModal();
+      setEditResultModal({
+        type: 'success',
+        title: 'Updated Successfully',
+        message: 'The inventory item has been updated successfully',
+      });
     } catch (err) {
       setEditError(err.response?.data?.message || 'Failed to update item.');
       setShowEditConfirmModal(false);
@@ -1534,27 +1599,36 @@ export default function InventoryPage() {
     setExpenseTouchedFields((prev) => ({ ...prev, [field]: true }));
   }
 
-  function isExpenseFieldInvalid(field) {
-    if (field === 'orderQuantity') {
-      return (
-        expenseTouchedFields[field] &&
-        (String(expenseForm[field] ?? '').trim() === '' ||
-          Number(expenseForm[field] || 0) < 1)
-      );
-    }
+  function getExpenseFieldError(field, { force = false } = {}) {
+    if (!force && !expenseTouchedFields[field]) return '';
 
-    return (
-      expenseTouchedFields[field] &&
-      String(expenseForm[field] ?? '').trim() === ''
-    );
-  }
+    const value = String(expenseForm[field] ?? '').trim();
 
-  function getExpenseFieldError(field) {
-    if (!isExpenseFieldInvalid(field)) return '';
-    if (field === 'orderQuantity' && Number(expenseForm[field] || 0) < 1) {
+    if (!value) {
       return 'This field is required.';
     }
-    return 'This field is required.';
+
+    if (field === 'orderQuantity' && Number(expenseForm[field] || 0) <= 0) {
+      return 'Order quantity must be greater than 0.';
+    }
+
+    if (field === 'pricePerItem' && Number(expenseForm[field] || 0) <= 0) {
+      return 'Price per item must be greater than 0.';
+    }
+
+    if (field === 'threshold' && Number(expenseForm[field] || 0) <= 0) {
+      return 'Critical stock level must be greater than 0.';
+    }
+
+    if (EXPENSE_ITEM_TEXT_FIELDS.includes(field) && !EXPENSE_ITEM_TEXT_REGEX.test(value)) {
+      return 'Special characters and numbers are not allowed.';
+    }
+
+    return '';
+  }
+
+  function isExpenseFieldInvalid(field) {
+    return !!getExpenseFieldError(field);
   }
 
   function renderExpenseFieldError(field) {
@@ -2363,9 +2437,11 @@ export default function InventoryPage() {
                 onChange={(event) =>
                   handleEditFormChange('maxStock', event.target.value)
                 }
+                onBlur={() => handleEditFieldBlur('maxStock')}
                 onWheel={(event) => event.currentTarget.blur()}
                 style={getEditFieldStyle('maxStock')}
               />
+              {renderEditFieldError('maxStock')}
             </label>
 
             <label style={styles.formGroup}>
@@ -2481,9 +2557,11 @@ export default function InventoryPage() {
                 onChange={(event) =>
                   handleEditFormChange('maxStock', event.target.value)
                 }
+                onBlur={() => handleEditFieldBlur('maxStock')}
                 onWheel={(event) => event.currentTarget.blur()}
                 style={getEditFieldStyle('maxStock')}
               />
+              {renderEditFieldError('maxStock')}
             </label>
           </div>
 
@@ -2613,9 +2691,11 @@ export default function InventoryPage() {
               onChange={(event) =>
                 handleEditFormChange('maxStock', event.target.value)
               }
+              onBlur={() => handleEditFieldBlur('maxStock')}
               onWheel={(event) => event.currentTarget.blur()}
               style={getEditFieldStyle('maxStock')}
             />
+            {renderEditFieldError('maxStock')}
           </label>
 
           <label style={styles.formGroup}>
@@ -2877,7 +2957,7 @@ export default function InventoryPage() {
 
                 <input
                   type="text"
-                  placeholder="Search across all inventory categories"
+                  placeholder={`Search ${inventoryMap[activeTab].label.toLowerCase()}`}
                   value={searchValue}
                   onChange={(event) => setSearchValue(event.target.value)}
                   style={styles.searchInput}
@@ -3613,6 +3693,31 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {!isReceptionist && editResultModal && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                ...(editResultModal.type === 'success'
+                  ? { background: '#dcfce7', color: '#16a34a' }
+                  : { background: '#fee2e2', color: '#dc2626' }),
+              }}
+            >
+              <i
+                className={editResultModal.type === 'success' ? 'fi fi-rr-check' : 'fi fi-rr-info'}
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={{ ...styles.modalTitle, color: '#000000' }}>{editResultModal.title}</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0, color: '#000000' }}>
+              {editResultModal.message}
+            </p>
+          </div>
+        </div>
+      )}
+
       {!isReceptionist && showExpenseModal && (
         <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) handleCancelExpenseModal(); }}>
           <div style={{ background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '26px 28px 24px', boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -3749,7 +3854,7 @@ export default function InventoryPage() {
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px', fontFamily: 'Arial, sans-serif' }}>
               <p style={{ margin: 0, fontSize: 12, color: '#64748b', fontWeight: 800 }}>Total Expense</p>
               <h4 style={{ margin: '4px 0 0', fontSize: 15, color: '#0f172a', fontWeight: 800 }}>
-                {expenseForm.orderQuantity || 0} Ã— {formatPeso(expenseForm.pricePerItem || 0)} = {formatPeso(computedExpense)}
+                {expenseForm.orderQuantity || 0} x {formatPeso(expenseForm.pricePerItem || 0)} = {formatPeso(computedExpense)}
               </h4>
             </div>
 
@@ -3902,11 +4007,11 @@ export default function InventoryPage() {
       {!isReceptionist && showExpenseSuccessModal && (
         <div style={styles.modal}>
           <div style={{ ...styles.modalContent, boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)' }}>
-            <div style={{ ...styles.modalIcon, background: expenseGoldSoft, color: expenseGoldDark }}>
+            <div style={{ ...styles.modalIcon, background: '#dcfce7', color: '#16a34a' }}>
               <i className="fi fi-rr-check" style={styles.modalIconText}></i>
             </div>
-            <h2 style={{ ...styles.modalTitle, color: '#3f2f08' }}>Expense saved successfully</h2>
-            <p style={{ ...styles.modalText, marginBottom: 0, color: expenseGoldDark }}>
+            <h2 style={{ ...styles.modalTitle, color: '#000000' }}>Expense saved successfully</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0, color: '#000000' }}>
               The expense input has been saved.
             </p>
           </div>

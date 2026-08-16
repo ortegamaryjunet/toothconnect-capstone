@@ -981,6 +981,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
 
   const branchId = Number.parseInt(branch_id, 10);
   const itemNameValue = String(itemName || '').trim();
+  const supplierValue = String(supplier || '').trim();
   const quantity = normalizeQuantity(orderQuantity, 0);
   const price = normalizePrice(pricePerItem);
   const maximumStockValue = Math.max(0, Number(maximum_stock ?? maxStock ?? 0) || 0);
@@ -1018,9 +1019,21 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
 
   const config = categoryConfig[category];
 
-  if (!branchId || !config || !itemNameValue || !quantity) {
+  if (!branchId || !config || !itemNameValue || !supplierValue || !quantity) {
     return res.status(400).json({
-      message: 'branch_id, category, itemName, orderQuantity, and pricePerItem are required',
+      message: 'branch_id, category, itemName, supplier, orderQuantity, and pricePerItem are required',
+    });
+  }
+
+  if (price <= 0) {
+    return res.status(400).json({
+      message: 'Price per item must be greater than 0.',
+    });
+  }
+
+  if (!/^[A-Za-z\s]+$/.test(itemNameValue) || !/^[A-Za-z\s]+$/.test(supplierValue)) {
+    return res.status(400).json({
+      message: 'Special characters and numbers are not allowed.',
     });
   }
 
@@ -1080,7 +1093,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
              date_added = ?,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
-        [quantity, supplier || '', maximumStockValue, price, expenseDate, inventoryId]
+        [quantity, supplierValue, maximumStockValue, price, expenseDate, inventoryId]
       );
       const updatedRow = await fetchInventoryAlertRow(connection, category, inventoryId);
       await createInventoryStatusNotifications(connection, previousRow, updatedRow);
@@ -1099,7 +1112,7 @@ router.post('/purchase-expenses', requireRole('admin'), async (req, res) => {
       const [insertResult] = await connection.query(config.insertSql, [
         branchId,
         itemNameValue,
-        supplier || null,
+        supplierValue,
         quantity,
         maximumStockValue,
         price,
