@@ -961,6 +961,8 @@ export default function AdminSettings() {
   const [cancellationPolicySaving, setCancellationPolicySaving] = useState(false);
   const [showCancellationPolicyCancelConfirmModal, setShowCancellationPolicyCancelConfirmModal] = useState(false);
   const [cancellationPolicySaveConfirmModal, setCancellationPolicySaveConfirmModal] = useState(null);
+  const [showCancellationPolicyRemoveConfirmModal, setShowCancellationPolicyRemoveConfirmModal] = useState(false);
+  const [cancellationPolicyRemoving, setCancellationPolicyRemoving] = useState(false);
   const [deleteAnnouncementModal, setDeleteAnnouncementModal] = useState(false);
   const [deleteAnnouncementId, setDeleteAnnouncementId] = useState(null);
   const [deleteWebsiteServiceModal, setDeleteWebsiteServiceModal] = useState(false);
@@ -989,15 +991,19 @@ export default function AdminSettings() {
   const [branchPhoneCountry, setBranchPhoneCountry] = useState('PH');
   const [branchTouchedFields, setBranchTouchedFields] = useState({});
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
+  const [serviceFormOriginal, setServiceFormOriginal] = useState(initialServiceForm);
   const [serviceTouchedFields, setServiceTouchedFields] = useState({});
   const [serviceCategoryMode, setServiceCategoryMode] = useState('select');
   const [showServiceCancelConfirmModal, setShowServiceCancelConfirmModal] = useState(false);
   const [showServiceSaveConfirmModal, setShowServiceSaveConfirmModal] = useState(false);
+  const [serviceSaveResultModal, setServiceSaveResultModal] = useState(null);
   const [serviceKitOverlay, setServiceKitOverlay] = useState(false);
   const [serviceKitServiceId, setServiceKitServiceId] = useState('');
   const [serviceKitBranchId, setServiceKitBranchId] = useState('');
   const [serviceKitItems, setServiceKitItems] = useState([]);
+  const [serviceKitOriginalItems, setServiceKitOriginalItems] = useState([]);
   const [serviceKitItemErrors, setServiceKitItemErrors] = useState([]);
+  const [serviceKitServiceError, setServiceKitServiceError] = useState('');
   const [showServiceKitCancelConfirmModal, setShowServiceKitCancelConfirmModal] = useState(false);
   const [showServiceKitSaveConfirmModal, setShowServiceKitSaveConfirmModal] = useState(false);
   const [serviceKitServicesForBranch, setServiceKitServicesForBranch] = useState([]);
@@ -1064,6 +1070,9 @@ export default function AdminSettings() {
   });
 
   const branchYearsActive = calculateYearsActive(branchForm.date_opened);
+  const cancellationPolicyError = cancellationPolicyEditing
+    ? getCancellationPolicyError(cancellationPolicyDraft)
+    : '';
 
   const isBranchFormComplete = branchRequiredFields.every(
     (field) => !getBranchFieldError(field, { force: true })
@@ -1129,6 +1138,7 @@ export default function AdminSettings() {
       websiteAnnouncementOverlay ||
       showCancellationPolicyCancelConfirmModal ||
       cancellationPolicySaveConfirmModal ||
+      showCancellationPolicyRemoveConfirmModal ||
       websiteValidationModal ||
       showWebsiteContentCancelConfirmModal ||
       websiteContentSaveConfirmModal ||
@@ -1138,6 +1148,7 @@ export default function AdminSettings() {
       adminAccountSaveConfirmModal ||
       showServiceCancelConfirmModal ||
       showServiceSaveConfirmModal ||
+      serviceSaveResultModal ||
       showServiceKitCancelConfirmModal ||
       showServiceKitSaveConfirmModal ||
       showUserCancelConfirmModal ||
@@ -1165,6 +1176,7 @@ export default function AdminSettings() {
     websiteAnnouncementOverlay,
     showCancellationPolicyCancelConfirmModal,
     cancellationPolicySaveConfirmModal,
+    showCancellationPolicyRemoveConfirmModal,
     websiteValidationModal,
     showWebsiteContentCancelConfirmModal,
     websiteContentSaveConfirmModal,
@@ -1172,6 +1184,7 @@ export default function AdminSettings() {
     adminAccountSaveConfirmModal,
     showServiceCancelConfirmModal,
     showServiceSaveConfirmModal,
+    serviceSaveResultModal,
     showServiceKitCancelConfirmModal,
     showServiceKitSaveConfirmModal,
     showUserCancelConfirmModal,
@@ -1213,6 +1226,20 @@ export default function AdminSettings() {
   }, [userSaveResultModal]);
 
   useEffect(() => {
+    if (!serviceSaveResultModal) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setServiceSaveResultModal(null);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [serviceSaveResultModal]);
+
+  useEffect(() => {
     function handleEscape(event) {
       if (event.key === 'Escape') {
         closeLogoutModal();
@@ -1222,6 +1249,7 @@ export default function AdminSettings() {
         setWebsiteAnnouncementOverlay(null);
         setCancellationPolicyDraft(cancellationPolicyMessage);
         setCancellationPolicyEditing(false);
+        setShowCancellationPolicyRemoveConfirmModal(false);
         setWebsiteValidationModal(null);
         setWebsiteServiceSaveConfirmModal(null);
         setWebsiteAboutSaveConfirmModal(null);
@@ -1235,7 +1263,9 @@ export default function AdminSettings() {
         setShowInactiveUserConfirmModal(false);
         setDuplicateUserModal(null);
         setUserSaveResultModal(null);
+        setServiceSaveResultModal(null);
         setServiceKitOverlay(false);
+        setServiceKitOriginalItems([]);
       }
     }
 
@@ -2138,6 +2168,7 @@ export default function AdminSettings() {
     setBranchPhoneCountry('PH');
     setShowServiceCancelConfirmModal(false);
     setShowServiceSaveConfirmModal(false);
+    setServiceSaveResultModal(null);
     setServiceTouchedFields({});
     setShowUserCancelConfirmModal(false);
     setShowUserSaveConfirmModal(false);
@@ -2169,11 +2200,18 @@ export default function AdminSettings() {
     const value = String(cancellationPolicyDraft || '').trim();
     const previousValue = String(cancellationPolicyMessage || '').trim();
 
-    if (!value) {
-      showWebsiteValidationModal(
-        'Required Fields Missing',
-        'Please enter an appointment cancellation policy message.'
-      );
+    if (getCancellationPolicyError(cancellationPolicyDraft)) {
+      return;
+    }
+
+    if (value === previousValue) {
+      setCancellationPolicyDraft(cancellationPolicyMessage);
+      setCancellationPolicyEditing(false);
+      setServiceSaveResultModal({
+        title: 'No Changes Made',
+        message: 'No changes were made.',
+        type: 'info',
+      });
       return;
     }
 
@@ -2203,15 +2241,18 @@ export default function AdminSettings() {
         message: String(cancellationPolicyDraft || '').trim(),
       });
       const message = res.data.policy?.message || '';
+      const isNewPolicyMessage = !String(cancellationPolicyMessage || '').trim();
 
       setCancellationPolicyMessage(message);
       setCancellationPolicyDraft(message);
       setCancellationPolicyEditing(false);
-      showWebsiteValidationModal(
-        'Policy Saved',
-        'Appointment cancellation policy has been updated successfully.',
-        'success'
-      );
+      setServiceSaveResultModal({
+        title: isNewPolicyMessage ? 'Policy Saved' : 'Policy Updated',
+        message: isNewPolicyMessage
+          ? 'Appointment cancellation policy has been saved successfully.'
+          : 'Appointment cancellation policy has been updated successfully.',
+        type: 'success',
+      });
     } catch (err) {
       showWebsiteValidationModal(
         'Save Failed',
@@ -2219,6 +2260,55 @@ export default function AdminSettings() {
       );
     } finally {
       setCancellationPolicySaving(false);
+    }
+  }
+
+  function getCancellationPolicyError(value) {
+    const rawValue = String(value ?? '');
+    const trimmedValue = rawValue.trim();
+
+    if (!trimmedValue) {
+      return 'Cancellation policy cannot be empty.';
+    }
+
+    if (trimmedValue.length < 10) {
+      return 'Cancellation policy must be at least 10 characters';
+    }
+
+    if (rawValue.length > 1500) {
+      return 'Cancellation policy must not exceed 1500 characters';
+    }
+
+    if (!/[a-zA-Z]/.test(trimmedValue) && /[^0-9\s]/.test(trimmedValue)) {
+      return 'Special characters are not allowed.';
+    }
+
+    if (/^[0-9\s]+$/.test(trimmedValue)) {
+      return 'Please enter a valid cancellation policy.';
+    }
+
+    return '';
+  }
+
+  async function confirmRemoveCancellationPolicy() {
+    setCancellationPolicyRemoving(true);
+
+    try {
+      await api.put('/appointments/settings/cancellation-policy', {
+        message: '',
+      });
+
+      setCancellationPolicyMessage('');
+      setCancellationPolicyDraft('');
+      setCancellationPolicyEditing(false);
+      setShowCancellationPolicyRemoveConfirmModal(false);
+    } catch (err) {
+      showWebsiteValidationModal(
+        'Remove Failed',
+        err.response?.data?.message || 'Failed to remove appointment cancellation policy.'
+      );
+    } finally {
+      setCancellationPolicyRemoving(false);
     }
   }
 
@@ -2269,11 +2359,33 @@ export default function AdminSettings() {
 
     if (service) {
       setServiceForm(service);
+      setServiceFormOriginal(service);
     } else {
       setServiceForm(initialServiceForm);
+      setServiceFormOriginal(initialServiceForm);
     }
 
     setActiveOverlay('services');
+  }
+
+  function normalizeServiceFormForComparison(form) {
+    return {
+      name: String(form.name || '').trim(),
+      category: String(form.category || '').trim(),
+      price: String(form.price || '').trim(),
+      duration: String(form.duration ?? form.duration_min ?? '').trim(),
+      time_buffer_min: String(form.time_buffer_min ?? 30).trim(),
+      status: String(form.status || '').trim(),
+    };
+  }
+
+  function hasServiceChanges() {
+    if (!serviceForm.id) {
+      return true;
+    }
+
+    return JSON.stringify(normalizeServiceFormForComparison(serviceForm)) !==
+      JSON.stringify(normalizeServiceFormForComparison(serviceFormOriginal));
   }
 
   function openUserForm(user = null) {
@@ -2466,7 +2578,7 @@ export default function AdminSettings() {
 
     let newValue = value;
 
-    if (name === 'name' || name === 'category') {
+    if (name === 'category') {
       newValue = allowServiceNameText(value);
     }
 
@@ -2500,7 +2612,22 @@ export default function AdminSettings() {
       return 'This field is required.';
     }
 
-    if ((name === 'name' || name === 'category') && !/^[a-zA-Z\s()\-]+$/.test(value)) {
+    if (name === 'name' && !/^[a-zA-Z\s()\-]+$/.test(value)) {
+      return 'Special characters are not allowed.';
+    }
+
+    if (
+      name === 'name' &&
+      services.some(
+        (service) =>
+          String(service.name || '').trim().toLowerCase() === value.toLowerCase() &&
+          String(service.id || '') !== String(serviceForm.id || '')
+      )
+    ) {
+      return 'This service name already exists.';
+    }
+
+    if (name === 'category' && !/^[a-zA-Z\s()\-]+$/.test(value)) {
       return `${label} can only contain letters, spaces, parentheses, and hyphen.`;
     }
 
@@ -2508,8 +2635,20 @@ export default function AdminSettings() {
       return 'Price must contain numbers only.';
     }
 
+    if (name === 'price' && Number(value) <= 0) {
+      return 'Please enter a valid amount greater than 0.';
+    }
+
     if ((name === 'duration' || name === 'time_buffer_min') && !/^\d+$/.test(value)) {
       return `${label} must be entered in minutes using numbers only.`;
+    }
+
+    if (name === 'duration' && (Number(value) <= 0 || Number(value) > 480)) {
+      return 'Duration must be greater than 0 minutes and cannot exceed 480 minutes.';
+    }
+
+    if (name === 'time_buffer_min' && (Number(value) <= 0 || Number(value) > 60)) {
+      return 'Time Buffer must be greater than 0 and cannot exceed 60 minutes.';
     }
 
     return '';
@@ -2913,6 +3052,19 @@ export default function AdminSettings() {
   }
 
   async function saveService() {
+    const isAddingService = !serviceForm.id;
+
+    if (!isAddingService && !hasServiceChanges()) {
+      setShowServiceSaveConfirmModal(false);
+      closeOverlay();
+      setServiceSaveResultModal({
+        title: 'No Changes Made',
+        message: 'No changes were made to this service.',
+        type: 'info',
+      });
+      return;
+    }
+
     const payload = {
       name: serviceForm.name,
       category: serviceForm.category,
@@ -2929,6 +3081,14 @@ export default function AdminSettings() {
 
       setServices(res.data.services || []);
       closeOverlay();
+
+      setServiceSaveResultModal({
+        title: isAddingService ? 'Service Added' : 'Service Updated',
+        message: isAddingService
+          ? 'Service has been added successfully.'
+          : 'Service has been updated successfully.',
+        type: 'success',
+      });
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service');
     } finally {
@@ -2947,7 +3107,9 @@ export default function AdminSettings() {
     setServiceKitBranchId(String(branchId));
     setServiceKitServiceId(resolvedServiceId);
     setServiceKitItems([]);
+    setServiceKitOriginalItems([]);
     setServiceKitItemErrors([]);
+    setServiceKitServiceError('');
     setServiceKitServicesForBranch(services);
 
     try {
@@ -2967,18 +3129,21 @@ export default function AdminSettings() {
 
       if (resolvedServiceId) {
         const data = await getManageServiceKit(Number(resolvedServiceId), branchId);
-        setServiceKitItems((data.items || []).map((item) => ({
+        const loadedItems = (data.items || []).map((item) => ({
           category: item.category,
           item_name: item.item_name,
           default_quantity: String(item.default_quantity || ''),
           current_stock: item.current_stock,
-        })));
+        }));
+        setServiceKitItems(loadedItems);
+        setServiceKitOriginalItems(loadedItems);
         setServiceKitItemErrors(
           (data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' }))
         );
       }
     } catch (err) {
       setServiceKitItems([]);
+      setServiceKitOriginalItems([]);
       alert(err.response?.data?.message || 'Failed to load service kit.');
     }
   }
@@ -3001,9 +3166,12 @@ export default function AdminSettings() {
       setServiceKitServicesForBranch(services);
       setServiceKitServiceId('');
       setServiceKitItems([]);
+      setServiceKitOriginalItems([]);
       setServiceKitItemErrors([]);
+      setServiceKitServiceError('');
     } catch {
       setServiceKitItems([]);
+      setServiceKitOriginalItems([]);
     }
   }
 
@@ -3013,21 +3181,25 @@ export default function AdminSettings() {
     if (!serviceKitOverlay) return;
 
     setServiceKitServiceId(sid);
+    setServiceKitServiceError('');
 
     const branchId = Number(serviceKitBranchId || 0);
     if (!branchId) return;
 
     try {
       const data = await getManageServiceKit(Number(sid), branchId);
-      setServiceKitItems((data.items || []).map((item) => ({
+      const loadedItems = (data.items || []).map((item) => ({
         category: item.category,
         item_name: item.item_name,
         default_quantity: String(item.default_quantity || ''),
         current_stock: item.current_stock,
-      })));
+      }));
+      setServiceKitItems(loadedItems);
+      setServiceKitOriginalItems(loadedItems);
       setServiceKitItemErrors((data.items || []).map(() => ({ category: '', item_name: '', default_quantity: '' })));
     } catch {
       setServiceKitItems([]);
+      setServiceKitOriginalItems([]);
     }
   }
 
@@ -3065,6 +3237,11 @@ export default function AdminSettings() {
   }
 
   function addServiceKitItem() {
+    if (!serviceKitServiceSelected) {
+      setServiceKitServiceError('Please choose a service.');
+      return;
+    }
+
     setServiceKitItems((prev) => [...prev, { category: 'supply', item_name: '', default_quantity: '1', current_stock: null }]);
     setServiceKitItemErrors((prev) => [...(Array.isArray(prev) ? prev : []), { category: '', item_name: 'Item is required', default_quantity: '' }]);
   }
@@ -3075,7 +3252,9 @@ export default function AdminSettings() {
   }
 
   function getServiceKitValidationErrors(items = serviceKitItems) {
-    return items.map((row) => {
+    const duplicateIndexes = getDuplicateServiceKitItemIndexes(items);
+
+    return items.map((row, index) => {
       const qty = Number(row.default_quantity || 0);
       const stock = row.current_stock;
       let qtyErr = '';
@@ -3083,10 +3262,53 @@ export default function AdminSettings() {
       else if (stock !== null && stock !== undefined && qty > Number(stock)) qtyErr = 'Exceeds current stock';
       return {
         category: row.category ? '' : 'Category is required',
-        item_name: row.item_name ? '' : 'Item is required',
+        item_name: row.item_name
+          ? duplicateIndexes.has(index)
+            ? 'This item already exists in the service kit'
+            : ''
+          : 'Item is required',
         default_quantity: qtyErr,
       };
     });
+  }
+
+  function getDuplicateServiceKitItemIndexes(items = serviceKitItems) {
+    const seen = new Map();
+    const duplicates = new Set();
+
+    items.forEach((item, index) => {
+      const itemName = String(item.item_name || '').trim().toLowerCase();
+      if (!itemName) return;
+
+      const key = `${String(item.category || '').trim().toLowerCase()}::${itemName}`;
+      if (seen.has(key)) {
+        duplicates.add(seen.get(key));
+        duplicates.add(index);
+      } else {
+        seen.set(key, index);
+      }
+    });
+
+    return duplicates;
+  }
+
+  function normalizeServiceKitItemsForComparison(items = []) {
+    return items
+      .map((item) => ({
+        category: String(item.category || '').trim().toLowerCase(),
+        item_name: String(item.item_name || '').trim().toLowerCase(),
+        default_quantity: String(Number(item.default_quantity || 0)),
+      }))
+      .sort((a, b) =>
+        `${a.category}|${a.item_name}|${a.default_quantity}`.localeCompare(
+          `${b.category}|${b.item_name}|${b.default_quantity}`
+        )
+      );
+  }
+
+  function hasServiceKitChanges() {
+    return JSON.stringify(normalizeServiceKitItemsForComparison(serviceKitItems)) !==
+      JSON.stringify(normalizeServiceKitItemsForComparison(serviceKitOriginalItems));
   }
 
   function validateServiceKitItems() {
@@ -3121,6 +3343,22 @@ export default function AdminSettings() {
       return;
     }
 
+    if (!hasServiceKitChanges()) {
+      setShowServiceKitSaveConfirmModal(false);
+      setServiceKitOverlay(false);
+      setServiceKitServiceId('');
+      setServiceKitItems([]);
+      setServiceKitOriginalItems([]);
+      setServiceKitItemErrors([]);
+      setServiceKitServiceError('');
+      setServiceSaveResultModal({
+        title: 'No Changes Made',
+        message: 'No changes were made to this service kit.',
+        type: 'info',
+      });
+      return;
+    }
+
     const payload = {
       notes: null,
       branch_id: branchId,
@@ -3136,7 +3374,14 @@ export default function AdminSettings() {
       setServiceKitOverlay(false);
       setServiceKitServiceId('');
       setServiceKitItems([]);
+      setServiceKitOriginalItems([]);
       setServiceKitItemErrors([]);
+      setServiceKitServiceError('');
+      setServiceSaveResultModal({
+        title: 'Service Kit Updated',
+        message: 'Service kit has been updated successfully.',
+        type: 'success',
+      });
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save service kit.');
     }
@@ -3198,6 +3443,7 @@ export default function AdminSettings() {
   const serviceKitHasInvalidItems = getServiceKitValidationErrors().some(
     (e) => e.category || e.item_name || e.default_quantity
   );
+  const duplicateServiceKitItemIndexes = getDuplicateServiceKitItemIndexes();
   const kitSaveDisabled = serviceKitRowInputsDisabled || serviceKitHasNoItems || serviceKitHasInvalidItems;
   const serviceKitRequiredAsterisk = !serviceKitRowInputsDisabled && serviceKitHasNoItems ? (
     <span style={{ color: '#dc2626' }}> *</span>
@@ -5961,15 +6207,33 @@ const contentEditActions = (
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  style={styles.primaryBtn}
-                  disabled={cancellationPolicySaving}
-                  onClick={startCancellationPolicyEdit}
-                >
-                  <i className="fi fi-rr-edit"></i>
-                  <span>Edit Content</span>
-                </button>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {String(cancellationPolicyMessage || '').trim() && !cancellationPolicyEditing && (
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.primaryBtn,
+                        backgroundColor: '#dc2626',
+                        boxShadow: '0 10px 22px rgba(220, 38, 38, 0.18)',
+                      }}
+                      disabled={cancellationPolicySaving || cancellationPolicyRemoving}
+                      onClick={() => setShowCancellationPolicyRemoveConfirmModal(true)}
+                    >
+                      <i className="fi fi-rr-trash"></i>
+                      <span>Remove</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    style={styles.primaryBtn}
+                    disabled={cancellationPolicySaving || cancellationPolicyRemoving}
+                    onClick={startCancellationPolicyEdit}
+                  >
+                    <i className="fi fi-rr-edit"></i>
+                    <span>Edit</span>
+                  </button>
+                </div>
               </div>
 
               <div style={{ width: '100%', textAlign: 'left', marginTop: 22 }}>
@@ -5978,13 +6242,38 @@ const contentEditActions = (
                 </label>
 
                 {cancellationPolicyEditing ? (
-                  <textarea
-                    value={cancellationPolicyDraft}
-                    onChange={(event) => setCancellationPolicyDraft(event.target.value)}
-                    rows={5}
-                    style={{ ...styles.formInput, ...styles.websiteTextarea }}
-                    placeholder="Enter cancellation policy message"
-                  />
+                  <>
+                    <textarea
+                      value={cancellationPolicyDraft}
+                      onChange={(event) => setCancellationPolicyDraft(event.target.value)}
+                      rows={5}
+                      style={{
+                        ...styles.formInput,
+                        ...styles.websiteTextarea,
+                        ...(cancellationPolicyError
+                          ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+                          : {}),
+                      }}
+                      placeholder="Enter cancellation policy message"
+                    />
+                    {cancellationPolicyError && (
+                      <span style={{ color: '#dc2626', fontSize: 12, fontWeight: 600, marginTop: 6, display: 'block' }}>
+                        {cancellationPolicyError}
+                      </span>
+                    )}
+                    <span
+                      style={{
+                        display: 'block',
+                        marginTop: 6,
+                        textAlign: 'right',
+                        color: String(cancellationPolicyDraft || '').length > 1500 ? '#dc2626' : '#64748b',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {String(cancellationPolicyDraft || '').length}/1500
+                    </span>
+                  </>
                 ) : (
                   <div
                     style={{
@@ -6015,8 +6304,14 @@ const contentEditActions = (
 
                   <button
                     type="button"
-                    style={{ ...styles.modalButton, ...styles.saveBtn }}
-                    disabled={cancellationPolicySaving}
+                    style={{
+                      ...styles.modalButton,
+                      ...styles.saveBtn,
+                      ...(cancellationPolicyError || cancellationPolicySaving
+                        ? { opacity: 0.55, cursor: 'not-allowed' }
+                        : {}),
+                    }}
+                    disabled={Boolean(cancellationPolicyError) || cancellationPolicySaving}
                     onClick={handleCancellationPolicySaveRequest}
                   >
                     {cancellationPolicySaving ? 'Saving...' : 'Save Content'}
@@ -6394,6 +6689,35 @@ const contentEditActions = (
         </div>
       )}
 
+      {serviceSaveResultModal && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div
+              style={{
+                ...styles.modalIcon,
+                ...(serviceSaveResultModal.type === 'success'
+                  ? { background: '#dcfce7', color: '#16a34a' }
+                  : {}),
+              }}
+            >
+              <i
+                className={
+                  serviceSaveResultModal.type === 'success'
+                    ? 'fi fi-rr-check-circle'
+                    : 'fi fi-rr-info'
+                }
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>{serviceSaveResultModal.title}</h2>
+            <p style={{ ...styles.modalText, marginBottom: 0 }}>
+              {serviceSaveResultModal.message}
+            </p>
+          </div>
+        </div>
+      )}
+
       {activeOverlay === 'services' && (
         <FormOverlay
           styles={styles}
@@ -6716,7 +7040,12 @@ const contentEditActions = (
               <select
                 value={serviceKitServiceId}
                 onChange={(e) => reloadServiceKitService(e.target.value)}
-                style={styles.formInput}
+                style={{
+                  ...styles.formInput,
+                  ...(serviceKitServiceError
+                    ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+                    : {}),
+                }}
                 disabled={!serviceKitBranchSelected}
               >
                 <option value="" disabled>
@@ -6731,6 +7060,11 @@ const contentEditActions = (
               {!serviceKitBranchSelected && (
                 <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>
                   Select a branch first to load services.
+                </div>
+              )}
+              {serviceKitServiceError && (
+                <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 4, fontWeight: 600 }}>
+                  {serviceKitServiceError}
                 </div>
               )}
             </div>
@@ -6785,7 +7119,12 @@ const contentEditActions = (
                     updateServiceKitItem(index, 'item_name', nextName);
                     updateServiceKitItem(index, 'current_stock', match ? match.stock : null);
                   }}
-                  style={styles.formInput}
+                  style={{
+                    ...styles.formInput,
+                    ...(duplicateServiceKitItemIndexes.has(index)
+                      ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
+                      : {}),
+                  }}
                   disabled={serviceKitRowInputsDisabled}
                 >
                   <option value="" disabled>
@@ -6869,9 +7208,14 @@ const contentEditActions = (
                 )}
               </div>
             )}
+            {!serviceKitRowInputsDisabled && duplicateServiceKitItemIndexes.size > 0 && (
+              <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 8, fontWeight: 600 }}>
+                This item already exists in the service kit
+              </div>
+            )}
           </div>
           <div style={styles.formActions}>
-            <button type="button" style={styles.secondaryBtn} onClick={addServiceKitItem} disabled={serviceKitRowInputsDisabled}>Add Item</button>
+            <button type="button" style={styles.secondaryBtn} onClick={addServiceKitItem} disabled={!serviceKitBranchSelected}>Add Item</button>
             <button
               type="button"
               style={{
@@ -7029,6 +7373,11 @@ const contentEditActions = (
                   setShowServiceKitCancelConfirmModal(false);
                   setShowServiceKitSaveConfirmModal(false);
                   setServiceKitOverlay(false);
+                  setServiceKitServiceId('');
+                  setServiceKitItems([]);
+                  setServiceKitOriginalItems([]);
+                  setServiceKitItemErrors([]);
+                  setServiceKitServiceError('');
                 }}
               >
                 Yes, Cancel
@@ -7683,18 +8032,13 @@ const contentEditActions = (
 
             <h2 style={styles.modalTitle}>Confirm Policy Changes</h2>
             <p style={styles.modalText}>
-              Please review the appointment cancellation policy before saving.
+              Changes were made. Please review the new appointment cancellation policy before saving.
             </p>
 
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
-              {cancellationPolicySaveConfirmModal.details.filter((detail) => detail.changed).length === 0 ? (
-                <div style={{ color: '#64748b', fontSize: 13, padding: '8px 0' }}>
-                  No policy changes detected.
-                </div>
-              ) : (
-                cancellationPolicySaveConfirmModal.details
-                  .filter((detail) => detail.changed)
-                  .map((detail) => (
+              {cancellationPolicySaveConfirmModal.details
+                .filter((detail) => detail.changed)
+                .map((detail) => (
                     <div
                       key={detail.key}
                       style={{
@@ -7709,16 +8053,12 @@ const contentEditActions = (
                     >
                       <span style={{ color: '#64748b' }}>
                         {detail.label}
-                        <small style={{ display: 'block', color: '#94a3b8', marginTop: 2 }}>
-                          {detail.previousValue === 'Not set' ? 'Added' : 'Changed'}
-                        </small>
                       </span>
                       <strong style={{ color: '#0f172a', textAlign: 'right', maxWidth: 260, overflowWrap: 'anywhere' }}>
                         {detail.value}
                       </strong>
                     </div>
-                  ))
-              )}
+                ))}
             </div>
 
             <div style={styles.modalActions}>
@@ -7777,6 +8117,48 @@ const contentEditActions = (
                 onClick={confirmCancelCancellationPolicyEdit}
               >
                 Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancellationPolicyRemoveConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowCancellationPolicyRemoveConfirmModal(false);
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Remove Cancellation Policy</h2>
+            <p style={styles.modalText}>
+              Are you sure you want to remove the appointment cancellation policy?
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                disabled={cancellationPolicyRemoving}
+                onClick={() => setShowCancellationPolicyRemoveConfirmModal(false)}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                disabled={cancellationPolicyRemoving}
+                onClick={confirmRemoveCancellationPolicy}
+              >
+                {cancellationPolicyRemoving ? 'Removing...' : 'Yes, Remove'}
               </button>
             </div>
           </div>

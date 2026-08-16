@@ -754,10 +754,6 @@ router.get('/settings/cancellation-policy', async (req, res) => {
 router.put('/settings/cancellation-policy', requireRole('admin'), async (req, res) => {
   const message = String(req.body.message || '').trim();
 
-  if (!message) {
-    return res.status(400).json({ message: 'Appointment cancellation policy message is required.' });
-  }
-
   try {
     await ensureAppointmentSettingsTable();
     await pool.query(
