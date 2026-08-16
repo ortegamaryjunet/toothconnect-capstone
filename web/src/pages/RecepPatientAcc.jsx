@@ -883,7 +883,7 @@ export default function RecepPatientAcc() {
 
             <SummaryCard
               styles={styles}
-              icon="fi fi-rr-user-check"
+              icon="fi fi-rr-badge-check"
               colorStyle={styles.summaryIconGreen}
               label="Active Patients"
               value={summary.active}
@@ -891,7 +891,7 @@ export default function RecepPatientAcc() {
 
             <SummaryCard
               styles={styles}
-              icon="fi fi-rr-user-xmark"
+              icon="fi fi-rr-user-slash"
               colorStyle={styles.summaryIconOrange}
               label="Inactive Patients"
               value={summary.inactive}

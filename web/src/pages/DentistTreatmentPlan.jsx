@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   getTreatmentPlansByPatient,
@@ -27,10 +28,23 @@ const STATUS_OPTIONS = [
   { value: 'completed',   label: 'Completed' },
 ];
 
+const TREATMENT_OPTIONS = [
+  'Braces',
+  'Root Canal',
+  'Filling',
+  'Crown',
+  'Extraction',
+  'Cleaning',
+  'Dentures',
+  'Other',
+];
+
 function emptyForm(toothNumber) {
   return {
     tooth_number: toothNumber || '',
     planned_treatment: '',
+    planned_treatment_option: '',
+    other_treatment: '',
     status: 'planned',
     notes: '',
     date_completed: '',
@@ -52,6 +66,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
   const [form, setForm] = useState(emptyForm(null));
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewPlan, setViewPlan] = useState(null);
@@ -147,6 +162,12 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
     setForm({
       tooth_number: plan.tooth_number,
       planned_treatment: plan.planned_treatment || '',
+      planned_treatment_option: TREATMENT_OPTIONS.includes(plan.planned_treatment)
+        ? plan.planned_treatment
+        : 'Other',
+      other_treatment: TREATMENT_OPTIONS.includes(plan.planned_treatment)
+        ? ''
+        : plan.planned_treatment || '',
       status: plan.status || 'planned',
       notes: plan.notes || '',
       date_completed: plan.date_completed ? plan.date_completed.slice(0, 10) : '',
@@ -165,6 +186,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
     setModalOpen(false);
     setEditingPlan(null);
     setFormError('');
+    setFieldErrors({});
     setSaveEditConfirmOpen(false);
   }
 
@@ -276,12 +298,59 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
 
   function handleFormChange(field, value) {
     setForm(prev => ({ ...prev, [field]: value }));
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setFormError('');
   }
 
   async function handleSave() {
     setFormError('');
-    if (!form.planned_treatment.trim()) {
-      setFormError('Planned treatment is required.');
+
+    const errors = {};
+
+    if (!form.planned_treatment_option) {
+      errors.planned_treatment = 'Please select a planned treatment.';
+    } else if (form.planned_treatment_option === 'Other') {
+      const otherTreatment = String(form.other_treatment || '').trim();
+
+      if (!otherTreatment) {
+        errors.other_treatment = 'Other treatment is required.';
+      } else if (!/^[A-Za-z ]+$/.test(otherTreatment)) {
+        errors.other_treatment =
+          'Other treatment must contain letters and spaces only.';
+      }
+    }
+
+    if (!form.applyToAll && !form.tooth_number) {
+      errors.tooth_number = 'Tooth number is required.';
+    }
+
+    if (form.status === 'completed' && !form.date_completed) {
+      errors.date_completed =
+        'Date completed is required when status is Completed.';
+    }
+
+    if (form.date_completed) {
+      const selectedDate = new Date(`${form.date_completed}T00:00:00`);
+      const today = new Date();
+
+      today.setHours(0, 0, 0, 0);
+
+      if (Number.isNaN(selectedDate.getTime())) {
+        errors.date_completed = 'Please enter a valid completion date.';
+      } else if (selectedDate > today) {
+        errors.date_completed = 'Date completed cannot be in the future.';
+      }
+    }
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setFormError('Please correct the highlighted fields before saving.');
       return;
     }
 
@@ -290,27 +359,37 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
       return;
     }
 
+    const plannedTreatment =
+      form.planned_treatment_option === 'Other'
+        ? String(form.other_treatment || '').trim()
+        : String(form.planned_treatment_option || '').trim();
+
     setSaving(true);
+
     try {
       if (editingPlan) {
         await updateTreatmentPlan(editingPlan.id, {
-          planned_treatment: form.planned_treatment.trim(),
+          planned_treatment: plannedTreatment,
           status: form.status,
           notes: form.notes.trim() || null,
           date_completed: form.date_completed || null,
         });
       } else if (form.applyToAll) {
         const existingTeeth = new Set(plans.map(p => p.tooth_number));
-        const teethToAdd = ALL_TEETH.filter(t => !existingTeeth.has(t));
+        const teethToAdd = ALL_TEETH.filter(
+          tooth => !existingTeeth.has(tooth)
+        );
+
         if (teethToAdd.length === 0) {
           setFormError('All teeth already have treatment plans.');
           setSaving(false);
           return;
         }
+
         await createTreatmentPlansBulk({
           patient_id: parseInt(patientId, 10),
           tooth_numbers: teethToAdd,
-          planned_treatment: form.planned_treatment.trim(),
+          planned_treatment: plannedTreatment,
           status: form.status,
           notes: form.notes.trim() || null,
           date_completed: form.date_completed || null,
@@ -319,16 +398,19 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
         await createTreatmentPlan({
           patient_id: parseInt(patientId, 10),
           tooth_number: parseInt(form.tooth_number, 10),
-          planned_treatment: form.planned_treatment.trim(),
+          planned_treatment: plannedTreatment,
           status: form.status,
           notes: form.notes.trim() || null,
           date_completed: form.date_completed || null,
         });
       }
+
       closeModal();
       await loadPlans();
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to save plan');
+      setFormError(
+        err.response?.data?.message || 'Failed to save plan'
+      );
     } finally {
       setSaving(false);
     }
@@ -356,11 +438,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
     return <div style={styles.empty}>No patient selected.</div>;
   }
 
-  const modalTitle = editingPlan
-    ? `Edit Plan — Tooth #${form.tooth_number}`
-    : form.applyToAll
-      ? 'Add Plan — All Teeth (Braces / Aligners)'
-      : `Add Plan — Tooth #${form.tooth_number}`;
+  const modalTitle = editingPlan ? `Edit Plan — Tooth #${form.tooth_number}` : form.applyToAll ? 'Add Plan — All Teeth' : `Add Plan — Tooth #${form.tooth_number}`;
 
   return (
     <div style={styles.wrapper}>
@@ -441,7 +519,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
           <h3 style={{ ...styles.cardTitle, margin: 0 }}>Treatment Plan</h3>
           {canEdit && (
             <button style={styles.bracesBtn} onClick={openBracesModal}>
-              + All Teeth
+              Add All Teeth
             </button>
           )}
         </div>
@@ -528,7 +606,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
               ...(plans.length === 0 || planPage === 1 ? styles.pageBtnDisabled : {}),
             }}
           >
-            Prev
+            Previous
           </button>
           <span style={styles.pageInfo}>
             {plans.length === 0 ? 'Page 0 of 0' : `Page ${planPage} of ${totalPlanPages}`}
@@ -548,10 +626,9 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
       </div>
 
       {/* Tooth Choice Modal */}
-      {choiceModalOpen && (
-        <div style={styles.overlay} onClick={() => setChoiceModalOpen(false)}>
-          <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={() => setChoiceModalOpen(false)}>✕</button>
+      {choiceModalOpen && createPortal((
+        <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
+          <div style={{ ...styles.modal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>Tooth #{choiceTooth}</h3>
             <p style={styles.mutedText}>
               This tooth already has a treatment plan. What would you like to do?
@@ -566,13 +643,12 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* Add / Edit Modal */}
-      {modalOpen && (
-        <div style={styles.overlay} onClick={requestCloseModal}>
-          <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={requestCloseModal}>x</button>
+      {modalOpen && createPortal((
+        <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
+          <div style={{ ...styles.modal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>{modalTitle}</h3>
 
             <div style={styles.formGroup}>
@@ -581,13 +657,16 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
                 style={{ ...styles.input, ...styles.readonlyInput }}
                 value={
                   form.applyToAll
-                    ? 'All Teeth (Braces / Aligners)'
+                    ? 'All Teeth'
                     : form.tooth_number
                       ? `#${form.tooth_number}`
                       : ''
                 }
                 readOnly
               />
+              {fieldErrors.tooth_number && (
+                <div style={{ ...styles.fieldError, color: "#dc2626" }}>{fieldErrors.tooth_number}</div>
+              )}
             </div>
 
             {!editingPlan && (
@@ -599,7 +678,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
                     onChange={e => handleFormChange('applyToAll', e.target.checked)}
                     style={styles.checkbox}
                   />
-                  Apply to all teeth (braces, aligners, etc.)
+                  Apply to all teeth
                 </label>
               </div>
             )}
@@ -608,12 +687,87 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
               <label style={styles.label}>
                 Planned Treatment <span style={styles.required}>*</span>
               </label>
-              <input
-                style={styles.input}
-                value={form.planned_treatment}
-                onChange={e => handleFormChange('planned_treatment', e.target.value)}
-                placeholder="e.g. Braces, Root Canal, Filling, Crown..."
-              />
+              <select
+                style={{ ...styles.select, ...(fieldErrors.planned_treatment ? { borderColor: "#dc2626" } : {}) }}
+                value={form.planned_treatment_option}
+                onChange={e => {
+                  const value = e.target.value;
+                  handleFormChange('planned_treatment_option', value);
+                  handleFormChange(
+                    'planned_treatment',
+                    value === 'Other' ? form.other_treatment : value
+                  );
+                  if (value !== 'Other') {
+                    handleFormChange('other_treatment', '');
+                  }
+                }}
+              >
+                <option value="">Select planned treatment</option>
+                {TREATMENT_OPTIONS.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              {fieldErrors.planned_treatment && (
+                <div style={{ ...styles.fieldError, color: "#dc2626" }}>{fieldErrors.planned_treatment}</div>
+              )}
+
+              {form.planned_treatment_option === 'Other' && (
+                <div style={{ marginTop: 10 }}>
+                  <input
+                    style={{
+                      ...styles.input,
+                      ...(fieldErrors.other_treatment
+                        ? {
+                            borderColor: '#dc2626',
+                            borderWidth: 1,
+                            borderStyle: 'solid',
+                          }
+                        : {}),
+                    }}
+                    value={form.other_treatment}
+                    onChange={e => {
+                      const value = e.target.value;
+                      const trimmedValue = value.trim();
+
+                      setForm(prev => ({
+                        ...prev,
+                        other_treatment: value,
+                        planned_treatment: value,
+                      }));
+
+                      setFieldErrors(prev => {
+                        const next = { ...prev };
+
+                        if (!trimmedValue) {
+                          next.other_treatment = 'Other treatment is required.';
+                        } else if (!/^[A-Za-z ]+$/.test(trimmedValue)) {
+                          next.other_treatment =
+                            'Other treatment must contain letters and spaces only.';
+                        } else {
+                          delete next.other_treatment;
+                        }
+
+                        return next;
+                      });
+
+                      setFormError('');
+                    }}
+                    placeholder="Enter other treatment"
+                    maxLength={50}
+                  />
+                  {fieldErrors.other_treatment && (
+                    <div
+                      style={{
+                        ...styles.fieldError,
+                        color: '#dc2626',
+                        marginTop: 6,
+                      }}
+                    >
+                      {fieldErrors.other_treatment}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div style={styles.formGroup}>
@@ -644,10 +798,13 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
               <label style={styles.label}>Date Completed</label>
               <input
                 type="date"
-                style={styles.input}
+                style={{ ...styles.input, ...(fieldErrors.date_completed ? { borderColor: "#dc2626" } : {}) }}
                 value={form.date_completed}
                 onChange={e => handleFormChange('date_completed', e.target.value)}
               />
+              {fieldErrors.date_completed && (
+                <div style={{ ...styles.fieldError, color: "#dc2626" }}>{fieldErrors.date_completed}</div>
+              )}
             </div>
 
             {formError && <div style={styles.formError}>{formError}</div>}
@@ -661,22 +818,18 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
                 onClick={handleSave}
                 disabled={saving}
               >
-                {saving
-                  ? 'Saving...'
-                  : editingPlan
-                    ? 'Save Changes'
-                    : form.applyToAll
+                {saving ? 'Saving...' : editingPlan ? 'Save Changes' : form.applyToAll
                       ? 'Add for All Teeth'
                       : 'Add Plan'}
               </button>
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
-      {saveEditConfirmOpen && editingPlan && (
-        <div style={styles.overlay} onClick={() => setSaveEditConfirmOpen(false)}>
-          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+      {saveEditConfirmOpen && editingPlan && createPortal((
+        <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }} onClick={() => setSaveEditConfirmOpen(false)}>
+          <div style={{ ...styles.confirmModal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
             <div style={styles.confirmIconGold}>
               <i className="fi fi-rr-edit" style={styles.confirmIconText}></i>
             </div>
@@ -711,13 +864,19 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
-      {/* View Modal */}
-      {viewModalOpen && viewPlan && (
-        <div style={styles.overlay} onClick={requestCloseViewModal}>
-          <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={requestCloseViewModal}>x</button>
+      {viewModalOpen && viewPlan && createPortal((
+        <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
+          <div style={{ ...styles.modal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              style={styles.closeIconBtn}
+              onClick={requestCloseViewModal}
+              aria-label="Close"
+            >
+              ×
+            </button>
             <h3 style={styles.modalTitle}>Treatment Plan — Tooth #{viewPlan.tooth_number}</h3>
 
             <div style={styles.viewRow}>
@@ -761,11 +920,11 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             )}
           </div>
         </div>
-      )}
+      ), document.body)}
 
-      {editConfirmPlan && (
-        <div style={styles.overlay} onClick={() => setEditConfirmPlan(null)}>
-          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+      {editConfirmPlan && createPortal((
+        <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
+          <div style={{ ...styles.confirmModal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
             <div style={styles.confirmIconGold}>
               <i className="fi fi-rr-edit" style={styles.confirmIconText}></i>
             </div>
@@ -794,12 +953,11 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
-      {attachmentModalOpen && attachmentPlan && (
-        <div style={styles.overlay} onClick={requestCloseAttachmentModal}>
-          <div style={styles.attachmentModal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={requestCloseAttachmentModal}>x</button>
+      {attachmentModalOpen && attachmentPlan && createPortal((
+        <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
+          <div style={{ ...styles.attachmentModal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
             <div style={styles.attachmentHeader}>
               <h3 style={styles.modalTitle}>Tooth #{attachmentPlan.tooth_number}</h3>
               <div style={styles.attachmentMeta}>
@@ -874,12 +1032,11 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
 
           </div>
         </div>
-      )}
+      ), document.body)}
 
-      {previewAttachment && (
-        <div style={styles.lightboxOverlay} onClick={() => setPreviewAttachment(null)}>
-          <div style={styles.lightboxContent} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeIconBtn} onClick={() => setPreviewAttachment(null)}>x</button>
+      {previewAttachment && createPortal((
+        <div style={{ ...styles.lightboxOverlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
+          <div style={{ ...styles.lightboxContent, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>{previewAttachment.file_name}</h3>
             {isImageAttachment(previewAttachment) ? (
               <img
@@ -896,11 +1053,11 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             )}
           </div>
         </div>
-      )}
+      ), document.body)}
 
-      {deleteAttachment && (
-        <div style={styles.overlay} onClick={() => setDeleteAttachment(null)}>
-          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+      {deleteAttachment && createPortal((
+        <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
+          <div style={{ ...styles.confirmModal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
             <div style={styles.confirmIcon}>
               <i className="fi fi-rr-trash" style={styles.confirmIconText}></i>
             </div>
@@ -926,11 +1083,11 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
-      {planDeleteTarget && (
-        <div style={styles.overlay} onClick={() => setPlanDeleteTarget(null)}>
-          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+      {planDeleteTarget && createPortal((
+        <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
+          <div style={{ ...styles.confirmModal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
             <div style={styles.confirmIcon}>
               <i className="fi fi-rr-trash" style={styles.confirmIconText}></i>
             </div>
@@ -956,11 +1113,11 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
-      {closeConfirm && (
-        <div style={styles.overlay} onClick={() => setCloseConfirm(null)}>
-          <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
+      {closeConfirm && createPortal((
+        <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
+          <div style={{ ...styles.confirmModal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
             <div style={styles.confirmIcon}>
               <i className="fi fi-rr-exclamation" style={styles.confirmIconText}></i>
             </div>
@@ -988,7 +1145,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }
@@ -1055,7 +1212,11 @@ function formatFileSize(value) {
 function getPlanChangeRows(original, next) {
   const originalDate = original.date_completed ? original.date_completed.slice(0, 10) : '';
   const changedFields = [
-    original.planned_treatment !== next.planned_treatment ? 'Planned Treatment' : '',
+    original.planned_treatment !== (
+      next.planned_treatment_option === 'Other'
+        ? next.other_treatment
+        : next.planned_treatment_option
+    ) ? 'Planned Treatment' : '',
     original.status !== next.status ? 'Status' : '',
     (original.notes || '') !== (next.notes || '') ? 'Notes' : '',
     originalDate !== (next.date_completed || '') ? 'Date Completed' : '',
@@ -1063,7 +1224,11 @@ function getPlanChangeRows(original, next) {
 
   return [
     ['Tooth', `#${next.tooth_number}`],
-    ['Planned Treatment', next.planned_treatment || 'N/A'],
+    ['Planned Treatment',
+      next.planned_treatment_option === 'Other'
+        ? next.other_treatment || 'N/A'
+        : next.planned_treatment_option || 'N/A'
+    ],
     ['Status', STATUS_OPTIONS.find(item => item.value === next.status)?.label || next.status || 'N/A'],
     ['Notes', next.notes || 'N/A'],
     ['Date Completed', next.date_completed || 'N/A'],
@@ -1088,4 +1253,3 @@ function AttachmentThumb({ attachment, styles }) {
     </div>
   );
 }
-

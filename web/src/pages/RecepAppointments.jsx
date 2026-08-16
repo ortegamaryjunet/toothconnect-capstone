@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
 import { useAuth } from '../auth/AuthContext';
 import {
   cancelAppointment as cancelAppointmentRequest,
@@ -86,6 +85,7 @@ export default function RecepAppointments() {
     amount: '',
     saving: false,
   });
+  const [paymentError, setPaymentError] = useState('');
   const [cancelReasonModal, setCancelReasonModal] = useState({ show: false, appointmentId: null });
   const [cancelReasonText, setCancelReasonText] = useState('');
   const [cancelReasonError, setCancelReasonError] = useState('');
@@ -114,6 +114,7 @@ export default function RecepAppointments() {
     saving: false,
   });
   const [rescheduleReasonText, setRescheduleReasonText] = useState('');
+  const [rescheduleError, setRescheduleError] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
   const [showKitModal, setShowKitModal] = useState(false);
@@ -586,6 +587,8 @@ export default function RecepAppointments() {
   function openRescheduleModal(appointment) {
     if (!appointment) return;
 
+    setRescheduleError('');
+
     const appointmentDate = appointment.fullDate
       ? new Date(`${appointment.fullDate}T00:00:00`)
       : new Date();
@@ -608,6 +611,7 @@ export default function RecepAppointments() {
   }
 
   function closeRescheduleModal() {
+    setRescheduleError('');
     setRescheduleModal({
       show: false,
       appointment: null,
@@ -941,12 +945,12 @@ export default function RecepAppointments() {
     if (!rescheduleModal.appointment) return;
 
     if (!rescheduleModal.selectedDate || !rescheduleModal.selectedTime) {
-      setAppointmentsError('Please select a new date and time.');
+      setRescheduleError('Please select a new date and time.');
       return;
     }
 
     if (!rescheduleModal.appointment.patientId || !rescheduleModal.appointment.branchId) {
-      setAppointmentsError('Unable to reschedule: missing patient or branch details.');
+      setRescheduleError('Unable to reschedule: missing patient or branch details.');
       return;
     }
 
@@ -957,6 +961,7 @@ export default function RecepAppointments() {
       appointment.serviceId
     );
 
+    setRescheduleError('');
     setAppointmentsError('');
     setConfirmActionModal({
       show: true,
@@ -981,6 +986,7 @@ export default function RecepAppointments() {
   async function submitRescheduleAfterConfirm() {
     if (!rescheduleModal.appointment) return;
 
+    setRescheduleError('');
     setAppointmentsError('');
     closeConfirmActionModal();
     setRescheduleModal((current) => ({ ...current, saving: true }));
@@ -1020,11 +1026,11 @@ export default function RecepAppointments() {
       await fetchCalendarAppointments(currentDate);
     } catch (err) {
       if (err.response?.status === 409) {
-        setAppointmentsError(
+        setRescheduleError(
           'This time slot conflicts with an existing appointment. Please choose another time.'
         );
       } else {
-        setAppointmentsError(
+        setRescheduleError(
           err.response?.data?.message || 'Failed to reschedule appointment.'
         );
       }
@@ -1221,6 +1227,7 @@ export default function RecepAppointments() {
   }
 
   function openPaymentModal(appointment) {
+    setPaymentError('');
     setPaymentModal({
       show: true,
       appointment,
@@ -1232,6 +1239,7 @@ export default function RecepAppointments() {
   }
 
   function closePaymentModal() {
+    setPaymentError('');
     setPaymentModal({
       show: false,
       appointment: null,
@@ -1247,11 +1255,12 @@ export default function RecepAppointments() {
 
     const amount = Number(paymentModal.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      setAppointmentsError('Please enter a valid payment amount.');
+      setPaymentError('Please enter a valid payment amount.');
       return;
     }
 
     setPaymentModal((current) => ({ ...current, saving: true }));
+    setPaymentError('');
     setAppointmentsError('');
 
     try {
@@ -1271,7 +1280,7 @@ export default function RecepAppointments() {
       fetchCalendarAppointments(currentDate);
       closePaymentModal();
     } catch (err) {
-      setAppointmentsError(
+      setPaymentError(
         err.response?.data?.message || 'Failed to save payment.'
       );
       setPaymentModal((current) => ({ ...current, saving: false }));
@@ -1965,6 +1974,24 @@ export default function RecepAppointments() {
               Choose how the patient will pay for this completed appointment.
             </p>
 
+            {paymentError && (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '1px solid #fecaca',
+                  background: '#fef2f2',
+                  color: '#b91c1c',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                <i className="fi fi-rr-triangle-warning" style={{ marginRight: 7 }}></i>
+                {paymentError}
+              </div>
+            )}
+
             <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
               <select
                 value={paymentModal.method}
@@ -2182,10 +2209,21 @@ export default function RecepAppointments() {
               </button>
             </div>
 
-            {appointmentsError && (
-              <div style={styles.alertErrorInline}>
-                <i className="fi fi-rr-triangle-warning" style={{ marginRight: 8 }}></i>
-                <span>{appointmentsError}</span>
+            {rescheduleError && (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '1px solid #fecaca',
+                  background: '#fef2f2',
+                  color: '#b91c1c',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                <i className="fi fi-rr-triangle-warning" style={{ marginRight: 7 }}></i>
+                {rescheduleError}
               </div>
             )}
 

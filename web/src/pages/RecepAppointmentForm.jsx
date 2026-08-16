@@ -1255,9 +1255,9 @@ export default function RecepAppointmentForm() {
               type="submit"
               style={{
                 ...styles.submitBtn,
-                ...(!isFormSubmittable ? styles.buttonDisabled : {}),
+                ...(submitting ? styles.buttonDisabled : {}),
               }}
-              disabled={!isFormSubmittable}
+              disabled={submitting}
             >
               {submitting ? 'Submitting...' : 'Submit Appointment'}
             </button>

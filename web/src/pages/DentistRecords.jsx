@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { listMyPatients } from '../api/patients';
 import { getTreatmentPlansByPatient } from '../api/treatmentPlans';
-import createDentistRecordsStyles from '../styles/DentistRecords';
 import { useAuth } from '../auth/AuthContext';
 import api from '../api/axios';
+import createDentistRecordsStyles from '../styles/DentistRecords';
 import DentistProfileMenu from '../components/DentistProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
