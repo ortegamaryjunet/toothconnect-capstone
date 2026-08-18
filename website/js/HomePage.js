@@ -1,19 +1,36 @@
 const API_BASE_URL = (() => {
     const PROD_API = "https://api.smileempressdentalhub.com";
-    try {
-        const params = new URLSearchParams(window.location.search || "");
-        const override = params.get("apiBase") || window.__TOOTHCONNECT_API_BASE_URL__;
-        if (override) return String(override).replace(/\/+$/, "");
 
+    try {
         const hostname = String(window.location.hostname || "").toLowerCase();
         const port = String(window.location.port || "");
 
-        if (hostname === "localhost" || hostname === "127.0.0.1") {
-            if (port === "4000") return window.location.origin;
+        const override =
+            window.__TOOTHCONNECT_API_BASE_URL__ ||
+            new URLSearchParams(window.location.search).get("apiBase");
+
+        if (override) {
+            return String(override).trim().replace(/\/+$/, "");
+        }
+
+        const isLocalhost =
+            hostname === "localhost" ||
+            hostname === "127.0.0.1" ||
+            hostname === "::1";
+
+        if (isLocalhost) {
+            if (port === "4000") {
+                return window.location.origin;
+            }
+
             return "http://localhost:4000";
         }
-    } catch (_) { /* ignore */ }
-    return PROD_API;
+
+        return PROD_API;
+    } catch (error) {
+        console.warn("API base URL detection failed. Using production API.", error);
+        return PROD_API;
+    }
 })();
 
 // ── CMS helpers ───────────────────────────────────────────────────────────────
@@ -140,16 +157,26 @@ function loadWebsiteContent() {
             const footerEmail = document.getElementById("footer-email");
 
             if (footerEmail) {
-                const email = String(c.contact_email || "").trim();
+                const email = String(c.contact_email || "")
+                    .replace(/^mailto:/i, "")
+                    .trim();
 
                 footerEmail.textContent = email;
 
                 if (email) {
-                    footerEmail.href = `mailto:${email}`;
+                    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`;
+
+                    footerEmail.href = gmailUrl;
+                    footerEmail.target = "_blank";
+                    footerEmail.rel = "noopener noreferrer";
                     footerEmail.style.cursor = "pointer";
+                    footerEmail.style.pointerEvents = "auto";
                 } else {
                     footerEmail.removeAttribute("href");
+                    footerEmail.removeAttribute("target");
+                    footerEmail.removeAttribute("rel");
                     footerEmail.style.cursor = "default";
+                    footerEmail.style.pointerEvents = "none";
                 }
             }
 
