@@ -140,8 +140,17 @@ function loadWebsiteContent() {
             const footerEmail = document.getElementById("footer-email");
 
             if (footerEmail) {
-                footerEmail.textContent = c.contact_email || "";
-                footerEmail.href = c.contact_email ? `mailto:${c.contact_email}` : "#";
+                const email = String(c.contact_email || "").trim();
+
+                footerEmail.textContent = email;
+
+                if (email) {
+                    footerEmail.href = `mailto:${email}`;
+                    footerEmail.style.cursor = "pointer";
+                } else {
+                    footerEmail.removeAttribute("href");
+                    footerEmail.style.cursor = "default";
+                }
             }
 
             applyTextDesign("footer-email", "contact_email", c);
