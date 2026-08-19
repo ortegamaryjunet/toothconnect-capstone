@@ -1097,14 +1097,9 @@ function HistoryAttachmentButton({ styles, item, onOpenAttachments }) {
   return (
     <button
       type="button"
-      style={{
-        ...styles.historyAttachmentBtn,
-        ...(count === 0 ? styles.historyAttachmentBtnDisabled : {}),
-      }}
-      disabled={count === 0}
+      style={styles.historyAttachmentBtn}
       onClick={() => onOpenAttachments(item)}
     >
-      <i className="fi fi-rr-eye"></i>
       Attachments
       <span style={styles.historyAttachmentCount}>{count}</span>
     </button>

@@ -782,6 +782,10 @@ export default function RecepRecords() {
     }
   }
 
+  function handleAddPatient() {
+    navigate('/receptionistPatientForm');
+  }
+
   function exportPatientsToCSV() {
     if (filteredPatients.length === 0) {
       setShowExportModal(true);
@@ -1388,14 +1392,25 @@ export default function RecepRecords() {
                 <h3 style={styles.cardTitle}>Patient List</h3>
               </div>
 
-              <button
-                type="button"
-                style={styles.exportCsvBtn}
-                onClick={exportPatientsToCSV}
-              >
-                <i className="fi fi-rr-file-csv"></i>
-                Export CSV
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  style={styles.addPatientBtn}
+                  onClick={handleAddPatient}
+                >
+                  <i className="fi fi-rr-user-add"></i>
+                  Add Patient
+                </button>
+
+                <button
+                  type="button"
+                  style={styles.exportCsvBtn}
+                  onClick={exportPatientsToCSV}
+                >
+                  <i className="fi fi-rr-file-csv"></i>
+                  Export CSV
+                </button>
+              </div>
             </div>
 
             <div style={styles.tableScroll}>
@@ -1513,14 +1528,6 @@ export default function RecepRecords() {
                   changes.
                 </p>
               </div>
-
-              <button
-                type="button"
-                style={styles.modalX}
-                onClick={closeEditPatient}
-              >
-                ×
-              </button>
             </div>
 
             <div style={styles.editModalBody}>

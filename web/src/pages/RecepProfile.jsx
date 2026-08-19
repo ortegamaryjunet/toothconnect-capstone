@@ -605,9 +605,6 @@ export default function RecepProfile() {
           return fields;
         }, {}),
       }));
-      setProfileEditError(
-        Object.values(formErrors)[0] || 'Please complete all required profile details before saving.'
-      );
       return;
     }
 
@@ -1339,10 +1336,6 @@ export default function RecepProfile() {
             </div>
 
             <form style={styles.editForm} onSubmit={handleSaveProfileRequest}>
-              {profileEditError && (
-                <p style={styles.editErrorText}>{profileEditError}</p>
-              )}
-
               <div style={styles.formGrid}>
                 <FormGroup
                   styles={styles}
@@ -1691,13 +1684,7 @@ export default function RecepProfile() {
               <div style={styles.editModalActions}>
                 <button
                   type="submit"
-                  style={{
-                    ...styles.saveBtn,
-                    ...(!isProfileFormComplete(editForm) || savingProfile
-                      ? styles.disabledBtn
-                      : {}),
-                  }}
-                  disabled={!isProfileFormComplete(editForm) || savingProfile}
+                  style={styles.saveBtn}
                 >
                   {savingProfile ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -1765,10 +1752,6 @@ export default function RecepProfile() {
                 </div>
               ))}
             </div>
-
-            {profileEditError && (
-              <p style={{ ...styles.modalText, color: '#dc2626' }}>{profileEditError}</p>
-            )}
 
             <div style={styles.modalActions}>
               <button

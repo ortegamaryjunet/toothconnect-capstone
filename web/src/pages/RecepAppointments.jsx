@@ -1481,12 +1481,12 @@ export default function RecepAppointments() {
                     <button
                       type="button"
                       style={{
-                        ...styles.calendarNavBtn,
-                        border: 'none',
+                        ...styles.pageBtn,
+                        ...styles.prevPageBtn,
                       }}
                       onClick={handlePrevMonth}
                     >
-                      Prev
+                      Previous
                     </button>
 
                     <h3 style={styles.calendarMonthTitle}>
@@ -1496,8 +1496,8 @@ export default function RecepAppointments() {
                     <button
                       type="button"
                       style={{
-                        ...styles.calendarNavBtn,
-                        border: 'none',
+                        ...styles.pageBtn,
+                        ...styles.nextPageBtn,
                       }}
                       onClick={handleNextMonth}
                     >
