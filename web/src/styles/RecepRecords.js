@@ -371,6 +371,27 @@
       margin: 0,
     },
 
+    addPatientBtn: {
+      height: 43,
+      minWidth: isVerySmall ? '100%' : 110,
+      border: 'none',
+      borderRadius: 14,
+      background: 'linear-gradient(135deg, #f4d35e 0%, #d4af37 100%)',
+      color: '#ffffff',
+      padding: '0 18px',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      transition: '0.2s ease',
+      whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
+    },
+
     exportCsvBtn: {
       height: 43,
       minWidth: isVerySmall ? '100%' : 110,
