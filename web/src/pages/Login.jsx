@@ -212,7 +212,7 @@ export default function Login() {
     return () => clearInterval(interval);
   }, [loginLockoutUntil]);
 
-  const visibleEmailError = (touched.email || submittedOnce) ? fieldErrors.email : '';
+  const visibleEmailError = (String(email || '').trim() || touched.email || submittedOnce) ? fieldErrors.email : '';
   const visiblePasswordError = (touched.password || submittedOnce) ? fieldErrors.password : '';
   const isCurrentEmailLocked =
     Boolean(loginLockoutUntil) &&
@@ -285,6 +285,18 @@ export default function Login() {
 
     if (shouldShowRequiredError) {
       setTouched((current) => ({ ...current, [name]: true }));
+    }
+
+    if (name === 'email') {
+      setFieldErrors((current) => ({
+        ...current,
+        email: String(nextValue || '').trim()
+          ? validateEmail(nextValue)
+          : shouldShowRequiredError || touched.email || submittedOnce
+            ? validateEmail(nextValue)
+            : '',
+      }));
+      return;
     }
 
     if (touched[name] || submittedOnce || shouldShowRequiredError) {
@@ -440,7 +452,7 @@ export default function Login() {
         )}
         {error && <div style={styles.error}>{error}</div>}
 
-        <label style={styles.label}>Email</label>
+        <label style={styles.label}>Email Address</label>
         <input
           ref={emailRef}
           type="email"
