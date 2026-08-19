@@ -68,7 +68,7 @@ export default function AdminScheduleRequests({
   const [rejectRequest, setRejectRequest] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectReasonError, setRejectReasonError] = useState('');
-  const [rejectSuccessModal, setRejectSuccessModal] = useState(null);
+  const [successModal, setSuccessModal] = useState(null);
 
   async function loadRequests(selectedStatus = statusFilter) {
     setLoading(true);
@@ -109,18 +109,18 @@ export default function AdminScheduleRequests({
   }, [highlightRequestId]);
 
   useEffect(() => {
-    if (!rejectSuccessModal) {
+    if (!successModal) {
       return undefined;
     }
 
     const timer = window.setTimeout(() => {
-      setRejectSuccessModal(null);
+      setSuccessModal(null);
     }, 3000);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [rejectSuccessModal]);
+  }, [successModal]);
 
   const filteredRequests = useMemo(() => {
     const search = searchText.toLowerCase().trim();
@@ -281,6 +281,10 @@ export default function AdminScheduleRequests({
 
     if (updated) {
       setApproveRequest(null);
+      setSuccessModal({
+        title: 'Leave Request Approved',
+        message: 'Leave request approval successful.',
+      });
     }
   }
 
@@ -299,7 +303,7 @@ export default function AdminScheduleRequests({
 
     if (updated) {
       closeRejectModal();
-      setRejectSuccessModal({
+      setSuccessModal({
         title: 'Leave Request Rejected',
         message: 'Leave request rejection successful.',
       });
@@ -679,7 +683,7 @@ export default function AdminScheduleRequests({
         </div>
       )}
 
-      {rejectSuccessModal && (
+      {successModal && (
         <div style={styles.modal}>
           <div style={styles.modalContent}>
             <div
@@ -692,9 +696,9 @@ export default function AdminScheduleRequests({
               <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
             </div>
 
-            <h2 style={styles.modalTitle}>{rejectSuccessModal.title}</h2>
+            <h2 style={styles.modalTitle}>{successModal.title}</h2>
             <p style={{ ...styles.modalText, marginBottom: 0 }}>
-              {rejectSuccessModal.message}
+              {successModal.message}
             </p>
           </div>
         </div>
