@@ -1210,7 +1210,7 @@ export default function DentistAppointment() {
                       ...(upcomingPage === 1 ? styles.pageBtnDisabled : {}),
                     }}
                   >
-                    Prev
+                    Previous
                   </button>
 
                   <span style={styles.pageInfo}>
@@ -1302,7 +1302,7 @@ export default function DentistAppointment() {
                       ...(historyPage === 1 ? styles.pageBtnDisabled : {}),
                     }}
                   >
-                    Prev
+                    Previous
                   </button>
 
                   <span style={styles.pageInfo}>
@@ -1385,16 +1385,6 @@ export default function DentistAppointment() {
                     : 'Service kit template for this appointment.'}
                 </p>
               </div>
-              {kitAlreadySubmitted && (
-                <button
-                  type="button"
-                  style={styles.noteModalClose}
-                  onClick={() => setShowKitCloseConfirmModal(true)}
-                  disabled={kitSubmitting}
-                >
-                  Ã—
-                </button>
-              )}
             </div>
 
             <div style={styles.noteDetailsBox}>
@@ -1541,16 +1531,20 @@ export default function DentistAppointment() {
 
             {!kitLoading && !kitError && kitItems.length > 0 && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, gap: 10 }}>
-                {(!kitAlreadySubmitted || kitEditMode) && (
-                  <button
-                    type="button"
-                    style={styles.modalSecondaryBtn}
-                    onClick={requestCloseKitModal}
-                    disabled={kitSubmitting}
-                  >
-                    Cancel
-                  </button>
-                )}
+                <button
+                  type="button"
+                  style={styles.modalSecondaryBtn}
+                  onClick={() => {
+                    if (kitAlreadySubmitted && !kitEditMode) {
+                      setShowKitCloseConfirmModal(true);
+                      return;
+                    }
+                    requestCloseKitModal();
+                  }}
+                  disabled={kitSubmitting}
+                >
+                  Cancel
+                </button>
 
                 <button
                   type="button"
@@ -1804,14 +1798,6 @@ export default function DentistAppointment() {
                   Add treatment notes for the completed appointment.
                 </p>
               </div>
-
-              <button
-                type="button"
-                style={styles.noteModalClose}
-                onClick={requestCloseNoteModal}
-              >
-                Ã—
-              </button>
             </div>
 
             <div style={styles.noteDetailsBox}>

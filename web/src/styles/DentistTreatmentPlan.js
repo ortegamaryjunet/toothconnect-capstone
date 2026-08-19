@@ -15,7 +15,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       gap: 20,
       width: '100%',
       boxSizing: 'border-box',
-      fontFamily: 'Inter, Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
     },
 
     card: {
@@ -208,7 +208,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       borderCollapse: 'separate',
       borderSpacing: 0,
       minWidth: isMobile ? 760 : 820,
-      fontFamily: 'Inter, Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
     },
 
     th: {
@@ -889,36 +889,62 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
     },
 
     pagination: {
-      display: 'flex',
-      justifyContent: isMobile ? 'center' : 'flex-end',
-      alignItems: 'center',
-      gap: 10,
-      padding: '16px 2px 2px',
-      flexWrap: 'wrap',
+      display: "flex",
+      alignItems: "center",
+      justifyContent: isMobile ? "center" : "flex-end",
+      gap: 12,
+      marginTop: 20,
+      flexWrap: "nowrap",
     },
 
     pageBtn: {
-      minWidth: 84,
-      height: 38,
-      borderRadius: 9,
-      border: `1px solid ${border}`,
-      background: '#ffffff',
-      color: '#334155',
+      minWidth: 100,
+      height: 40,
+      padding: "0 18px",
+      borderRadius: 10,
+      border: "1px solid transparent",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 13,
       fontWeight: 700,
-      cursor: 'pointer',
+      fontFamily: "Arial, sans-serif",
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      transition: "0.2s ease",
+    },
+
+    prevPageBtn: {
+      background: "#ffffff",
+      color: "#b8860b",
+      border: "1px solid #d4af37",
+    },
+
+    nextPageBtn: {
+      background: "linear-gradient(135deg, #d4af37 0%, #b8860b 100%)",
+      color: "#ffffff",
     },
 
     pageBtnDisabled: {
-      opacity: 0.45,
-      cursor: 'not-allowed',
+      background: "#f8fafc",
+      color: "#94a3b8",
+      border: "1px solid #e2e8f0",
+      cursor: "not-allowed",
     },
 
     pageInfo: {
       minWidth: 100,
-      textAlign: 'center',
-      fontSize: 12,
-      color: muted,
+      height: 40,
+      padding: "0 18px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 10,
+      color: "#334155",
+      fontSize: 13,
       fontWeight: 700,
+      fontFamily: "Arial, sans-serif",
+      whiteSpace: "nowrap",
     },
 
     viewRow: {

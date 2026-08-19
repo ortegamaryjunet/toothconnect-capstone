@@ -285,10 +285,13 @@ export default function DentistProfile() {
   const [uploadingDocuments, setUploadingDocuments] = useState(false);
   const [documentDeleteConfirm, setDocumentDeleteConfirm] = useState(null);
   const [photoRemoveConfirm, setPhotoRemoveConfirm] = useState(false);
+  const [fileSizeErrorModal, setFileSizeErrorModal] = useState(null);
 
   const [showProfileSuccessModal, setShowProfileSuccessModal] = useState(false);
   const [previousWork, setPreviousWork] = useState([]);
   const [showWorkConfirmModal, setShowWorkConfirmModal] = useState(false);
+  const [showWorkCancelConfirmModal, setShowWorkCancelConfirmModal] = useState(false);
+  const [workDeleteConfirm, setWorkDeleteConfirm] = useState(null);
   const [showWorkModal, setShowWorkModal] = useState(false);
   const [workForm, setWorkForm] = useState({
     company_name: '',
@@ -410,11 +413,14 @@ export default function DentistProfile() {
         showEditModal ||
         showWorkModal ||
         showWorkConfirmModal ||
+        showWorkCancelConfirmModal ||
+        workDeleteConfirm ||
         showProfileCloseConfirmModal ||
         profileSaveConfirmModal ||
         showProfileSuccessModal ||
         documentDeleteConfirm ||
-        photoRemoveConfirm
+        photoRemoveConfirm ||
+        fileSizeErrorModal
       ) {
         document.body.style.overflow = 'hidden';
       } else {
@@ -429,11 +435,14 @@ export default function DentistProfile() {
       showEditModal,
       showWorkModal,
       showWorkConfirmModal,
+      showWorkCancelConfirmModal,
+      workDeleteConfirm,
       showProfileSuccessModal,
       showProfileCloseConfirmModal,
       profileSaveConfirmModal,
       documentDeleteConfirm,
       photoRemoveConfirm,
+      fileSizeErrorModal,
   ]);
 
   useEffect(() => {
@@ -445,12 +454,19 @@ export default function DentistProfile() {
           requestCloseEditModal();
         }
 
-        closeWorkModal();
+        if (showWorkModal && !showWorkConfirmModal && !showWorkCancelConfirmModal) {
+          requestCancelWorkModal();
+        }
+
+        setShowWorkConfirmModal(false);
+        setShowWorkCancelConfirmModal(false);
+        setWorkDeleteConfirm(null);
         setShowProfileCloseConfirmModal(false);
         setProfileSaveConfirmModal(null);
         setShowProfileSuccessModal(false);
         setDocumentDeleteConfirm(null);
         setPhotoRemoveConfirm(false);
+        setFileSizeErrorModal(null);
       }
     }
 
@@ -459,7 +475,14 @@ export default function DentistProfile() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showEditModal, editForm, profile]);
+  }, [
+    showEditModal,
+    editForm,
+    profile,
+    showWorkModal,
+    showWorkConfirmModal,
+    showWorkCancelConfirmModal,
+  ]);
 
   function openLogoutModal() {
     setShowLogoutModal(true);
@@ -543,12 +566,33 @@ export default function DentistProfile() {
 
       setWorkErrors({});
       setShowWorkConfirmModal(false);
+      setShowWorkCancelConfirmModal(false);
       setShowWorkModal(false);
+  }
+
+  function requestCancelWorkModal() {
+      if (savingWork) {
+          return;
+      }
+
+      setShowWorkCancelConfirmModal(true);
+  }
+
+  function closeWorkCancelConfirmModal() {
+      if (savingWork) {
+          return;
+      }
+
+      setShowWorkCancelConfirmModal(false);
+  }
+
+  function confirmCancelWorkModal() {
+      closeWorkModal();
   }
 
   function handleWorkOverlayClick(event) {
     if (event.target === event.currentTarget) {
-      closeWorkModal();
+      requestCancelWorkModal();
     }
   }
 
@@ -694,10 +738,21 @@ export default function DentistProfile() {
       setShowWorkConfirmModal(true);
   }
 
-  async function handleDeleteWork(id) {
-    if (!window.confirm('Remove this work history entry?')) {
+  function handleDeleteWork(entry) {
+    setWorkDeleteConfirm(entry);
+  }
+
+  function closeWorkDeleteConfirmModal() {
+    setWorkDeleteConfirm(null);
+  }
+
+  async function confirmDeleteWork() {
+    if (!workDeleteConfirm?.id) {
       return;
     }
+
+    const id = workDeleteConfirm.id;
+    setWorkDeleteConfirm(null);
 
     try {
       await api.delete(`/auth/staff-profile/me/previous-work/${id}`);
@@ -940,12 +995,20 @@ export default function DentistProfile() {
 
   async function handleProfilePhotoFile(file) {
     if (!file) return;
-    if (!PROFILE_PHOTO_TYPES.includes(file.type)) {
-      setProfileError('Profile photo must be a JPG or PNG file.');
+
+    if (file.size > MAX_PROFILE_FILE_SIZE) {
+      setProfileError('');
+      setFileSizeErrorModal({
+        type: 'photo',
+        name: file.name,
+        size: file.size,
+      });
+      if (profilePhotoInputRef.current) profilePhotoInputRef.current.value = '';
       return;
     }
-    if (file.size > MAX_PROFILE_FILE_SIZE) {
-      setProfileError('Profile photo must be 5MB or smaller.');
+
+    if (!PROFILE_PHOTO_TYPES.includes(file.type)) {
+      setProfileError('Profile photo must be a JPG or PNG file.');
       return;
     }
 
@@ -984,13 +1047,26 @@ export default function DentistProfile() {
     const files = Array.from(fileList || []);
     if (files.length === 0) return;
 
-    const invalid = files.find((file) =>
-      !SUPPORTING_DOCUMENT_TYPES.includes(file.type) ||
-      file.size > MAX_PROFILE_FILE_SIZE
+    const oversized = files.find((file) => file.size > MAX_PROFILE_FILE_SIZE);
+
+    if (oversized) {
+      setProfileError('');
+      setFileSizeErrorModal({
+        type: 'attachment',
+        name: oversized.name,
+        size: oversized.size,
+      });
+      if (documentInputRef.current) documentInputRef.current.value = '';
+      return;
+    }
+
+    const invalid = files.find(
+      (file) => !SUPPORTING_DOCUMENT_TYPES.includes(file.type)
     );
 
     if (invalid) {
       setProfileError('Attachments must be PDF, JPG, or PNG files up to 5MB each.');
+      if (documentInputRef.current) documentInputRef.current.value = '';
       return;
     }
 
@@ -1768,15 +1844,6 @@ export default function DentistProfile() {
                     <p style={styles.previousWorkEmptyText}>
                       Add your previous employment details to your profile.
                     </p>
-
-                    <button
-                      type="button"
-                      onClick={openWorkModal}
-                      style={styles.previousWorkEmptyBtn}
-                    >
-                      <i className="fi fi-rr-plus"></i>
-                      Add Your First Work
-                    </button>
                   </div>
                 ) : (
                   <div style={styles.previousWorkList}>
@@ -1843,7 +1910,7 @@ export default function DentistProfile() {
                         <button
                           type="button"
                           onClick={() =>
-                            handleDeleteWork(entry.id)
+                            handleDeleteWork(entry)
                           }
                           style={styles.previousWorkDeleteBtn}
                           title="Remove work history"
@@ -2399,7 +2466,7 @@ export default function DentistProfile() {
         </div>
       )}
 
-      {showWorkModal && !showWorkConfirmModal && (
+      {showWorkModal && !showWorkConfirmModal && !showWorkCancelConfirmModal && (
         <div style={styles.editOverlay} onClick={handleWorkOverlayClick}>
           <div style={{ ...styles.editModalBox, maxWidth: 560 }}>
             <div style={styles.editModalHeader}>
@@ -2415,16 +2482,6 @@ export default function DentistProfile() {
                   </p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                style={styles.modalClose}
-                onClick={closeWorkModal}
-                disabled={savingWork}
-                aria-label="Close"
-              >
-                <i className="fi fi-rr-cross-small"></i>
-              </button>
             </div>
 
             <form style={styles.editForm} onSubmit={handleAddWork}>
@@ -2664,7 +2721,7 @@ export default function DentistProfile() {
                 <button
                   type="button"
                   style={styles.cancelEditBtn}
-                  onClick={closeWorkModal}
+                  onClick={requestCancelWorkModal}
                   disabled={savingWork}
                 >
                   Cancel
@@ -2916,6 +2973,229 @@ export default function DentistProfile() {
           </div>
       )}
 
+      {showWorkCancelConfirmModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeWorkCancelConfirmModal();
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i
+                className="fi fi-rr-exclamation"
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Cancel Add Work</h2>
+
+            <p style={styles.modalText}>
+              Are you sure you want to cancel? Any work history details you entered will be discarded.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeWorkCancelConfirmModal}
+                disabled={savingWork}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmCancelWorkModal}
+                disabled={savingWork}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fileSizeErrorModal && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setFileSizeErrorModal(null);
+            }
+          }}
+        >
+          <div style={{ ...styles.modalContent, position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setFileSizeErrorModal(null)}
+              aria-label="Close"
+              style={{
+                position: 'absolute',
+                top: 14,
+                right: 14,
+                width: 32,
+                height: 32,
+                border: 'none',
+                borderRadius: 8,
+                backgroundColor: '#f8fafc',
+                color: '#64748b',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <i className="fi fi-rr-cross-small"></i>
+            </button>
+
+            <div
+              style={{
+                ...styles.modalIcon,
+                backgroundColor: '#fff7ed',
+                color: '#ea580c',
+              }}
+            >
+              <i
+                className="fi fi-rr-file-circle-exclamation"
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>File Too Large</h2>
+
+            <p style={styles.modalText}>
+              {fileSizeErrorModal.type === 'photo'
+                ? 'The profile photo cannot be uploaded because it is larger than 5 MB.'
+                : 'The attachment cannot be uploaded because it is larger than 5 MB.'}
+            </p>
+
+            <div
+              style={{
+                margin: '0 0 20px',
+                padding: '12px 14px',
+                borderRadius: 10,
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                textAlign: 'left',
+              }}
+            >
+              <div
+                style={{
+                  color: '#475569',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  marginBottom: 5,
+                  wordBreak: 'break-word',
+                }}
+              >
+                {fileSizeErrorModal.name || 'Selected file'}
+              </div>
+
+              <div
+                style={{
+                  color: '#64748b',
+                  fontSize: 11,
+                  lineHeight: 1.5,
+                }}
+              >
+                File size: {(fileSizeErrorModal.size / (1024 * 1024)).toFixed(2)} MB
+                <br />
+                Maximum allowed: 5 MB
+              </div>
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.saveBtn }}
+                onClick={() => setFileSizeErrorModal(null)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {workDeleteConfirm && (
+        <div
+          style={styles.modal}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeWorkDeleteConfirmModal();
+            }
+          }}
+        >
+          <div style={styles.modalContent}>
+            <div style={styles.modalIcon}>
+              <i
+                className="fi fi-rr-trash"
+                style={styles.modalIconText}
+              ></i>
+            </div>
+
+            <h2 style={styles.modalTitle}>Delete Work History</h2>
+
+            <p style={styles.modalText}>
+              Are you sure you want to remove this work history entry?
+            </p>
+
+            <div
+              style={{
+                margin: '0 0 20px',
+                padding: '12px 14px',
+                borderRadius: 10,
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                textAlign: 'left',
+              }}
+            >
+              <strong
+                style={{
+                  display: 'block',
+                  color: '#172033',
+                  fontSize: 13,
+                  marginBottom: 4,
+                }}
+              >
+                {workDeleteConfirm.company_name || 'N/A'}
+              </strong>
+
+              <span
+                style={{
+                  color: '#64748b',
+                  fontSize: 12,
+                }}
+              >
+                {workDeleteConfirm.position || 'N/A'}
+              </span>
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.cancelBtn }}
+                onClick={closeWorkDeleteConfirmModal}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                style={{ ...styles.modalButton, ...styles.logoutBtn }}
+                onClick={confirmDeleteWork}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {documentDeleteConfirm && (
         <div
           style={styles.modal}
@@ -2964,6 +3244,7 @@ export default function DentistProfile() {
           onClick={(event) => {
             if (event.target === event.currentTarget) {
               setPhotoRemoveConfirm(false);
+        setFileSizeErrorModal(null);
             }
           }}
         >

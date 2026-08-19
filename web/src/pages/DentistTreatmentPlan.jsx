@@ -601,8 +601,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             type="button"
             onClick={() => setPlanPage(prev => Math.max(1, prev - 1))}
             disabled={plans.length === 0 || planPage === 1}
-            style={{
-              ...styles.pageBtn,
+            style={{ ...styles.pageBtn, ...styles.prevPageBtn,
               ...(plans.length === 0 || planPage === 1 ? styles.pageBtnDisabled : {}),
             }}
           >
@@ -615,8 +614,7 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
             type="button"
             onClick={() => setPlanPage(prev => Math.min(totalPlanPages, prev + 1))}
             disabled={plans.length === 0 || planPage >= totalPlanPages}
-            style={{
-              ...styles.pageBtn,
+            style={{ ...styles.pageBtn, ...styles.nextPageBtn,
               ...(plans.length === 0 || planPage >= totalPlanPages ? styles.pageBtnDisabled : {}),
             }}
           >
@@ -958,6 +956,16 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
       {attachmentModalOpen && attachmentPlan && createPortal((
         <div style={{ ...styles.overlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
           <div style={{ ...styles.attachmentModal, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              style={styles.closeIconBtn}
+              onClick={requestCloseAttachmentModal}
+              aria-label="Close attachments"
+              title="Close"
+            >
+              ×
+            </button>
+
             <div style={styles.attachmentHeader}>
               <h3 style={styles.modalTitle}>Tooth #{attachmentPlan.tooth_number}</h3>
               <div style={styles.attachmentMeta}>
@@ -1037,6 +1045,15 @@ export default function TreatmentPlan({ patientId, isMobile = false }) {
       {previewAttachment && createPortal((
         <div style={{ ...styles.lightboxOverlay, position: 'fixed', inset: 0, zIndex: 2147483647 }}>
           <div style={{ ...styles.lightboxContent, position: "relative", zIndex: 2147483646 }} onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              style={styles.closeIconBtn}
+              onClick={() => setPreviewAttachment(null)}
+              aria-label="Close attachment preview"
+              title="Close"
+            >
+              ×
+            </button>
             <h3 style={styles.modalTitle}>{previewAttachment.file_name}</h3>
             {isImageAttachment(previewAttachment) ? (
               <img

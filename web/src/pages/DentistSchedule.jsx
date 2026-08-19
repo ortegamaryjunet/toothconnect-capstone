@@ -934,15 +934,6 @@ export default function DentistSchedule() {
               <h2 style={{ ...styles.modalTitle, margin: 0 }}>
                 Leave Request
               </h2>
-
-              <button
-                type="button"
-                onClick={requestCloseLeaveModal}
-                style={styles.detailsCloseButton}
-                disabled={submitLoading}
-              >
-                &times;
-              </button>
             </div>
 
             <div style={styles.leaveDateRow}>
