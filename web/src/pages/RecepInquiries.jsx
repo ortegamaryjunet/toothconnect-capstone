@@ -660,14 +660,6 @@ export default function RecepInquiries() {
                   {replyModal.full_name} · {replyModal.email_address}
                 </div>
               </div>
-
-              <button
-                type="button"
-                style={s.replyCloseBtn}
-                onClick={closeReplyModal}
-              >
-                <i className="fi fi-rr-cross-small"></i>
-              </button>
             </div>
 
             <div style={s.replyModalBody}>

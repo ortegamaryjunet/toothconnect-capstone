@@ -136,6 +136,7 @@ export default function RecepPatientForm() {
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showBackModal, setShowBackModal] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -213,6 +214,50 @@ export default function RecepPatientForm() {
       ...current,
       [field]: value,
     }));
+
+    const validationMap = {
+      firstName: ['First Name', 'name'],
+      lastName: ['Last Name', 'name'],
+      contact: ['Contact Number', 'phone'],
+      emailAddress: ['Email Address', 'email'],
+      homeAddress: ['Home Address', 'text'],
+      effectiveDate: ['Effective Date', 'text'],
+    };
+
+    const config = validationMap[field];
+
+    if (config) {
+      const [label, type] = config;
+      const error = validateRequiredField(field, value, label, type);
+
+      setFieldErrors((current) => {
+        const next = { ...current };
+
+        if (error) {
+          next[field] = error;
+        } else {
+          delete next[field];
+        }
+
+        return next;
+      });
+
+      return;
+    }
+
+    if (field === 'gender') {
+      setFieldErrors((current) => {
+        const next = { ...current };
+
+        if (value) {
+          delete next.gender;
+        } else {
+          next.gender = 'Gender is required.';
+        }
+
+        return next;
+      });
+    }
   }
 
   function handleBirthdayChange(value) {
@@ -221,6 +266,18 @@ export default function RecepPatientForm() {
       birthday: value,
       age: calculateAge(value),
     }));
+
+    setFieldErrors((current) => {
+      const next = { ...current };
+
+      if (value) {
+        delete next.birthday;
+      } else {
+        next.birthday = 'Birthday is required.';
+      }
+
+      return next;
+    });
   }
 
   function handleNoSuffixChange(checked) {
@@ -267,13 +324,108 @@ export default function RecepPatientForm() {
     });
   }
 
+  function validateRequiredField(field, value, label, type = 'text') {
+    const trimmedValue = String(value ?? '').trim();
+
+    if (!trimmedValue) {
+      return `${label} is required.`;
+    }
+
+    if (type === 'name' && !/^[A-Za-zÀ-ÿ\s.'-]+$/.test(trimmedValue)) {
+      return `${label} contains invalid characters.`;
+    }
+
+    if (type === 'text' && !/^[A-Za-z0-9À-ÿ\s.,'()/#&-]+$/.test(trimmedValue)) {
+      return `${label} contains invalid characters.`;
+    }
+
+    if (type === 'phone' && !/^[0-9+\-\s()]+$/.test(trimmedValue)) {
+      return `${label} contains invalid characters.`;
+    }
+
+    if (type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue)) {
+      return 'Please enter a valid email address.';
+    }
+
+    return '';
+  }
+
   function handleSubmitCheck(event) {
     event.preventDefault();
 
-    const form = event.currentTarget;
+    const errors = {};
 
-    if (!form.checkValidity()) {
-      form.reportValidity();
+    const firstNameError = validateRequiredField(
+      'firstName',
+      formData.firstName,
+      'First Name',
+      'name'
+    );
+    if (firstNameError) errors.firstName = firstNameError;
+
+    const lastNameError = validateRequiredField(
+      'lastName',
+      formData.lastName,
+      'Last Name',
+      'name'
+    );
+    if (lastNameError) errors.lastName = lastNameError;
+
+    if (!formData.gender) {
+      errors.gender = 'Gender is required.';
+    }
+
+    if (!formData.birthday) {
+      errors.birthday = 'Birthday is required.';
+    }
+
+    const contactError = validateRequiredField(
+      'contact',
+      formData.contact,
+      'Contact Number',
+      'phone'
+    );
+    if (contactError) errors.contact = contactError;
+
+    const emailError = validateRequiredField(
+      'emailAddress',
+      formData.emailAddress,
+      'Email Address',
+      'email'
+    );
+    if (emailError) errors.emailAddress = emailError;
+
+    if (!formData.nationality) {
+      errors.nationality = 'Nationality is required.';
+    }
+
+    if (!formData.religion) {
+      errors.religion = 'Religion is required.';
+    }
+
+    const effectiveDateError = validateRequiredField(
+      'effectiveDate',
+      formData.effectiveDate,
+      'Effective Date'
+    );
+    if (effectiveDateError) errors.effectiveDate = effectiveDateError;
+
+    const addressError = validateRequiredField(
+      'homeAddress',
+      formData.homeAddress,
+      'Home Address',
+      'text'
+    );
+    if (addressError) errors.homeAddress = addressError;
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setOpenSections((current) => ({
+        ...current,
+        personalInfo: true,
+      }));
+      setShowSubmitModal(false);
       return;
     }
 
@@ -353,6 +505,7 @@ export default function RecepPatientForm() {
                 value={formData.firstName}
                 onChange={(value) => handleInputChange('firstName', value)}
                 required
+                error={fieldErrors.firstName}
               />
 
               <InputField
@@ -368,6 +521,7 @@ export default function RecepPatientForm() {
                 value={formData.lastName}
                 onChange={(value) => handleInputChange('lastName', value)}
                 required
+                error={fieldErrors.lastName}
               />
             </div>
 
@@ -400,6 +554,9 @@ export default function RecepPatientForm() {
                     required
                   />
                 </div>
+                {fieldErrors.gender && (
+                  <div style={{ marginTop: 5, color: '#d92d20', fontSize: 12, fontWeight: 500 }}>{fieldErrors.gender}</div>
+                )}
               </div>
 
               <div style={styles.formGroup}>
@@ -441,6 +598,7 @@ export default function RecepPatientForm() {
                 value={formData.birthday}
                 onChange={handleBirthdayChange}
                 required
+                error={fieldErrors.birthday}
               />
 
               <InputField
@@ -461,6 +619,7 @@ export default function RecepPatientForm() {
                 onChange={(value) => handleInputChange('contact', value)}
                 placeholder="+63"
                 required
+                error={fieldErrors.contact}
               />
 
               <InputField
@@ -470,6 +629,7 @@ export default function RecepPatientForm() {
                 value={formData.emailAddress}
                 onChange={(value) => handleInputChange('emailAddress', value)}
                 required
+                error={fieldErrors.emailAddress}
               />
             </div>
 
@@ -482,6 +642,7 @@ export default function RecepPatientForm() {
                 placeholder="Select Nationality"
                 options={nationalityOptions}
                 required
+                error={fieldErrors.nationality}
               />
 
               <SelectField
@@ -492,6 +653,7 @@ export default function RecepPatientForm() {
                 placeholder="Select Religion"
                 options={religionOptions}
                 required
+                error={fieldErrors.religion}
               />
             </div>
 
@@ -520,6 +682,7 @@ export default function RecepPatientForm() {
                 value={formData.effectiveDate}
                 onChange={(value) => handleInputChange('effectiveDate', value)}
                 required
+                error={fieldErrors.effectiveDate}
               />
 
               <TextAreaField
@@ -529,6 +692,7 @@ export default function RecepPatientForm() {
                 onChange={(value) => handleInputChange('homeAddress', value)}
                 rows={2}
                 required
+                error={fieldErrors.homeAddress}
               />
             </div>
 
@@ -1032,6 +1196,7 @@ function InputField({
   readOnly = false,
   disabled = false,
   placeholder = '',
+  error = '',
 }) {
   return (
     <div style={styles.formGroup}>
@@ -1044,8 +1209,12 @@ function InputField({
         readOnly={readOnly}
         disabled={disabled}
         placeholder={placeholder}
-        style={styles.input}
+        style={{
+          ...styles.input,
+          ...(error ? { border: '1px solid #d92d20', background: '#fffafa' } : {}),
+        }}
       />
+      {error && <div style={{ marginTop: 5, color: '#d92d20', fontSize: 12, fontWeight: 500 }}>{error}</div>}
     </div>
   );
 }
@@ -1057,6 +1226,7 @@ function TextAreaField({
   onChange,
   rows = 2,
   required = false,
+  error = '',
 }) {
   return (
     <div style={styles.formGroup}>
@@ -1066,8 +1236,12 @@ function TextAreaField({
         onChange={(event) => onChange?.(event.target.value)}
         rows={rows}
         required={required}
-        style={styles.textarea}
+        style={{
+          ...styles.textarea,
+          ...(error ? { border: '1px solid #d92d20', background: '#fffafa' } : {}),
+        }}
       />
+      {error && <div style={{ marginTop: 5, color: '#d92d20', fontSize: 12, fontWeight: 500 }}>{error}</div>}
     </div>
   );
 }
@@ -1080,6 +1254,7 @@ function SelectField({
   placeholder,
   options,
   required = false,
+  error = '',
 }) {
   return (
     <div style={styles.formGroup}>
@@ -1088,7 +1263,10 @@ function SelectField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}
-        style={styles.input}
+        style={{
+          ...styles.input,
+          ...(error ? { border: '1px solid #d92d20', background: '#fffafa' } : {}),
+        }}
       >
         <option value="" disabled>
           {placeholder}
@@ -1100,6 +1278,7 @@ function SelectField({
           </option>
         ))}
       </select>
+      {error && <div style={{ marginTop: 5, color: '#d92d20', fontSize: 12, fontWeight: 500 }}>{error}</div>}
     </div>
   );
 }

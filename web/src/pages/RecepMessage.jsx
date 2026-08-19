@@ -19,7 +19,9 @@ const POLL_INTERVAL_MS = 7000;
 export default function RecepMessage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const messagesEndRef = useRef(null);
+  const messageInputRef = useRef(null);
 
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -113,6 +115,7 @@ export default function RecepMessage() {
     fetchPatients();
     fetchChats();
     sendPresenceHeartbeat().catch(() => {});
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -132,6 +135,7 @@ export default function RecepMessage() {
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
+
     // The polling effect intentionally follows the selected conversation only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChatId]);
@@ -160,8 +164,11 @@ export default function RecepMessage() {
       setSelectedPresence(presence);
     } catch (err) {
       if (!silent) {
-        setMessageError(err.response?.data?.message || 'Failed to load status.');
+        setMessageError(
+          err.response?.data?.message || 'Failed to load status.'
+        );
       }
+
       setSelectedPresence(null);
     }
   }
@@ -173,8 +180,12 @@ export default function RecepMessage() {
 
     try {
       const threads = await listThreads();
+
       setChats((currentChats) =>
-        mergeChatsWithThreads(currentChats, Array.isArray(threads) ? threads : [])
+        mergeChatsWithThreads(
+          currentChats,
+          Array.isArray(threads) ? threads : []
+        )
       );
     } catch (err) {
       if (!silent) {
@@ -219,12 +230,19 @@ export default function RecepMessage() {
 
       if (
         Array.isArray(data) &&
-        data.some((message) => message.receiver_id === user?.id && !message.is_read)
+        data.some(
+          (message) =>
+            message.receiver_id === user?.id && !message.is_read
+        )
       ) {
-        markThreadRead(patientId).then(() => fetchChats(true)).catch(() => {});
+        markThreadRead(patientId)
+          .then(() => fetchChats(true))
+          .catch(() => {});
       }
     } catch (err) {
-      setMessageError(err.response?.data?.message || 'Failed to load messages.');
+      setMessageError(
+        err.response?.data?.message || 'Failed to load messages.'
+      );
     }
   }
 
@@ -234,10 +252,13 @@ export default function RecepMessage() {
 
     setChats((currentChats) =>
       currentChats.map((chat) =>
-        String(chat.id) === String(chatId) ? { ...chat, unread: 0 } : chat
+        String(chat.id) === String(chatId)
+          ? { ...chat, unread: 0 }
+          : chat
       )
     );
 
+    resetMessageInput();
     fetchThreadMessages(chatId);
     fetchPresence(chatId);
   }
@@ -248,6 +269,7 @@ export default function RecepMessage() {
     setMessageError('');
     setSelectedPatientOption('');
     setSelectedPresence(null);
+    resetMessageInput();
   }
 
   async function sendMessage() {
@@ -280,6 +302,7 @@ export default function RecepMessage() {
     );
 
     setMessageText('');
+    resetMessageInput();
     setIsSendingMessage(true);
     setMessageError('');
 
@@ -288,19 +311,44 @@ export default function RecepMessage() {
         receiver_id: Number(selectedChatId),
         content: text,
       });
+
       await fetchThreadMessages(selectedChatId, true);
       await fetchChats(true);
     } catch (err) {
-      setMessageError(err.response?.data?.message || 'Failed to send message.');
+      setMessageError(
+        err.response?.data?.message || 'Failed to send message.'
+      );
     } finally {
       setIsSendingMessage(false);
     }
   }
 
+  function handleMessageChange(event) {
+    const value = event.target.value;
+
+    setMessageText(value);
+
+    const textarea = messageInputRef.current;
+
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+    }
+  }
+
   function handleMessageKeyDown(event) {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       sendMessage();
+    }
+  }
+
+  function resetMessageInput() {
+    const textarea = messageInputRef.current;
+
+    if (textarea) {
+      textarea.style.height = '40px';
+      textarea.scrollTop = 0;
     }
   }
 
@@ -382,18 +430,23 @@ export default function RecepMessage() {
           <div style={styles.sidebarHeader}>
             <div style={styles.sidebarHeaderContent}>
               <h2 style={styles.sidebarTitle}>Patient Messages</h2>
+
               <p style={styles.sidebarSubtitle}>
                 View and reply to patient inquiries.
               </p>
+
               <div style={styles.newChatSelectWrap}>
                 <i
                   className="fi fi-rr-comment-medical"
                   style={styles.newChatSelectIcon}
                 ></i>
+
                 <select
                   value={selectedPatientOption}
                   onChange={handlePatientDropdownChange}
-                  disabled={isLoadingPatients || patientOptions.length === 0}
+                  disabled={
+                    isLoadingPatients || patientOptions.length === 0
+                  }
                   style={styles.newChatSelect}
                   title="Start new conversation"
                 >
@@ -416,7 +469,10 @@ export default function RecepMessage() {
           </div>
 
           <div style={styles.searchBox}>
-            <i className="fi fi-rr-search" style={styles.searchIcon}></i>
+            <i
+              className="fi fi-rr-search"
+              style={styles.searchIcon}
+            ></i>
 
             <input
               type="text"
@@ -432,7 +488,9 @@ export default function RecepMessage() {
               type="button"
               style={{
                 ...styles.filterBtn,
-                ...(activeFilter === 'all' ? styles.filterBtnActive : {}),
+                ...(activeFilter === 'all'
+                  ? styles.filterBtnActive
+                  : {}),
               }}
               onClick={() => {
                 setActiveFilter('all');
@@ -446,7 +504,9 @@ export default function RecepMessage() {
               type="button"
               style={{
                 ...styles.filterBtn,
-                ...(activeFilter === 'unread' ? styles.filterBtnActive : {}),
+                ...(activeFilter === 'unread'
+                  ? styles.filterBtnActive
+                  : {}),
               }}
               onClick={() => setActiveFilter('unread')}
             >
@@ -457,7 +517,9 @@ export default function RecepMessage() {
 
         <div style={styles.chatList}>
           {isLoadingChats ? (
-            <div style={styles.noResult}>Loading conversations...</div>
+            <div style={styles.noResult}>
+              Loading conversations...
+            </div>
           ) : filteredChats.length === 0 ? (
             <div style={styles.noResult}>{noResultText}</div>
           ) : (
@@ -466,7 +528,9 @@ export default function RecepMessage() {
                 key={chat.id}
                 styles={styles}
                 chat={chat}
-                isActive={String(chat.id) === String(selectedChatId)}
+                isActive={
+                  String(chat.id) === String(selectedChatId)
+                }
                 onClick={() => selectChat(chat.id)}
               />
             ))
@@ -481,9 +545,13 @@ export default function RecepMessage() {
               <i className="fi fi-rr-comment-alt"></i>
             </div>
 
-            <h2 style={styles.emptyTitle}>No conversation selected</h2>
+            <h2 style={styles.emptyTitle}>
+              No conversation selected
+            </h2>
+
             <p style={styles.emptyText}>
-              Select a patient message or choose a patient from the dropdown.
+              Select a patient message or choose a patient from the
+              dropdown.
             </p>
           </div>
         )}
@@ -492,12 +560,20 @@ export default function RecepMessage() {
           <div style={styles.conversation}>
             <div style={styles.conversationHeader}>
               <div style={styles.patientProfile}>
-                <div style={{ ...styles.avatar, ...styles.avatarLarge }}>
+                <div
+                  style={{
+                    ...styles.avatar,
+                    ...styles.avatarLarge,
+                  }}
+                >
                   {getInitial(selectedChat.name)}
                 </div>
 
                 <div>
-                  <h3 style={styles.patientName}>{selectedChat.name}</h3>
+                  <h3 style={styles.patientName}>
+                    {selectedChat.name}
+                  </h3>
+
                   <p
                     style={{
                       ...styles.patientOnline,
@@ -506,7 +582,9 @@ export default function RecepMessage() {
                         : styles.patientOffline),
                     }}
                   >
-                    {selectedPresence?.is_online ? 'Online' : 'Offline'}
+                    {selectedPresence?.is_online
+                      ? 'Online'
+                      : 'Offline'}
                   </p>
                 </div>
               </div>
@@ -525,10 +603,13 @@ export default function RecepMessage() {
               <div style={styles.dateDivider}>Today</div>
 
               {selectedChat.messages.length === 0 ? (
-                <div style={styles.noResult}>No messages yet</div>
+                <div style={styles.noResult}>
+                  No messages yet
+                </div>
               ) : (
                 selectedChat.messages.map((message, index) => {
-                  const nextMessage = selectedChat.messages[index + 1];
+                  const nextMessage =
+                    selectedChat.messages[index + 1];
 
                   const isGrouped =
                     nextMessage &&
@@ -550,21 +631,38 @@ export default function RecepMessage() {
             </div>
 
             <div style={styles.messageInputContainer}>
-              {messageError && <div style={styles.messageError}>{messageError}</div>}
+              {messageError && (
+                <div style={styles.messageError}>
+                  {messageError}
+                </div>
+              )}
 
-              <input
-                type="text"
+              <textarea
+                ref={messageInputRef}
                 placeholder="Type your message"
                 value={messageText}
-                onChange={(event) => setMessageText(event.target.value)}
+                onChange={handleMessageChange}
                 onKeyDown={handleMessageKeyDown}
-                style={styles.messageInput}
+                rows={1}
+                style={{
+                  ...styles.messageInput,
+                  minHeight: 40,
+                  maxHeight: 120,
+                  resize: 'none',
+                  overflowY: 'auto',
+                  lineHeight: '20px',
+                  paddingTop: 10,
+                  paddingBottom: 10,
+                  boxSizing: 'border-box',
+                }}
               />
 
               <button
                 type="button"
                 title="Send Message"
-                disabled={isSendingMessage || !messageText.trim()}
+                disabled={
+                  isSendingMessage || !messageText.trim()
+                }
                 style={{
                   ...styles.sendBtn,
                   ...(isSendingMessage || !messageText.trim()
@@ -581,19 +679,33 @@ export default function RecepMessage() {
       </main>
 
       {showBackConfirmModal && (
-        <div style={styles.modal} onClick={handleBackModalOverlayClick}>
+        <div
+          style={styles.modal}
+          onClick={handleBackModalOverlayClick}
+        >
           <div style={styles.backModalContent}>
             <div style={styles.backModalIcon}>
-              <i className="fi fi-rr-exclamation" style={styles.modalIconText}></i>
+              <i
+                className="fi fi-rr-exclamation"
+                style={styles.modalIconText}
+              ></i>
             </div>
 
-            <h2 style={styles.backModalTitle}>Leave Messages</h2>
-            <p style={styles.backModalText}>Are you sure you want to go back?</p>
+            <h2 style={styles.backModalTitle}>
+              Leave Messages
+            </h2>
+
+            <p style={styles.backModalText}>
+              Are you sure you want to go back?
+            </p>
 
             <div style={styles.backModalActions}>
               <button
                 type="button"
-                style={{ ...styles.backModalButton, ...styles.backCancelBtn }}
+                style={{
+                  ...styles.backModalButton,
+                  ...styles.backCancelBtn,
+                }}
                 onClick={closeBackConfirmModal}
               >
                 No
@@ -601,7 +713,10 @@ export default function RecepMessage() {
 
               <button
                 type="button"
-                style={{ ...styles.backModalButton, ...styles.backConfirmBtn }}
+                style={{
+                  ...styles.backModalButton,
+                  ...styles.backConfirmBtn,
+                }}
                 onClick={handleBackConfirm}
               >
                 Yes
@@ -627,23 +742,32 @@ function ChatItem({ styles, chat, isActive, onClick }) {
       }}
       onClick={onClick}
     >
-      <div style={styles.avatar}>{getInitial(chat.name)}</div>
+      <div style={styles.avatar}>
+        {getInitial(chat.name)}
+      </div>
 
       <div style={styles.chatInfo}>
         <div style={styles.chatRow}>
           <div style={styles.chatNameWrap}>
             <h4 style={styles.chatName}>{chat.name}</h4>
           </div>
-          <span style={styles.chatTime}>{chat.lastTime}</span>
+
+          <span style={styles.chatTime}>
+            {chat.lastTime}
+          </span>
         </div>
 
         <div style={styles.chatRow}>
           <p style={styles.chatPreview}>
-            {lastMessage ? lastMessage.text : 'No messages yet'}
+            {lastMessage
+              ? lastMessage.text
+              : 'No messages yet'}
           </p>
 
           {chat.unread > 0 && (
-            <span style={styles.unreadBadge}>{chat.unread}</span>
+            <span style={styles.unreadBadge}>
+              {chat.unread}
+            </span>
           )}
         </div>
       </div>
@@ -658,24 +782,40 @@ function MessageBubble({ styles, message, isGrouped }) {
     <div
       style={{
         ...styles.messageRow,
-        ...(isSent ? styles.messageRowSent : styles.messageRowReceived),
+        ...(isSent
+          ? styles.messageRowSent
+          : styles.messageRowReceived),
       }}
     >
       <div
         style={{
           ...styles.messageBubble,
-          ...(isSent ? styles.messageBubbleSent : styles.messageBubbleReceived),
-          ...(isSent && !isGrouped ? styles.sentBubbleLast : {}),
-          ...(!isSent && !isGrouped ? styles.receivedBubbleLast : {}),
+          ...(isSent
+            ? styles.messageBubbleSent
+            : styles.messageBubbleReceived),
+          ...(isSent && !isGrouped
+            ? styles.sentBubbleLast
+            : {}),
+          ...(!isSent && !isGrouped
+            ? styles.receivedBubbleLast
+            : {}),
         }}
       >
         {message.text}
       </div>
 
       {!isGrouped && (
-        <span style={isSent ? styles.messageStatus : styles.messageTime}>
+        <span
+          style={
+            isSent
+              ? styles.messageStatus
+              : styles.messageTime
+          }
+        >
           {isSent
-            ? `${message.time} • ${message.status || 'Delivered'}`
+            ? `${message.time} • ${
+                message.status || 'Delivered'
+              }`
             : message.time}
         </span>
       )}
@@ -684,7 +824,9 @@ function MessageBubble({ styles, message, isGrouped }) {
 }
 
 function getInitial(name) {
-  return String(name || '?').charAt(0).toUpperCase();
+  return String(name || '?')
+    .charAt(0)
+    .toUpperCase();
 }
 
 function getCurrentTime() {
@@ -696,11 +838,20 @@ function getCurrentTime() {
 
 function mapPatientOption(patient) {
   return {
-    id: patient.id || patient.user_id || patient.patient_id || patient.info_id,
+    id:
+      patient.id ||
+      patient.user_id ||
+      patient.patient_id ||
+      patient.info_id,
+
     name:
       patient.full_name ||
       patient.name ||
-      [patient.first_name, patient.middle_name, patient.last_name]
+      [
+        patient.first_name,
+        patient.middle_name,
+        patient.last_name,
+      ]
         .filter(Boolean)
         .join(' ')
         .trim(),
@@ -709,7 +860,10 @@ function mapPatientOption(patient) {
 
 function mergeChatsWithThreads(currentChats, threads) {
   const existingByIdMap = new Map(
-    currentChats.map((chat) => [String(chat.id), chat])
+    currentChats.map((chat) => [
+      String(chat.id),
+      chat,
+    ])
   );
 
   const threadChatIds = new Set();
@@ -717,7 +871,9 @@ function mergeChatsWithThreads(currentChats, threads) {
   // Build list in backend sort order (most recent first).
   const result = threads.map((thread) => {
     const chatId = String(thread.other_user_id);
+
     threadChatIds.add(chatId);
+
     const existing = existingByIdMap.get(chatId);
 
     return {
@@ -725,6 +881,7 @@ function mergeChatsWithThreads(currentChats, threads) {
       name: thread.other_user_name || 'Patient',
       unread: Number(thread.unread_count || 0),
       lastTime: previewTime(thread.last_message_at),
+
       messages:
         existing?.messages?.length > 0
           ? existing.messages
@@ -732,7 +889,9 @@ function mergeChatsWithThreads(currentChats, threads) {
               {
                 text: thread.last_message_body || '',
                 type: 'received',
-                time: previewTime(thread.last_message_at),
+                time: previewTime(
+                  thread.last_message_at
+                ),
                 status: '',
               },
             ],
@@ -757,8 +916,13 @@ function normalizeMessages(items, currentUserId) {
   return items.map((message) => ({
     id: message.id,
     text: message.content || '',
-    type: message.sender_id === currentUserId ? 'sent' : 'received',
-    time: formatTimeOnly(message.created_at) || getCurrentTime(),
+    type:
+      message.sender_id === currentUserId
+        ? 'sent'
+        : 'received',
+    time:
+      formatTimeOnly(message.created_at) ||
+      getCurrentTime(),
     status: message.is_read ? 'Read' : 'Delivered',
   }));
 }

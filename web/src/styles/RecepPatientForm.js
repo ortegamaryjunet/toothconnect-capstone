@@ -318,6 +318,7 @@ const createRecepPatientFormStyles = ({
       color: '#ffffff',
       fontFamily: '"Inter Bold", Arial, sans-serif',
       fontSize: 15,
+      fontWeight: 'bold',
       cursor: 'pointer',
       transition: '0.2s ease',
     },

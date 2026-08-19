@@ -657,15 +657,13 @@
     },
 
     modalButton: {
-      flex: 1,
-      width: isMobile ? '100%' : 'auto',
-      height: 38,
+      minWidth: 120,
+      height: 44,
+      borderRadius: 12,
       border: 'none',
-      borderRadius: 8,
-      fontFamily: 'Arial, sans-serif',
-      fontSize: 14,
-      fontWeight: 700,
       cursor: 'pointer',
+      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontSize: 14,
     },
 
     logoutBtn: {
