@@ -285,6 +285,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       gap: 7,
       fontSize: 12,
       fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
     },
 
     attachmentCount: {
@@ -299,6 +300,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
+      fontFamily: 'Arial, sans-serif',
     },
 
     editBtn: {
@@ -384,6 +386,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       color: muted,
       margin: '0 0 20px',
       lineHeight: 1.6,
+      fontFamily: 'Arial, sans-serif',
     },
 
     readonlyInput: {
@@ -419,6 +422,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       boxSizing: 'border-box',
       boxShadow: '0 24px 70px rgba(15, 23, 42, .22)',
       border: `1px solid ${border}`,
+      fontFamily: 'Arial, sans-serif',
     },
 
     attachmentModal: {
@@ -435,6 +439,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       border: `1px solid ${border}`,
       display: 'flex',
       flexDirection: 'column',
+      fontFamily: 'Arial, sans-serif',
     },
 
     closeIconBtn: {
@@ -454,6 +459,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      fontFamily: 'Arial, sans-serif',
     },
 
     modalTitle: {
@@ -463,6 +469,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       fontWeight: 800,
       color: text,
       letterSpacing: '-.2px',
+      fontFamily: 'Arial, sans-serif',
     },
 
     attachmentHeader: {
@@ -477,6 +484,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       flexWrap: 'wrap',
       color: '#334155',
       fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
     },
 
     uploadDropzone: {
@@ -493,6 +501,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       gap: 7,
       textAlign: 'center',
       fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
     },
 
     uploadIcon: {
@@ -524,6 +533,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       fontSize: 13,
       fontWeight: 600,
       textAlign: 'center',
+      fontFamily: 'Arial, sans-serif',
     },
 
     attachmentItem: {
@@ -536,6 +546,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       borderRadius: 12,
       background: '#ffffff',
       boxSizing: 'border-box',
+      fontFamily: 'Arial, sans-serif',
     },
 
     attachmentThumb: {
@@ -558,6 +569,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: 19,
+      fontFamily: 'Arial, sans-serif',
     },
 
     attachmentInfo: {
@@ -573,11 +585,13 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
+      fontFamily: 'Arial, sans-serif',
     },
 
     attachmentSubtext: {
       color: muted,
       fontSize: 11,
+      fontFamily: 'Arial, sans-serif',
     },
 
     iconActionBtn: {
@@ -592,6 +606,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
     },
 
     iconDeleteBtn: {
@@ -652,6 +667,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       fontWeight: 800,
       color: '#334155',
       marginBottom: 7,
+      fontFamily: 'Arial, sans-serif',
     },
 
     required: {
@@ -669,6 +685,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       boxSizing: 'border-box',
       outline: 'none',
       background: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
     },
 
     select: {
@@ -682,6 +699,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       background: '#ffffff',
       boxSizing: 'border-box',
       outline: 'none',
+      fontFamily: 'Arial, sans-serif',
     },
 
     textarea: {
@@ -696,6 +714,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       outline: 'none',
       background: '#ffffff',
       lineHeight: 1.5,
+      fontFamily: 'Arial, sans-serif',
     },
 
     formError: {
@@ -733,6 +752,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       textAlign: 'center',
       boxShadow: '0 24px 70px rgba(15, 23, 42, .22)',
       boxSizing: 'border-box',
+      fontFamily: 'Arial, sans-serif',
     },
 
     confirmIcon: {
@@ -769,6 +789,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       fontSize: 19,
       color: text,
       fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
     },
 
     confirmText: {
@@ -776,6 +797,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       fontSize: 13,
       color: muted,
       lineHeight: 1.55,
+      fontFamily: 'Arial, sans-serif',
     },
 
     confirmActions: {
@@ -793,6 +815,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       cursor: 'pointer',
       fontWeight: 800,
       fontSize: 13,
+      fontFamily: 'Arial, sans-serif',
     },
 
     confirmCancelBtn: {
@@ -851,6 +874,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       background: '#ffffff',
       color: '#475569',
       cursor: 'pointer',
+      fontFamily: 'Arial, sans-serif',
     },
 
     saveBtn: {
@@ -864,6 +888,7 @@ const createTreatmentPlanStyles = ({ isMobile = false } = {}) => {
       color: '#ffffff',
       cursor: 'pointer',
       boxShadow: '0 7px 16px rgba(139, 101, 8, .16)',
+      fontFamily: 'Arial, sans-serif',
     },
 
     backStyleBtn: {
