@@ -292,7 +292,7 @@ const createAdminTransactionsStyles = ({
       gap: 8,
       fontSize: 14,
       fontWeight: 700,
-      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
       cursor: 'pointer',
       boxShadow: '0 8px 18px rgba(220, 38, 38, 0.24)',
       whiteSpace: 'nowrap',
@@ -560,24 +560,53 @@ const createAdminTransactionsStyles = ({
       width: '100%',
       maxWidth: 390,
       background: '#ffffff',
-      borderRadius: 18,
-      padding: 24,
+      borderRadius: 12,
+      padding: isMobile ? 24 : 30,
       textAlign: 'center',
-      boxShadow: '0 24px 60px rgba(15, 23, 42, 0.22)',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.22)',
       boxSizing: 'border-box',
     },
 
+    modalIcon: {
+      width: 70,
+      height: 70,
+      margin: '0 auto 16px',
+      borderRadius: '50%',
+      background: '#fee2e2',
+      color: '#dc2626',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    modalIconText: {
+      fontSize: 30,
+      lineHeight: 1,
+    },
+
     modalTitle: {
-      margin: 0,
+      marginBottom: 10,
+      marginTop: 0,
       color: '#0f172a',
       fontSize: 22,
       fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
     },
 
     modalText: {
-      margin: '10px 0 20px',
+      marginBottom: 24,
+      marginTop: 0,
       color: '#64748b',
       lineHeight: 1.5,
+      fontSize: 15,
+      fontFamily: 'Arial, sans-serif',
+    },
+
+    modalActions: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 12,
+      flexDirection: isMobile ? 'column' : 'row',
     },
 
     modalButton: {
@@ -585,10 +614,20 @@ const createAdminTransactionsStyles = ({
       minWidth: 120,
       border: 'none',
       borderRadius: 12,
-      background: '#d4af37',
-      color: '#ffffff',
       fontWeight: 800,
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
       cursor: 'pointer',
+    },
+
+    logoutBtn: {
+      background: '#dc2626',
+      color: '#ffffff',
+    },
+
+    cancelBtn: {
+      background: '#f1f5f9',
+      color: '#334155',
     },
   };
 };

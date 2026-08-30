@@ -12,7 +12,7 @@
       width: '100%',
       display: 'flex',
       background: '#f5f7fb',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
       color: '#172033',
       overflowX: 'hidden',
       boxSizing: 'border-box',
@@ -258,7 +258,7 @@
 
     heroTitle: {
       maxWidth: 760,
-      fontSize: isMobile ? 22 : isTablet ? 26 : 31,
+      fontSize: isMobile ? 23 : 31,
       color: '#ffffff',
       marginBottom: 12,
       marginTop: 0,

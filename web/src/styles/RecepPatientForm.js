@@ -34,9 +34,10 @@ const createRecepPatientFormStyles = ({
 
     headerTitle: {
       margin: 0,
-      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
       fontSize: isVerySmall ? 22 : 26,
       color: '#0f172a',
+      fontWeight: 700,
     },
 
     headerText: {
@@ -51,18 +52,22 @@ const createRecepPatientFormStyles = ({
       position: 'absolute',
       left: 0,
       top: 8,
-      width: 42,
-      height: 42,
+      minWidth: isVerySmall ? 72 : 84,
+      height: isVerySmall ? 38 : 42,
+      padding: '0 16px',
       border: 'none',
-      background: 'transparent',
-      borderRadius: '50%',
+      background: '#d4af37',
+      borderRadius: 14,
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#2563eb',
-      fontSize: 20,
+      color: '#ffffff',
+      fontSize: 14,
+      fontWeight: 700,
+      fontFamily: 'Arial, sans-serif',
       transition: '0.2s ease',
+      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
     },
 
     section: {
@@ -82,10 +87,11 @@ const createRecepPatientFormStyles = ({
 
     sectionTitle: {
       margin: 0,
-      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
       fontSize: isVerySmall ? 15 : 17,
       color: '#1e293b',
       lineHeight: 1.3,
+      fontWeight: 700,
     },
 
     circleBtn: {
@@ -94,12 +100,16 @@ const createRecepPatientFormStyles = ({
       minWidth: 34,
       borderRadius: '50%',
       border: 'none',
-      background: '#2563eb',
+      background: 'linear-gradient(135deg, #b8860b, #d4af37)',
       color: '#ffffff',
       fontSize: 20,
       lineHeight: 1,
       cursor: 'pointer',
       transition: '0.2s ease',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'Arial, sans-serif',
     },
 
     content: {
@@ -344,6 +354,7 @@ const createRecepPatientFormStyles = ({
       textAlign: 'center',
       boxShadow: '0 20px 50px rgba(15, 23, 42, 0.2)',
       boxSizing: 'border-box',
+      fontFamily: 'Arial, sans-serif',
     },
 
     recordIcon: {
@@ -374,16 +385,18 @@ const createRecepPatientFormStyles = ({
 
     recordTitle: {
       margin: '0 0 10px',
-      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
       fontSize: 21,
       color: '#0f172a',
+      fontWeight: 600,
     },
 
     backTitle: {
       margin: '0 0 10px',
-      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
       fontSize: 21,
       color: '#0f172a',
+      fontWeight: 600,
     },
 
     modalText: {
@@ -396,7 +409,8 @@ const createRecepPatientFormStyles = ({
 
     modalActions: {
       display: 'flex',
-      gap: 14,
+      justifyContent: 'center',
+      gap: 12,
       flexDirection: isVerySmall ? 'column' : 'row',
     },
 
@@ -425,27 +439,29 @@ const createRecepPatientFormStyles = ({
     },
 
     confirmYes: {
-      flex: 1,
-      padding: 12,
+      minWidth: isVerySmall ? '100%' : 100,
+      padding: '12px 18px',
       border: 'none',
       borderRadius: 12,
-      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
       fontSize: 14,
       cursor: 'pointer',
-      background: '#ef4444',
+      background: '#dc2626',
       color: '#ffffff',
     },
 
     confirmNo: {
-      flex: 1,
-      padding: 12,
+      minWidth: isVerySmall ? '100%' : 100,
+      padding: '12px 18px',
       border: 'none',
       borderRadius: 12,
-      fontFamily: '"Inter Bold", Arial, sans-serif',
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 800,
       fontSize: 14,
       cursor: 'pointer',
-      background: '#f1f5f9',
-      color: '#334155',
+      background: '#e5e7eb',
+      color: '#0f172a',
     },
   };
 };

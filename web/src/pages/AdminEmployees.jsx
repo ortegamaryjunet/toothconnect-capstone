@@ -2939,7 +2939,7 @@ export default function AdminEmployees() {
                 }}
                 onClick={() => setShowEmployeeCloseConfirmModal(true)}
               >
-                Ã—
+                X
               </button>
             </div>
 

@@ -10,7 +10,7 @@
       minHeight: '100vh',
       width: '100%',
       background: '#f5f7fb',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
       color: '#172033',
       display: 'flex',
       overflowX: 'hidden',
@@ -224,18 +224,18 @@
 
     heroTitle: {
       maxWidth: '100%',
-      fontSize: isMobile ? 24 : isSmallScreen ? 27 : 31,
+      fontSize: isMobile ? 23 : 31,
       color: '#ffffff',
       marginBottom: 12,
       marginTop: 0,
       lineHeight: 1.2,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
     },
 
     heroText: {
       marginTop: 10,
       color: '#ffffff',
-      fontSize: isMobile ? 13 : 14,
+      fontSize: 14,
       lineHeight: 1.5,
       marginBottom: 0,
     },

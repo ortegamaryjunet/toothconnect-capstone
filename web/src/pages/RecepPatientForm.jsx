@@ -473,8 +473,8 @@ export default function RecepPatientForm() {
     <main style={styles.pageWrapper}>
       <div style={styles.container}>
         <div style={styles.header}>
-          <button type="button" style={styles.backBtn} onClick={handleBackClick}>
-            <i className="fi fi-rr-angle-left"></i>
+          <button type="button" style={styles.backBtn} onClick={handleBackClick} aria-label="Go back">
+            Back
           </button>
 
           <div>
@@ -1149,18 +1149,18 @@ export default function RecepPatientForm() {
             <div style={styles.modalActions}>
               <button
                 type="button"
-                style={styles.confirmYes}
-                onClick={handleBackConfirm}
-              >
-                Yes
-              </button>
-
-              <button
-                type="button"
                 style={styles.confirmNo}
                 onClick={() => setShowBackModal(false)}
               >
                 No
+              </button>
+
+              <button
+                type="button"
+                style={styles.confirmYes}
+                onClick={handleBackConfirm}
+              >
+                Yes
               </button>
             </div>
           </div>

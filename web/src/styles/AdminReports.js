@@ -10,7 +10,7 @@
       minHeight: '100vh',
       width: '100%',
       background: '#f5f7fb',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
       color: '#172033',
       display: 'flex',
       overflowX: 'hidden',
@@ -232,7 +232,7 @@
       color: '#ffffff',
       marginBottom: 12,
       marginTop: 0,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
     },
 
     heroText: {

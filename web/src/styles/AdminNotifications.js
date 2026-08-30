@@ -10,7 +10,7 @@
       minHeight: '100vh',
       width: '100%',
       background: '#f5f7fb',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
       color: '#172033',
       display: 'flex',
       overflowX: 'hidden',
@@ -212,7 +212,7 @@
       fontSize: 12,
       fontWeight: 600,
       marginBottom: 16,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
     },
 
     heroTitle: {
@@ -222,7 +222,7 @@
       marginBottom: 12,
       marginTop: 0,
       lineHeight: 1.2,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
     },
 
     heroText: {
@@ -230,7 +230,7 @@
       color: '#ffffff',
       fontSize: 14,
       lineHeight: 1.5,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: '"Outfit", Arial, sans-serif',
     },
 
     heroIconBox: {
