@@ -29,6 +29,7 @@ import { getCloudinarySignature, uploadPaymentReceipt } from '../api/payments';
 import { getBranchCity } from '../utils/branch';
 import { formatDateTime, formatRelativeDate, formatTimeOnly } from '../utils/datetime';
 import { isCancellationLocked } from '../utils/appointments';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/AppointmentsScreen';
 
 const CANCEL_REASONS = [
@@ -301,7 +302,7 @@ export default function AppointmentsScreen({ navigation, route }) {
     } catch (err) {
       Alert.alert(
         'Upload failed',
-        err.response?.data?.message || err.message || 'Failed to upload receipt.'
+        formatErrorText(err.response?.data?.message || err.message || 'Failed to upload receipt.')
       );
     } finally {
       setUploadingReceiptId(null);
@@ -321,7 +322,7 @@ export default function AppointmentsScreen({ navigation, route }) {
       closeCancelModal();
       fetchAppointments();
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to cancel appointment');
+      Alert.alert('Error', formatErrorText(err.response?.data?.message || 'Failed to cancel appointment.'));
     } finally {
       setCancelling(false);
     }
@@ -360,7 +361,7 @@ export default function AppointmentsScreen({ navigation, route }) {
       setRatingModal((prev) => ({ ...prev, step: 'success' }));
       setTimeout(() => closeRatingModal(), 2200);
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to submit feedback.');
+      Alert.alert('Error', formatErrorText(err.response?.data?.message || 'Failed to submit feedback.'));
     } finally {
       setRatingSubmitting(false);
     }

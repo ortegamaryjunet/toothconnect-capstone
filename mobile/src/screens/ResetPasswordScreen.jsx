@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../api/axios';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/ResetPasswordScreen';
 
 export default function ResetPasswordScreen({ navigation, route }) {
@@ -45,7 +46,7 @@ export default function ResetPasswordScreen({ navigation, route }) {
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match.');
       return;
     }
 
@@ -63,7 +64,7 @@ export default function ResetPasswordScreen({ navigation, route }) {
         resetSuccess: true,
       });
     } catch (err) {
-      setError(err.response?.data?.message || 'Password reset failed');
+      setError(formatErrorText(err.response?.data?.message || 'Password reset failed.'));
     } finally {
       setSubmitting(false);
     }

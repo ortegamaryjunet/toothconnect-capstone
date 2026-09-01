@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatRelativeDate, formatTimeOnly } from '../utils/datetime';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/BookConfirmScreen';
 import { createAppointment } from '../api/appointments';
 
@@ -64,7 +65,7 @@ export default function BookConfirmScreen({ navigation, route }) {
       setNewAppointmentId(result?.id ?? null);
       setSuccessModalVisible(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to book');
+      setError(formatErrorText(err.response?.data?.message || 'Failed to book.'));
       setSubmitting(false);
     }
   }

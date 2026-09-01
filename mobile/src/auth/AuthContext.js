@@ -97,8 +97,16 @@ export function AuthProvider({ children }) {
     return res.data.user;
   }
 
-  async function registerStart(email, name, password, branch_id) {
-    await api.post('/auth/register/start', { email, name, password, branch_id });
+  async function registerStart(email, name, password, branch_id, is_resend = false) {
+    const res = await api.post('/auth/register/start', {
+      email,
+      name,
+      password,
+      branch_id,
+      platform: 'mobile',
+      is_resend,
+    });
+    return res.data;
   }
 
   async function registerVerify(email, code) {

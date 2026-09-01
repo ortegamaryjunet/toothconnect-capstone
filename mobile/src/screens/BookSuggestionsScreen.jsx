@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatTimeOnly, formatRelativeDate } from '../utils/datetime';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/BookSuggestionsScreen';
 import { getAppointmentMeta, suggestSlots } from '../api/appointments';
 import { listPatientDentists } from '../api/patients';
@@ -340,7 +341,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
           setSuggestionMode('preferred');
           setSelectedSlotBooked(Boolean(result.selected_slot_booked));
         } catch (err) {
-          setError(err.response?.data?.message || 'Failed to load suggestions');
+          setError(formatErrorText(err.response?.data?.message || 'Failed to load suggestions.'));
         } finally {
           setLoading(false);
         }
@@ -390,7 +391,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
       setSuggestionMode('earliest');
       setSelectedSlotBooked(false);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load suggestions');
+      setError(formatErrorText(err.response?.data?.message || 'Failed to load suggestions.'));
     } finally {
       setLoading(false);
     }
@@ -468,7 +469,7 @@ export default function BookSuggestionsScreen({ navigation, route }) {
       setSuggestionMode('preferred');
       setSelectedSlotBooked(Boolean(result.selected_slot_booked));
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load preferred slots');
+      setError(formatErrorText(err.response?.data?.message || 'Failed to load preferred slots.'));
     } finally {
       setPreferredLoading(false);
     }

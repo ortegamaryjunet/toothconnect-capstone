@@ -17,6 +17,7 @@ import api from '../api/axios';
 import { checkAppointmentConflict } from '../api/appointments';
 import { getBranchCity } from '../utils/branch';
 import { formatTimeOnly, formatRelativeDate } from '../utils/datetime';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/BookAIAssistantScreen';
 
 const BOT_GREETING =
@@ -273,7 +274,7 @@ export default function BookAIAssistantScreen({ navigation }) {
         setSelectedBranch(branches[0].id);
       }
     } catch (err) {
-      setMetaError(err.response?.data?.message || 'Failed to load clinic data.');
+      setMetaError(formatErrorText(err.response?.data?.message || 'Failed to load clinic data.'));
     } finally {
       setLoading(false);
     }

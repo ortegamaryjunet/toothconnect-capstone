@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { listAppointments, cancelAppointment } from '../api/appointments';
 import { formatRelativeDate, formatTimeOnly } from '../utils/datetime';
 import { isCancellationLocked } from '../utils/appointments';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/PatientHomeScreen';
 import { getUnreadCount } from '../api/notifications';
 
@@ -84,7 +85,7 @@ export default function PatientHomeScreen({ navigation }) {
               await cancelAppointment(appointment.id);
               fetchAppointments();
             } catch (err) {
-              Alert.alert('Error', err.response?.data?.message || 'Failed to cancel');
+              Alert.alert('Error', formatErrorText(err.response?.data?.message || 'Failed to cancel.'));
             }
           },
         },

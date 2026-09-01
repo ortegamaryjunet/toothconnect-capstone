@@ -6,7 +6,7 @@ export default class ErrorBoundary extends React.Component {
   state = { hasError: false, errorMessage: '' };
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, errorMessage: error?.message || 'Unknown error' };
+    return { hasError: true, errorMessage: error?.message || 'Unknown error.' };
   }
 
   componentDidCatch(error, info) {

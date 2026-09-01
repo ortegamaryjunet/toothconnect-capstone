@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../auth/AuthContext";
 import { getMyPatientProfile, saveMyPatientProfile } from "../api/patients";
 import { getUnreadCount } from "../api/notifications";
+import { formatErrorText } from "../utils/errors";
 import styles from "../styles/ProfileScreen";
 
 const NATIONALITIES = [
@@ -593,8 +594,7 @@ export default function ProfileScreen({ navigation }) {
 
         Alert.alert(
           "Profile",
-          err.response?.data?.message ||
-            "Unable to load your profile right now."
+          formatErrorText(err.response?.data?.message || "Unable to load your profile right now.")
         );
       } finally {
         if (mounted) {
@@ -773,8 +773,7 @@ export default function ProfileScreen({ navigation }) {
 
       Alert.alert(
         "Unable to Save",
-        err.response?.data?.message ||
-          "Please check your information and try again."
+        formatErrorText(err.response?.data?.message || "Please check your information and try again.")
       );
     } finally {
       setSavingProfile(false);
@@ -786,11 +785,7 @@ export default function ProfileScreen({ navigation }) {
       return null;
     }
 
-    return (
-      <Text style={styles.errorText}>
-        {errors[field]}
-      </Text>
-    );
+    return <Text style={styles.errorText}>{formatErrorText(errors[field])}</Text>;
   };
 
   const renderPhoneField = ({

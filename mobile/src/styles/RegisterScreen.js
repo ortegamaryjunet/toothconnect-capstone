@@ -123,9 +123,14 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
   },
 
+  labelError: {
+    color: "#9b2c2c",
+  },
+
   input: {
     backgroundColor: "#ffffff",
-    borderWidth: 0,
+    borderWidth: 1.5,
+    borderColor: "transparent",
     borderRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -135,8 +140,15 @@ const styles = StyleSheet.create({
     minHeight: 46,
   },
 
+  inputError: {
+    borderWidth: 1.5,
+    borderColor: "#c62828",
+  },
+
   passwordWrapper: {
     backgroundColor: "#ffffff",
+    borderWidth: 1.5,
+    borderColor: "transparent",
     borderRadius: 4,
     minHeight: 46,
     flexDirection: "row",

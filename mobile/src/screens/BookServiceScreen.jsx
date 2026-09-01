@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../api/axios';
 import { getBranchCity } from '../utils/branch';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/BookServiceScreen';
 
 export default function BookServiceScreen({ navigation }) {
@@ -25,7 +26,7 @@ export default function BookServiceScreen({ navigation }) {
         setSelectedBranch(res.data.branches[0].id);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load services');
+      setError(formatErrorText(err.response?.data?.message || 'Failed to load services.'));
     } finally {
       setLoading(false);
     }
@@ -33,7 +34,7 @@ export default function BookServiceScreen({ navigation }) {
 
   function handleServiceTap(service) {
     if (!selectedBranch) {
-      setError('Please pick a branch first');
+      setError('Please pick a branch first.');
       return;
     }
     const branch = branches.find(b => b.id === selectedBranch);

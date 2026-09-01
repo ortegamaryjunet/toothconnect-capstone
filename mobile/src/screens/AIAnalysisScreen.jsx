@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../api/axios';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/AIAnalysisScreen';
 
 const URGENCY_CONFIG = {
@@ -35,7 +36,7 @@ export default function AIAnalysisScreen({ navigation, route }) {
       const res = await api.post('/ai/analyze', { concern, services });
       setResult(res.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'AI analysis failed. Please try again.');
+      setError(formatErrorText(err.response?.data?.message || 'AI analysis failed. Please try again.'));
     } finally {
       setLoading(false);
     }

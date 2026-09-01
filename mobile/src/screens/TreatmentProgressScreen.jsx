@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { getTreatmentsByPatient, getConditions } from '../api/treatments';
 import { formatDateOnly } from '../utils/datetime';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/TreatmentProgressScreen';
 
 export default function TreatmentProgressScreen({ navigation }) {
@@ -26,7 +27,7 @@ export default function TreatmentProgressScreen({ navigation }) {
       setByTooth(tData.by_tooth || {});
       setConditions(conds);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load treatments');
+      setError(formatErrorText(err.response?.data?.message || 'Failed to load treatments.'));
     } finally {
       setLoading(false);
     }

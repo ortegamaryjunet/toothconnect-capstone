@@ -17,6 +17,7 @@ import {
   markThreadRead,
   sendPresenceHeartbeat,
 } from '../api/messages';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/MessageThreadScreen';
 
 const POLL_INTERVAL_MS = 5000;
@@ -57,9 +58,7 @@ export default function MessageThreadScreen({ navigation, route }) {
       setPresence(data);
     } catch (err) {
       if (!silent) {
-        setError(
-          err.response?.data?.message || 'Failed to load status'
-        );
+        setError(formatErrorText(err.response?.data?.message || 'Failed to load status.'));
       }
 
       setPresence(null);
@@ -95,10 +94,7 @@ export default function MessageThreadScreen({ navigation, route }) {
           .catch(() => {});
       }
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          'Failed to load messages'
-      );
+      setError(formatErrorText(err.response?.data?.message || 'Failed to load messages.'));
     } finally {
       if (!silent) {
         setLoading(false);
@@ -158,11 +154,7 @@ export default function MessageThreadScreen({ navigation, route }) {
         });
       }, 100);
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Failed to send message'
-      );
+      setError(formatErrorText(err.response?.data?.message || err.message || 'Failed to send message.'));
     } finally {
       setSending(false);
     }

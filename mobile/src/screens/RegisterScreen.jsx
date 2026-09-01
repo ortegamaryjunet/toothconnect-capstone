@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,13 +12,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import api from '../api/axios';
+import { formatErrorText } from '../utils/errors';
 import styles from '../styles/RegisterScreen';
 
 const RESEND_WAIT_SECONDS = 60;
 const MAX_RESEND_ATTEMPTS = 3;
+const MAX_OTP_VERIFICATION_ATTEMPTS = 3;
+const PASSWORD_MIN_LENGTH = 8;
+const OTP_LOCK_REDIRECT_SECONDS = 5;
 
 export default function RegisterScreen({ navigation }) {
   const { registerStart, registerVerify } = useAuth();
+  const requestInFlightRef = useRef(false);
 
   const [step, setStep] = useState('form');
   const [email, setEmail] = useState('');
@@ -31,6 +36,8 @@ export default function RegisterScreen({ navigation }) {
   const [branchesLoading, setBranchesLoading] = useState(true);
   const [branchesError, setBranchesError] = useState('');
   const [error, setError] = useState('');
+  const [touchedFields, setTouchedFields] = useState({});
+  const [hasSubmittedForm, setHasSubmittedForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -38,7 +45,16 @@ export default function RegisterScreen({ navigation }) {
 
   const [resendTimer, setResendTimer] = useState(RESEND_WAIT_SECONDS);
   const [canResend, setCanResend] = useState(false);
-  const [resendAttempts, setResendAttempts] = useState(0);
+  const [remainingResendAttempts, setRemainingResendAttempts] = useState(MAX_RESEND_ATTEMPTS);
+  const [remainingOtpVerificationAttempts, setRemainingOtpVerificationAttempts] = useState(
+    MAX_OTP_VERIFICATION_ATTEMPTS
+  );
+  const [otpCodeExhausted, setOtpCodeExhausted] = useState(false);
+  const [otpRedirectSeconds, setOtpRedirectSeconds] = useState(null);
+  const [otpLockoutSeconds, setOtpLockoutSeconds] = useState(0);
+  const [otpLockoutMessage, setOtpLockoutMessage] = useState('');
+  const [hasActiveOtpFlow, setHasActiveOtpFlow] = useState(false);
+  const resendLimitReached = remainingResendAttempts === 0;
 
   useEffect(() => {
     loadBranches();
@@ -47,20 +63,43 @@ export default function RegisterScreen({ navigation }) {
   useEffect(() => {
     let interval;
 
-    if (step === 'otp' && resendTimer > 0) {
+    if (step === 'otp' && !resendLimitReached && resendTimer > 0) {
       interval = setInterval(() => {
         setResendTimer(prev => prev - 1);
       }, 1000);
     }
 
-    if (step === 'otp' && resendTimer === 0) {
+    if (step === 'otp' && !resendLimitReached && resendTimer === 0) {
       setCanResend(true);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [step, resendTimer]);
+  }, [step, resendTimer, resendLimitReached]);
+
+  useEffect(() => {
+    if (otpRedirectSeconds === null) {
+      return undefined;
+    }
+
+    if (otpRedirectSeconds <= 0) {
+      navigation.replace('Login', {
+        prefilledEmail: email.trim().toLowerCase(),
+        registerOtpLocked: true,
+        registerCooldownSeconds: otpLockoutSeconds,
+        registerCooldownUntil: Date.now() + Number(otpLockoutSeconds || 5 * 60) * 1000,
+        registerCooldownMessage: otpLockoutMessage,
+      });
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setOtpRedirectSeconds(current => Math.max(0, Number(current || 0) - 1));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [email, navigation, otpLockoutMessage, otpLockoutSeconds, otpRedirectSeconds]);
 
   async function loadBranches() {
     setBranchesLoading(true);
@@ -100,9 +139,107 @@ export default function RegisterScreen({ navigation }) {
     return emailRegex.test(value.trim());
   }
 
-  function isValidPassword(value) {
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-    return passwordRegex.test(value);
+  function getPasswordError(value) {
+    if (value.length < PASSWORD_MIN_LENGTH) {
+      return 'Password must be at least 8 characters.';
+    }
+
+    if (!/^[A-Za-z\d]+$/.test(value)) {
+      return 'Passowrd must not contain spaces or special characters.';
+    }
+
+    if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+      return 'Password must contain at least one letter and one number.';
+    }
+
+    return '';
+  }
+
+  function shouldShowFieldError(fieldName) {
+    return Boolean(touchedFields[fieldName] || hasSubmittedForm);
+  }
+
+  function touchField(fieldName) {
+    setTouchedFields(current => ({ ...current, [fieldName]: true }));
+  }
+
+  function handleInvalidOtpAttempt(attemptsRemaining) {
+    const safeAttemptsRemaining = Math.max(0, Number(attemptsRemaining || 0));
+    setRemainingOtpVerificationAttempts(safeAttemptsRemaining);
+
+    if (safeAttemptsRemaining > 0) {
+      setError(`Invalid code. You have ${safeAttemptsRemaining} OTP verification attempts remaining.`);
+      return;
+    }
+
+    setCode('');
+    setOtpCodeExhausted(true);
+    setError('OTP verification failed. Please request a new code.');
+  }
+
+  function startOtpLockoutRedirect(responseData, message) {
+    setOtpLockoutSeconds(Number(responseData.retry_after_seconds || 5 * 60));
+    setOtpLockoutMessage(
+      responseData.login_message ||
+      'Too many failed attempts. Please wait 5 minutes before creating an account.'
+    );
+    setOtpRedirectSeconds(OTP_LOCK_REDIRECT_SECONDS);
+    setError(formatErrorText(`${message} (${OTP_LOCK_REDIRECT_SECONDS})`));
+  }
+
+  function getFormFieldErrors() {
+    const nextErrors = {};
+
+    if (!name.trim()) {
+      nextErrors.name = 'This field is required.';
+    } else if (!isValidFullName(name)) {
+      nextErrors.name = 'Please enter your first and last name.';
+    }
+
+    if (!email.trim()) {
+      nextErrors.email = 'This field is required.';
+    } else if (!isValidEmail(email)) {
+      nextErrors.email = 'Please enter a valid email address.';
+    }
+
+    if (!branchId) {
+      nextErrors.branch = 'Please pick your preferred branch.';
+    }
+
+    if (!password) {
+      nextErrors.password = 'This field is required.';
+    } else {
+      const passwordError = getPasswordError(password);
+      if (passwordError) {
+        nextErrors.password = passwordError;
+      }
+    }
+
+    if (!confirmPassword) {
+      nextErrors.confirmPassword = 'This field is required.';
+    } else {
+      const confirmPasswordError = getPasswordError(confirmPassword);
+      if (confirmPasswordError) {
+        nextErrors.confirmPassword = confirmPasswordError;
+      } else if (password !== confirmPassword) {
+        nextErrors.confirmPassword = 'Passwords do not match.';
+      }
+    }
+
+    return nextErrors;
+  }
+
+  function getFirstVisibleFormError(fieldErrors) {
+    const errorOrder = ['name', 'email', 'branch', 'password', 'confirmPassword'];
+    const fieldName = errorOrder.find(key => {
+      if (!fieldErrors[key]) {
+        return false;
+      }
+
+      return key === 'branch' ? hasSubmittedForm : shouldShowFieldError(key);
+    });
+
+    return fieldName ? fieldErrors[fieldName] : '';
   }
 
   function redirectAfterOtpLimit() {
@@ -122,130 +259,192 @@ export default function RegisterScreen({ navigation }) {
     );
   }
 
-  async function handleStart() {
+  function handleBackToForm() {
+    setStep('form');
     setError('');
+    setCode('');
+    setOtpRedirectSeconds(null);
+    setOtpLockoutSeconds(0);
+    setOtpLockoutMessage('');
+  }
 
-    if (!isValidFullName(name)) {
-      setError('Please enter your full name. Use first name and last name.');
+  async function handleStart() {
+    if (requestInFlightRef.current) {
       return;
     }
 
-    if (!email.trim()) {
-      setError('Please enter your email');
-      return;
-    }
+    setError('');
+    setHasSubmittedForm(true);
 
-    if (!isValidEmail(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    if (!branchId) {
-      setError('Please pick your preferred branch');
-      return;
-    }
-
-    if (!isValidPassword(password)) {
-      setError(
-        'Password must be at least 8 characters and include both letters and numbers. Special characters are not allowed.'
-      );
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    const fieldErrors = getFormFieldErrors();
+    const firstError = fieldErrors.name ||
+      fieldErrors.email ||
+      fieldErrors.branch ||
+      fieldErrors.password ||
+      fieldErrors.confirmPassword ||
+      '';
+    if (firstError) {
+      setError(firstError);
       return;
     }
 
     setSubmitting(true);
+    requestInFlightRef.current = true;
 
     try {
-      await registerStart(email.trim().toLowerCase(), name.trim(), password, branchId);
+      const result = await registerStart(
+        email.trim().toLowerCase(),
+        name.trim(),
+        password,
+        branchId,
+        hasActiveOtpFlow
+      );
 
       setStep('otp');
       setCode('');
-      setResendAttempts(0);
+      setHasActiveOtpFlow(true);
+      setRemainingOtpVerificationAttempts(MAX_OTP_VERIFICATION_ATTEMPTS);
+      setOtpCodeExhausted(false);
+      setOtpRedirectSeconds(null);
+      setOtpLockoutSeconds(0);
+      setOtpLockoutMessage('');
+      setHasSubmittedForm(false);
+      setRemainingResendAttempts(
+        Number(result?.resend_attempts_remaining ?? MAX_RESEND_ATTEMPTS)
+      );
       setResendTimer(RESEND_WAIT_SECONDS);
       setCanResend(false);
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(formatErrorText(err.response?.data?.message || 'Registration failed.'));
     } finally {
+      requestInFlightRef.current = false;
       setSubmitting(false);
     }
   }
 
   async function handleResendOtp() {
-    setError('');
-
-    if (!canResend || submitting) {
+    if (requestInFlightRef.current) {
       return;
     }
 
-    if (resendAttempts >= MAX_RESEND_ATTEMPTS) {
+    setError('');
+
+    if (!canResend || submitting || resendLimitReached) {
+      return;
+    }
+
+    if (remainingResendAttempts <= 0) {
       redirectAfterOtpLimit();
       return;
     }
 
     setSubmitting(true);
+    requestInFlightRef.current = true;
 
     try {
-      await registerStart(email.trim().toLowerCase(), name.trim(), password, branchId);
+      const result = await registerStart(email.trim().toLowerCase(), name.trim(), password, branchId, true);
+      const nextRemainingAttempts = Math.max(
+        0,
+        Number(result?.resend_attempts_remaining ?? remainingResendAttempts - 1)
+      );
 
-      const nextAttempts = resendAttempts + 1;
-
-      if (nextAttempts >= MAX_RESEND_ATTEMPTS) {
-        redirectAfterOtpLimit();
-        return;
-      }
-
-      setResendAttempts(nextAttempts);
+      setRemainingResendAttempts(nextRemainingAttempts);
       setCode('');
-      setResendTimer(RESEND_WAIT_SECONDS);
+      setRemainingOtpVerificationAttempts(MAX_OTP_VERIFICATION_ATTEMPTS);
+      setOtpCodeExhausted(false);
+      setResendTimer(nextRemainingAttempts === 0 ? 0 : RESEND_WAIT_SECONDS);
       setCanResend(false);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to resend OTP');
+      if (typeof err.response?.data?.resend_attempts_remaining === 'number') {
+        setRemainingResendAttempts(err.response.data.resend_attempts_remaining);
+      }
+
+      setError(formatErrorText(err.response?.data?.message || 'Failed to resend OTP.'));
     } finally {
+      requestInFlightRef.current = false;
       setSubmitting(false);
     }
   }
 
   async function handleVerify() {
+    if (requestInFlightRef.current) {
+      return;
+    }
+
     setError('');
 
+    if (otpCodeExhausted) {
+      setError('OTP verification failed. Please request a new code.');
+      return;
+    }
+
     if (!code.trim()) {
-      setError('Please enter the OTP code');
+      setError('Please enter the OTP code.');
       return;
     }
 
     if (code.trim().length !== 6) {
-      setError('OTP code must be 6 digits');
+      setError('OTP code must be 6 digits.');
       return;
     }
 
     setSubmitting(true);
+    requestInFlightRef.current = true;
 
     try {
       const result = await registerVerify(email.trim().toLowerCase(), code);
       navigation.replace('Login', { prefilledEmail: result.email });
     } catch (err) {
-      const message = err.response?.data?.message || 'Verification failed';
+      const responseData = err.response?.data || {};
+      const message = responseData.message || 'Verification failed.';
 
-      if (
-        message.toLowerCase().includes('too many') ||
-        message.toLowerCase().includes('attempt')
-      ) {
-        navigation.replace('Login', {
-          prefilledEmail: email.trim().toLowerCase(),
-          otpFailed: true,
-        });
+      if ((responseData.locked || err.response?.status === 429) && resendLimitReached) {
+        const locallyRemainingAttempts = Math.max(0, remainingOtpVerificationAttempts - 1);
+
+        if (locallyRemainingAttempts > 0) {
+          handleInvalidOtpAttempt(locallyRemainingAttempts);
+          return;
+        }
+
+        startOtpLockoutRedirect(responseData, message);
         return;
       }
 
-      setError(message);
+      if (typeof responseData.attempts_remaining === 'number') {
+        const attemptsRemaining = resendLimitReached
+          ? Math.max(responseData.attempts_remaining, remainingOtpVerificationAttempts - 1)
+          : responseData.attempts_remaining;
+        handleInvalidOtpAttempt(attemptsRemaining);
+        return;
+      }
+
+      if (responseData.code_exhausted || responseData.locked || err.response?.status === 429) {
+        handleInvalidOtpAttempt(remainingOtpVerificationAttempts - 1);
+        return;
+      }
+
+      if (message === 'Invalid code') {
+        handleInvalidOtpAttempt(remainingOtpVerificationAttempts - 1);
+        return;
+      }
+
+      setError(formatErrorText(message));
     } finally {
+      requestInFlightRef.current = false;
       setSubmitting(false);
     }
   }
+
+  const fieldErrors = step === 'form' ? getFormFieldErrors() : {};
+  const visibleFieldError = step === 'form' ? getFirstVisibleFormError(fieldErrors) : '';
+  const formError = step === 'form' ? visibleFieldError || error : error;
+  const nameHasError = Boolean(fieldErrors.name && shouldShowFieldError('name'));
+  const emailHasError = Boolean(fieldErrors.email && shouldShowFieldError('email'));
+  const branchHasError = Boolean(fieldErrors.branch && hasSubmittedForm);
+  const passwordHasError = Boolean(fieldErrors.password && shouldShowFieldError('password'));
+  const confirmPasswordHasError = Boolean(
+    fieldErrors.confirmPassword && shouldShowFieldError('confirmPassword')
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -276,7 +475,7 @@ export default function RegisterScreen({ navigation }) {
           <View style={styles.registerCard}>
             {step === 'otp' ? (
               <TouchableOpacity
-                onPress={() => setStep('form')}
+                onPress={handleBackToForm}
                 style={styles.backButton}
                 disabled={submitting}
               >
@@ -298,20 +497,38 @@ export default function RegisterScreen({ navigation }) {
 
             {step === 'form' ? (
               <>
-                <Text style={styles.label}>Full Name</Text>
+                <Text style={[styles.label, nameHasError && styles.labelError]}>
+                  Full Name{nameHasError ? ' *' : ''}
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, nameHasError && styles.inputError]}
                   value={name}
-                  onChangeText={setName}
+                  onChangeText={value => {
+                    setName(value);
+                    touchField('name');
+                    setError('');
+                  }}
+                  onBlur={() => touchField('name')}
                   placeholder="e.g. Mary Ortega"
                   placeholderTextColor="#b8b8b8"
                 />
 
-                <Text style={styles.label}>Email</Text>
+                <Text style={[styles.label, emailHasError && styles.labelError]}>
+                  Email{emailHasError ? ' *' : ''}
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, emailHasError && styles.inputError]}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={value => {
+                    setEmail(value);
+                    touchField('email');
+                    setHasActiveOtpFlow(false);
+                    setRemainingResendAttempts(MAX_RESEND_ATTEMPTS);
+                    setRemainingOtpVerificationAttempts(MAX_OTP_VERIFICATION_ATTEMPTS);
+                    setOtpCodeExhausted(false);
+                    setError('');
+                  }}
+                  onBlur={() => touchField('email')}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
@@ -319,7 +536,9 @@ export default function RegisterScreen({ navigation }) {
                   placeholderTextColor="#b8b8b8"
                 />
 
-                <Text style={styles.label}>Home Branch</Text>
+                <Text style={[styles.label, branchHasError && styles.labelError]}>
+                  Home Branch{branchHasError ? ' *' : ''}
+                </Text>
                 <View style={styles.branchPicker}>
                   {branchesLoading ? (
                     <Text style={styles.branchStatusText}>Loading branches...</Text>
@@ -333,7 +552,10 @@ export default function RegisterScreen({ navigation }) {
                     return (
                       <TouchableOpacity
                         key={b.id}
-                        onPress={() => setBranchId(b.id)}
+                        onPress={() => {
+                          setBranchId(b.id);
+                          setError('');
+                        }}
                         style={[
                           styles.branchChip,
                           isActive && styles.branchChipActive,
@@ -362,12 +584,19 @@ export default function RegisterScreen({ navigation }) {
                   })}
                 </View>
 
-                <Text style={styles.label}>Password</Text>
-                <View style={styles.passwordWrapper}>
+                <Text style={[styles.label, passwordHasError && styles.labelError]}>
+                  Password{passwordHasError ? ' *' : ''}
+                </Text>
+                <View style={[styles.passwordWrapper, passwordHasError && styles.inputError]}>
                   <TextInput
                     style={styles.passwordInput}
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={value => {
+                      setPassword(value);
+                      touchField('password');
+                      setError('');
+                    }}
+                    onBlur={() => touchField('password')}
                     secureTextEntry={!showPassword}
                     autoComplete="new-password"
                     placeholder="Letters and numbers only"
@@ -384,12 +613,24 @@ export default function RegisterScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.label}>Confirm Password</Text>
-                <View style={styles.passwordWrapper}>
+                <Text style={[styles.label, confirmPasswordHasError && styles.labelError]}>
+                  Confirm Password{confirmPasswordHasError ? ' *' : ''}
+                </Text>
+                <View
+                  style={[
+                    styles.passwordWrapper,
+                    confirmPasswordHasError && styles.inputError,
+                  ]}
+                >
                   <TextInput
                     style={styles.passwordInput}
                     value={confirmPassword}
-                    onChangeText={setConfirmPassword}
+                    onChangeText={value => {
+                      setConfirmPassword(value);
+                      touchField('confirmPassword');
+                      setError('');
+                    }}
+                    onBlur={() => touchField('confirmPassword')}
                     secureTextEntry={!showConfirmPassword}
                     autoComplete="new-password"
                     placeholder="Re-enter password"
@@ -406,7 +647,7 @@ export default function RegisterScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
 
-                {error ? <Text style={styles.error}>{error}</Text> : null}
+                {formError ? <Text style={styles.error}>{formError}</Text> : null}
 
                 <TouchableOpacity
                   style={[styles.button, submitting && styles.buttonDisabled]}
@@ -448,25 +689,39 @@ export default function RegisterScreen({ navigation }) {
 
                   <TouchableOpacity
                     onPress={handleResendOtp}
-                    disabled={!canResend || submitting}
+                    disabled={!canResend || submitting || resendLimitReached}
                   >
                     <Text
                       style={[
                         styles.resendText,
-                        !canResend && { opacity: 0.5 },
+                        (!canResend || resendLimitReached) && { opacity: 0.5 },
                       ]}
                     >
-                      {canResend ? 'Resend Code' : `Resend in ${resendTimer}s`}
+                      {resendLimitReached
+                        ? 'Resend Limit Reached'
+                        : canResend
+                          ? `Resend Code (${remainingResendAttempts})`
+                          : `Resend in ${resendTimer}s (${remainingResendAttempts})`}
                     </Text>
                   </TouchableOpacity>
                 </View>
 
-                {error ? <Text style={styles.error}>{error}</Text> : null}
+                {error ? (
+                  <Text style={styles.error}>
+                    {otpRedirectSeconds !== null
+                      ? `Too many incorrect attempts. You will be redirected to the login page in ${otpRedirectSeconds} seconds.`
+                      : error}
+                  </Text>
+                ) : null}
 
                 <TouchableOpacity
-                  style={[styles.button, submitting && styles.buttonDisabled]}
+                  style={[
+                    styles.button,
+                    (submitting || otpCodeExhausted || otpRedirectSeconds !== null) &&
+                      styles.buttonDisabled,
+                  ]}
                   onPress={handleVerify}
-                  disabled={submitting}
+                  disabled={submitting || otpCodeExhausted || otpRedirectSeconds !== null}
                 >
                   <Text style={styles.buttonText}>
                     {submitting ? 'VERIFYING...' : 'VERIFY OTP'}
