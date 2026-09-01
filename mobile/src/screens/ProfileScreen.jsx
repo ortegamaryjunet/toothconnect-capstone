@@ -46,6 +46,14 @@ const NATIONALITIES = [
   "Other",
 ];
 
+const CIVIL_STATUSES = [
+  "Single",
+  "Married",
+  "Widowed",
+  "Divorced",
+  "Separated",
+];
+
 const PHONE_COUNTRIES = [
   { country: "PH", callingCode: "63", min: 10, max: 10, placeholder: "9123456789" },
   { country: "US", callingCode: "1", min: 10, max: 10, placeholder: "2015550123" },
@@ -59,12 +67,16 @@ const PHONE_COUNTRIES = [
 ];
 
 function getPhoneCountry(country) {
-  return PHONE_COUNTRIES.find((item) => item.country === country) || PHONE_COUNTRIES[0];
+  return (
+    PHONE_COUNTRIES.find((item) => item.country === country) ||
+    PHONE_COUNTRIES[0]
+  );
 }
 
 function parsePhoneForForm(value) {
   const raw = String(value || "").trim();
   const digits = raw.replace(/\D/g, "");
+
   if (!digits) {
     return { country: "PH", number: "" };
   }
@@ -83,32 +95,51 @@ function parsePhoneForForm(value) {
   }
 
   if (digits.startsWith("0")) {
-    return { country: "PH", number: digits.slice(1) };
+    return {
+      country: "PH",
+      number: digits.slice(1),
+    };
   }
 
-  return { country: "PH", number: digits };
+  return {
+    country: "PH",
+    number: digits,
+  };
 }
 
 function formatPhoneForApi(value, country) {
   const digits = String(value || "").replace(/\D/g, "");
+
   if (!digits) return "";
 
   const selected = getPhoneCountry(country);
+
   const nationalNumber =
-    selected.country === "PH" && digits.startsWith("0") ? digits.slice(1) : digits;
+    selected.country === "PH" && digits.startsWith("0")
+      ? digits.slice(1)
+      : digits;
 
   return `+${selected.callingCode}${nationalNumber}`;
 }
 
 function validatePhoneValue(value, country, required = true) {
   const digits = String(value || "").replace(/\D/g, "");
+
   if (!digits) {
     return required ? "Contact number is required." : "";
   }
 
   const selected = getPhoneCountry(country);
-  if (digits.length < selected.min || digits.length > selected.max) {
-    return `Enter ${selected.min === selected.max ? selected.min : `${selected.min}-${selected.max}`} digits for +${selected.callingCode}.`;
+
+  if (
+    digits.length < selected.min ||
+    digits.length > selected.max
+  ) {
+    return `Enter ${
+      selected.min === selected.max
+        ? selected.min
+        : `${selected.min}-${selected.max}`
+    } digits for +${selected.callingCode}.`;
   }
 
   return "";
@@ -116,31 +147,44 @@ function validatePhoneValue(value, country, required = true) {
 
 function formatDisplayDate(value) {
   if (!value) return "";
+
   const raw = String(value).slice(0, 10);
   const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
   if (!match) return "";
+
   return `${match[2]}/${match[3]}/${match[1]}`;
 }
 
 function toApiDate(value) {
-  const match = String(value || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const match = String(value || "").match(
+    /^(\d{2})\/(\d{2})\/(\d{4})$/
+  );
+
   if (!match) return null;
+
   return `${match[3]}-${match[1]}-${match[2]}`;
 }
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout } = useAuth();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
-  const [nationalityModalVisible, setNationalityModalVisible] = useState(false);
+  const [nationalityModalVisible, setNationalityModalVisible] =
+    useState(false);
+  const [civilStatusModalVisible, setCivilStatusModalVisible] =
+    useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
 
   const screenWidth = Dimensions.get("window").width;
   const sidebarWidth = screenWidth * 0.9;
 
-  const sidebarTranslateX = useRef(new Animated.Value(-sidebarWidth)).current;
+  const sidebarTranslateX = useRef(
+    new Animated.Value(-sidebarWidth)
+  ).current;
 
   const [form, setForm] = useState({
     fullName: "",
@@ -166,6 +210,7 @@ export default function ProfileScreen({ navigation }) {
   const originalFormRef = useRef(null);
 
   const [errors, setErrors] = useState({});
+
   const [phoneCountryModal, setPhoneCountryModal] = useState({
     visible: false,
     field: "",
@@ -173,13 +218,19 @@ export default function ProfileScreen({ navigation }) {
 
   const profileToForm = (profile = {}) => {
     const birthday = formatDisplayDate(profile.birthday);
-    const contactPhone = parsePhoneForForm(profile.contact_number);
-    const emergencyPhone = parsePhoneForForm(profile.emergency_contact_number);
+    const contactPhone = parsePhoneForForm(
+      profile.contact_number
+    );
+    const emergencyPhone = parsePhoneForForm(
+      profile.emergency_contact_number
+    );
 
     return {
       fullName: profile.full_name || user?.name || "",
       birthday,
-      age: profile.age ? String(profile.age) : calculateAge(birthday),
+      age: profile.age
+        ? String(profile.age)
+        : calculateAge(birthday),
       nationality: profile.nationality || "",
       homeAddress: profile.address || "",
       occupation: profile.occupation || "",
@@ -188,10 +239,12 @@ export default function ProfileScreen({ navigation }) {
       contactCountry: contactPhone.country,
       email: profile.email || user?.email || "",
       civilStatus: profile.civil_status || "",
-      emergencyContactName: profile.emergency_contact_name || "",
+      emergencyContactName:
+        profile.emergency_contact_name || "",
       emergencyContactNumber: emergencyPhone.number,
       emergencyContactCountry: emergencyPhone.country,
-      medicalConditions: profile.medical_conditions || "",
+      medicalConditions:
+        profile.medical_conditions || "",
       allergies: profile.allergies || "",
       medications: profile.medications || "",
       dentalHistory: profile.dental_history || "",
@@ -206,14 +259,22 @@ export default function ProfileScreen({ navigation }) {
     address: form.homeAddress.trim(),
     occupation: form.occupation.trim() || null,
     sex: form.sex.trim() || null,
-    contact_number: formatPhoneForApi(form.contact, form.contactCountry),
+    contact_number: formatPhoneForApi(
+      form.contact,
+      form.contactCountry
+    ),
     email: form.email.trim().toLowerCase(),
     civil_status: form.civilStatus.trim() || null,
-    emergency_contact_name: form.emergencyContactName.trim() || null,
+    emergency_contact_name:
+      form.emergencyContactName.trim() || null,
     emergency_contact_number: form.emergencyContactNumber.trim()
-      ? formatPhoneForApi(form.emergencyContactNumber, form.emergencyContactCountry)
+      ? formatPhoneForApi(
+          form.emergencyContactNumber,
+          form.emergencyContactCountry
+        )
       : null,
-    medical_conditions: form.medicalConditions.trim() || null,
+    medical_conditions:
+      form.medicalConditions.trim() || null,
     allergies: form.allergies.trim() || null,
     medications: form.medications.trim() || null,
     dental_history: form.dentalHistory.trim() || null,
@@ -230,7 +291,9 @@ export default function ProfileScreen({ navigation }) {
       useNativeDriver: true,
     }).start();
 
-    getUnreadCount().then(setUnreadCount).catch(() => {});
+    getUnreadCount()
+      .then(setUnreadCount)
+      .catch(() => {});
   }
 
   function closeSidebar() {
@@ -248,7 +311,10 @@ export default function ProfileScreen({ navigation }) {
       "Logout?",
       "Are you sure you want to logout?",
       [
-        { text: "Cancel", style: "cancel" },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
         {
           text: "Logout",
           style: "destructive",
@@ -261,34 +327,21 @@ export default function ProfileScreen({ navigation }) {
     );
   }
 
-  function goToHome() {
-    closeSidebar();
-
-    setTimeout(() => {
-      navigation.navigate("Home");
-    }, 240);
-  }
-
-  function goToAppointments() {
-    closeSidebar();
-
-    setTimeout(() => {
-      navigation.navigate("Appointments");
-    }, 240);
-  }
-
   const sidebarPanResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return (
           gestureState.dx < -10 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy)
+          Math.abs(gestureState.dx) >
+            Math.abs(gestureState.dy)
         );
       },
 
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dx < 0) {
-          sidebarTranslateX.setValue(Math.max(-sidebarWidth, gestureState.dx));
+          sidebarTranslateX.setValue(
+            Math.max(-sidebarWidth, gestureState.dx)
+          );
         }
       },
 
@@ -307,25 +360,40 @@ export default function ProfileScreen({ navigation }) {
   ).current;
 
   const initials = useMemo(() => {
-    const parts = form.fullName.trim().split(/\s+/);
+    const parts = form.fullName
+      .trim()
+      .split(/\s+/);
 
     if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+      return `${parts[0][0]}${
+        parts[parts.length - 1][0]
+      }`.toUpperCase();
     }
 
     if (form.fullName.trim().length > 0) {
-      return form.fullName.trim()[0].toUpperCase();
+      return form.fullName
+        .trim()[0]
+        .toUpperCase();
     }
 
     return "U";
   }, [form.fullName]);
 
-  const displayName = form.fullName?.trim() || "Patient Name";
+  const displayName =
+    form.fullName?.trim() || "Patient Name";
 
   const patientSince = useMemo(() => {
-    if (!user?.created_at) return '';
+    if (!user?.created_at) return "";
+
     const d = new Date(user.created_at);
-    return 'Patient since ' + d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+    return (
+      "Patient since " +
+      d.toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      })
+    );
   }, [user?.created_at]);
 
   const updateField = (field, value) => {
@@ -341,14 +409,24 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const updatePhoneField = (field, value) => {
-    const digits = String(value || "").replace(/\D/g, "");
+    const digits = String(value || "").replace(
+      /\D/g,
+      ""
+    );
+
     const countryField =
       field === "emergencyContactNumber"
         ? "emergencyContactCountry"
         : "contactCountry";
+
     const required = field === "contact";
     const country = form[countryField] || "PH";
-    const error = validatePhoneValue(digits, country, required);
+
+    const error = validatePhoneValue(
+      digits,
+      country,
+      required
+    );
 
     setForm((prev) => ({
       ...prev,
@@ -366,6 +444,7 @@ export default function ProfileScreen({ navigation }) {
       field === "emergencyContactCountry"
         ? "emergencyContactNumber"
         : "contact";
+
     const required = phoneField === "contact";
 
     setForm((prev) => ({
@@ -375,7 +454,11 @@ export default function ProfileScreen({ navigation }) {
 
     setErrors((prev) => ({
       ...prev,
-      [phoneField]: validatePhoneValue(form[phoneField], country, required),
+      [phoneField]: validatePhoneValue(
+        form[phoneField],
+        country,
+        required
+      ),
     }));
   };
 
@@ -389,8 +472,15 @@ export default function ProfileScreen({ navigation }) {
       return "";
     }
 
-    const [month, day, year] = cleaned.split("/").map(Number);
-    const birthDate = new Date(year, month - 1, day);
+    const [month, day, year] = cleaned
+      .split("/")
+      .map(Number);
+
+    const birthDate = new Date(
+      year,
+      month - 1,
+      day
+    );
 
     const isInvalidDate =
       birthDate.getFullYear() !== year ||
@@ -407,12 +497,17 @@ export default function ProfileScreen({ navigation }) {
       return "";
     }
 
-    let age = today.getFullYear() - birthDate.getFullYear();
+    let age =
+      today.getFullYear() -
+      birthDate.getFullYear();
 
     const hasNotHadBirthdayThisYear =
-      today.getMonth() < birthDate.getMonth() ||
-      (today.getMonth() === birthDate.getMonth() &&
-        today.getDate() < birthDate.getDate());
+      today.getMonth() <
+        birthDate.getMonth() ||
+      (today.getMonth() ===
+        birthDate.getMonth() &&
+        today.getDate() <
+          birthDate.getDate());
 
     if (hasNotHadBirthdayThisYear) {
       age -= 1;
@@ -422,7 +517,11 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const formatBirthdayInput = (value) => {
-    const numbersOnly = value.replace(/\D/g, "");
+    const numbersOnly = value.replace(
+      /\D/g,
+      ""
+    );
+
     const limited = numbersOnly.slice(0, 8);
 
     if (limited.length <= 2) {
@@ -430,15 +529,27 @@ export default function ProfileScreen({ navigation }) {
     }
 
     if (limited.length <= 4) {
-      return `${limited.slice(0, 2)}/${limited.slice(2)}`;
+      return `${limited.slice(
+        0,
+        2
+      )}/${limited.slice(2)}`;
     }
 
-    return `${limited.slice(0, 2)}/${limited.slice(2, 4)}/${limited.slice(4)}`;
+    return `${limited.slice(
+      0,
+      2
+    )}/${limited.slice(
+      2,
+      4
+    )}/${limited.slice(4)}`;
   };
 
   const handleBirthdayChange = (value) => {
-    const formattedBirthday = formatBirthdayInput(value);
-    const calculatedAge = calculateAge(formattedBirthday);
+    const formattedBirthday =
+      formatBirthdayInput(value);
+
+    const calculatedAge =
+      calculateAge(formattedBirthday);
 
     setForm((prev) => ({
       ...prev,
@@ -457,23 +568,38 @@ export default function ProfileScreen({ navigation }) {
 
     async function loadProfile() {
       setLoadingProfile(true);
+
       try {
-        const profile = await getMyPatientProfile();
+        const profile =
+          await getMyPatientProfile();
+
         if (!mounted) return;
-        const nextForm = profileToForm(profile);
+
+        const nextForm =
+          profileToForm(profile);
+
         setForm(nextForm);
-        originalFormRef.current = nextForm;
+        originalFormRef.current =
+          nextForm;
       } catch (err) {
         if (!mounted) return;
-        const fallback = profileToForm({});
+
+        const fallback =
+          profileToForm({});
+
         setForm(fallback);
-        originalFormRef.current = fallback;
+        originalFormRef.current =
+          fallback;
+
         Alert.alert(
           "Profile",
-          err.response?.data?.message || "Unable to load your profile right now."
+          err.response?.data?.message ||
+            "Unable to load your profile right now."
         );
       } finally {
-        if (mounted) setLoadingProfile(false);
+        if (mounted) {
+          setLoadingProfile(false);
+        }
       }
     }
 
@@ -487,48 +613,82 @@ export default function ProfileScreen({ navigation }) {
   const validateForm = () => {
     const newErrors = {};
 
-    const fullNameTrimmed = form.fullName.trim();
-    const nameParts = fullNameTrimmed.split(/\s+/).filter(Boolean);
+    const fullNameTrimmed =
+      form.fullName.trim();
+
+    const nameParts =
+      fullNameTrimmed
+        .split(/\s+/)
+        .filter(Boolean);
 
     if (!fullNameTrimmed) {
-      newErrors.fullName = "Full name is required.";
-    } else if (fullNameTrimmed.length === 1 || nameParts.length < 2) {
-      newErrors.fullName = "Please enter both first name and last name.";
+      newErrors.fullName =
+        "Full name is required.";
+    } else if (
+      fullNameTrimmed.length === 1 ||
+      nameParts.length < 2
+    ) {
+      newErrors.fullName =
+        "Please enter both first name and last name.";
     }
 
-    if (form.birthday.trim() && !calculateAge(form.birthday)) {
-      newErrors.birthday = "Please use a valid birthday format: MM/DD/YYYY.";
+    if (
+      form.birthday.trim() &&
+      !calculateAge(form.birthday)
+    ) {
+      newErrors.birthday =
+        "Please use a valid birthday format: MM/DD/YYYY.";
     }
 
     if (!form.homeAddress.trim()) {
-      newErrors.homeAddress = "Home address is required.";
+      newErrors.homeAddress =
+        "Home address is required.";
     }
 
-    const contactError = validatePhoneValue(form.contact, form.contactCountry, true);
+    const contactError =
+      validatePhoneValue(
+        form.contact,
+        form.contactCountry,
+        true
+      );
+
     if (contactError) {
-      newErrors.contact = contactError;
+      newErrors.contact =
+        contactError;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!form.email.trim()) {
-      newErrors.email = "Email is required.";
-    } else if (!emailRegex.test(form.email.trim())) {
-      newErrors.email = "Please enter a valid email address.";
+      newErrors.email =
+        "Email is required.";
+    } else if (
+      !emailRegex.test(
+        form.email.trim()
+      )
+    ) {
+      newErrors.email =
+        "Please enter a valid email address.";
     }
 
-    const emergencyContactError = validatePhoneValue(
-      form.emergencyContactNumber,
-      form.emergencyContactCountry,
-      false
-    );
+    const emergencyContactError =
+      validatePhoneValue(
+        form.emergencyContactNumber,
+        form.emergencyContactCountry,
+        false
+      );
+
     if (emergencyContactError) {
-      newErrors.emergencyContactNumber = emergencyContactError;
+      newErrors.emergencyContactNumber =
+        emergencyContactError;
     }
 
     setErrors(newErrors);
 
-    return Object.keys(newErrors).length === 0;
+    return (
+      Object.keys(newErrors).length === 0
+    );
   };
 
   const handleEditProfile = () => {
@@ -539,12 +699,17 @@ export default function ProfileScreen({ navigation }) {
 
       setErrors({});
       setNationalityModalVisible(false);
+      setCivilStatusModalVisible(false);
       setIsEditing(false);
       Keyboard.dismiss();
+
       return;
     }
 
-    originalFormRef.current = { ...form };
+    originalFormRef.current = {
+      ...form,
+    };
+
     setErrors({});
     setIsEditing(true);
   };
@@ -559,29 +724,57 @@ export default function ProfileScreen({ navigation }) {
     setSavingProfile(true);
 
     try {
-      const savedProfile = await saveMyPatientProfile(formToProfile());
-      const nextForm = profileToForm(savedProfile);
+      const savedProfile =
+        await saveMyPatientProfile(
+          formToProfile()
+        );
+
+      const nextForm =
+        profileToForm(savedProfile);
+
       setForm(nextForm);
-      originalFormRef.current = nextForm;
+      originalFormRef.current =
+        nextForm;
+
       setIsEditing(false);
       Keyboard.dismiss();
-      Alert.alert("Profile Updated", "Your profile information has been saved.");
+
+      Alert.alert(
+        "Profile Updated",
+        "Your profile information has been saved."
+      );
     } catch (err) {
       if (err.response?.data?.errors) {
-        const apiErrors = err.response.data.errors;
+        const apiErrors =
+          err.response.data.errors;
+
         setErrors((prev) => ({
           ...prev,
-          fullName: apiErrors.full_name || prev.fullName,
-          email: apiErrors.email || prev.email,
-          contact: apiErrors.contact_number || prev.contact,
-          homeAddress: apiErrors.address || prev.homeAddress,
-          age: apiErrors.age || prev.age,
+          fullName:
+            apiErrors.full_name ||
+            prev.fullName,
+          email:
+            apiErrors.email ||
+            prev.email,
+          contact:
+            apiErrors.contact_number ||
+            prev.contact,
+          homeAddress:
+            apiErrors.address ||
+            prev.homeAddress,
+          age:
+            apiErrors.age ||
+            prev.age,
+          civilStatus:
+            apiErrors.civil_status ||
+            prev.civilStatus,
         }));
       }
 
       Alert.alert(
         "Unable to Save",
-        err.response?.data?.message || "Please check your information and try again."
+        err.response?.data?.message ||
+          "Please check your information and try again."
       );
     } finally {
       setSavingProfile(false);
@@ -589,9 +782,15 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const renderError = (field) => {
-    if (!errors[field]) return null;
+    if (!errors[field]) {
+      return null;
+    }
 
-    return <Text style={styles.errorText}>{errors[field]}</Text>;
+    return (
+      <Text style={styles.errorText}>
+        {errors[field]}
+      </Text>
+    );
   };
 
   const renderPhoneField = ({
@@ -601,643 +800,1396 @@ export default function ProfileScreen({ navigation }) {
     placeholderLabel = "Optional",
     required = false,
   }) => {
-    const selectedCountry = getPhoneCountry(form[countryField]);
-    const hasError = Boolean(errors[field]);
+    const selectedCountry =
+      getPhoneCountry(
+        form[countryField]
+      );
+
+    const hasError =
+      Boolean(errors[field]);
 
     return (
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.label}>
+          {label}
+        </Text>
+
         <View style={styles.phoneRow}>
           <TouchableOpacity
             style={[
               styles.phoneCountryButton,
-              !isEditing && styles.disabledInput,
-              hasError && styles.inputError,
+              !isEditing &&
+                styles.disabledInput,
+              hasError &&
+                styles.inputError,
             ]}
             activeOpacity={0.8}
             disabled={!isEditing}
             onPress={() =>
-              setPhoneCountryModal({ visible: true, field: countryField })
+              setPhoneCountryModal({
+                visible: true,
+                field: countryField,
+              })
             }
           >
-            <Text style={styles.phoneCountryText}>
-              {selectedCountry.country} +{selectedCountry.callingCode}
+            <Text
+              style={styles.phoneCountryText}
+            >
+              {selectedCountry.country} +
+              {selectedCountry.callingCode}
             </Text>
-            <Text style={styles.phoneCountryChevron}>v</Text>
+
+            <Text
+              style={
+                styles.phoneCountryChevron
+              }
+            >
+              v
+            </Text>
           </TouchableOpacity>
 
           <TextInput
             style={[
               styles.input,
               styles.phoneNumberInput,
-              !isEditing && styles.disabledInput,
-              hasError && styles.inputError,
+              !isEditing &&
+                styles.disabledInput,
+              hasError &&
+                styles.inputError,
             ]}
             value={form[field]}
-            onChangeText={(value) => updatePhoneField(field, value)}
-            placeholder={required ? selectedCountry.placeholder : placeholderLabel}
+            onChangeText={(value) =>
+              updatePhoneField(
+                field,
+                value
+              )
+            }
+            placeholder={
+              required
+                ? selectedCountry.placeholder
+                : placeholderLabel
+            }
             placeholderTextColor="#A8A8A8"
             editable={isEditing}
             keyboardType="phone-pad"
             maxLength={selectedCountry.max}
           />
         </View>
+
         {renderError(field)}
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={[
+        "top",
+        "left",
+        "right",
+      ]}
+    >
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior="padding"
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        keyboardVerticalOffset={
+          Platform.OS === "ios" ? 0 : 20
+        }
       >
         <View style={styles.mainWrapper}>
-            <ScrollView
-              style={styles.container}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-              nestedScrollEnabled
-            >
-              <View style={styles.headerCard}>
-                <View style={styles.topRow}>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={openSidebar}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          <ScrollView
+            style={styles.container}
+            contentContainerStyle={
+              styles.scrollContent
+            }
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            nestedScrollEnabled
+          >
+            <View style={styles.headerCard}>
+              <View style={styles.topRow}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={openSidebar}
+                  hitSlop={{
+                    top: 12,
+                    bottom: 12,
+                    left: 12,
+                    right: 12,
+                  }}
+                >
+                  <Text
+                    style={styles.menuIcon}
                   >
-                    <Text style={styles.menuIcon}>☰</Text>
-                  </TouchableOpacity>
+                    ☰
+                  </Text>
+                </TouchableOpacity>
 
-                  <Text style={styles.headerTitle}>Profile</Text>
+                <Text
+                  style={styles.headerTitle}
+                >
+                  Profile
+                </Text>
 
-                  <TouchableOpacity
-                    style={[
-                      styles.editButton,
-                      (loadingProfile || savingProfile) && styles.buttonDisabled,
-                    ]}
-                    activeOpacity={0.8}
-                    onPress={handleEditProfile}
-                    disabled={loadingProfile || savingProfile}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                <TouchableOpacity
+                  style={[
+                    styles.editButton,
+                    (loadingProfile ||
+                      savingProfile) &&
+                      styles.buttonDisabled,
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={
+                    handleEditProfile
+                  }
+                  disabled={
+                    loadingProfile ||
+                    savingProfile
+                  }
+                  hitSlop={{
+                    top: 10,
+                    bottom: 10,
+                    left: 10,
+                    right: 10,
+                  }}
+                >
+                  <Text
+                    style={
+                      styles.editButtonText
+                    }
                   >
-                    <Text style={styles.editButtonText}>
-                      {isEditing ? "Cancel" : "Edit Profile"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.avatarBox}>
-                  <Text style={styles.avatarText}>{initials}</Text>
-                </View>
-
-                <Text style={styles.nameText}>{displayName}</Text>
-                {patientSince ? <Text style={styles.patientSince}>{patientSince}</Text> : null}
+                    {isEditing
+                      ? "Cancel"
+                      : "Edit Profile"}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
-              <View style={styles.formCard}>
-                <Text style={styles.sectionTitle}>
-                  Personal Information Record
+              <View style={styles.avatarBox}>
+                <Text
+                  style={styles.avatarText}
+                >
+                  {initials}
                 </Text>
-                <View style={styles.titleLine} />
+              </View>
 
-                {loadingProfile ? (
-                  <View style={styles.loadingProfile}>
-                    <ActivityIndicator color="#B77A00" />
-                    <Text style={styles.loadingProfileText}>
-                      Loading profile...
-                    </Text>
-                  </View>
-                ) : null}
+              <Text
+                style={styles.nameText}
+              >
+                {displayName}
+              </Text>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Full Name</Text>
+              {patientSince ? (
+                <Text
+                  style={
+                    styles.patientSince
+                  }
+                >
+                  {patientSince}
+                </Text>
+              ) : null}
+            </View>
+
+            <View style={styles.formCard}>
+              <Text
+                style={styles.sectionTitle}
+              >
+                Personal Information Record
+              </Text>
+
+              <View style={styles.titleLine} />
+
+              {loadingProfile ? (
+                <View
+                  style={
+                    styles.loadingProfile
+                  }
+                >
+                  <ActivityIndicator color="#B77A00" />
+
+                  <Text
+                    style={
+                      styles.loadingProfileText
+                    }
+                  >
+                    Loading profile...
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Full Name
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    !isEditing &&
+                      styles.disabledInput,
+                    errors.fullName &&
+                      styles.inputError,
+                  ]}
+                  value={form.fullName}
+                  onChangeText={(value) =>
+                    updateField(
+                      "fullName",
+                      value
+                    )
+                  }
+                  placeholder="Enter first name and last name"
+                  placeholderTextColor="#A8A8A8"
+                  editable={isEditing}
+                />
+
+                {renderError(
+                  "fullName"
+                )}
+              </View>
+
+              <View style={styles.row}>
+                <View
+                  style={
+                    styles.halfInputGroup
+                  }
+                >
+                  <Text
+                    style={styles.label}
+                  >
+                    Birthday
+                  </Text>
+
                   <TextInput
                     style={[
                       styles.input,
-                      !isEditing && styles.disabledInput,
-                      errors.fullName && styles.inputError,
+                      !isEditing &&
+                        styles.disabledInput,
+                      errors.birthday &&
+                        styles.inputError,
                     ]}
-                    value={form.fullName}
-                    onChangeText={(value) => updateField("fullName", value)}
-                    placeholder="Enter first name and last name"
+                    value={form.birthday}
+                    onChangeText={
+                      handleBirthdayChange
+                    }
+                    placeholder="MM/DD/YYYY"
+                    placeholderTextColor="#A8A8A8"
+                    editable={isEditing}
+                    keyboardType="number-pad"
+                    maxLength={10}
+                  />
+
+                  {renderError(
+                    "birthday"
+                  )}
+                </View>
+
+                <View
+                  style={
+                    styles.halfInputGroup
+                  }
+                >
+                  <Text
+                    style={styles.label}
+                  >
+                    Age
+                  </Text>
+
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.disabledInput,
+                    ]}
+                    value={form.age}
+                    placeholder="Auto"
+                    placeholderTextColor="#A8A8A8"
+                    editable={false}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Nationality
+                </Text>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={!isEditing}
+                  style={[
+                    styles.input,
+                    styles.dropdownInput,
+                    !isEditing &&
+                      styles.disabledInput,
+                    errors.nationality &&
+                      styles.inputError,
+                  ]}
+                  onPress={() =>
+                    setNationalityModalVisible(
+                      true
+                    )
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.dropdownText,
+                      !form.nationality &&
+                        styles.placeholderText,
+                    ]}
+                  >
+                    {form.nationality ||
+                      "Select nationality"}
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.dropdownArrow
+                    }
+                  >
+                    ⌄
+                  </Text>
+                </TouchableOpacity>
+
+                {renderError(
+                  "nationality"
+                )}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Home Address
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.addressInput,
+                    !isEditing &&
+                      styles.disabledInput,
+                    errors.homeAddress &&
+                      styles.inputError,
+                  ]}
+                  value={form.homeAddress}
+                  onChangeText={(value) =>
+                    updateField(
+                      "homeAddress",
+                      value
+                    )
+                  }
+                  placeholder="Enter complete home address"
+                  placeholderTextColor="#A8A8A8"
+                  editable={isEditing}
+                  multiline
+                  textAlignVertical="top"
+                />
+
+                {renderError(
+                  "homeAddress"
+                )}
+              </View>
+
+              <View style={styles.row}>
+                <View
+                  style={
+                    styles.halfInputGroup
+                  }
+                >
+                  <Text
+                    style={styles.label}
+                  >
+                    Occupation
+                  </Text>
+
+                  <TextInput
+                    style={[
+                      styles.input,
+                      !isEditing &&
+                        styles.disabledInput,
+                      errors.occupation &&
+                        styles.inputError,
+                    ]}
+                    value={form.occupation}
+                    onChangeText={(value) =>
+                      updateField(
+                        "occupation",
+                        value
+                      )
+                    }
+                    placeholder="Occupation"
                     placeholderTextColor="#A8A8A8"
                     editable={isEditing}
                   />
-                  {renderError("fullName")}
+
+                  {renderError(
+                    "occupation"
+                  )}
                 </View>
 
-                <View style={styles.row}>
-                  <View style={styles.halfInputGroup}>
-                    <Text style={styles.label}>Birthday</Text>
-                    <TextInput
+                <View
+                  style={
+                    styles.halfInputGroup
+                  }
+                >
+                  <Text
+                    style={styles.label}
+                  >
+                    Sex
+                  </Text>
+
+                  <View
+                    style={
+                      styles.sexChoiceRow
+                    }
+                  >
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      disabled={!isEditing}
                       style={[
-                        styles.input,
-                        !isEditing && styles.disabledInput,
-                        errors.birthday && styles.inputError,
+                        styles.sexButton,
+                        form.sex ===
+                          "Male" &&
+                          styles.sexButtonActive,
+                        !isEditing &&
+                          form.sex !==
+                            "Male" &&
+                          styles.disabledChoice,
                       ]}
-                      value={form.birthday}
-                      onChangeText={handleBirthdayChange}
-                      placeholder="MM/DD/YYYY"
-                      placeholderTextColor="#A8A8A8"
-                      editable={isEditing}
-                      keyboardType="number-pad"
-                      maxLength={10}
-                    />
-                    {renderError("birthday")}
+                      onPress={() =>
+                        updateField(
+                          "sex",
+                          "Male"
+                        )
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.sexButtonText,
+                          form.sex ===
+                            "Male" &&
+                            styles.sexButtonTextActive,
+                        ]}
+                      >
+                        Male
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      disabled={!isEditing}
+                      style={[
+                        styles.sexButton,
+                        form.sex ===
+                          "Female" &&
+                          styles.sexButtonActive,
+                        !isEditing &&
+                          form.sex !==
+                            "Female" &&
+                          styles.disabledChoice,
+                      ]}
+                      onPress={() =>
+                        updateField(
+                          "sex",
+                          "Female"
+                        )
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.sexButtonText,
+                          form.sex ===
+                            "Female" &&
+                            styles.sexButtonTextActive,
+                        ]}
+                      >
+                        Female
+                      </Text>
+                    </TouchableOpacity>
                   </View>
 
-                  <View style={styles.halfInputGroup}>
-                    <Text style={styles.label}>Age</Text>
-                    <TextInput
-                      style={[styles.input, styles.disabledInput]}
-                      value={form.age}
-                      placeholder="Auto"
-                      placeholderTextColor="#A8A8A8"
-                      editable={false}
-                    />
-                  </View>
+                  {renderError("sex")}
                 </View>
+              </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Nationality</Text>
+              {renderPhoneField({
+                label: "Contact",
+                field: "contact",
+                countryField:
+                  "contactCountry",
+                required: true,
+              })}
 
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    disabled={!isEditing}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Email
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    !isEditing &&
+                      styles.disabledInput,
+                    errors.email &&
+                      styles.inputError,
+                  ]}
+                  value={form.email}
+                  onChangeText={(value) =>
+                    updateField(
+                      "email",
+                      value
+                    )
+                  }
+                  placeholder="Enter email address"
+                  placeholderTextColor="#A8A8A8"
+                  editable={isEditing}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+
+                {renderError("email")}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Civil Status
+                </Text>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={!isEditing}
+                  style={[
+                    styles.input,
+                    styles.dropdownInput,
+                    !isEditing &&
+                      styles.disabledInput,
+                    errors.civilStatus &&
+                      styles.inputError,
+                  ]}
+                  onPress={() =>
+                    setCivilStatusModalVisible(
+                      true
+                    )
+                  }
+                >
+                  <Text
                     style={[
-                      styles.input,
-                      styles.dropdownInput,
-                      !isEditing && styles.disabledInput,
-                      errors.nationality && styles.inputError,
+                      styles.dropdownText,
+                      !form.civilStatus &&
+                        styles.placeholderText,
                     ]}
-                    onPress={() => setNationalityModalVisible(true)}
+                  >
+                    {form.civilStatus ||
+                      "Select civil status"}
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.dropdownArrow
+                    }
+                  >
+                    ⌄
+                  </Text>
+                </TouchableOpacity>
+
+                {renderError(
+                  "civilStatus"
+                )}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Emergency Contact Name
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    !isEditing &&
+                      styles.disabledInput,
+                    errors.emergencyContactName &&
+                      styles.inputError,
+                  ]}
+                  value={
+                    form.emergencyContactName
+                  }
+                  onChangeText={(value) =>
+                    updateField(
+                      "emergencyContactName",
+                      value
+                    )
+                  }
+                  placeholder="Optional"
+                  placeholderTextColor="#A8A8A8"
+                  editable={isEditing}
+                />
+
+                {renderError(
+                  "emergencyContactName"
+                )}
+              </View>
+
+              {renderPhoneField({
+                label:
+                  "Emergency Contact Number",
+                field:
+                  "emergencyContactNumber",
+                countryField:
+                  "emergencyContactCountry",
+              })}
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Medical Conditions
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.addressInput,
+                    !isEditing &&
+                      styles.disabledInput,
+                  ]}
+                  value={
+                    form.medicalConditions
+                  }
+                  onChangeText={(value) =>
+                    updateField(
+                      "medicalConditions",
+                      value
+                    )
+                  }
+                  placeholder="Optional"
+                  placeholderTextColor="#A8A8A8"
+                  editable={isEditing}
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Allergies
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.addressInput,
+                    !isEditing &&
+                      styles.disabledInput,
+                  ]}
+                  value={form.allergies}
+                  onChangeText={(value) =>
+                    updateField(
+                      "allergies",
+                      value
+                    )
+                  }
+                  placeholder="Optional"
+                  placeholderTextColor="#A8A8A8"
+                  editable={isEditing}
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Medications
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.addressInput,
+                    !isEditing &&
+                      styles.disabledInput,
+                  ]}
+                  value={form.medications}
+                  onChangeText={(value) =>
+                    updateField(
+                      "medications",
+                      value
+                    )
+                  }
+                  placeholder="Optional"
+                  placeholderTextColor="#A8A8A8"
+                  editable={isEditing}
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Dental History
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.addressInput,
+                    !isEditing &&
+                      styles.disabledInput,
+                  ]}
+                  value={form.dentalHistory}
+                  onChangeText={(value) =>
+                    updateField(
+                      "dentalHistory",
+                      value
+                    )
+                  }
+                  placeholder="Optional"
+                  placeholderTextColor="#A8A8A8"
+                  editable={isEditing}
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {isEditing ? (
+                <TouchableOpacity
+                  style={[
+                    styles.saveButton,
+                    savingProfile &&
+                      styles.buttonDisabled,
+                  ]}
+                  activeOpacity={0.85}
+                  onPress={
+                    handleSaveProfile
+                  }
+                  disabled={savingProfile}
+                >
+                  <Text
+                    style={
+                      styles.saveButtonText
+                    }
+                  >
+                    {savingProfile
+                      ? "Saving..."
+                      : "Save Profile"}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </ScrollView>
+
+          {sidebarOpen ? (
+            <View
+              style={[
+                styles.sidebarOverlay,
+                {
+                  pointerEvents:
+                    "box-none",
+                },
+              ]}
+            >
+              <Pressable
+                style={styles.darkBackdrop}
+                onPress={closeSidebar}
+              />
+
+              <Animated.View
+                style={[
+                  styles.sidebar,
+                  {
+                    width: sidebarWidth,
+                    transform: [
+                      {
+                        translateX:
+                          sidebarTranslateX,
+                      },
+                    ],
+                  },
+                ]}
+                {...sidebarPanResponder.panHandlers}
+              >
+                <View
+                  style={
+                    styles.profileSection
+                  }
+                >
+                  <View
+                    style={
+                      styles.sidebarAvatarBox
+                    }
                   >
                     <Text
-                      style={[
-                        styles.dropdownText,
-                        !form.nationality && styles.placeholderText,
-                      ]}
+                      style={
+                        styles.sidebarAvatarText
+                      }
                     >
-                      {form.nationality || "Select nationality"}
+                      {initials}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={
+                      styles.profileTextArea
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.profileName
+                      }
+                    >
+                      {displayName}
                     </Text>
 
-                    <Text style={styles.dropdownArrow}>⌄</Text>
+                    <Text
+                      style={
+                        styles.profileBranch
+                      }
+                    >
+                      {user?.home_branch_city ??
+                        "Dental Clinic"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={
+                    styles.sidebarLine
+                  }
+                />
+
+                <View
+                  style={styles.menuList}
+                >
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      closeSidebar();
+
+                      setTimeout(() => {
+                        navigation.navigate(
+                          "Home"
+                        );
+                      }, 240);
+                    }}
+                  >
+                    <Image
+                      source={require("../../assets/images/home.png")}
+                      style={
+                        styles.sidebarIcon
+                      }
+                      resizeMode="contain"
+                    />
+
+                    <Text
+                      style={styles.menuText}
+                    >
+                      Home
+                    </Text>
                   </TouchableOpacity>
 
-                  {renderError("nationality")}
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Home Address</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      styles.addressInput,
-                      !isEditing && styles.disabledInput,
-                      errors.homeAddress && styles.inputError,
-                    ]}
-                    value={form.homeAddress}
-                    onChangeText={(value) => updateField("homeAddress", value)}
-                    placeholder="Enter complete home address"
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                    multiline
-                    textAlignVertical="top"
-                  />
-                  {renderError("homeAddress")}
-                </View>
-
-                <View style={styles.row}>
-                  <View style={styles.halfInputGroup}>
-                    <Text style={styles.label}>Occupation</Text>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        !isEditing && styles.disabledInput,
-                        errors.occupation && styles.inputError,
-                      ]}
-                      value={form.occupation}
-                      onChangeText={(value) => updateField("occupation", value)}
-                      placeholder="Occupation"
-                      placeholderTextColor="#A8A8A8"
-                      editable={isEditing}
-                    />
-                    {renderError("occupation")}
-                  </View>
-
-                  <View style={styles.halfInputGroup}>
-                    <Text style={styles.label}>Sex</Text>
-
-                    <View style={styles.sexChoiceRow}>
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        disabled={!isEditing}
-                        style={[
-                          styles.sexButton,
-                          form.sex === "Male" && styles.sexButtonActive,
-                          !isEditing && form.sex !== "Male" && styles.disabledChoice,
-                        ]}
-                        onPress={() => updateField("sex", "Male")}
-                      >
-                        <Text
-                          style={[
-                            styles.sexButtonText,
-                            form.sex === "Male" && styles.sexButtonTextActive,
-                          ]}
-                        >
-                          Male
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        disabled={!isEditing}
-                        style={[
-                          styles.sexButton,
-                          form.sex === "Female" && styles.sexButtonActive,
-                          !isEditing && form.sex !== "Female" && styles.disabledChoice,
-                        ]}
-                        onPress={() => updateField("sex", "Female")}
-                      >
-                        <Text
-                          style={[
-                            styles.sexButtonText,
-                            form.sex === "Female" && styles.sexButtonTextActive,
-                          ]}
-                        >
-                          Female
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {renderError("sex")}
-                  </View>
-                </View>
-
-                {renderPhoneField({
-                  label: "Contact",
-                  field: "contact",
-                  countryField: "contactCountry",
-                  required: true,
-                })}
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      !isEditing && styles.disabledInput,
-                      errors.email && styles.inputError,
-                    ]}
-                    value={form.email}
-                    onChangeText={(value) => updateField("email", value)}
-                    placeholder="Enter email address"
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                  {renderError("email")}
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Civil Status</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      !isEditing && styles.disabledInput,
-                      errors.civilStatus && styles.inputError,
-                    ]}
-                    value={form.civilStatus}
-                    onChangeText={(value) => updateField("civilStatus", value)}
-                    placeholder="Single, Married, etc."
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                  />
-                  {renderError("civilStatus")}
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Emergency Contact Name</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      !isEditing && styles.disabledInput,
-                      errors.emergencyContactName && styles.inputError,
-                    ]}
-                    value={form.emergencyContactName}
-                    onChangeText={(value) =>
-                      updateField("emergencyContactName", value)
-                    }
-                    placeholder="Optional"
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                  />
-                  {renderError("emergencyContactName")}
-                </View>
-
-                {renderPhoneField({
-                  label: "Emergency Contact Number",
-                  field: "emergencyContactNumber",
-                  countryField: "emergencyContactCountry",
-                })}
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Medical Conditions</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      styles.addressInput,
-                      !isEditing && styles.disabledInput,
-                    ]}
-                    value={form.medicalConditions}
-                    onChangeText={(value) =>
-                      updateField("medicalConditions", value)
-                    }
-                    placeholder="Optional"
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                    multiline
-                    textAlignVertical="top"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Allergies</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      styles.addressInput,
-                      !isEditing && styles.disabledInput,
-                    ]}
-                    value={form.allergies}
-                    onChangeText={(value) => updateField("allergies", value)}
-                    placeholder="Optional"
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                    multiline
-                    textAlignVertical="top"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Medications</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      styles.addressInput,
-                      !isEditing && styles.disabledInput,
-                    ]}
-                    value={form.medications}
-                    onChangeText={(value) => updateField("medications", value)}
-                    placeholder="Optional"
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                    multiline
-                    textAlignVertical="top"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Dental History</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      styles.addressInput,
-                      !isEditing && styles.disabledInput,
-                    ]}
-                    value={form.dentalHistory}
-                    onChangeText={(value) => updateField("dentalHistory", value)}
-                    placeholder="Optional"
-                    placeholderTextColor="#A8A8A8"
-                    editable={isEditing}
-                    multiline
-                    textAlignVertical="top"
-                  />
-                </View>
-
-                {isEditing ? (
                   <TouchableOpacity
                     style={[
-                      styles.saveButton,
-                      savingProfile && styles.buttonDisabled,
+                      styles.menuItem,
+                      styles.activeMenuItem,
                     ]}
-                    activeOpacity={0.85}
-                    onPress={handleSaveProfile}
-                    disabled={savingProfile}
+                    onPress={
+                      closeSidebar
+                    }
                   >
-                    <Text style={styles.saveButtonText}>
-                      {savingProfile ? "Saving..." : "Save Profile"}
+                    <Image
+                      source={require("../../assets/images/profile.png")}
+                      style={
+                        styles.sidebarIcon
+                      }
+                      resizeMode="contain"
+                    />
+
+                    <Text
+                      style={[
+                        styles.menuText,
+                        styles.activeMenuText,
+                      ]}
+                    >
+                      Profile
                     </Text>
                   </TouchableOpacity>
-                ) : null}
-              </View>
-            </ScrollView>
 
-            {sidebarOpen ? (
-              <View style={styles.sidebarOverlay} pointerEvents="box-none">
-                <Pressable style={styles.darkBackdrop} onPress={closeSidebar} />
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      closeSidebar();
 
-                <Animated.View
-                  style={[
-                    styles.sidebar,
-                    {
-                      width: sidebarWidth,
-                      transform: [{ translateX: sidebarTranslateX }],
-                    },
-                  ]}
-                  {...sidebarPanResponder.panHandlers}
-                >
-                  <View style={styles.profileSection}>
-                    <View style={styles.sidebarAvatarBox}>
-                      <Text style={styles.sidebarAvatarText}>{initials}</Text>
-                    </View>
+                      setTimeout(() => {
+                        navigation.navigate(
+                          "MessagesList"
+                        );
+                      }, 240);
+                    }}
+                  >
+                    <Image
+                      source={require("../../assets/images/message.png")}
+                      style={
+                        styles.sidebarIcon
+                      }
+                      resizeMode="contain"
+                    />
 
-                    <View style={styles.profileTextArea}>
-                      <Text style={styles.profileName}>{displayName}</Text>
-                      <Text style={styles.profileBranch}>{user?.home_branch_city ?? 'Dental Clinic'}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.sidebarLine} />
-
-                  <View style={styles.menuList}>
-                    <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("Home"), 240); }}
+                    <Text
+                      style={styles.menuText}
                     >
-                      <Image source={require("../../assets/images/home.png")} style={styles.sidebarIcon} resizeMode="contain" />
-                      <Text style={styles.menuText}>Home</Text>
-                    </TouchableOpacity>
+                      Message
+                    </Text>
+                  </TouchableOpacity>
 
-                    <TouchableOpacity
-                      style={[styles.menuItem, styles.activeMenuItem]}
-                      onPress={closeSidebar}
-                    >
-                      <Image source={require("../../assets/images/profile.png")} style={styles.sidebarIcon} resizeMode="contain" />
-                      <Text style={[styles.menuText, styles.activeMenuText]}>Profile</Text>
-                    </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      closeSidebar();
 
-                    <TouchableOpacity 
-                      style={styles.menuItem}
-                      onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("MessagesList"), 240); }}
-                    >
-                      <Image source={require("../../assets/images/message.png")} style={styles.sidebarIcon} resizeMode="contain" />
-                      <Text style={styles.menuText}>Message</Text>
-                    </TouchableOpacity>
+                      setTimeout(() => {
+                        navigation.navigate(
+                          "Appointments"
+                        );
+                      }, 240);
+                    }}
+                  >
+                    <Image
+                      source={require("../../assets/images/appointment.png")}
+                      style={
+                        styles.sidebarIcon
+                      }
+                      resizeMode="contain"
+                    />
 
-                    <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("Appointments"), 240); }}
+                    <Text
+                      style={styles.menuText}
                     >
-                      <Image source={require("../../assets/images/appointment.png")} style={styles.sidebarIcon} resizeMode="contain" />
-                      <Text style={styles.menuText}>Appointments</Text>
-                    </TouchableOpacity>
+                      Appointments
+                    </Text>
+                  </TouchableOpacity>
 
-                    <TouchableOpacity 
-                      style={styles.menuItem}
-                      onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("Records"), 240); }}
-                    >
-                      <Image source={require("../../assets/images/records.png")} style={styles.sidebarIcon} resizeMode="contain" />
-                      <Text style={styles.menuText}>History</Text>
-                    </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      closeSidebar();
 
-                    <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("DentalTreatmentPlan"), 240); }}
-                    >
-                      <Image source={require("../../assets/images/records.png")} style={styles.sidebarIcon} resizeMode="contain" />
-                      <Text style={styles.menuText}>Treatment Plan</Text>
-                    </TouchableOpacity>
+                      setTimeout(() => {
+                        navigation.navigate(
+                          "Records"
+                        );
+                      }, 240);
+                    }}
+                  >
+                    <Image
+                      source={require("../../assets/images/records.png")}
+                      style={
+                        styles.sidebarIcon
+                      }
+                      resizeMode="contain"
+                    />
 
-                    <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={() => { closeSidebar(); setTimeout(() => navigation.navigate("Notifications"), 240); }}
+                    <Text
+                      style={styles.menuText}
                     >
-                      <View style={{ position: 'relative', marginRight: 16 }}>
-                        <Image source={require("../../assets/images/notification-bell.png")} style={[styles.sidebarIcon, { marginRight: 0 }]} resizeMode="contain" />
-                        {unreadCount > 0 && (
-                          <View style={{
-                            position: 'absolute',
+                      History
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      closeSidebar();
+
+                      setTimeout(() => {
+                        navigation.navigate(
+                          "DentalTreatmentPlan"
+                        );
+                      }, 240);
+                    }}
+                  >
+                    <Image
+                      source={require("../../assets/images/records.png")}
+                      style={
+                        styles.sidebarIcon
+                      }
+                      resizeMode="contain"
+                    />
+
+                    <Text
+                      style={styles.menuText}
+                    >
+                      Treatment Plan
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      closeSidebar();
+
+                      setTimeout(() => {
+                        navigation.navigate(
+                          "Notifications"
+                        );
+                      }, 240);
+                    }}
+                  >
+                    <View
+                      style={{
+                        position:
+                          "relative",
+                        marginRight: 16,
+                      }}
+                    >
+                      <Image
+                        source={require("../../assets/images/notification-bell.png")}
+                        style={[
+                          styles.sidebarIcon,
+                          {
+                            marginRight: 0,
+                          },
+                        ]}
+                        resizeMode="contain"
+                      />
+
+                      {unreadCount > 0 && (
+                        <View
+                          style={{
+                            position:
+                              "absolute",
                             top: -4,
                             right: -4,
-                            backgroundColor: '#e53e3e',
+                            backgroundColor:
+                              "#e53e3e",
                             borderRadius: 999,
                             paddingHorizontal: 4,
                             paddingVertical: 1,
                             minWidth: 16,
-                            alignItems: 'center',
-                          }}>
-                            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
-                              {unreadCount > 9 ? '9+' : unreadCount}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.menuText}>Notifications</Text>
-                    </TouchableOpacity>
-                  </View>
+                            alignItems:
+                              "center",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color:
+                                "#fff",
+                              fontSize: 9,
+                              fontWeight:
+                                "700",
+                            }}
+                          >
+                            {unreadCount >
+                            9
+                              ? "9+"
+                              : unreadCount}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
 
-                  <View style={styles.signOutSection}>
-                    <View style={styles.sidebarLine} />
+                    <Text
+                      style={styles.menuText}
+                    >
+                      Notifications
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-                    <TouchableOpacity style={styles.signOutButton} onPress={confirmLogout}>
-                      <Image
-                        source={require("../../assets/images/logout.png")}
-                        style={styles.sidebarIcon}
-                        resizeMode="contain"
-                      />
+                <View
+                  style={
+                    styles.signOutSection
+                  }
+                >
+                  <View
+                    style={
+                      styles.sidebarLine
+                    }
+                  />
 
-                      <Text style={styles.signOutText}>Sign Out</Text>
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
-              </View>
-            ) : null}
-          </View>
+                  <TouchableOpacity
+                    style={
+                      styles.signOutButton
+                    }
+                    onPress={
+                      confirmLogout
+                    }
+                  >
+                    <Image
+                      source={require("../../assets/images/logout.png")}
+                      style={
+                        styles.sidebarIcon
+                      }
+                      resizeMode="contain"
+                    />
+
+                    <Text
+                      style={
+                        styles.signOutText
+                      }
+                    >
+                      Sign Out
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </View>
+          ) : null}
+        </View>
 
         <Modal
-          visible={nationalityModalVisible}
+          visible={
+            nationalityModalVisible
+          }
           transparent
           animationType="fade"
-          onRequestClose={() => setNationalityModalVisible(false)}
+          onRequestClose={() =>
+            setNationalityModalVisible(
+              false
+            )
+          }
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Select Nationality</Text>
+          <View
+            style={styles.modalOverlay}
+          >
+            <View
+              style={styles.modalCard}
+            >
+              <Text
+                style={styles.modalTitle}
+              >
+                Select Nationality
+              </Text>
 
               <FlatList
                 data={NATIONALITIES}
-                keyExtractor={(item) => item}
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item }) => (
+                keyExtractor={(item) =>
+                  item
+                }
+                showsVerticalScrollIndicator={
+                  false
+                }
+                renderItem={({
+                  item,
+                }) => (
                   <TouchableOpacity
-                    style={styles.nationalityOption}
+                    style={
+                      styles.nationalityOption
+                    }
                     activeOpacity={0.7}
                     onPress={() => {
-                      updateField("nationality", item);
-                      setNationalityModalVisible(false);
+                      updateField(
+                        "nationality",
+                        item
+                      );
+
+                      setNationalityModalVisible(
+                        false
+                      );
                     }}
                   >
-                    <Text style={styles.nationalityOptionText}>{item}</Text>
+                    <Text
+                      style={
+                        styles.nationalityOptionText
+                      }
+                    >
+                      {item}
+                    </Text>
                   </TouchableOpacity>
                 )}
               />
 
               <TouchableOpacity
-                style={styles.modalCloseButton}
+                style={
+                  styles.modalCloseButton
+                }
                 activeOpacity={0.8}
-                onPress={() => setNationalityModalVisible(false)}
+                onPress={() =>
+                  setNationalityModalVisible(
+                    false
+                  )
+                }
               >
-                <Text style={styles.modalCloseButtonText}>Cancel</Text>
+                <Text
+                  style={
+                    styles.modalCloseButtonText
+                  }
+                >
+                  Cancel
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
 
         <Modal
-          visible={phoneCountryModal.visible}
+          visible={
+            civilStatusModalVisible
+          }
           transparent
           animationType="fade"
-          onRequestClose={() => setPhoneCountryModal({ visible: false, field: "" })}
+          onRequestClose={() =>
+            setCivilStatusModalVisible(
+              false
+            )
+          }
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Select Country Code</Text>
+          <View
+            style={styles.modalOverlay}
+          >
+            <View
+              style={styles.modalCard}
+            >
+              <Text
+                style={styles.modalTitle}
+              >
+                Select Civil Status
+              </Text>
 
               <FlatList
-                data={PHONE_COUNTRIES}
-                keyExtractor={(item) => item.country}
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item }) => (
+                data={CIVIL_STATUSES}
+                keyExtractor={(item) =>
+                  item
+                }
+                showsVerticalScrollIndicator={
+                  false
+                }
+                renderItem={({
+                  item,
+                }) => (
                   <TouchableOpacity
-                    style={styles.nationalityOption}
+                    style={
+                      styles.nationalityOption
+                    }
                     activeOpacity={0.7}
                     onPress={() => {
-                      if (phoneCountryModal.field) {
-                        updatePhoneCountry(phoneCountryModal.field, item.country);
-                      }
-                      setPhoneCountryModal({ visible: false, field: "" });
+                      updateField(
+                        "civilStatus",
+                        item
+                      );
+
+                      setCivilStatusModalVisible(
+                        false
+                      );
                     }}
                   >
-                    <Text style={styles.nationalityOptionText}>
-                      {item.country} +{item.callingCode}
+                    <Text
+                      style={
+                        styles.nationalityOptionText
+                      }
+                    >
+                      {item}
                     </Text>
                   </TouchableOpacity>
                 )}
               />
 
               <TouchableOpacity
-                style={styles.modalCloseButton}
+                style={
+                  styles.modalCloseButton
+                }
                 activeOpacity={0.8}
-                onPress={() => setPhoneCountryModal({ visible: false, field: "" })}
+                onPress={() =>
+                  setCivilStatusModalVisible(
+                    false
+                  )
+                }
               >
-                <Text style={styles.modalCloseButtonText}>Cancel</Text>
+                <Text
+                  style={
+                    styles.modalCloseButtonText
+                  }
+                >
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={
+            phoneCountryModal.visible
+          }
+          transparent
+          animationType="fade"
+          onRequestClose={() =>
+            setPhoneCountryModal({
+              visible: false,
+              field: "",
+            })
+          }
+        >
+          <View
+            style={styles.modalOverlay}
+          >
+            <View
+              style={styles.modalCard}
+            >
+              <Text
+                style={styles.modalTitle}
+              >
+                Select Country Code
+              </Text>
+
+              <FlatList
+                data={PHONE_COUNTRIES}
+                keyExtractor={(item) =>
+                  item.country
+                }
+                showsVerticalScrollIndicator={
+                  false
+                }
+                renderItem={({
+                  item,
+                }) => (
+                  <TouchableOpacity
+                    style={
+                      styles.nationalityOption
+                    }
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      if (
+                        phoneCountryModal.field
+                      ) {
+                        updatePhoneCountry(
+                          phoneCountryModal.field,
+                          item.country
+                        );
+                      }
+
+                      setPhoneCountryModal({
+                        visible: false,
+                        field: "",
+                      });
+                    }}
+                  >
+                    <Text
+                      style={
+                        styles.nationalityOptionText
+                      }
+                    >
+                      {item.country} +
+                      {item.callingCode}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+
+              <TouchableOpacity
+                style={
+                  styles.modalCloseButton
+                }
+                activeOpacity={0.8}
+                onPress={() =>
+                  setPhoneCountryModal({
+                    visible: false,
+                    field: "",
+                  })
+                }
+              >
+                <Text
+                  style={
+                    styles.modalCloseButtonText
+                  }
+                >
+                  Cancel
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

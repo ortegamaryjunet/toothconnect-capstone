@@ -24,7 +24,9 @@ const POLL_INTERVAL_MS = 5000;
 export default function MessageThreadScreen({ navigation, route }) {
   const { otherUserId, otherUserName, otherUserRole } = route.params;
   const { user } = useAuth();
+
   const displayLocation = formatBranchTitle(otherUserName);
+
   const [messages, setMessages] = useState([]);
   const [composer, setComposer] = useState('');
   const [loading, setLoading] = useState(true);
@@ -32,6 +34,7 @@ export default function MessageThreadScreen({ navigation, route }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [presence, setPresence] = useState(null);
+
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -54,53 +57,112 @@ export default function MessageThreadScreen({ navigation, route }) {
       setPresence(data);
     } catch (err) {
       if (!silent) {
-        setError(err.response?.data?.message || 'Failed to load status');
+        setError(
+          err.response?.data?.message || 'Failed to load status'
+        );
       }
+
       setPresence(null);
     }
   }
 
   async function fetchMessages(silent = false) {
-    if (!silent) setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
+
     try {
       const data = await getThread(otherUserId);
-      setMessages(data);
-      if (data.some(m => m.receiver_id === user.id && !m.is_read)) {
+
+      setMessages(Array.isArray(data) ? data : []);
+
+      if (
+        Array.isArray(data) &&
+        data.some(
+          m => m.receiver_id === user.id && !m.is_read
+        )
+      ) {
         markThreadRead(otherUserId)
           .then(() => {
             setMessages(prev =>
               prev.map(m =>
-                m.receiver_id === user.id ? { ...m, is_read: true } : m
+                m.receiver_id === user.id
+                  ? { ...m, is_read: true }
+                  : m
               )
             );
           })
           .catch(() => {});
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load messages');
+      setError(
+        err.response?.data?.message ||
+          'Failed to load messages'
+      );
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }
 
   async function handleRefresh() {
     setRefreshing(true);
-    await fetchMessages(true);
-    await fetchPresence(true);
-    setRefreshing(false);
+    setError('');
+
+    try {
+      await fetchMessages(true);
+      await fetchPresence(true);
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   async function handleSend() {
-    if (!composer.trim()) return;
+    const messageText = composer.trim();
+
+    if (!messageText || sending) {
+      return;
+    }
+
     setSending(true);
     setError('');
+
     try {
-      await sendMessage({ receiver_id: otherUserId, content: composer.trim() });
+      const response = await sendMessage({
+        receiver_id: otherUserId,
+        content: messageText,
+      });
+
+      if (!response) {
+        throw new Error('Failed to send message');
+      }
+
+      if (
+        response.success === false ||
+        response.status === 'failed' ||
+        response.status === 'error'
+      ) {
+        throw new Error(
+          response.message || 'Failed to send message'
+        );
+      }
+
       setComposer('');
+
       await fetchMessages(true);
-      scrollRef.current?.scrollToEnd({ animated: true });
+
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({
+          animated: true,
+        });
+      }, 100);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send');
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          'Failed to send message'
+      );
     } finally {
       setSending(false);
     }
@@ -108,7 +170,13 @@ export default function MessageThreadScreen({ navigation, route }) {
 
   function formatBubbleTime(iso) {
     if (!iso) return '';
+
     const d = new Date(iso);
+
+    if (Number.isNaN(d.getTime())) {
+      return '';
+    }
+
     return d.toLocaleTimeString('en-PH', {
       hour: 'numeric',
       minute: '2-digit',
@@ -118,12 +186,20 @@ export default function MessageThreadScreen({ navigation, route }) {
 
   function initials(name) {
     if (!name) return '?';
+
     const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0][0].toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+
+    if (parts.length === 1) {
+      return parts[0][0].toUpperCase();
+    }
+
+    return (
+      parts[0][0] +
+      parts[parts.length - 1][0]
+    ).toUpperCase();
   }
 
-  function displayRole(role) {
+  function displayRole() {
     return presence?.is_online ? 'Online' : 'Offline';
   }
 
@@ -134,16 +210,24 @@ export default function MessageThreadScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Text style={styles.backButtonText}>‹</Text>
         </TouchableOpacity>
 
         <View style={styles.headerAvatar}>
-          <Text style={styles.headerAvatarText}>{initials(displayLocation)}</Text>
+          <Text style={styles.headerAvatarText}>
+            {initials(displayLocation)}
+          </Text>
         </View>
 
         <View style={styles.headerInfo}>
-          <Text style={styles.headerName} numberOfLines={1}>
+          <Text
+            style={styles.headerName}
+            numberOfLines={1}
+          >
             {displayLocation}
           </Text>
 
@@ -151,10 +235,11 @@ export default function MessageThreadScreen({ navigation, route }) {
             <Text
               style={[
                 styles.headerRole,
-                !presence?.is_online && styles.headerRoleOffline,
+                !presence?.is_online &&
+                  styles.headerRoleOffline,
               ]}
             >
-              {displayRole(otherUserRole)}
+              {displayRole()}
             </Text>
           </View>
         </View>
@@ -180,16 +265,26 @@ export default function MessageThreadScreen({ navigation, route }) {
               colors={['#c98b00']}
             />
           }
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+          onContentSizeChange={() =>
+            scrollRef.current?.scrollToEnd({
+              animated: false,
+            })
+          }
         >
           <View style={styles.datePill}>
-            <Text style={styles.datePillText}>Today</Text>
+            <Text style={styles.datePillText}>
+              Today
+            </Text>
           </View>
 
           {loading ? (
-            <Text style={styles.loading}>Loading...</Text>
+            <Text style={styles.loading}>
+              Loading...
+            </Text>
           ) : messages.length === 0 ? (
-            <Text style={styles.empty}>No messages yet. Say hello.</Text>
+            <Text style={styles.empty}>
+              No messages yet. Say hello.
+            </Text>
           ) : (
             messages.map(m => {
               const isSelf = m.sender_id === user.id;
@@ -199,11 +294,26 @@ export default function MessageThreadScreen({ navigation, route }) {
                   key={m.id}
                   style={[
                     styles.messageBlock,
-                    isSelf ? styles.messageBlockSelf : styles.messageBlockOther,
+                    isSelf
+                      ? styles.messageBlockSelf
+                      : styles.messageBlockOther,
                   ]}
                 >
-                  <View style={[styles.bubble, isSelf ? styles.bubbleSelf : styles.bubbleOther]}>
-                    <Text style={isSelf ? styles.bubbleTextSelf : styles.bubbleTextOther}>
+                  <View
+                    style={[
+                      styles.bubble,
+                      isSelf
+                        ? styles.bubbleSelf
+                        : styles.bubbleOther,
+                    ]}
+                  >
+                    <Text
+                      style={
+                        isSelf
+                          ? styles.bubbleTextSelf
+                          : styles.bubbleTextOther
+                      }
+                    >
                       {m.content}
                     </Text>
                   </View>
@@ -211,11 +321,15 @@ export default function MessageThreadScreen({ navigation, route }) {
                   <Text
                     style={[
                       styles.bubbleTime,
-                      isSelf ? styles.bubbleTimeSelf : styles.bubbleTimeOther,
+                      isSelf
+                        ? styles.bubbleTimeSelf
+                        : styles.bubbleTimeOther,
                     ]}
                   >
                     {formatBubbleTime(m.created_at)}
-                    {isSelf ? ` • ${getSelfMessageStatus(m)}` : ''}
+                    {isSelf
+                      ? ` • ${getSelfMessageStatus(m)}`
+                      : ''}
                   </Text>
                 </View>
               );
@@ -223,7 +337,11 @@ export default function MessageThreadScreen({ navigation, route }) {
           )}
         </ScrollView>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
 
         <View style={styles.composer}>
           <TextInput
@@ -233,14 +351,21 @@ export default function MessageThreadScreen({ navigation, route }) {
             placeholder="Type your message"
             placeholderTextColor="#8f8f8f"
             multiline
+            editable={!sending}
           />
 
           <TouchableOpacity
-            style={[styles.sendBtn, (sending || !composer.trim()) && styles.sendBtnDisabled]}
+            style={[
+              styles.sendBtn,
+              (sending || !composer.trim()) &&
+                styles.sendBtnDisabled,
+            ]}
             onPress={handleSend}
             disabled={sending || !composer.trim()}
           >
-            <Text style={styles.sendBtnText}>{sending ? '...' : '➤'}</Text>
+            <Text style={styles.sendBtnText}>
+              {sending ? '...' : '➤'}
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -250,5 +375,6 @@ export default function MessageThreadScreen({ navigation, route }) {
 
 function formatBranchTitle(name) {
   const branchName = String(name || 'Clinic').trim();
+
   return /\bbranch\b/i.test(branchName) ? branchName : `${branchName} Branch`;
 }

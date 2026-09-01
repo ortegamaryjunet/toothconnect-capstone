@@ -590,6 +590,44 @@ export default function AppointmentsScreen({ navigation, route }) {
     a.status === 'no_show'
   );
   const pendingReceiptUploads = appointments.filter(canUploadReceipt);
+
+  // Outstanding balance is calculated only from completed appointments.
+  // An appointment is included only when its remaining balance is greater than zero.
+  const outstandingBalance = completedAppointments.reduce((total, appointment) => {
+    const serviceAmount = Number(
+      appointment.total_amount ??
+      appointment.totalAmount ??
+      appointment.service_price ??
+      appointment.price ??
+      0
+    );
+
+    const paymentStatus = String(appointment.payment_status || '').toLowerCase();
+
+    if (paymentStatus === 'verified') {
+      const paidAmount = Number(
+        appointment.payment_amount ??
+        appointment.paid_amount ??
+        appointment.paidAmount ??
+        appointment.amount_paid ??
+        appointment.amountPaid ??
+        0
+      );
+
+      return total + Math.max(serviceAmount - paidAmount, 0);
+    }
+
+    const paidAmount = Number(
+      appointment.paid_amount ??
+      appointment.paidAmount ??
+      appointment.amount_paid ??
+      appointment.amountPaid ??
+      0
+    );
+
+    return total + Math.max(serviceAmount - paidAmount, 0);
+  }, 0);
+
   const filtered = getFilteredAppointments();
 
   const filteredUpcomingAppointments = filtered.filter((a) =>
@@ -631,7 +669,7 @@ export default function AppointmentsScreen({ navigation, route }) {
               </View>
 
               <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Completed History</Text>
+                <Text style={styles.statLabel}>Appointment History</Text>
                 <Text style={styles.statValue}>{completedHistoryAppointments.length}</Text>
               </View>
 
@@ -649,17 +687,22 @@ export default function AppointmentsScreen({ navigation, route }) {
                 <Text style={styles.statLabel}>Pending Receipt Upload</Text>
                 <Text style={styles.statValue}>{pendingReceiptUploads.length}</Text>
               </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Outstanding Balance</Text>
+                <Text style={styles.statValue}>₱ {outstandingBalance.toLocaleString('en-PH')}</Text>
+              </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.bookCard}
-              onPress={() => navigation.navigate('BookAIAssistant')}
-            >
-              <View style={styles.bookCardLeft}>
-                <Text style={styles.bookCardTitle}>Book an appointment</Text>
-                <Text style={styles.bookCardSub}>AI-suggested slots based on your history</Text>
+            <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('BookAIAssistant')} style={styles.bookButton}>
+              <View style={styles.bookButtonIcon}>
+                <Text style={styles.bookButtonIconText}>+</Text>
               </View>
-              <Text style={styles.bookCardArrow}>→</Text>
+              <View style={styles.bookButtonContent}>
+                <Text style={styles.bookButtonTitle}>Book an Appointment</Text>
+                <Text style={styles.bookButtonSub}>AI-suggested slots based on your history</Text>
+              </View>
+              <Text style={styles.bookButtonArrow}>›</Text>
             </TouchableOpacity>
 
             {/* Filter chips */}

@@ -21,8 +21,31 @@ const LOWER_Q3 = [31, 32, 33, 34, 35, 36, 37, 38];
 
 function formatDateOnly(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  const value = String(dateStr).trim();
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (!match) return '';
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return '';
+  }
+
+  return date.toLocaleDateString('en-PH', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function toothColor(status) {
@@ -41,20 +64,41 @@ function StatusBadge({ status }) {
     planned: { bg: '#dbeafe', color: '#2563eb', label: 'Planned' },
     in_progress: { bg: '#fef9c3', color: '#a16207', label: 'In progress' },
   };
-  const style = map[status] || { bg: '#f1f5f9', color: '#64748b', label: status };
+
+  const style = map[status] || {
+    bg: '#f1f5f9',
+    color: '#64748b',
+    label: status,
+  };
+
   return (
     <View style={[s.badge, { backgroundColor: style.bg }]}>
-      <Text style={[s.badgeText, { color: style.color }]}>{style.label}</Text>
+      <Text style={[s.badgeText, { color: style.color }]}>
+        {style.label}
+      </Text>
     </View>
   );
 }
 
 function ToothBox({ tooth, plan, onPress }) {
   const { bg, border } = toothColor(plan ? plan.status : null);
+
   return (
-    <TouchableOpacity style={s.toothWrap} onPress={() => onPress(tooth)} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={s.toothWrap}
+      onPress={() => onPress(tooth)}
+      activeOpacity={0.7}
+    >
       <Text style={s.toothNum}>{tooth}</Text>
-      <View style={[s.toothBox, { backgroundColor: bg, borderColor: border }]} />
+      <View
+        style={[
+          s.toothBox,
+          {
+            backgroundColor: bg,
+            borderColor: border,
+          },
+        ]}
+      />
     </TouchableOpacity>
   );
 }
@@ -62,7 +106,15 @@ function ToothBox({ tooth, plan, onPress }) {
 function LegendItem({ bg, border, label }) {
   return (
     <View style={s.legendItem}>
-      <View style={[s.legendDot, { backgroundColor: bg, borderColor: border }]} />
+      <View
+        style={[
+          s.legendDot,
+          {
+            backgroundColor: bg,
+            borderColor: border,
+          },
+        ]}
+      />
       <Text style={s.legendText}>{label}</Text>
     </View>
   );
@@ -71,35 +123,80 @@ function LegendItem({ bg, border, label }) {
 function DentalChart({ planMap, onToothPress }) {
   return (
     <>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chartScroll}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.chartScroll}
+      >
         <View style={s.chartInner}>
           <View style={s.arch}>
             <Text style={s.archLabel}>U</Text>
+
             {UPPER_Q1.map(t => (
-              <ToothBox key={t} tooth={t} plan={planMap[t]} onPress={onToothPress} />
+              <ToothBox
+                key={t}
+                tooth={t}
+                plan={planMap[t]}
+                onPress={onToothPress}
+              />
             ))}
+
             <View style={s.midline} />
+
             {UPPER_Q2.map(t => (
-              <ToothBox key={t} tooth={t} plan={planMap[t]} onPress={onToothPress} />
+              <ToothBox
+                key={t}
+                tooth={t}
+                plan={planMap[t]}
+                onPress={onToothPress}
+              />
             ))}
           </View>
+
           <View style={s.archGap} />
+
           <View style={s.arch}>
             <Text style={s.archLabel}>L</Text>
+
             {LOWER_Q4.map(t => (
-              <ToothBox key={t} tooth={t} plan={planMap[t]} onPress={onToothPress} />
+              <ToothBox
+                key={t}
+                tooth={t}
+                plan={planMap[t]}
+                onPress={onToothPress}
+              />
             ))}
+
             <View style={s.midline} />
+
             {LOWER_Q3.map(t => (
-              <ToothBox key={t} tooth={t} plan={planMap[t]} onPress={onToothPress} />
+              <ToothBox
+                key={t}
+                tooth={t}
+                plan={planMap[t]}
+                onPress={onToothPress}
+              />
             ))}
           </View>
         </View>
       </ScrollView>
+
       <View style={s.legend}>
-        <LegendItem bg="#bfdbfe" border="#3b82f6" label="Planned" />
-        <LegendItem bg="#fef9c3" border="#ca8a04" label="In progress" />
-        <LegendItem bg="#dcfce7" border="#16a34a" label="Completed" />
+        <LegendItem
+          bg="#bfdbfe"
+          border="#3b82f6"
+          label="Planned"
+        />
+        <LegendItem
+          bg="#fef9c3"
+          border="#ca8a04"
+          label="In progress"
+        />
+        <LegendItem
+          bg="#dcfce7"
+          border="#16a34a"
+          label="Completed"
+        />
       </View>
     </>
   );
@@ -124,7 +221,9 @@ export default function DentalTreatmentPlanScreen({ navigation }) {
 
   async function fetchPlans() {
     if (!user?.id) return;
+
     setLoadingPlans(true);
+
     try {
       const data = await getTreatmentPlansByPatient(user.id);
       setPlans(data.plans || []);
@@ -142,28 +241,41 @@ export default function DentalTreatmentPlanScreen({ navigation }) {
 
   const planMap = {};
   const planListMap = {};
+
   for (const plan of plans) {
-    if (!planMap[plan.tooth_number]) planMap[plan.tooth_number] = plan;
-    if (!planListMap[plan.tooth_number]) planListMap[plan.tooth_number] = [];
+    if (!planMap[plan.tooth_number]) {
+      planMap[plan.tooth_number] = plan;
+    }
+
+    if (!planListMap[plan.tooth_number]) {
+      planListMap[plan.tooth_number] = [];
+    }
+
     planListMap[plan.tooth_number].push(plan);
   }
 
-  const selectedPlans = selectedTooth != null ? (planListMap[selectedTooth] || []) : [];
+  const selectedPlans =
+    selectedTooth != null
+      ? planListMap[selectedTooth] || []
+      : [];
 
   return (
     <SafeAreaView style={s.container}>
       <View style={s.mainWrapper}>
         <View style={s.dashboardArea}>
           <View style={s.header}>
-            <TouchableOpacity style={s.menuButton} onPress={() => sidebarRef.current?.open()}>
-              <Image
-                source={require('../../assets/images/menu-bar.png')}
-                style={s.headerIcon}
-                resizeMode="contain"
-              />
+            <TouchableOpacity
+              style={s.menuButton}
+              onPress={() =>
+                sidebarRef.current?.open()
+              }
+            >
+              <Text style={s.menuButtonText}>☰</Text>
             </TouchableOpacity>
 
-            <Text style={s.headerTitle}>Dental Treatment Plan</Text>
+            <Text style={s.headerTitle}>
+              Dental Treatment Plan
+            </Text>
 
             <TouchableOpacity
               style={s.notificationButton}
@@ -175,6 +287,7 @@ export default function DentalTreatmentPlanScreen({ navigation }) {
                   style={s.headerIcon}
                   resizeMode="contain"
                 />
+
                 {unreadCount > 0 && (
                   <View style={s.notifBadge}>
                     <Text style={s.notifBadgeText}>
@@ -186,70 +299,131 @@ export default function DentalTreatmentPlanScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={s.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={s.sectionCard}>
               <View style={s.sectionHeader}>
-                <Text style={s.sectionTitle}>Dental Treatment Plan</Text>
+                <Text style={s.sectionTitle}>
+                  Dental Treatment Plan
+                </Text>
               </View>
+
               <View style={s.sectionBody}>
                 {loadingPlans ? (
-                  <Text style={s.loadingText}>Loading chart...</Text>
+                  <Text style={s.loadingText}>
+                    Loading chart...
+                  </Text>
                 ) : plans.length === 0 ? (
-                  <Text style={s.emptyText}>No treatment plan recorded by dentist yet.</Text>
+                  <Text style={s.emptyText}>
+                    No treatment plan recorded by dentist yet.
+                  </Text>
                 ) : (
                   <>
-                    <DentalChart planMap={planMap} onToothPress={openToothModal} />
+                    <DentalChart
+                      planMap={planMap}
+                      onToothPress={openToothModal}
+                    />
+
                     {toothModal && selectedTooth !== null && (
                       <View style={s.toothDetailCard}>
                         <View style={s.toothDetailHeader}>
-                          <Text style={s.toothDetailTitle}>Tooth #{selectedTooth}</Text>
-                          <TouchableOpacity style={s.toothDetailClose} onPress={() => setToothModal(false)}>
-                            <Text style={s.toothDetailCloseText}>x</Text>
+                          <Text style={s.toothDetailTitle}>
+                            Tooth #{selectedTooth}
+                          </Text>
+
+                          <TouchableOpacity
+                            style={s.toothDetailClose}
+                            onPress={() => setToothModal(false)}
+                          >
+                            <Text style={s.toothDetailCloseText}>
+                              x
+                            </Text>
                           </TouchableOpacity>
                         </View>
+
                         <View style={s.toothDetailBody}>
                           {selectedPlans.length > 0 ? (
                             selectedPlans.map((plan, idx) => (
                               <View key={plan.id}>
-                                {idx > 0 && <View style={s.planDivider} />}
+                                {idx > 0 && (
+                                  <View style={s.planDivider} />
+                                )}
+
                                 {selectedPlans.length > 1 && (
                                   <Text style={s.planIndexLabel}>
                                     Plan {idx + 1} of {selectedPlans.length}
                                   </Text>
                                 )}
+
                                 <View style={s.modalRow}>
-                                  <Text style={s.modalLabel}>Treatment</Text>
-                                  <Text style={s.modalValue}>{plan.planned_treatment}</Text>
+                                  <Text style={s.modalLabel}>
+                                    Treatment
+                                  </Text>
+
+                                  <Text style={s.modalValue}>
+                                    {plan.planned_treatment || '-'}
+                                  </Text>
                                 </View>
+
                                 <View style={s.modalRow}>
-                                  <Text style={s.modalLabel}>Status</Text>
+                                  <Text style={s.modalLabel}>
+                                    Status
+                                  </Text>
+
                                   <StatusBadge status={plan.status} />
                                 </View>
+
                                 <View style={s.modalRow}>
-                                  <Text style={s.modalLabel}>Dentist</Text>
-                                  <Text style={s.modalValue}>{plan.dentist_name}</Text>
+                                  <Text style={s.modalLabel}>
+                                    Dentist
+                                  </Text>
+
+                                  <Text style={s.modalValue}>
+                                    {plan.dentist_name || '-'}
+                                  </Text>
                                 </View>
+
                                 {plan.notes ? (
                                   <View style={s.modalRow}>
-                                    <Text style={s.modalLabel}>Notes</Text>
-                                    <Text style={s.modalValue}>{plan.notes}</Text>
+                                    <Text style={s.modalLabel}>
+                                      Notes
+                                    </Text>
+
+                                    <Text style={s.modalValue}>
+                                      {plan.notes}
+                                    </Text>
                                   </View>
                                 ) : null}
-                                {plan.date_completed ? (
-                                  <View style={s.modalRow}>
-                                    <Text style={s.modalLabel}>Completed</Text>
-                                    <Text style={s.modalValue}>{formatDateOnly(plan.date_completed)}</Text>
-                                  </View>
-                                ) : null}
+
+                                <View style={s.modalRow}>
+                                  <Text style={s.modalLabel}>
+                                    Completed
+                                  </Text>
+
+                                  <Text style={s.modalValue}>
+                                    {formatDateOnly(plan.date_completed) || '-'}
+                                  </Text>
+                                </View>
+
                                 <View style={[s.modalRow, s.modalRowLast]}>
-                                  <Text style={s.modalLabel}>Date added</Text>
-                                  <Text style={s.modalValue}>{formatDateOnly(plan.created_at?.slice(0, 10))}</Text>
+                                  <Text style={s.modalLabel}>
+                                    Date added
+                                  </Text>
+
+                                  <Text style={s.modalValue}>
+                                    {formatDateOnly(
+                                      plan.created_at?.slice(0, 10)
+                                    ) || '-'}
+                                  </Text>
                                 </View>
                               </View>
                             ))
                           ) : (
                             <Text style={s.modalEmpty}>
-                              No treatment plan has been set{'\n'}for this tooth by your dentist.
+                              No treatment plan has been set{'\n'}
+                              for this tooth by your dentist.
                             </Text>
                           )}
                         </View>
@@ -262,7 +436,11 @@ export default function DentalTreatmentPlanScreen({ navigation }) {
           </ScrollView>
         </View>
 
-        <AppSidebar ref={sidebarRef} navigation={navigation} activeScreen="TreatmentPlan" />
+        <AppSidebar
+          ref={sidebarRef}
+          navigation={navigation}
+          activeScreen="TreatmentPlan"
+        />
       </View>
     </SafeAreaView>
   );
