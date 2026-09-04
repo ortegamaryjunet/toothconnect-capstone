@@ -190,6 +190,10 @@ const styles = StyleSheet.create({
         marginBottom: 7,
     },
 
+    requiredAsterisk: {
+        color: "#D9534F",
+    },
+
     input: {
         minHeight: 43,
         backgroundColor: "#FFFFFF",

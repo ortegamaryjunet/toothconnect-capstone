@@ -8,6 +8,24 @@ const router = express.Router();
 router.use(authenticate);
 
 const PRESENCE_ONLINE_WINDOW_SECONDS = 15;
+const PATIENT_MESSAGE_APPOINTMENT_STATUSES = [
+  'scheduled',
+  'arrived',
+  'completed',
+  'no_show',
+  'missed',
+  'cancelled',
+  'pending',
+];
+
+function buildInClause(values) {
+  return values.map(() => '?').join(',');
+}
+
+function parseId(value) {
+  const id = Number.parseInt(value, 10);
+  return Number.isNaN(id) ? null : id;
+}
 
 async function ensurePresenceTable() {
   await pool.query(
@@ -86,6 +104,43 @@ router.get('/threads', async (req, res) => {
   const userId = req.user.user_id;
 
   try {
+    if (req.user.role === 'patient') {
+      const [rows] = await pool.query(
+        `SELECT
+           other_user.id AS other_user_id,
+           other_user.name AS other_user_name,
+           other_user.role AS other_user_role,
+           b.id AS branch_id,
+           b.name AS branch_name,
+           b.address AS branch_address,
+           m.content AS last_message_body,
+           m.sender_id AS last_message_from,
+           m.created_at AS last_message_at,
+           (
+             SELECT COUNT(*) FROM messages m2
+             WHERE m2.sender_id = other_user.id
+               AND m2.receiver_id = ?
+               AND m2.branch_id = m.branch_id
+               AND m2.is_read = FALSE
+           ) AS unread_count
+         FROM (
+           SELECT
+             CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END AS other_id,
+             branch_id,
+             MAX(id) AS last_message_id
+           FROM messages
+           WHERE sender_id = ? OR receiver_id = ?
+           GROUP BY other_id, branch_id
+         ) threads
+         JOIN messages m ON m.id = threads.last_message_id
+         JOIN users other_user ON other_user.id = threads.other_id
+         LEFT JOIN branches b ON b.id = m.branch_id
+         ORDER BY m.created_at DESC`,
+        [userId, userId, userId, userId]
+      );
+      return res.json({ threads: rows });
+    }
+
     const [rows] = await pool.query(
       `SELECT
          other_user.id AS other_user_id,
@@ -126,22 +181,32 @@ router.get('/threads', async (req, res) => {
 
 router.get('/thread/:otherUserId', async (req, res) => {
   const userId = req.user.user_id;
-  const otherUserId = parseInt(req.params.otherUserId, 10);
+  const otherUserId = parseId(req.params.otherUserId);
+  const branchId = parseId(req.query.branch_id);
 
-  if (Number.isNaN(otherUserId)) {
+  if (!otherUserId) {
     return res.status(400).json({ message: 'Invalid user id' });
   }
 
   try {
+    const branchFilter = branchId ? ' AND m.branch_id = ?' : '';
+    const params = branchId
+      ? [userId, otherUserId, otherUserId, userId, branchId]
+      : [userId, otherUserId, otherUserId, userId];
+
     const [rows] = await pool.query(
       `SELECT m.id, m.sender_id, m.receiver_id, m.content, m.is_read, m.created_at,
-              u_from.name AS from_user_name, u_from.role AS from_user_role
+              m.branch_id,
+              u_from.name AS from_user_name, u_from.role AS from_user_role,
+              b.name AS branch_name, b.address AS branch_address
        FROM messages m
        JOIN users u_from ON u_from.id = m.sender_id
-       WHERE (m.sender_id = ? AND m.receiver_id = ?)
-          OR (m.sender_id = ? AND m.receiver_id = ?)
+       LEFT JOIN branches b ON b.id = m.branch_id
+       WHERE ((m.sender_id = ? AND m.receiver_id = ?)
+          OR (m.sender_id = ? AND m.receiver_id = ?))
+          ${branchFilter}
        ORDER BY m.created_at ASC`,
-      [userId, otherUserId, otherUserId, userId]
+      params
     );
     res.json({ messages: rows });
   } catch (err) {
@@ -155,18 +220,20 @@ router.post('/', async (req, res) => {
   const userId = req.user.user_id;
   const userRole = req.user.role;
   const userBranches = req.user.branches || [];
+  const receiverId = parseId(receiver_id);
+  const requestedBranchId = parseId(branch_id);
 
-  if (!receiver_id || !content || !content.trim()) {
+  if (!receiverId || !content || !content.trim()) {
     return res.status(400).json({ message: 'receiver_id and content are required' });
   }
-  if (receiver_id === userId) {
+  if (receiverId === userId) {
     return res.status(400).json({ message: 'Cannot send a message to yourself' });
   }
 
   try {
     const [recipients] = await pool.query(
       'SELECT id, role, name, home_branch_id FROM users WHERE id = ?',
-      [receiver_id]
+      [receiverId]
     );
     if (recipients.length === 0) {
       return res.status(404).json({ message: 'Recipient not found' });
@@ -189,27 +256,44 @@ router.post('/', async (req, res) => {
     let patientBranchId = null;
 
     if (userRole === 'patient' && recipient.role === 'receptionist') {
+      if (!requestedBranchId) {
+        return res.status(400).json({ message: 'branch_id is required for patient messages' });
+      }
+
       const [accessRows] = await pool.query(
         `SELECT branch_id FROM (
-           SELECT ub.branch_id FROM user_branches ub
+           SELECT ub.branch_id
+           FROM user_branches ub
            JOIN appointments a ON a.branch_id = ub.branch_id AND a.patient_id = ?
-           WHERE ub.user_id = ? AND a.status = 'completed'
+           WHERE ub.user_id = ?
+             AND ub.branch_id = ?
+             AND a.status IN (${buildInClause(PATIENT_MESSAGE_APPOINTMENT_STATUSES)})
            UNION ALL
            SELECT branch_id FROM messages
-           WHERE sender_id = ? AND receiver_id = ?
-         ) t
-         LIMIT 1`,
-        [userId, receiver_id, receiver_id, userId]
+           WHERE branch_id = ?
+             AND sender_id = ?
+             AND receiver_id = ?
+          ) t
+          LIMIT 1`,
+        [
+          userId,
+          receiverId,
+          requestedBranchId,
+          ...PATIENT_MESSAGE_APPOINTMENT_STATUSES,
+          requestedBranchId,
+          receiverId,
+          userId,
+        ]
       );
       if (accessRows.length === 0) {
         return res.status(403).json({
-          message: 'Messaging is available after your first appointment at this branch.',
+          message: 'Messaging is available after you have an appointment at this branch.',
         });
       }
       patientBranchId = accessRows[0].branch_id;
     }
 
-    let effectiveBranchId = branch_id;
+    let effectiveBranchId = requestedBranchId;
     if (!effectiveBranchId) {
       if (userRole === 'patient') {
         effectiveBranchId = patientBranchId || recipient.home_branch_id || null;
@@ -221,29 +305,34 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Unable to determine branch for this message' });
     }
 
+    if (userRole === 'receptionist' && !(userBranches || []).includes(Number(effectiveBranchId))) {
+      return res.status(403).json({ message: 'You cannot send messages for this branch' });
+    }
+
     const [result] = await pool.query(
       `INSERT INTO messages (branch_id, sender_id, receiver_id, content) VALUES (?, ?, ?, ?)`,
-      [effectiveBranchId, userId, receiver_id, content.trim()]
+      [effectiveBranchId, userId, receiverId, content.trim()]
     );
 
     await pool.query(
       `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
        VALUES (?, 'message', ?, ?, 'message', ?)`,
       [
-        receiver_id,
+        receiverId,
         `New message from ${req.user.name || userRole}`,
         content.trim().slice(0, 100),
         result.insertId,
       ]
     );
 
-    sendPushToUser(receiver_id, {
+    sendPushToUser(receiverId, {
       title: `New message from ${req.user.name || userRole}`,
       body: content.trim().slice(0, 100),
       data: {
         type: 'message',
         message_id: result.insertId,
         sender_id: userId,
+        branch_id: effectiveBranchId,
       },
     }).catch((pushErr) => {
       console.error('Failed to send message push notification:', pushErr);
@@ -261,14 +350,18 @@ router.post('/', async (req, res) => {
 
 router.patch('/thread/:otherUserId/read', async (req, res) => {
   const userId = req.user.user_id;
-  const otherUserId = parseInt(req.params.otherUserId, 10);
+  const otherUserId = parseId(req.params.otherUserId);
+  const branchId = parseId(req.query.branch_id);
 
   try {
+    const branchFilter = branchId ? ' AND branch_id = ?' : '';
+    const params = branchId ? [otherUserId, userId, branchId] : [otherUserId, userId];
+
     const [result] = await pool.query(
       `UPDATE messages
        SET is_read = TRUE
-       WHERE sender_id = ? AND receiver_id = ? AND is_read = FALSE`,
-      [otherUserId, userId]
+       WHERE sender_id = ? AND receiver_id = ? AND is_read = FALSE${branchFilter}`,
+      params
     );
 
     res.json({ marked_read: result.affectedRows });
@@ -291,21 +384,21 @@ router.get('/branches', async (req, res) => {
          b.id,
          b.name  AS branch_name,
          b.address AS branch_address,
-         (SELECT u.id   FROM users u JOIN user_branches ub ON ub.user_id = u.id
-          WHERE ub.branch_id = b.id AND u.role = 'receptionist' AND u.status = 'Active'
-          LIMIT 1) AS receptionist_id,
-         (SELECT u.name FROM users u JOIN user_branches ub ON ub.user_id = u.id
-          WHERE ub.branch_id = b.id AND u.role = 'receptionist' AND u.status = 'Active'
-          LIMIT 1) AS receptionist_name,
-         EXISTS(
-           SELECT 1 FROM appointments a
-           WHERE a.patient_id = ? AND a.branch_id = b.id
-             AND a.status = 'completed'
-         ) AS can_message
-       FROM branches b
-       WHERE b.status = 'Active'
-       ORDER BY b.name ASC`,
-      [userId]
+          u.id AS receptionist_id,
+          u.name AS receptionist_name,
+          EXISTS(
+            SELECT 1 FROM appointments a
+            WHERE a.patient_id = ? AND a.branch_id = b.id
+              AND a.status IN (${buildInClause(PATIENT_MESSAGE_APPOINTMENT_STATUSES)})
+          ) AS can_message
+         FROM branches b
+         JOIN user_branches ub ON ub.branch_id = b.id
+         JOIN users u ON u.id = ub.user_id
+         WHERE b.status = 'Active'
+           AND u.role = 'receptionist'
+           AND u.status = 'Active'
+         ORDER BY b.name ASC, u.name ASC`,
+      [userId, ...PATIENT_MESSAGE_APPOINTMENT_STATUSES]
     );
     res.json({
       branches: rows.map(r => ({ ...r, can_message: Boolean(r.can_message) })),

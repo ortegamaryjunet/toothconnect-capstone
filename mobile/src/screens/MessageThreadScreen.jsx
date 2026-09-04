@@ -23,10 +23,10 @@ import styles from '../styles/MessageThreadScreen';
 const POLL_INTERVAL_MS = 5000;
 
 export default function MessageThreadScreen({ navigation, route }) {
-  const { otherUserId, otherUserName, otherUserRole } = route.params;
+  const { otherUserId, otherUserName, otherUserRole, branchId, branchName } = route.params;
   const { user } = useAuth();
 
-  const displayLocation = formatBranchTitle(otherUserName);
+  const displayLocation = formatBranchTitle(branchName || otherUserName);
 
   const [messages, setMessages] = useState([]);
   const [composer, setComposer] = useState('');
@@ -71,7 +71,7 @@ export default function MessageThreadScreen({ navigation, route }) {
     }
 
     try {
-      const data = await getThread(otherUserId);
+      const data = await getThread(otherUserId, branchId);
 
       setMessages(Array.isArray(data) ? data : []);
 
@@ -81,7 +81,7 @@ export default function MessageThreadScreen({ navigation, route }) {
           m => m.receiver_id === user.id && !m.is_read
         )
       ) {
-        markThreadRead(otherUserId)
+        markThreadRead(otherUserId, branchId)
           .then(() => {
             setMessages(prev =>
               prev.map(m =>
@@ -127,6 +127,7 @@ export default function MessageThreadScreen({ navigation, route }) {
     try {
       const response = await sendMessage({
         receiver_id: otherUserId,
+        branch_id: branchId,
         content: messageText,
       });
 

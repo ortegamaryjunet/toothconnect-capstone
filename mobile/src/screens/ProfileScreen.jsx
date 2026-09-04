@@ -67,6 +67,30 @@ const PHONE_COUNTRIES = [
   { country: "KR", callingCode: "82", min: 9, max: 10, placeholder: "1012345678" },
 ];
 
+const REQUIRED_PROFILE_FIELDS = [
+  "fullName",
+  "birthday",
+  "nationality",
+  "homeAddress",
+  "occupation",
+  "sex",
+  "contact",
+  "email",
+  "civilStatus",
+];
+
+const REQUIRED_FIELD_MESSAGE = "This field is required.";
+const NO_NUMBERS_MESSAGE = "Numbers are not allowed.";
+const NO_NUMBER_PROFILE_FIELDS = [
+  "fullName",
+  "occupation",
+  "emergencyContactName",
+  "medicalConditions",
+  "allergies",
+  "medications",
+  "dentalHistory",
+];
+
 function getPhoneCountry(country) {
   return (
     PHONE_COUNTRIES.find((item) => item.country === country) ||
@@ -127,7 +151,7 @@ function validatePhoneValue(value, country, required = true) {
   const digits = String(value || "").replace(/\D/g, "");
 
   if (!digits) {
-    return required ? "Contact number is required." : "";
+    return required ? REQUIRED_FIELD_MESSAGE : "";
   }
 
   const selected = getPhoneCountry(country);
@@ -136,14 +160,14 @@ function validatePhoneValue(value, country, required = true) {
     digits.length < selected.min ||
     digits.length > selected.max
   ) {
-    return `Enter ${
-      selected.min === selected.max
-        ? selected.min
-        : `${selected.min}-${selected.max}`
-    } digits for +${selected.callingCode}.`;
+    return "Contact Number does not match the selected country code";
   }
 
   return "";
+}
+
+function stripNumbers(value) {
+  return String(value || "").replace(/[0-9]/g, "");
 }
 
 function formatDisplayDate(value) {
@@ -211,6 +235,7 @@ export default function ProfileScreen({ navigation }) {
   const originalFormRef = useRef(null);
 
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   const [phoneCountryModal, setPhoneCountryModal] = useState({
     visible: false,
@@ -397,6 +422,54 @@ export default function ProfileScreen({ navigation }) {
     );
   }, [user?.created_at]);
 
+  function validateProfileField(field, value, formValues = form) {
+    const textValue = String(value || "").trim();
+
+    if (REQUIRED_PROFILE_FIELDS.includes(field) && !textValue) {
+      return REQUIRED_FIELD_MESSAGE;
+    }
+
+    if (NO_NUMBER_PROFILE_FIELDS.includes(field) && /\d/.test(String(value || ""))) {
+      return NO_NUMBERS_MESSAGE;
+    }
+
+    if (field === "fullName") {
+      const nameParts = textValue
+        .split(/\s+/)
+        .filter(Boolean);
+
+      if (
+        textValue.length === 1 ||
+        nameParts.length < 2
+      ) {
+        return "Please enter both first and last name";
+      }
+    }
+
+    if (field === "birthday" && !calculateAge(textValue)) {
+      return "Please use a valid birthday format: MM/DD/YYYY.";
+    }
+
+    if (field === "contact") {
+      return validatePhoneValue(
+        value,
+        formValues.contactCountry,
+        true
+      );
+    }
+
+    if (field === "email") {
+      const emailRegex =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailRegex.test(textValue)) {
+        return "Please enter a valid email address.";
+      }
+    }
+
+    return "";
+  }
+
   const updateField = (field, value) => {
     setForm((prev) => ({
       ...prev,
@@ -405,7 +478,48 @@ export default function ProfileScreen({ navigation }) {
 
     setErrors((prev) => ({
       ...prev,
-      [field]: "",
+      [field]: touched[field]
+        ? validateProfileField(field, value, {
+            ...form,
+            [field]: value,
+          })
+        : "",
+    }));
+  };
+
+  const updateNoNumberField = (field, value) => {
+    updateField(field, stripNumbers(value));
+  };
+
+  const updateNumberValidatedField = (field, value) => {
+    setTouched((prev) => ({
+      ...prev,
+      [field]: true,
+    }));
+
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: validateProfileField(field, value, {
+        ...form,
+        [field]: value,
+      }),
+    }));
+  };
+
+  const markFieldTouched = (field) => {
+    setTouched((prev) => ({
+      ...prev,
+      [field]: true,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: validateProfileField(field, form[field]),
     }));
   };
 
@@ -436,7 +550,7 @@ export default function ProfileScreen({ navigation }) {
 
     setErrors((prev) => ({
       ...prev,
-      [field]: error,
+      [field]: field === "contact" && touched[field] ? error : "",
     }));
   };
 
@@ -455,11 +569,13 @@ export default function ProfileScreen({ navigation }) {
 
     setErrors((prev) => ({
       ...prev,
-      [phoneField]: validatePhoneValue(
-        form[phoneField],
-        country,
-        required
-      ),
+      [phoneField]: phoneField === "contact" && touched[phoneField]
+        ? validatePhoneValue(
+            form[phoneField],
+            country,
+            required
+          )
+        : "",
     }));
   };
 
@@ -560,7 +676,13 @@ export default function ProfileScreen({ navigation }) {
 
     setErrors((prev) => ({
       ...prev,
-      birthday: "",
+      birthday: touched.birthday
+        ? validateProfileField("birthday", formattedBirthday, {
+            ...form,
+            birthday: formattedBirthday,
+            age: calculatedAge,
+          })
+        : "",
     }));
   };
 
@@ -623,27 +745,55 @@ export default function ProfileScreen({ navigation }) {
 
     if (!fullNameTrimmed) {
       newErrors.fullName =
-        "Full name is required.";
+        REQUIRED_FIELD_MESSAGE;
     } else if (
       fullNameTrimmed.length === 1 ||
       nameParts.length < 2
     ) {
       newErrors.fullName =
-        "Please enter both first name and last name.";
+        "Please enter both first and last name";
     }
 
-    if (
-      form.birthday.trim() &&
-      !calculateAge(form.birthday)
-    ) {
+    if (!form.birthday.trim()) {
+      newErrors.birthday =
+        REQUIRED_FIELD_MESSAGE;
+    } else if (!calculateAge(form.birthday)) {
       newErrors.birthday =
         "Please use a valid birthday format: MM/DD/YYYY.";
     }
 
     if (!form.homeAddress.trim()) {
       newErrors.homeAddress =
-        "Home address is required.";
+        REQUIRED_FIELD_MESSAGE;
     }
+
+    if (!form.occupation.trim()) {
+      newErrors.occupation =
+        REQUIRED_FIELD_MESSAGE;
+    }
+
+    if (!form.nationality.trim()) {
+      newErrors.nationality =
+        REQUIRED_FIELD_MESSAGE;
+    }
+
+    if (!form.sex.trim()) {
+      newErrors.sex =
+        REQUIRED_FIELD_MESSAGE;
+    }
+
+    if (!form.civilStatus.trim()) {
+      newErrors.civilStatus =
+        REQUIRED_FIELD_MESSAGE;
+    }
+
+    NO_NUMBER_PROFILE_FIELDS.forEach((field) => {
+      const fieldError = validateProfileField(field, form[field]);
+
+      if (fieldError && !newErrors[field]) {
+        newErrors[field] = fieldError;
+      }
+    });
 
     const contactError =
       validatePhoneValue(
@@ -662,7 +812,7 @@ export default function ProfileScreen({ navigation }) {
 
     if (!form.email.trim()) {
       newErrors.email =
-        "Email is required.";
+        REQUIRED_FIELD_MESSAGE;
     } else if (
       !emailRegex.test(
         form.email.trim()
@@ -672,19 +822,14 @@ export default function ProfileScreen({ navigation }) {
         "Please enter a valid email address.";
     }
 
-    const emergencyContactError =
-      validatePhoneValue(
-        form.emergencyContactNumber,
-        form.emergencyContactCountry,
-        false
-      );
-
-    if (emergencyContactError) {
-      newErrors.emergencyContactNumber =
-        emergencyContactError;
-    }
-
     setErrors(newErrors);
+    setTouched((prev) => ({
+      ...prev,
+      ...REQUIRED_PROFILE_FIELDS.reduce((next, field) => ({
+        ...next,
+        [field]: true,
+      }), {}),
+    }));
 
     return (
       Object.keys(newErrors).length === 0
@@ -698,6 +843,7 @@ export default function ProfileScreen({ navigation }) {
       }
 
       setErrors({});
+      setTouched({});
       setNationalityModalVisible(false);
       setCivilStatusModalVisible(false);
       setIsEditing(false);
@@ -711,6 +857,7 @@ export default function ProfileScreen({ navigation }) {
     };
 
     setErrors({});
+    setTouched({});
     setIsEditing(true);
   };
 
@@ -733,6 +880,8 @@ export default function ProfileScreen({ navigation }) {
         profileToForm(savedProfile);
 
       setForm(nextForm);
+      setErrors({});
+      setTouched({});
       originalFormRef.current =
         nextForm;
 
@@ -788,6 +937,15 @@ export default function ProfileScreen({ navigation }) {
     return <Text style={styles.errorText}>{formatErrorText(errors[field])}</Text>;
   };
 
+  const renderLabel = (label, required = false) => (
+    <Text style={styles.label}>
+      {label}
+      {required ? (
+        <Text style={styles.requiredAsterisk}> *</Text>
+      ) : null}
+    </Text>
+  );
+
   const renderPhoneField = ({
     label,
     field,
@@ -805,9 +963,7 @@ export default function ProfileScreen({ navigation }) {
 
     return (
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>
-          {label}
-        </Text>
+        {renderLabel(label, required)}
 
         <View style={styles.phoneRow}>
           <TouchableOpacity
@@ -868,6 +1024,7 @@ export default function ProfileScreen({ navigation }) {
             editable={isEditing}
             keyboardType="phone-pad"
             maxLength={selectedCountry.max}
+            onBlur={() => markFieldTouched(field)}
           />
         </View>
 
@@ -1015,9 +1172,7 @@ export default function ProfileScreen({ navigation }) {
               ) : null}
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Full Name
-                </Text>
+                {renderLabel("Full Name", true)}
 
                 <TextInput
                   style={[
@@ -1029,7 +1184,7 @@ export default function ProfileScreen({ navigation }) {
                   ]}
                   value={form.fullName}
                   onChangeText={(value) =>
-                    updateField(
+                    updateNoNumberField(
                       "fullName",
                       value
                     )
@@ -1037,6 +1192,9 @@ export default function ProfileScreen({ navigation }) {
                   placeholder="Enter first name and last name"
                   placeholderTextColor="#A8A8A8"
                   editable={isEditing}
+                  onBlur={() =>
+                    markFieldTouched("fullName")
+                  }
                 />
 
                 {renderError(
@@ -1050,11 +1208,7 @@ export default function ProfileScreen({ navigation }) {
                     styles.halfInputGroup
                   }
                 >
-                  <Text
-                    style={styles.label}
-                  >
-                    Birthday
-                  </Text>
+                  {renderLabel("Birthday", true)}
 
                   <TextInput
                     style={[
@@ -1073,6 +1227,9 @@ export default function ProfileScreen({ navigation }) {
                     editable={isEditing}
                     keyboardType="number-pad"
                     maxLength={10}
+                    onBlur={() =>
+                      markFieldTouched("birthday")
+                    }
                   />
 
                   {renderError(
@@ -1105,9 +1262,7 @@ export default function ProfileScreen({ navigation }) {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Nationality
-                </Text>
+                {renderLabel("Nationality", true)}
 
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -1120,11 +1275,12 @@ export default function ProfileScreen({ navigation }) {
                     errors.nationality &&
                       styles.inputError,
                   ]}
-                  onPress={() =>
+                  onPress={() => {
+                    markFieldTouched("nationality");
                     setNationalityModalVisible(
                       true
-                    )
-                  }
+                    );
+                  }}
                 >
                   <Text
                     style={[
@@ -1152,9 +1308,7 @@ export default function ProfileScreen({ navigation }) {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Home Address
-                </Text>
+                {renderLabel("Home Address", true)}
 
                 <TextInput
                   style={[
@@ -1177,6 +1331,9 @@ export default function ProfileScreen({ navigation }) {
                   editable={isEditing}
                   multiline
                   textAlignVertical="top"
+                  onBlur={() =>
+                    markFieldTouched("homeAddress")
+                  }
                 />
 
                 {renderError(
@@ -1190,11 +1347,7 @@ export default function ProfileScreen({ navigation }) {
                     styles.halfInputGroup
                   }
                 >
-                  <Text
-                    style={styles.label}
-                  >
-                    Occupation
-                  </Text>
+                  {renderLabel("Occupation", true)}
 
                   <TextInput
                     style={[
@@ -1206,7 +1359,7 @@ export default function ProfileScreen({ navigation }) {
                     ]}
                     value={form.occupation}
                     onChangeText={(value) =>
-                      updateField(
+                      updateNoNumberField(
                         "occupation",
                         value
                       )
@@ -1214,6 +1367,9 @@ export default function ProfileScreen({ navigation }) {
                     placeholder="Occupation"
                     placeholderTextColor="#A8A8A8"
                     editable={isEditing}
+                    onBlur={() =>
+                      markFieldTouched("occupation")
+                    }
                   />
 
                   {renderError(
@@ -1226,11 +1382,7 @@ export default function ProfileScreen({ navigation }) {
                     styles.halfInputGroup
                   }
                 >
-                  <Text
-                    style={styles.label}
-                  >
-                    Sex
-                  </Text>
+                  {renderLabel("Sex", true)}
 
                   <View
                     style={
@@ -1249,13 +1401,16 @@ export default function ProfileScreen({ navigation }) {
                           form.sex !==
                             "Male" &&
                           styles.disabledChoice,
+                        errors.sex &&
+                          styles.inputError,
                       ]}
-                      onPress={() =>
+                      onPress={() => {
+                        markFieldTouched("sex");
                         updateField(
                           "sex",
                           "Male"
-                        )
-                      }
+                        );
+                      }}
                     >
                       <Text
                         style={[
@@ -1281,13 +1436,16 @@ export default function ProfileScreen({ navigation }) {
                           form.sex !==
                             "Female" &&
                           styles.disabledChoice,
+                        errors.sex &&
+                          styles.inputError,
                       ]}
-                      onPress={() =>
+                      onPress={() => {
+                        markFieldTouched("sex");
                         updateField(
                           "sex",
                           "Female"
-                        )
-                      }
+                        );
+                      }}
                     >
                       <Text
                         style={[
@@ -1315,9 +1473,7 @@ export default function ProfileScreen({ navigation }) {
               })}
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Email
-                </Text>
+                {renderLabel("Email", true)}
 
                 <TextInput
                   style={[
@@ -1339,15 +1495,16 @@ export default function ProfileScreen({ navigation }) {
                   editable={isEditing}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  onBlur={() =>
+                    markFieldTouched("email")
+                  }
                 />
 
                 {renderError("email")}
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>
-                  Civil Status
-                </Text>
+                {renderLabel("Civil Status", true)}
 
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -1360,11 +1517,12 @@ export default function ProfileScreen({ navigation }) {
                     errors.civilStatus &&
                       styles.inputError,
                   ]}
-                  onPress={() =>
+                  onPress={() => {
+                    markFieldTouched("civilStatus");
                     setCivilStatusModalVisible(
                       true
-                    )
-                  }
+                    );
+                  }}
                 >
                   <Text
                     style={[
@@ -1408,7 +1566,7 @@ export default function ProfileScreen({ navigation }) {
                     form.emergencyContactName
                   }
                   onChangeText={(value) =>
-                    updateField(
+                    updateNumberValidatedField(
                       "emergencyContactName",
                       value
                     )
@@ -1416,8 +1574,10 @@ export default function ProfileScreen({ navigation }) {
                   placeholder="Optional"
                   placeholderTextColor="#A8A8A8"
                   editable={isEditing}
+                  onBlur={() =>
+                    markFieldTouched("emergencyContactName")
+                  }
                 />
-
                 {renderError(
                   "emergencyContactName"
                 )}
@@ -1443,12 +1603,14 @@ export default function ProfileScreen({ navigation }) {
                     styles.addressInput,
                     !isEditing &&
                       styles.disabledInput,
+                    errors.medicalConditions &&
+                      styles.inputError,
                   ]}
                   value={
                     form.medicalConditions
                   }
                   onChangeText={(value) =>
-                    updateField(
+                    updateNoNumberField(
                       "medicalConditions",
                       value
                     )
@@ -1458,7 +1620,11 @@ export default function ProfileScreen({ navigation }) {
                   editable={isEditing}
                   multiline
                   textAlignVertical="top"
+                  onBlur={() =>
+                    markFieldTouched("medicalConditions")
+                  }
                 />
+                {renderError("medicalConditions")}
               </View>
 
               <View style={styles.inputGroup}>
@@ -1472,10 +1638,12 @@ export default function ProfileScreen({ navigation }) {
                     styles.addressInput,
                     !isEditing &&
                       styles.disabledInput,
+                    errors.allergies &&
+                      styles.inputError,
                   ]}
                   value={form.allergies}
                   onChangeText={(value) =>
-                    updateField(
+                    updateNoNumberField(
                       "allergies",
                       value
                     )
@@ -1485,7 +1653,11 @@ export default function ProfileScreen({ navigation }) {
                   editable={isEditing}
                   multiline
                   textAlignVertical="top"
+                  onBlur={() =>
+                    markFieldTouched("allergies")
+                  }
                 />
+                {renderError("allergies")}
               </View>
 
               <View style={styles.inputGroup}>
@@ -1499,10 +1671,12 @@ export default function ProfileScreen({ navigation }) {
                     styles.addressInput,
                     !isEditing &&
                       styles.disabledInput,
+                    errors.medications &&
+                      styles.inputError,
                   ]}
                   value={form.medications}
                   onChangeText={(value) =>
-                    updateField(
+                    updateNoNumberField(
                       "medications",
                       value
                     )
@@ -1512,7 +1686,11 @@ export default function ProfileScreen({ navigation }) {
                   editable={isEditing}
                   multiline
                   textAlignVertical="top"
+                  onBlur={() =>
+                    markFieldTouched("medications")
+                  }
                 />
+                {renderError("medications")}
               </View>
 
               <View style={styles.inputGroup}>
@@ -1526,10 +1704,12 @@ export default function ProfileScreen({ navigation }) {
                     styles.addressInput,
                     !isEditing &&
                       styles.disabledInput,
+                    errors.dentalHistory &&
+                      styles.inputError,
                   ]}
                   value={form.dentalHistory}
                   onChangeText={(value) =>
-                    updateField(
+                    updateNoNumberField(
                       "dentalHistory",
                       value
                     )
@@ -1539,7 +1719,11 @@ export default function ProfileScreen({ navigation }) {
                   editable={isEditing}
                   multiline
                   textAlignVertical="top"
+                  onBlur={() =>
+                    markFieldTouched("dentalHistory")
+                  }
                 />
+                {renderError("dentalHistory")}
               </View>
 
               {isEditing ? (

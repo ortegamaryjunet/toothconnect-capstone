@@ -5,8 +5,10 @@ export async function listThreads() {
   return res.data.threads;
 }
 
-export async function getThread(otherUserId) {
-  const res = await api.get(`/messages/thread/${otherUserId}`);
+export async function getThread(otherUserId, branchId) {
+  const res = await api.get(`/messages/thread/${otherUserId}`, {
+    params: branchId ? { branch_id: branchId } : undefined,
+  });
   return res.data.messages;
 }
 
@@ -15,8 +17,10 @@ export async function sendMessage(payload) {
   return res.data;
 }
 
-export async function markThreadRead(otherUserId) {
-  const res = await api.patch(`/messages/thread/${otherUserId}/read`);
+export async function markThreadRead(otherUserId, branchId) {
+  const res = await api.patch(`/messages/thread/${otherUserId}/read`, null, {
+    params: branchId ? { branch_id: branchId } : undefined,
+  });
   return res.data;
 }
 

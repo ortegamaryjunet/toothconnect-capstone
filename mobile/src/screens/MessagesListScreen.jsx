@@ -93,8 +93,10 @@ export default function MessagesListScreen({ navigation }) {
     setContactsOpen(false);
     navigation.navigate('MessageThread', {
       otherUserId: c.receptionist_id,
-      otherUserName: getBranchTitle(c),
+      otherUserName: c.receptionist_name,
       otherUserRole: 'receptionist',
+      branchId: c.id || c.branch_id,
+      branchName: getBranchTitle(c),
     });
   }
 
@@ -276,7 +278,7 @@ export default function MessagesListScreen({ navigation }) {
                 const disabled = !c.can_message || !c.receptionist_id;
                 return (
                   <TouchableOpacity
-                    key={`top-${c.id}`}
+                    key={`top-${c.id || c.branch_id}-${c.receptionist_id}`}
                     style={styles.branchItem}
                     onPress={() => pickContact(c)}
                     disabled={disabled}
@@ -287,7 +289,7 @@ export default function MessagesListScreen({ navigation }) {
                       </Text>
                     </View>
                     <Text style={[styles.branchLabel, disabled && styles.branchLabelDisabled]} numberOfLines={1}>
-                      {getBranchTitle(c)}
+                      {c.receptionist_name || getBranchTitle(c)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -373,13 +375,15 @@ export default function MessagesListScreen({ navigation }) {
                 ) : (
                   visibleThreads.map(t => (
                     <TouchableOpacity
-                      key={t.other_user_id}
+                      key={`${t.branch_id || 'branch'}-${t.other_user_id}`}
                       style={styles.threadRow}
                       onPress={() =>
                         navigation.navigate('MessageThread', {
                           otherUserId: t.other_user_id,
-                          otherUserName: getBranchTitle(t),
+                          otherUserName: t.other_user_name,
                           otherUserRole: t.other_user_role,
+                          branchId: t.branch_id,
+                          branchName: getBranchTitle(t),
                         })
                       }
                     >
@@ -573,7 +577,7 @@ export default function MessagesListScreen({ navigation }) {
 
               <FlatList
                 data={contacts}
-                keyExtractor={c => `branch-${c.id}`}
+                keyExtractor={c => `branch-${c.id || c.branch_id}-${c.receptionist_id}`}
                 renderItem={({ item }) => {
                   const disabled = !item.can_message || !item.receptionist_id;
                   return (
@@ -586,7 +590,7 @@ export default function MessagesListScreen({ navigation }) {
                         {getBranchTitle(item)}
                       </Text>
                       <Text style={[styles.contactMeta, disabled && styles.contactMetaUnavailable]}>
-                        {disabled ? 'Available after first appointment.' : item.receptionist_name}
+                        {disabled ? 'Available after an appointment at this branch.' : item.receptionist_name}
                       </Text>
                     </TouchableOpacity>
                   );
