@@ -71,11 +71,11 @@ const styles = StyleSheet.create({
 
   backButton: {
     position: "absolute",
-    top: 10,
+    top: 16,
     left: 16,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "#c98904",
     alignItems: "center",
     justifyContent: "center",
@@ -84,9 +84,10 @@ const styles = StyleSheet.create({
 
   backButtonText: {
     color: "#ffffff",
-    fontSize: 25,
+    fontSize: 32,
     fontWeight: "900",
-    lineHeight: 25,
+    lineHeight: 36,
+    textAlign: "center",
   },
 
   title: {

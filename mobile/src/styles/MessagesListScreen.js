@@ -8,18 +8,18 @@ const MUTED = '#6f6f6f';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8f7f4',
   },
 
   mainWrapper: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8f7f4',
     position: 'relative',
   },
 
   dashboardArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8f7f4',
   },
 
   pageKeyboard: {
@@ -73,13 +73,13 @@ const styles = StyleSheet.create({
 
   page: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 22,
-    paddingTop: 18,
+    backgroundColor: '#f8f7f4',
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
 
   pageTitle: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: '900',
     color: TEXT,
     marginBottom: 22,
@@ -218,17 +218,17 @@ const styles = StyleSheet.create({
   threadRow: {
     minHeight: 84,
     backgroundColor: '#fffaf0',
-    borderRadius: 14,
+    borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 1,
   },
 
   threadInitial: {
@@ -350,8 +350,8 @@ const styles = StyleSheet.create({
 
   contactPicker: {
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
     padding: 20,
     maxHeight: '70%',
   },

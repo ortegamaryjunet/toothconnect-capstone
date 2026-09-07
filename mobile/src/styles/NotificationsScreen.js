@@ -15,6 +15,7 @@ const styles = StyleSheet.create({
 
     dashboardArea: {
         flex: 1,
+        backgroundColor: '#f8f7f4',
     },
 
     header: {
@@ -64,7 +65,8 @@ const styles = StyleSheet.create({
 
     item: {
         backgroundColor: '#ffffff',
-        padding: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 15,
         borderBottomWidth: 1,
         borderBottomColor: '#e8e0d0'
     },
@@ -77,7 +79,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#1f1f1f',
-        fontFamily: 'Georgia, serif',
+        fontFamily: SERIF,
         marginBottom: 3
     },
     itemBody: {

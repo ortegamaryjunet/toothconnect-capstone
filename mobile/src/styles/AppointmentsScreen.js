@@ -53,9 +53,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 42,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
 
   // ── Top row ─────────────────────────────────────────────
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: '#e4cf88',
-    borderRadius: 18,
+    borderRadius: 8,
     paddingVertical: 15,
     paddingHorizontal: 16,
     justifyContent: 'space-between',
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   // ── Book appointment button ─────────────────────────────
   bookButton: {
     minHeight: 72,
-    borderRadius: 18,
+    borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
     backgroundColor: '#fffdf7',
@@ -110,9 +110,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     shadowColor: '#b47a00',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 1,
   },
 
   bookButtonIcon: {
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: '#e4cf88',
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 4,
     marginBottom: 16,
   },
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#eeeeee',
-    borderRadius: 14,
+    borderRadius: 8,
     padding: 24,
     alignItems: 'center',
   },
@@ -892,6 +892,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#c88a11',
     padding: 16,
     paddingBottom: 28,
+    maxHeight: '88%',
   },
   modalHandle: {
     width: 34,

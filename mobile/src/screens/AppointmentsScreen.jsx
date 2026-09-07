@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import AppSidebar from '../components/AppSidebar';
 import * as ImagePicker from 'expo-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -58,8 +58,10 @@ const DEFAULT_CANCELLATION_POLICY =
   'Please contact the clinic as soon as possible if you need to cancel or reschedule your appointment.';
 
 export default function AppointmentsScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const sidebarRef = useRef(null);
+  const cancellationRequestInFlight = useRef(false);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -315,15 +317,31 @@ export default function AppointmentsScreen({ navigation, route }) {
   }
 
   async function handleConfirmCancel() {
-    if (!selectedReason || !cancelModal.appointment) return;
+    if (
+      !selectedReason ||
+      !cancelModal.appointment ||
+      cancelling ||
+      cancellationRequestInFlight.current
+    ) return;
+
+    const appointmentId = cancelModal.appointment.id;
+    cancellationRequestInFlight.current = true;
     setCancelling(true);
     try {
-      await cancelAppointment(cancelModal.appointment.id, { reason: selectedReason });
+      await cancelAppointment(appointmentId, { reason: selectedReason });
+
+      // Update the current list immediately so this appointment cannot be cancelled twice.
+      setAppointments((current) => current.map((appointment) => (
+        appointment.id === appointmentId
+          ? { ...appointment, status: 'cancelled', cancellation_reason: selectedReason, cancelled_by: 'patient' }
+          : appointment
+      )));
       closeCancelModal();
-      fetchAppointments();
+      await fetchAppointments();
     } catch (err) {
       Alert.alert('Error', formatErrorText(err.response?.data?.message || 'Failed to cancel appointment.'));
     } finally {
+      cancellationRequestInFlight.current = false;
       setCancelling(false);
     }
   }
@@ -933,7 +951,10 @@ export default function AppointmentsScreen({ navigation, route }) {
         onRequestClose={closeCancelModal}
       >
         <Pressable style={styles.modalOverlay} onPress={closeCancelModal}>
-          <Pressable style={styles.modalSheet} onPress={() => {}}>
+          <Pressable
+            style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+            onPress={() => {}}
+          >
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Cancel appointment</Text>
             {cancelModal.appointment && (
@@ -986,7 +1007,10 @@ export default function AppointmentsScreen({ navigation, route }) {
           behavior="padding"
         >
           <Pressable style={styles.modalOverlay} onPress={closeRatingModal}>
-          <Pressable style={styles.modalSheet} onPress={() => {}}>
+          <Pressable
+            style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+            onPress={() => {}}
+          >
             <View style={styles.modalHandle} />
 
             {ratingModal.step === 'loading' && (

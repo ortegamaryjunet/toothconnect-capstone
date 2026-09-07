@@ -36,9 +36,9 @@ const styles = StyleSheet.create({
         flex: 1
     },
     bodyContent: {
-        paddingHorizontal: 18,
-        paddingTop: 20,
-        paddingBottom: 42
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 32
     },
 
     sectionLabel: {

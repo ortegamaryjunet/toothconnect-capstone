@@ -4,7 +4,7 @@
     "slug": "toothconnect",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/notification-icon.png",
+    "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "light",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -23,6 +23,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.capstone.toothconnect",
+      "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
@@ -37,8 +38,7 @@
           "defaultChannel": "appointments-high"
         }
       ],
-      "expo-secure-store",
-      "expo-status-bar"
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

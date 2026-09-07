@@ -35,8 +35,8 @@ const styles = StyleSheet.create({
 
     body: {
         flex: 1,
-        paddingHorizontal: 18,
-        paddingTop: 24
+        paddingHorizontal: 16,
+        paddingTop: 18
     },
 
     reviewText: {
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         marginTop: 8,
-        marginBottom: 42
+        marginBottom: 32
     },
 
     confirmButton: {

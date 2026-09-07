@@ -9,7 +9,7 @@ const LINE = '#eeeeee';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8f7f4',
   },
 
   keyboardArea: {
@@ -94,12 +94,12 @@ const styles = StyleSheet.create({
 
   messages: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8f7f4',
   },
 
   messagesContent: {
-    paddingHorizontal: 22,
-    paddingTop: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 18,
   },
 
@@ -134,20 +134,20 @@ const styles = StyleSheet.create({
   },
 
   bubble: {
-    paddingHorizontal: 18,
-    paddingVertical: 13,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 8,
   },
 
   bubbleSelf: {
     backgroundColor: '#fff1cf',
-    borderTopRightRadius: 18,
+    borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
   },
 
   bubbleOther: {
     backgroundColor: '#f3f3f3',
-    borderTopLeftRadius: 18,
+    borderTopLeftRadius: 8,
     borderBottomLeftRadius: 8,
   },
 

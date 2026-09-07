@@ -36,9 +36,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bodyContent: {
-    paddingHorizontal: 18,
-    paddingTop: 20,
-    paddingBottom: 48,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
 
   // Loading state
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   // Patient concern card (dark navy)
   concernCard: {
     backgroundColor: '#1a365d',
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 14,
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e4cf88',
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 16,
     marginBottom: 14,

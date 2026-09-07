@@ -40,9 +40,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     bodyContent: {
-        paddingHorizontal: 18,
-        paddingTop: 20,
-        paddingBottom: 42
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 32
     },
 
     contextCard: {
@@ -125,8 +125,8 @@ const styles = StyleSheet.create({
 
     suggestionCard: {
         backgroundColor: '#ffffff',
-        padding: 16,
-        borderRadius: 12,
+        padding: 14,
+        borderRadius: 8,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: '#eeeeee'
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
         borderRadius: 9,
         alignItems: 'center',
         marginTop: 18,
-        marginBottom: 42,
+        marginBottom: 32,
         borderWidth: 1,
         borderColor: '#c98904'
     },
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 14,
         marginTop: -24,
-        marginBottom: 42
+        marginBottom: 32
     },
     preferredTitle: {
         color: '#1f1f1f',
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 10,
         paddingBottom: 26,
-        maxHeight: '70%'
+        maxHeight: '82%'
     },
     pickerHandle: {
         width: 34,

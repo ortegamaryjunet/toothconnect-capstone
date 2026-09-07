@@ -3,31 +3,35 @@ import { StyleSheet } from "react-native";
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f4f6f8'
+        backgroundColor: '#f8f7f4'
     },
 
     header: {
-        backgroundColor: '#1a365d',
-        padding: 16,
+        backgroundColor: '#ffffff',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
         flexDirection: 'row',
-        alignItems: 'center'
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e4cf88'
     },
     backButton: {
         marginRight: 12
     },
     backButtonText: {
-        color: '#fff',
-        fontSize: 14
+        color: '#b47a00',
+        fontSize: 14,
+        fontWeight: '800'
     },
     headerTitle: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '600'
+        color: '#1f1f1f',
+        fontSize: 20,
+        fontWeight: '900'
     },
 
     body: {
         flex: 1,
-        padding: 20
+        padding: 16
     },
 
     intro: {
@@ -38,7 +42,7 @@ const styles = StyleSheet.create({
 
     toothSection: {
         backgroundColor: '#fff',
-        borderRadius: 10,
+        borderRadius: 8,
         marginBottom: 10,
         padding: 14,
         borderLeftWidth: 4
@@ -102,7 +106,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         padding: 40,
         backgroundColor: '#fff',
-        borderRadius: 10
+        borderRadius: 8
     },
     error: {
         backgroundColor: '#fed7d7',

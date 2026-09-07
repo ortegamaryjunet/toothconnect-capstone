@@ -9,7 +9,7 @@ import {
   Pressable,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatTimeOnly, formatRelativeDate } from '../utils/datetime';
 import { formatErrorText } from '../utils/errors';
 import styles from '../styles/BookSuggestionsScreen';
@@ -687,10 +687,15 @@ function DentistPickerModal({
   onClose,
   onSelect,
 }) {
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.pickerOverlay} onPress={onClose}>
-        <Pressable style={styles.pickerSheet} onPress={() => {}}>
+        <Pressable
+          style={[styles.pickerSheet, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+          onPress={() => {}}
+        >
           <View style={styles.pickerHandle} />
           <Text style={styles.pickerTitle}>Choose dentist</Text>
 
@@ -855,6 +860,7 @@ function PickerModal({
   onSelectDate,
   onSelectTime,
 }) {
+  const insets = useSafeAreaInsets();
   const calendarWeeks = buildCalendarWeeks(selectedDate);
   const [draftTime, setDraftTime] = useState(selectedTime);
   const [draftHour, draftMinute] = draftTime.split(':').map(Number);
@@ -869,7 +875,10 @@ function PickerModal({
   return (
     <Modal visible={Boolean(mode)} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.pickerOverlay} onPress={onClose}>
-        <Pressable style={styles.pickerSheet} onPress={() => {}}>
+        <Pressable
+          style={[styles.pickerSheet, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+          onPress={() => {}}
+        >
           <View style={styles.pickerHandle} />
           <Text style={styles.pickerTitle}>
             {mode === 'date' ? 'Choose preferred date' : 'Choose preferred time'}

@@ -3,18 +3,18 @@ import { StyleSheet, Platform } from "react-native";
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f7f4",
   },
 
   mainWrapper: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f7f4",
     position: "relative",
   },
 
   dashboardArea: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f7f4",
   },
 
   header: {
@@ -66,17 +66,17 @@ const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 22,
-    paddingBottom: 42,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 32,
   },
 
   greetingSection: {
-    marginBottom: 24,
+    marginBottom: 18,
   },
 
   greetingText: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "900",
     color: "#b47a00",
     fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
@@ -109,16 +109,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#e8e8e8",
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 25,
-    minHeight: 140,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    minHeight: 124,
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
 
   cardSmallTitle: {
@@ -258,13 +258,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#e8e8e8",
-    borderRadius: 12,
+    borderRadius: 8,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 6,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
 
   clinicCardTitle: {

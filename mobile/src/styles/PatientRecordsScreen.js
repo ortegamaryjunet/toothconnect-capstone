@@ -99,9 +99,9 @@ export default StyleSheet.create({
 
   // ── Scroll ──────────────────────────────────────────────
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 48,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
     rowGap: 12,
   },
 
@@ -110,7 +110,7 @@ export default StyleSheet.create({
     backgroundColor: CARD,
     borderWidth: 1,
     borderColor: GOLD_BORDER,
-    borderRadius: 10,
+    borderRadius: 8,
     overflow: 'hidden',
   },
   sectionHeader: {
