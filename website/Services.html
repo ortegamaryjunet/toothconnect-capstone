@@ -40,19 +40,49 @@
         </button>
 
         <div class="summary-links" id="summaryLinks">
-            <a href="#overviewSection"><i class="fa-solid fa-circle-info"></i> Overview</a>
-            <a href="#comparisonSection"><i class="fa-solid fa-sliders"></i> Before and After</a>
-            <a href="#benefitsSection"><i class="fa-solid fa-star"></i> Benefits</a>
-            <a href="#processSection"><i class="fa-solid fa-list-check"></i> Treatment Process</a>
-            <a href="#careSection"><i class="fa-solid fa-heart-pulse"></i> Aftercare Tips</a>
-            <a href="#durationSection"><i class="fa-regular fa-clock"></i> Duration</a>
-            <a href="#idealSection"><i class="fa-solid fa-user-check"></i> Best For</a>
-            <a href="#reminderSection"><i class="fa-solid fa-triangle-exclamation"></i> Reminder</a>
+            <a href="#overviewSection">
+                <i class="fa-solid fa-circle-info"></i>
+                Overview
+            </a>
+
+            <a href="#comparisonSection">
+                <i class="fa-solid fa-sliders"></i>
+                Before and After
+            </a>
+
+            <a href="#benefitsSection">
+                <i class="fa-solid fa-star"></i>
+                Benefits
+            </a>
+
+            <a href="#processSection">
+                <i class="fa-solid fa-list-check"></i>
+                Treatment Process
+            </a>
+
+            <a href="#careSection">
+                <i class="fa-solid fa-heart-pulse"></i>
+                Aftercare Tips
+            </a>
+
+            <a href="#durationSection">
+                <i class="fa-regular fa-clock"></i>
+                Duration
+            </a>
+
+            <a href="#idealSection">
+                <i class="fa-solid fa-user-check"></i>
+                Best For
+            </a>
+
+            <a href="#reminderSection">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Reminder
+            </a>
         </div>
     </aside>
 
     <main class="content">
-
         <section id="overviewSection" class="detail-section">
             <span class="section-label">Overview</span>
             <h2 id="mainHeading">Service Overview</h2>
@@ -61,31 +91,37 @@
 
         <section id="comparisonSection" class="detail-section comparison-section">
             <span class="section-label">Before and After</span>
-
             <h3>Patient Smile Transformation</h3>
 
-            <p class="comparison-text">
-                Move the slider to compare the smile before and after the dental treatment.
-            </p>
+            <p class="comparison-text">Move the slider to compare the smile before and after the dental treatment.</p>
 
             <div class="tooth-comparison" id="toothComparison">
 
                 <img
-                    id="comparisonBeforeImg"
-                    class="comparison-img before-img"
+                    id="comparisonAfterImg"
+                    class="comparison-img after-img"
                     src=""
-                    alt=""
+                    alt="After dental treatment"
                     loading="lazy"
-                />
+                >
 
-                <div class="comparison-after" id="comparisonAfter">
+                <div class="comparison-before" id="comparisonBefore">
+
                     <img
-                        id="comparisonAfterImg"
-                        class="comparison-img after-img"
+                        id="comparisonBeforeImg"
+                        class="comparison-img before-img"
                         src=""
-                        alt=""
-                        loading="lazy"
-                    />
+                        alt="Before dental treatment"
+                        loading="lazy">
+
+                </div>
+
+                <div class="comparison-tag before-tag" id="beforeTag">
+                    Before Treatment
+                </div>
+
+                <div class="comparison-tag after-tag" id="afterTag">
+                    After Treatment
                 </div>
 
                 <input
@@ -95,17 +131,13 @@
                     value="50"
                     class="comparison-range"
                     id="comparisonRange"
-                    aria-label="Tooth comparison slider"
-                >
+                    aria-label="Tooth comparison slider">
 
                 <div class="comparison-line" id="comparisonLine">
                     <span>
                         <i class="fa-solid fa-arrows-left-right"></i>
                     </span>
                 </div>
-
-                <div class="comparison-tag before-tag">Before Treatment</div>
-                <div class="comparison-tag after-tag">After Treatment</div>
 
             </div>
         </section>
@@ -145,9 +177,7 @@
             <h3>Important Reminder</h3>
             <p id="remindersText"></p>
         </section>
-
     </main>
-
 </section>
 
 <footer>
