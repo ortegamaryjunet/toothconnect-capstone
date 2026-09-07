@@ -1,419 +1,480 @@
-    const API_BASE_URL = (() => {
-        const PROD_API = "https://api.smileempressdentalhub.com";
+const API_BASE_URL = (() => {
+    const PROD_API = "https://api.smileempressdentalhub.com";
 
-        try {
-            const params = new URLSearchParams(window.location.search || "");
-            const override =
-                params.get("apiBase") ||
-                window.__TOOTHCONNECT_API_BASE_URL__;
+    try {
+        const params = new URLSearchParams(window.location.search || "");
+        const override = params.get("apiBase") || window.__TOOTHCONNECT_API_BASE_URL__;
 
-            if (override) {
-                return String(override).replace(/\/+$/, "");
+        if (override) {
+            return String(override).replace(/\/+$/, "");
+        }
+
+        const hostname = String(window.location.hostname || "").toLowerCase();
+        const port = String(window.location.port || "");
+
+        if (hostname === "localhost" || hostname === "127.0.0.1") {
+            if (port === "4000") {
+                return window.location.origin;
             }
 
-            const hostname = String(window.location.hostname || "").toLowerCase();
-            const port = String(window.location.port || "");
+            return "http://localhost:4000";
+        }
 
-            if (hostname === "localhost" || hostname === "127.0.0.1") {
-                if (port === "4000") {
-                    return window.location.origin;
-                }
+        if (
+            hostname === "www.smileempressdentalhub.com" ||
+            hostname === "smileempressdentalhub.com"
+        ) {
+            return PROD_API;
+        }
+    } catch (_) {}
 
-                return "http://localhost:4000";
-            }
-        } catch (_) {}
+    return PROD_API;
+})();
 
-        return PROD_API;
-    })();
+document.addEventListener("DOMContentLoaded", function () {
 
-    document.addEventListener("DOMContentLoaded", function () {
-        const aliases = {
-            "deep-scaling": "scaling",
-            "scaling": "scaling",
+    const aliases = {
+        "deep-scaling": "scaling",
+        "scaling": "scaling",
 
-            "smile-makeovers": "smilemakeovers",
-            "smilemakeovers": "smilemakeovers",
-            "smile": "smilemakeovers",
+        "smile-makeovers": "smilemakeovers",
+        "smilemakeovers": "smilemakeovers",
+        "smile": "smilemakeovers",
 
-            "teeth-whitening": "whitening",
-            "whitening": "whitening",
+        "teeth-whitening": "whitening",
+        "whitening": "whitening",
 
-            "veneers": "veneers",
+        "veneers": "veneers",
 
-            "porcelain-crowns": "crowns",
-            "porcelain-jacket-crowns": "crowns",
-            "crowns": "crowns",
+        "porcelain-crowns": "crowns",
+        "porcelain-jacket-crowns": "crowns",
+        "crowns": "crowns",
 
-            "dentures": "dentures",
+        "dentures": "dentures",
 
-            "root-canal": "rootcanal",
-            "rootcanal": "rootcanal",
+        "root-canal": "rootcanal",
+        "rootcanal": "rootcanal",
 
-            "braces": "braces",
+        "braces": "braces",
 
-            "clear-aligners": "aligners",
-            "aligners": "aligners",
+        "clear-aligners": "aligners",
+        "aligners": "aligners",
 
-            "dental-implants": "implants",
-            "implants": "implants"
+        "dental-implants": "implants",
+        "implants": "implants"
+    };
+
+    const params = new URLSearchParams(window.location.search);
+
+    let serviceKey = (
+        params.get("service") || "braces"
+    )
+        .trim()
+        .toLowerCase();
+
+    serviceKey = aliases[serviceKey] || serviceKey;
+
+    const fallback = {
+        title: "Dental Service",
+        image: "",
+        beforeImage: null,
+        afterImage: null,
+        intro: "",
+        heading: "",
+        overview: "",
+        benefits: "",
+        process: "",
+        care: "",
+        duration: "",
+        ideal: "",
+        reminders: ""
+    };
+
+    function setText(id, value) {
+        const el = document.getElementById(id);
+
+        if (!el) {
+            return;
+        }
+
+        if (value === null || value === undefined) {
+            el.textContent = "";
+            return;
+        }
+
+        el.textContent = String(value);
+    }
+
+    function normalizeText(value) {
+        return String(value || "")
+            .toLowerCase()
+            .replace(/[\s\-_\/]/g, "");
+    }
+
+    function addCacheBuster(url) {
+        if (!url) {
+            return "";
+        }
+
+        const separator = url.includes("?") ? "&" : "?";
+
+        return url + separator + "_cb=" + Date.now();
+    }
+
+    function buildImage(path, fallbackImage) {
+        if (!path) {
+            return fallbackImage || "";
+        }
+
+        const value = String(path).trim();
+
+        if (!value) {
+            return fallbackImage || "";
+        }
+
+        if (
+            value.startsWith("http://") ||
+            value.startsWith("https://")
+        ) {
+            return addCacheBuster(value);
+        }
+
+        if (value.startsWith("./images/")) {
+            return value;
+        }
+
+        if (value.startsWith("/images/")) {
+            return value;
+        }
+
+        if (value.startsWith("images/")) {
+            return "./" + value;
+        }
+
+        if (value.startsWith("/uploads/")) {
+            return addCacheBuster(API_BASE_URL + value);
+        }
+
+        return addCacheBuster(
+            API_BASE_URL + "/uploads/" + value.replace(/^\/+/, "")
+        );
+    }
+
+    function setComparisonImage(img, src, altText) {
+        if (!img) {
+            return;
+        }
+
+        img.src = "";
+
+        img.onload = function () {
+            console.log(
+                "[Services] Loaded image:",
+                img.id,
+                img.currentSrc || img.src
+            );
         };
 
-        const params = new URLSearchParams(window.location.search);
-
-        let serviceKey = (
-            params.get("service") || "braces"
-        )
-            .trim()
-            .toLowerCase();
-
-        serviceKey = aliases[serviceKey] || serviceKey;
-
-        const fallback = {
-            title: "Dental Service",
-            image: "",
-            beforeImage: null,
-            afterImage: null,
-            intro: "",
-            heading: "",
-            overview: "",
-            benefits: "",
-            process: "",
-            care: "",
-            duration: "",
-            ideal: "",
-            reminders: ""
+        img.onerror = function () {
+            console.error(
+                "[Services] Failed to load image:",
+                img.id,
+                src
+            );
         };
 
-        function setText(id, value) {
-            const el = document.getElementById(id);
+        img.alt = altText;
+        img.src = src;
+    }
 
-            if (!el) 
-                return;
+    function applyToPage(service) {
+        service = service || {};
 
-            if (value === null || value === undefined) {
-                el.textContent = "";
-                return;
-            }
+        setText("serviceTitle", service.title);
+        setText("serviceCrumb", service.title);
+        setText("serviceIntro", service.intro);
+        setText("mainHeading", service.heading);
+        setText("overview", service.overview);
+        setText("benefitsText", service.benefits);
+        setText("processText", service.process);
+        setText("careText", service.care);
 
-            el.textContent = String(value);
+        setText(
+            "durationText",
+            service.duration ||
+            "Treatment duration depends on the patient's condition."
+        );
+
+        setText(
+            "idealText",
+            service.ideal ||
+            "Please consult our dentist to determine whether this treatment is suitable for you."
+        );
+
+        setText(
+            "remindersText",
+            service.reminders ||
+            "Please follow your dentist's recommendations before and after treatment."
+        );
+
+        const hero = document.getElementById("serviceHero");
+
+        if (hero) {
+            const heroImage = service.image || fallback.image;
+
+            hero.style.backgroundImage =
+                `linear-gradient(
+                    rgba(15,23,42,.38),
+                    rgba(15,23,42,.38)
+                ),
+                url("${heroImage}")`;
+
+            hero.style.backgroundSize = "cover";
+            hero.style.backgroundPosition = "center";
+            hero.style.backgroundRepeat = "no-repeat";
         }
 
-        function normalizeText(value) {
-            return String(value || "")
-                .toLowerCase()
-                .replace(/[\s\-_\/]/g, "");
-        }
+        const comparisonSection = document.getElementById("comparisonSection");
+        const beforeImg = document.getElementById("comparisonBeforeImg");
+        const afterImg = document.getElementById("comparisonAfterImg");
+        const comparisonBefore = document.getElementById("comparisonBefore");
+        const comparisonRange = document.getElementById("comparisonRange");
+        const comparisonLine = document.getElementById("comparisonLine");
+        const beforeTag = document.getElementById("beforeTag");
+        const afterTag = document.getElementById("afterTag");
 
-        function buildImage(path, fallbackImage) {
-            if (!path)
-                return fallbackImage;
+        if (
+            comparisonSection &&
+            service.beforeImage &&
+            service.afterImage
+        ) {
+            comparisonSection.style.display = "";
 
-            if (path.startsWith("http://") || path.startsWith("https://"))
-                return path;
+            console.log("[Services] BEFORE IMAGE:", service.beforeImage);
+            console.log("[Services] AFTER IMAGE:", service.afterImage);
 
-            if (path.startsWith("./images/"))
-                return path;
+            if (beforeImg) {
+                beforeImg.style.width = "100%";
+                beforeImg.style.height = "100%";
+                beforeImg.style.objectFit = "cover";
+                beforeImg.style.objectPosition = "center";
 
-            if (path.startsWith("/images/"))
-                return path;
-
-            if (path.startsWith("images/"))
-                return "./" + path;
-
-            if (path.startsWith("/uploads/"))
-                return API_BASE_URL + path;
-
-            return API_BASE_URL + "/uploads/" + path.replace(/^\/+/, "");
-        }
-
-        function applyToPage(service) {
-
-            service = service || {};
-
-            setText("serviceTitle", service.title);
-            setText("serviceCrumb", service.title);
-
-            setText("serviceIntro", service.intro);
-
-            setText("mainHeading", service.heading);
-
-            setText("overview", service.overview);
-
-            setText("benefitsText", service.benefits);
-
-            setText("processText", service.process);
-
-            setText("careText", service.care);
-
-            setText(
-                "durationText",
-                service.duration ||
-                    "Treatment duration depends on the patient's condition."
-            );
-
-            setText(
-                "idealText",
-                service.ideal ||
-                    "Please consult our dentist to determine whether this treatment is suitable for you."
-            );
-
-            setText(
-                "remindersText",
-                service.reminders ||
-                    "Please follow your dentist's recommendations before and after treatment."
-            );
-
-            const hero = document.getElementById("serviceHero");
-
-            if (hero) {
-
-                hero.style.backgroundImage =
-                    `linear-gradient(
-                        rgba(15,23,42,.38),
-                        rgba(15,23,42,.38)
-                    ),
-                    url("${service.image || fallback.image}")`;
-
-                hero.style.backgroundSize = "cover";
-                hero.style.backgroundPosition = "center";
-                hero.style.backgroundRepeat = "no-repeat";
+                setComparisonImage(
+                    beforeImg,
+                    service.beforeImage,
+                    "Before dental treatment"
+                );
             }
 
-            const beforeImg = document.getElementById("comparisonBeforeImg");
+            if (afterImg) {
+                afterImg.style.width = "100%";
+                afterImg.style.height = "100%";
+                afterImg.style.objectFit = "cover";
+                afterImg.style.objectPosition = "center";
 
-            if (beforeImg && service.beforeImage) {
-                beforeImg.src = service.beforeImage;
+                setComparisonImage(
+                    afterImg,
+                    service.afterImage,
+                    "After dental treatment"
+                );
             }
-
-            const afterImg = document.getElementById("comparisonAfterImg");
-
-            if (afterImg && service.afterImage) {
-                afterImg.src = service.afterImage;
-            }
-
-            const comparisonRange =
-                document.getElementById("comparisonRange");
-
-            const comparisonAfter =
-                document.getElementById("comparisonAfter");
-
-            const comparisonLine =
-                document.getElementById("comparisonLine");
 
             if (
                 comparisonRange &&
-                comparisonAfter &&
+                comparisonBefore &&
                 comparisonLine
             ) {
-
                 comparisonRange.value = 50;
-
-                comparisonAfter.style.width = "50%";
-
+                comparisonBefore.style.width = "50%";
                 comparisonLine.style.left = "50%";
             }
 
-            document.title =
-                (service.title || "Dental Service");
-        }
-        
-        const summaryCard =
-            document.querySelector(".summary-card");
+            if (beforeTag) {
+                beforeTag.style.opacity = "1";
+            }
 
-        const summaryToggle =
-            document.getElementById("summaryToggle");
-
-        const summaryLinks =
-            document.querySelectorAll(".summary-links a");
-
-        if (summaryCard && summaryToggle) {
-
-            summaryToggle.addEventListener("click", function () {
-
-                if (window.innerWidth <= 720) {
-
-                    summaryCard.classList.toggle("active");
-                }
-            });
+            if (afterTag) {
+                afterTag.style.opacity = "1";
+            }
+        } else if (comparisonSection) {
+            comparisonSection.style.display = "none";
         }
 
-        summaryLinks.forEach(function (link) {
+        document.title = service.title || "Dental Service";
+    }
 
-            link.addEventListener("click", function () {
+    const summaryCard = document.querySelector(".summary-card");
+    const summaryToggle = document.getElementById("summaryToggle");
+    const summaryLinks = document.querySelectorAll(".summary-links a");
 
-                if (
-                    summaryCard &&
-                    window.innerWidth <= 720
-                ) {
-
-                    summaryCard.classList.remove("active");
-                }
-            });
+    if (summaryCard && summaryToggle) {
+        summaryToggle.addEventListener("click", function () {
+            if (window.innerWidth <= 720) {
+                summaryCard.classList.toggle("active");
+            }
         });
+    }
 
-        window.addEventListener("resize", function () {
-
-            if (
-                summaryCard &&
-                window.innerWidth > 720
-            ) {
-
+    summaryLinks.forEach(function (link) {
+        link.addEventListener("click", function () {
+            if (summaryCard && window.innerWidth <= 720) {
                 summaryCard.classList.remove("active");
             }
         });
+    });
 
-        const comparisonRange =
-            document.getElementById("comparisonRange");
+    window.addEventListener("resize", function () {
+        if (summaryCard && window.innerWidth > 720) {
+            summaryCard.classList.remove("active");
+        }
+    });
 
-        const comparisonAfter =
-            document.getElementById("comparisonAfter");
+    const comparisonRange = document.getElementById("comparisonRange");
+    const comparisonBefore = document.getElementById("comparisonBefore");
+    const comparisonLine = document.getElementById("comparisonLine");
+    const beforeTag = document.getElementById("beforeTag");
+    const afterTag = document.getElementById("afterTag");
 
-        const comparisonLine =
-            document.getElementById("comparisonLine");
+    if (
+        comparisonRange &&
+        comparisonBefore &&
+        comparisonLine
+    ) {
+        function updateComparison() {
+            const value = Number(comparisonRange.value);
 
-        if (
-            comparisonRange &&
-            comparisonAfter &&
-            comparisonLine
-        ) {
+            comparisonBefore.style.width = value + "%";
+            comparisonLine.style.left = value + "%";
 
-            comparisonRange.addEventListener(
-                "input",
-                function () {
+            if (beforeTag && afterTag) {
+                if (value === 0) {
+                    beforeTag.style.opacity = "0";
+                    afterTag.style.opacity = "1";
+                } else if (value === 100) {
+                    beforeTag.style.opacity = "1";
+                    afterTag.style.opacity = "0";
+                } else {
+                    beforeTag.style.opacity = "1";
+                    afterTag.style.opacity = "1";
+                }
+            }
+        }
 
-                    const value =
-                        comparisonRange.value + "%";
+        comparisonRange.addEventListener(
+            "input",
+            function () {
+                updateComparison();
+            }
+        );
 
-                    comparisonAfter.style.width = value;
+        updateComparison();
+    }
 
-                    comparisonLine.style.left = value;
+    async function loadService() {
+        try {
+            const response = await fetch(
+                API_BASE_URL + "/api/website/services?_cb=" + Date.now(),
+                {
+                    cache: "no-store"
                 }
             );
-        }
 
-        // Load Service from Admin Settings
+            if (!response.ok) {
+                throw new Error("Unable to load services.");
+            }
 
-        async function loadService() {
+            const data = await response.json();
 
-            try {
+            const services = Array.isArray(data.services)
+                ? data.services
+                : [];
 
-                const response = await fetch(
-                    API_BASE_URL + "/api/website/services"
+            console.log("[Services] API services:", services);
+
+            let dbService = services.find(function (item) {
+                return (
+                    normalizeText(item.slug) ===
+                    normalizeText(serviceKey)
+                );
+            });
+
+            if (!dbService) {
+                dbService = services.find(function (item) {
+                    return (
+                        normalizeText(item.name) ===
+                        normalizeText(serviceKey)
+                    );
+                });
+            }
+
+            if (!dbService) {
+                console.warn(
+                    "[Services] Service not found:",
+                    serviceKey
                 );
 
-                if (!response.ok) {
-                    throw new Error("Unable to load services.");
-                }
-
-                const data = await response.json();
-
-                const services = Array.isArray(data.services)
-                    ? data.services
-                    : [];
-
-                // Match service by slug
-
-                let dbService = services.find(function (item) {
-
-                    return (
-                        normalizeText(item.slug) === normalizeText(serviceKey)
-                    );
-                });
-
-
-                if (!dbService) {
-
-                    dbService = services.find(function (item) {
-
-                        return (
-                            normalizeText(item.name) === normalizeText(serviceKey)
-                        );
-                    });
-                }
-
-                if (!dbService) {
-
-                    console.warn(
-                        "Service not found:",
-                        serviceKey
-                    );
-
-                    applyToPage(fallback);
-
-                    return;
-                }
-
-
-                applyToPage({
-
-                    title:
-                        dbService.name ||
-                        fallback.title,
-
-                    image:
-                        buildImage(
-                            dbService.image_path,
-                            fallback.image
-                        ),
-
-                    beforeImage:
-                        buildImage(
-                            dbService.before_image,
-                            fallback.beforeImage
-                        ),
-
-                    afterImage:
-                        buildImage(
-                            dbService.after_image,
-                            fallback.afterImage
-                        ),
-
-                    intro:
-                        dbService.intro ||
-                        fallback.intro,
-
-                    heading:
-                        dbService.heading ||
-                        fallback.heading,
-
-                    overview:
-                        dbService.overview ||
-                        fallback.overview,
-
-                    benefits:
-                        dbService.benefits ||
-                        fallback.benefits,
-
-                    process:
-                        dbService.process ||
-                        fallback.process,
-
-                    care:
-                        dbService.care ||
-                        fallback.care,
-
-                    duration:
-                        dbService.duration ||
-                        fallback.duration,
-
-                    ideal:
-                        dbService.ideal_for ||
-                        fallback.ideal,
-
-                    reminders:
-                        dbService.reminder ||
-                        fallback.reminders
-
-                });
-
-            }
-            catch (error) {
-                console.error(error);
-
                 applyToPage(fallback);
+                return;
             }
+
+            console.log("[Services] Selected service:", dbService);
+            console.log(
+                "[Services] Database before_image:",
+                dbService.before_image
+            );
+            console.log(
+                "[Services] Database after_image:",
+                dbService.after_image
+            );
+
+            const beforeImage = buildImage(
+                dbService.before_image,
+                fallback.beforeImage
+            );
+
+            const afterImage = buildImage(
+                dbService.after_image,
+                fallback.afterImage
+            );
+
+            console.log(
+                "[Services] Final BEFORE URL:",
+                beforeImage
+            );
+
+            console.log(
+                "[Services] Final AFTER URL:",
+                afterImage
+            );
+
+            applyToPage({
+                title: dbService.name || fallback.title,
+                image: buildImage(
+                    dbService.image_path,
+                    fallback.image
+                ),
+                beforeImage: beforeImage,
+                afterImage: afterImage,
+                intro: dbService.intro || fallback.intro,
+                heading: dbService.heading || fallback.heading,
+                overview: dbService.overview || fallback.overview,
+                benefits: dbService.benefits || fallback.benefits,
+                process: dbService.process || fallback.process,
+                care: dbService.care || fallback.care,
+                duration: dbService.duration || fallback.duration,
+                ideal: dbService.ideal_for || fallback.ideal,
+                reminders: dbService.reminder || fallback.reminders
+            });
+
+        } catch (error) {
+            console.error(
+                "[Services] Error loading service:",
+                error
+            );
+
+            applyToPage(fallback);
         }
+    }
 
-        loadService();
-
-    });
+    loadService();
+});
