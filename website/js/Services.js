@@ -13,7 +13,6 @@ const API_BASE_URL = (() => {
         const port = String(window.location.port || "");
 
         if (hostname === "localhost" || hostname === "127.0.0.1") {
-
             if (port === "4000") {
                 return window.location.origin;
             }
@@ -21,12 +20,19 @@ const API_BASE_URL = (() => {
             return "http://localhost:4000";
         }
 
+        if (
+            hostname === "www.smileempressdentalhub.com" ||
+            hostname === "smileempressdentalhub.com"
+        ) {
+            return PROD_API;
+        }
     } catch (_) {}
 
     return PROD_API;
 })();
 
 document.addEventListener("DOMContentLoaded", function () {
+
     const aliases = {
         "deep-scaling": "scaling",
         "scaling": "scaling",
@@ -87,8 +93,9 @@ document.addEventListener("DOMContentLoaded", function () {
     function setText(id, value) {
         const el = document.getElementById(id);
 
-        if (!el) 
+        if (!el) {
             return;
+        }
 
         if (value === null || value === undefined) {
             el.textContent = "";
@@ -104,119 +111,172 @@ document.addEventListener("DOMContentLoaded", function () {
             .replace(/[\s\-_\/]/g, "");
     }
 
+    function addCacheBuster(url) {
+        if (!url) {
+            return "";
+        }
+
+        const separator = url.includes("?") ? "&" : "?";
+
+        return url + separator + "_cb=" + Date.now();
+    }
+
     function buildImage(path, fallbackImage) {
-        if (!path)
-            return fallbackImage;
+        if (!path) {
+            return fallbackImage || "";
+        }
 
-        if (path.startsWith("http://") || path.startsWith("https://"))
-            return path;
+        const value = String(path).trim();
 
-        if (path.startsWith("./images/"))
-            return path;
+        if (!value) {
+            return fallbackImage || "";
+        }
 
-        if (path.startsWith("/images/"))
-            return path;
+        if (
+            value.startsWith("http://") ||
+            value.startsWith("https://")
+        ) {
+            return addCacheBuster(value);
+        }
 
-        if (path.startsWith("images/"))
-            return "./" + path;
+        if (value.startsWith("./images/")) {
+            return value;
+        }
 
-        if (path.startsWith("/uploads/"))
-            return API_BASE_URL + path;
+        if (value.startsWith("/images/")) {
+            return value;
+        }
 
-        return API_BASE_URL + "/uploads/" + path.replace(/^\/+/, "");
+        if (value.startsWith("images/")) {
+            return "./" + value;
+        }
+
+        if (value.startsWith("/uploads/")) {
+            return addCacheBuster(API_BASE_URL + value);
+        }
+
+        return addCacheBuster(
+            API_BASE_URL + "/uploads/" + value.replace(/^\/+/, "")
+        );
+    }
+
+    function setComparisonImage(img, src, altText) {
+        if (!img) {
+            return;
+        }
+
+        img.src = "";
+
+        img.onload = function () {
+            console.log(
+                "[Services] Loaded image:",
+                img.id,
+                img.currentSrc || img.src
+            );
+        };
+
+        img.onerror = function () {
+            console.error(
+                "[Services] Failed to load image:",
+                img.id,
+                src
+            );
+        };
+
+        img.alt = altText;
+        img.src = src;
     }
 
     function applyToPage(service) {
-
         service = service || {};
 
         setText("serviceTitle", service.title);
         setText("serviceCrumb", service.title);
-
         setText("serviceIntro", service.intro);
-
         setText("mainHeading", service.heading);
-
         setText("overview", service.overview);
-
         setText("benefitsText", service.benefits);
-
         setText("processText", service.process);
-
         setText("careText", service.care);
 
         setText(
             "durationText",
             service.duration ||
-                "Treatment duration depends on the patient's condition."
+            "Treatment duration depends on the patient's condition."
         );
 
         setText(
             "idealText",
             service.ideal ||
-                "Please consult our dentist to determine whether this treatment is suitable for you."
+            "Please consult our dentist to determine whether this treatment is suitable for you."
         );
 
         setText(
             "remindersText",
             service.reminders ||
-                "Please follow your dentist's recommendations before and after treatment."
+            "Please follow your dentist's recommendations before and after treatment."
         );
 
         const hero = document.getElementById("serviceHero");
 
         if (hero) {
+            const heroImage = service.image || fallback.image;
 
             hero.style.backgroundImage =
                 `linear-gradient(
                     rgba(15,23,42,.38),
                     rgba(15,23,42,.38)
                 ),
-                url("${service.image || fallback.image}")`;
+                url("${heroImage}")`;
 
             hero.style.backgroundSize = "cover";
             hero.style.backgroundPosition = "center";
             hero.style.backgroundRepeat = "no-repeat";
         }
 
-        const comparisonSection =
-            document.getElementById("comparisonSection");
-
-        const beforeImg =
-            document.getElementById("comparisonBeforeImg");
-
-        const afterImg =
-            document.getElementById("comparisonAfterImg");
-
-        const comparisonBefore =
-            document.getElementById("comparisonBefore");
-
-        const comparisonRange =
-            document.getElementById("comparisonRange");
-
-        const comparisonLine =
-            document.getElementById("comparisonLine");
-
-        const beforeTag =
-            document.getElementById("beforeTag");
-
-        const afterTag =
-            document.getElementById("afterTag");
+        const comparisonSection = document.getElementById("comparisonSection");
+        const beforeImg = document.getElementById("comparisonBeforeImg");
+        const afterImg = document.getElementById("comparisonAfterImg");
+        const comparisonBefore = document.getElementById("comparisonBefore");
+        const comparisonRange = document.getElementById("comparisonRange");
+        const comparisonLine = document.getElementById("comparisonLine");
+        const beforeTag = document.getElementById("beforeTag");
+        const afterTag = document.getElementById("afterTag");
 
         if (
             comparisonSection &&
             service.beforeImage &&
             service.afterImage
         ) {
-
             comparisonSection.style.display = "";
 
+            console.log("[Services] BEFORE IMAGE:", service.beforeImage);
+            console.log("[Services] AFTER IMAGE:", service.afterImage);
+
             if (beforeImg) {
-                beforeImg.src = service.beforeImage;
+                beforeImg.style.width = "100%";
+                beforeImg.style.height = "100%";
+                beforeImg.style.objectFit = "cover";
+                beforeImg.style.objectPosition = "center";
+
+                setComparisonImage(
+                    beforeImg,
+                    service.beforeImage,
+                    "Before dental treatment"
+                );
             }
 
             if (afterImg) {
-                afterImg.src = service.afterImage;
+                afterImg.style.width = "100%";
+                afterImg.style.height = "100%";
+                afterImg.style.objectFit = "cover";
+                afterImg.style.objectPosition = "center";
+
+                setComparisonImage(
+                    afterImg,
+                    service.afterImage,
+                    "After dental treatment"
+                );
             }
 
             if (
@@ -224,11 +284,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 comparisonBefore &&
                 comparisonLine
             ) {
-
                 comparisonRange.value = 50;
-
                 comparisonBefore.style.width = "50%";
-
                 comparisonLine.style.left = "50%";
             }
 
@@ -239,15 +296,13 @@ document.addEventListener("DOMContentLoaded", function () {
             if (afterTag) {
                 afterTag.style.opacity = "1";
             }
-
         } else if (comparisonSection) {
-
             comparisonSection.style.display = "none";
         }
 
-        document.title = (service.title || "Dental Service");
+        document.title = service.title || "Dental Service";
     }
-    
+
     const summaryCard = document.querySelector(".summary-card");
     const summaryToggle = document.getElementById("summaryToggle");
     const summaryLinks = document.querySelectorAll(".summary-links a");
@@ -280,15 +335,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const beforeTag = document.getElementById("beforeTag");
     const afterTag = document.getElementById("afterTag");
 
-    if (comparisonRange && comparisonBefore && comparisonLine) {
-
+    if (
+        comparisonRange &&
+        comparisonBefore &&
+        comparisonLine
+    ) {
         function updateComparison() {
             const value = Number(comparisonRange.value);
+
             comparisonBefore.style.width = value + "%";
             comparisonLine.style.left = value + "%";
 
             if (beforeTag && afterTag) {
-
                 if (value === 0) {
                     beforeTag.style.opacity = "0";
                     afterTag.style.opacity = "1";
@@ -312,11 +370,14 @@ document.addEventListener("DOMContentLoaded", function () {
         updateComparison();
     }
 
-    // Load Service from Admin Settings
     async function loadService() {
-
         try {
-            const response = await fetch(API_BASE_URL + "/api/website/services");
+            const response = await fetch(
+                API_BASE_URL + "/api/website/services?_cb=" + Date.now(),
+                {
+                    cache: "no-store"
+                }
+            );
 
             if (!response.ok) {
                 throw new Error("Unable to load services.");
@@ -328,35 +389,72 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? data.services
                 : [];
 
-            // Match service by slug
-            let dbService = services.find(function (item) {
+            console.log("[Services] API services:", services);
 
+            let dbService = services.find(function (item) {
                 return (
-                    normalizeText(item.slug) === normalizeText(serviceKey)
+                    normalizeText(item.slug) ===
+                    normalizeText(serviceKey)
                 );
             });
-
 
             if (!dbService) {
                 dbService = services.find(function (item) {
                     return (
-                        normalizeText(item.name) === normalizeText(serviceKey)
+                        normalizeText(item.name) ===
+                        normalizeText(serviceKey)
                     );
                 });
             }
 
             if (!dbService) {
-                console.warn("Service not found:", serviceKey);
+                console.warn(
+                    "[Services] Service not found:",
+                    serviceKey
+                );
+
                 applyToPage(fallback);
                 return;
             }
 
+            console.log("[Services] Selected service:", dbService);
+            console.log(
+                "[Services] Database before_image:",
+                dbService.before_image
+            );
+            console.log(
+                "[Services] Database after_image:",
+                dbService.after_image
+            );
+
+            const beforeImage = buildImage(
+                dbService.before_image,
+                fallback.beforeImage
+            );
+
+            const afterImage = buildImage(
+                dbService.after_image,
+                fallback.afterImage
+            );
+
+            console.log(
+                "[Services] Final BEFORE URL:",
+                beforeImage
+            );
+
+            console.log(
+                "[Services] Final AFTER URL:",
+                afterImage
+            );
 
             applyToPage({
                 title: dbService.name || fallback.title,
-                image: buildImage(dbService.image_path, fallback.image),
-                beforeImage: buildImage(dbService.before_image, fallback.beforeImage),
-                afterImage: buildImage(dbService.after_image, fallback.afterImage),
+                image: buildImage(
+                    dbService.image_path,
+                    fallback.image
+                ),
+                beforeImage: beforeImage,
+                afterImage: afterImage,
                 intro: dbService.intro || fallback.intro,
                 heading: dbService.heading || fallback.heading,
                 overview: dbService.overview || fallback.overview,
@@ -368,9 +466,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 reminders: dbService.reminder || fallback.reminders
             });
 
-        }
-        catch (error) {
-            console.error(error);
+        } catch (error) {
+            console.error(
+                "[Services] Error loading service:",
+                error
+            );
 
             applyToPage(fallback);
         }
