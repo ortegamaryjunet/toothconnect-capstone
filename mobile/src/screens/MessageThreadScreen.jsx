@@ -21,6 +21,8 @@ import { formatErrorText } from '../utils/errors';
 import styles from '../styles/MessageThreadScreen';
 
 const POLL_INTERVAL_MS = 5000;
+const MESSAGE_MAX_LENGTH = 2000;
+const MESSAGE_MAX_LENGTH_ERROR = 'Your message must not exceed 2000+ characters';
 
 export default function MessageThreadScreen({ navigation, route }) {
   const { otherUserId, otherUserName, otherUserRole, branchId, branchName } = route.params;
@@ -34,6 +36,7 @@ export default function MessageThreadScreen({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [composerError, setComposerError] = useState('');
   const [presence, setPresence] = useState(null);
 
   const scrollRef = useRef(null);
@@ -116,13 +119,20 @@ export default function MessageThreadScreen({ navigation, route }) {
 
   async function handleSend() {
     const messageText = composer.trim();
+    const isOverMessageLimit = composer.length > MESSAGE_MAX_LENGTH;
 
     if (!messageText || sending) {
       return;
     }
 
+    if (isOverMessageLimit) {
+      setComposerError(MESSAGE_MAX_LENGTH_ERROR);
+      return;
+    }
+
     setSending(true);
     setError('');
+    setComposerError('');
 
     try {
       const response = await sendMessage({
@@ -199,6 +209,13 @@ export default function MessageThreadScreen({ navigation, route }) {
   function getSelfMessageStatus(message) {
     return message.is_read ? 'Read' : 'Delivered';
   }
+
+  function handleComposerChange(text) {
+    setComposer(text);
+    setComposerError(text.length > MESSAGE_MAX_LENGTH ? MESSAGE_MAX_LENGTH_ERROR : '');
+  }
+
+  const isComposerOverLimit = composer.length > MESSAGE_MAX_LENGTH;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -337,24 +354,42 @@ export default function MessageThreadScreen({ navigation, route }) {
         ) : null}
 
         <View style={styles.composer}>
-          <TextInput
-            style={styles.composerInput}
-            value={composer}
-            onChangeText={setComposer}
-            placeholder="Type your message"
-            placeholderTextColor="#8f8f8f"
-            multiline
-            editable={!sending}
-          />
+          <View style={styles.composerInputWrap}>
+            <TextInput
+              style={[
+                styles.composerInput,
+                isComposerOverLimit && styles.composerInputError,
+              ]}
+              value={composer}
+              onChangeText={handleComposerChange}
+              placeholder="Type your message"
+              placeholderTextColor="#8f8f8f"
+              multiline
+              editable={!sending}
+            />
+            <Text
+              style={[
+                styles.composerCounter,
+                isComposerOverLimit && styles.composerCounterError,
+              ]}
+            >
+              {composer.length}/{MESSAGE_MAX_LENGTH}
+            </Text>
+            {composerError ? (
+              <Text style={styles.composerErrorText}>
+                {composerError}
+              </Text>
+            ) : null}
+          </View>
 
           <TouchableOpacity
             style={[
               styles.sendBtn,
-              (sending || !composer.trim()) &&
+              (sending || !composer.trim() || isComposerOverLimit) &&
                 styles.sendBtnDisabled,
             ]}
             onPress={handleSend}
-            disabled={sending || !composer.trim()}
+            disabled={sending || !composer.trim() || isComposerOverLimit}
           >
             <Text style={styles.sendBtnText}>
               {sending ? '...' : '➤'}

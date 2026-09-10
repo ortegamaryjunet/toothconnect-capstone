@@ -96,18 +96,9 @@ const styles = StyleSheet.create({
   },
 
   // ── Book appointment button ─────────────────────────────
-  bookButton: {
-    minHeight: 72,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  bookStatBox: {
     backgroundColor: '#fffdf7',
-    borderWidth: 1.5,
-    borderColor: '#e4cf88',
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 4,
+    justifyContent: 'center',
     shadowColor: '#b47a00',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -116,47 +107,39 @@ const styles = StyleSheet.create({
   },
 
   bookButtonIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: '#c98904',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginBottom: 8,
   },
 
   bookButtonIconText: {
-    fontSize: 29,
-    lineHeight: 32,
+    fontSize: 24,
+    lineHeight: 27,
     fontWeight: '500',
     color: '#ffffff',
   },
 
   bookButtonContent: {
-    flex: 1,
     justifyContent: 'center',
   },
 
   bookButtonTitle: {
-    fontSize: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '900',
     color: '#2f2306',
     marginBottom: 3,
   },
 
   bookButtonSub: {
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 10,
+    lineHeight: 14,
     color: '#8a650e',
     fontWeight: '600',
-  },
-
-  bookButtonArrow: {
-    fontSize: 30,
-    lineHeight: 32,
-    fontWeight: '300',
-    color: '#b47a00',
-    marginLeft: 8,
   },
 
   // ── Filter chips ────────────────────────────────────────
@@ -825,6 +808,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     lineHeight: 18,
   },
+  rescheduleReasonField: {
+    position: 'relative',
+  },
   rescheduleReasonInput: {
     minHeight: 108,
     borderWidth: 1,
@@ -833,6 +819,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fffdf7',
     paddingHorizontal: 12,
     paddingVertical: 10,
+    paddingBottom: 26,
     color: '#1f2937',
     fontSize: 13,
     fontWeight: '500',
@@ -847,6 +834,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 6,
+  },
+  rescheduleCharCounter: {
+    position: 'absolute',
+    right: 12,
+    bottom: 8,
+    color: '#8a650e',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  rescheduleCharCounterError: {
+    color: '#e3342f',
   },
   rescheduleModalActions: {
     flexDirection: 'row',

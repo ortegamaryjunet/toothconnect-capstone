@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   composer: {
     minHeight: 62,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'center',
     paddingHorizontal: 16,
     paddingTop: 7,
@@ -197,24 +197,55 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  composerInput: {
+  composerInputWrap: {
     flex: 1,
+    marginRight: 10,
+    position: 'relative',
+  },
+
+  composerInput: {
     minHeight: 35,
     maxHeight: 80,
     borderRadius: 21,
     backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#ffffff',
     paddingHorizontal: 18,
     paddingTop: 10,
-    paddingBottom: 5,
+    paddingBottom: 20,
     fontSize: 15,
     color: TEXT,
-    marginRight: 10,
 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
+  },
+
+  composerInputError: {
+    borderColor: '#e3342f',
+  },
+
+  composerCounter: {
+    position: 'absolute',
+    right: 16,
+    bottom: 6,
+    color: '#8f8f8f',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  composerCounterError: {
+    color: '#e3342f',
+  },
+
+  composerErrorText: {
+    color: '#e3342f',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 5,
+    paddingHorizontal: 12,
   },
 
   sendBtn: {

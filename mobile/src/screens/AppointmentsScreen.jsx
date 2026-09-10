@@ -54,8 +54,31 @@ const HISTORY_FILTERS = [
 
 const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024;
 const RECEIPT_PICKER_QUALITY = 0.72;
+const RESCHEDULE_REASON_MAX_LENGTH = 500;
 const DEFAULT_CANCELLATION_POLICY =
   'Please contact the clinic as soon as possible if you need to cancel or reschedule your appointment.';
+
+function getRescheduleReasonError(reason) {
+  const trimmedReason = reason.trim();
+
+  if (!trimmedReason) {
+    return 'Please enter your reason for rescheduling.';
+  }
+
+  if (!/[A-Za-z]/.test(trimmedReason)) {
+    return 'Please enter a valid reason text';
+  }
+
+  if (trimmedReason.length < 10) {
+    return 'Your rescheduling reason must be at least 10 characters';
+  }
+
+  if (trimmedReason.length > RESCHEDULE_REASON_MAX_LENGTH) {
+    return 'Your rescheduling reason must not exceed 500 characters';
+  }
+
+  return '';
+}
 
 export default function AppointmentsScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
@@ -227,10 +250,11 @@ export default function AppointmentsScreen({ navigation, route }) {
     const appointment = rescheduleModal.appointment;
     if (!appointment) return;
 
-    if (!reason) {
+    const reasonError = getRescheduleReasonError(rescheduleModal.reason);
+    if (reasonError) {
       setRescheduleModal((prev) => ({
         ...prev,
-        error: 'Please enter your reason for rescheduling.',
+        error: reasonError,
       }));
       return;
     }
@@ -610,43 +634,6 @@ export default function AppointmentsScreen({ navigation, route }) {
   );
   const pendingReceiptUploads = appointments.filter(canUploadReceipt);
 
-  // Outstanding balance is calculated only from completed appointments.
-  // An appointment is included only when its remaining balance is greater than zero.
-  const outstandingBalance = completedAppointments.reduce((total, appointment) => {
-    const serviceAmount = Number(
-      appointment.total_amount ??
-      appointment.totalAmount ??
-      appointment.service_price ??
-      appointment.price ??
-      0
-    );
-
-    const paymentStatus = String(appointment.payment_status || '').toLowerCase();
-
-    if (paymentStatus === 'verified') {
-      const paidAmount = Number(
-        appointment.payment_amount ??
-        appointment.paid_amount ??
-        appointment.paidAmount ??
-        appointment.amount_paid ??
-        appointment.amountPaid ??
-        0
-      );
-
-      return total + Math.max(serviceAmount - paidAmount, 0);
-    }
-
-    const paidAmount = Number(
-      appointment.paid_amount ??
-      appointment.paidAmount ??
-      appointment.amount_paid ??
-      appointment.amountPaid ??
-      0
-    );
-
-    return total + Math.max(serviceAmount - paidAmount, 0);
-  }, 0);
-
   const filtered = getFilteredAppointments();
 
   const filteredUpcomingAppointments = filtered.filter((a) =>
@@ -707,22 +694,20 @@ export default function AppointmentsScreen({ navigation, route }) {
                 <Text style={styles.statValue}>{pendingReceiptUploads.length}</Text>
               </View>
 
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Outstanding Balance</Text>
-                <Text style={styles.statValue}>₱ {outstandingBalance.toLocaleString('en-PH')}</Text>
-              </View>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('BookAIAssistant')}
+                style={[styles.statBox, styles.bookStatBox]}
+              >
+                <View style={styles.bookButtonIcon}>
+                  <Text style={styles.bookButtonIconText}>+</Text>
+                </View>
+                <View style={styles.bookButtonContent}>
+                  <Text style={styles.bookButtonTitle}>Book an Appointment</Text>
+                  <Text style={styles.bookButtonSub}>AI-suggested slots based on your history</Text>
+                </View>
+              </TouchableOpacity>
             </View>
-
-            <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('BookAIAssistant')} style={styles.bookButton}>
-              <View style={styles.bookButtonIcon}>
-                <Text style={styles.bookButtonIconText}>+</Text>
-              </View>
-              <View style={styles.bookButtonContent}>
-                <Text style={styles.bookButtonTitle}>Book an Appointment</Text>
-                <Text style={styles.bookButtonSub}>AI-suggested slots based on your history</Text>
-              </View>
-              <Text style={styles.bookButtonArrow}>›</Text>
-            </TouchableOpacity>
 
             {/* Filter chips */}
             <View style={styles.filterRow}>
@@ -901,26 +886,36 @@ export default function AppointmentsScreen({ navigation, route }) {
                   {formatTimeOnly(rescheduleModal.appointment.start_time)}
                 </Text>
               )}
-              <TextInput
-                style={[
-                  styles.rescheduleReasonInput,
-                  rescheduleModal.error && styles.rescheduleReasonInputError,
-                ]}
-                placeholder="Tell us why you need to reschedule"
-                placeholderTextColor="#9a8a66"
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                value={rescheduleModal.reason}
-                onChangeText={(text) =>
-                  setRescheduleModal((prev) => ({
-                    ...prev,
-                    reason: text,
-                    error: text.trim() ? '' : prev.error,
-                  }))
-                }
-                maxLength={500}
-              />
+              <View style={styles.rescheduleReasonField}>
+                <TextInput
+                  style={[
+                    styles.rescheduleReasonInput,
+                    rescheduleModal.error && styles.rescheduleReasonInputError,
+                  ]}
+                  placeholder="Tell us why you need to reschedule"
+                  placeholderTextColor="#9a8a66"
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  value={rescheduleModal.reason}
+                  onChangeText={(text) =>
+                    setRescheduleModal((prev) => ({
+                      ...prev,
+                      reason: text,
+                      error: text.trim() ? '' : prev.error,
+                    }))
+                  }
+                />
+                <Text
+                  style={[
+                    styles.rescheduleCharCounter,
+                    rescheduleModal.reason.length > RESCHEDULE_REASON_MAX_LENGTH &&
+                      styles.rescheduleCharCounterError,
+                  ]}
+                >
+                  {rescheduleModal.reason.length}/{RESCHEDULE_REASON_MAX_LENGTH}
+                </Text>
+              </View>
               {rescheduleModal.error ? (
                 <Text style={styles.rescheduleErrorText}>{rescheduleModal.error}</Text>
               ) : null}
