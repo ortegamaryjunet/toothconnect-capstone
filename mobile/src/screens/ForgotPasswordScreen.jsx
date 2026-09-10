@@ -119,6 +119,22 @@ export default function ForgotPasswordScreen({ navigation, route }) {
     setError('OTP verification failed. Please request a new code.');
   }
 
+  function isOtpCodeExhaustedError(responseData, message) {
+    if (responseData.code_exhausted) {
+      return true;
+    }
+
+    if (
+      typeof responseData.attempts_remaining === 'number' &&
+      responseData.attempts_remaining <= 0
+    ) {
+      return true;
+    }
+
+    return /otp verification failed\. please request a new code/i.test(message) ||
+      /invalid code/i.test(message) && /0 otp verification attempts remaining/i.test(message);
+  }
+
   function startOtpLockoutRedirect(responseData, message) {
     setOtpLockoutSeconds(Number(responseData.login_retry_after_seconds || 5 * 60));
     setOtpLockoutMessage(responseData.login_message || PASSWORD_RESET_LOCKOUT_MESSAGE);
@@ -278,6 +294,11 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         }
 
         startOtpLockoutRedirect(responseData, message);
+        return;
+      }
+
+      if (isOtpCodeExhaustedError(responseData, message)) {
+        handleInvalidOtpAttempt(0);
         return;
       }
 
