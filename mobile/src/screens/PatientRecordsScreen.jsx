@@ -550,9 +550,9 @@ export default function PatientRecordsScreen({ navigation }) {
               )}
             </SectionCard>
 
-            {/* Billing History Records */}
+            {/* Transaction History Records */}
             <SectionCard
-              title="Billing History Records"
+              title="Transaction History Records"
               isOpen={expanded === 'billing'}
               onToggle={() =>
                 toggleSection('billing')
