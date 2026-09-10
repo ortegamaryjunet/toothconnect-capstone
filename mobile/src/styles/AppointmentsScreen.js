@@ -643,6 +643,17 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     backgroundColor: '#fafafa',
   },
+  ratingFeedbackInputError: {
+    borderColor: '#e3342f',
+    backgroundColor: '#fff7f7',
+  },
+  ratingFeedbackErrorText: {
+    color: '#e3342f',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: -8,
+    marginBottom: 12,
+  },
   ratingSubmitBtn: {
     backgroundColor: '#1a6b3a',
   },

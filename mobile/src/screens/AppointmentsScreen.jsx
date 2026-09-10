@@ -55,6 +55,7 @@ const HISTORY_FILTERS = [
 const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024;
 const RECEIPT_PICKER_QUALITY = 0.72;
 const RESCHEDULE_REASON_MAX_LENGTH = 500;
+const FEEDBACK_MAX_LENGTH = 500;
 const DEFAULT_CANCELLATION_POLICY =
   'Please contact the clinic as soon as possible if you need to cancel or reschedule your appointment.';
 
@@ -75,6 +76,28 @@ function getRescheduleReasonError(reason) {
 
   if (trimmedReason.length > RESCHEDULE_REASON_MAX_LENGTH) {
     return 'Your rescheduling reason must not exceed 500 characters';
+  }
+
+  return '';
+}
+
+function getFeedbackError(feedback) {
+  const trimmedFeedback = feedback.trim();
+
+  if (!trimmedFeedback) {
+    return '';
+  }
+
+  if (!/[A-Za-z]/.test(trimmedFeedback)) {
+    return 'Please enter a valid feedback message';
+  }
+
+  if (trimmedFeedback.length < 10) {
+    return 'Your feedback must be at least 10 characters';
+  }
+
+  if (trimmedFeedback.length > FEEDBACK_MAX_LENGTH) {
+    return 'Your feedback must not exceed 500 characters';
   }
 
   return '';
@@ -105,6 +128,7 @@ export default function AppointmentsScreen({ navigation, route }) {
   const [ratingModal, setRatingModal] = useState({ visible: false, appointment: null, step: 'loading', existingFeedback: null });
   const [ratingValue, setRatingValue] = useState(0);
   const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackError, setFeedbackError] = useState('');
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [uploadingReceiptId, setUploadingReceiptId] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -375,6 +399,7 @@ export default function AppointmentsScreen({ navigation, route }) {
   async function openRatingModal(appointment) {
     setRatingValue(0);
     setFeedbackText('');
+    setFeedbackError('');
     setRatingModal({ visible: true, appointment, step: 'loading', existingFeedback: null });
     try {
       const data = await getAppointmentFeedback(appointment.id);
@@ -392,10 +417,17 @@ export default function AppointmentsScreen({ navigation, route }) {
     setRatingModal({ visible: false, appointment: null, step: 'loading', existingFeedback: null });
     setRatingValue(0);
     setFeedbackText('');
+    setFeedbackError('');
   }
 
   async function handleSubmitRating() {
     if (!ratingValue || !ratingModal.appointment) return;
+    const validationError = getFeedbackError(feedbackText);
+    if (validationError) {
+      setFeedbackError(validationError);
+      return;
+    }
+
     setRatingSubmitting(true);
     try {
       await submitAppointmentFeedback(ratingModal.appointment.id, {
@@ -1144,15 +1176,27 @@ export default function AppointmentsScreen({ navigation, route }) {
                   <Text style={styles.ratingLabelBelow}>{RATING_LABELS[ratingValue]}</Text>
                 )}
                 <TextInput
-                  style={styles.ratingFeedbackInput}
+                  style={[
+                    styles.ratingFeedbackInput,
+                    feedbackError && styles.ratingFeedbackInputError,
+                  ]}
                   placeholder="Additional feedback (optional)"
                   placeholderTextColor="#aaaaaa"
                   multiline
                   numberOfLines={3}
                   value={feedbackText}
-                  onChangeText={setFeedbackText}
-                  maxLength={500}
+                  onChangeText={(text) => {
+                    setFeedbackText(text);
+                    setFeedbackError(
+                      text.length > FEEDBACK_MAX_LENGTH
+                        ? 'Your feedback must not exceed 500 characters'
+                        : ''
+                    );
+                  }}
                 />
+                {feedbackError ? (
+                  <Text style={styles.ratingFeedbackErrorText}>{feedbackError}</Text>
+                ) : null}
                 <View style={styles.modalActions}>
                   <TouchableOpacity style={styles.modalKeep} onPress={closeRatingModal}>
                     <Text style={styles.modalKeepText}>Cancel</Text>
@@ -1275,22 +1319,23 @@ function formatPeso(value) {
 function validateReceiptAsset(asset) {
   const mimeType = String(asset.mimeType || '').toLowerCase();
   const fileName = String(asset.fileName || '').toLowerCase();
-  const hasImageExtension = fileName.match(/\.(jpg|jpeg|png|webp|heic|heif)$/);
+  const hasAllowedImageExtension = fileName.match(/\.(jpg|jpeg|png)$/);
+  const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
 
-  if (mimeType && !mimeType.startsWith('image/')) {
-    return 'Please choose an image file only. Videos are not allowed.';
+  if (mimeType && !allowedMimeTypes.includes(mimeType)) {
+    return 'Invalid file format, please upload an image (JPG, JPEG, or PNG)';
   }
 
-  if (fileName.match(/\.(mp4|mov|avi|mkv|webm)$/)) {
-    return 'Please choose an image file only. Videos are not allowed.';
+  if (!mimeType && fileName && !hasAllowedImageExtension) {
+    return 'Invalid file format, please upload an image (JPG, JPEG, or PNG)';
   }
 
-  if (!mimeType && fileName && !hasImageExtension) {
-    return 'Please choose a JPG, PNG, WEBP, HEIC, or HEIF image.';
+  if (mimeType && fileName && !hasAllowedImageExtension) {
+    return 'Invalid file format, please upload an image (JPG, JPEG, or PNG)';
   }
 
   if (asset.fileSize && asset.fileSize > MAX_RECEIPT_SIZE_BYTES) {
-    return 'Receipt image is too large. Please upload an image up to 5 MB.';
+    return 'File too large, only up to 5MB per file allowed';
   }
 
   return '';
@@ -1310,7 +1355,7 @@ function normalizeReceiptAsset(asset, appointmentId) {
 function getImageExtension(mimeType, fileName) {
   const fileExtension = String(fileName || '')
     .toLowerCase()
-    .match(/\.(jpg|jpeg|png|webp|heic|heif)$/)?.[1];
+    .match(/\.(jpg|jpeg|png)$/)?.[1];
 
   if (fileExtension) {
     return fileExtension;
@@ -1320,9 +1365,6 @@ function getImageExtension(mimeType, fileName) {
     'image/jpeg': 'jpg',
     'image/jpg': 'jpg',
     'image/png': 'png',
-    'image/webp': 'webp',
-    'image/heic': 'heic',
-    'image/heif': 'heif',
   };
 
   return mimeExtensions[mimeType] || 'jpg';
