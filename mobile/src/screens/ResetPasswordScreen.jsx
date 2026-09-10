@@ -25,9 +25,24 @@ export default function ResetPasswordScreen({ navigation, route }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  function isValidPassword(value) {
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-    return passwordRegex.test(value);
+  function getPasswordValidationError(value) {
+    if (!value) {
+      return 'This field is required';
+    }
+
+    if (/\s/.test(value) || /[^A-Za-z\d]/.test(value)) {
+      return 'Password must not contain spaces or special characters.';
+    }
+
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+
+    if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+      return 'Password must contain at least one letter and one number';
+    }
+
+    return '';
   }
 
   async function handleResetPassword() {
@@ -38,10 +53,15 @@ export default function ResetPasswordScreen({ navigation, route }) {
       return;
     }
 
-    if (!isValidPassword(newPassword)) {
-      setError(
-        'Password must be at least 8 characters and include both letters and numbers. Special characters are not allowed.'
-      );
+    const newPasswordError = getPasswordValidationError(newPassword);
+    if (newPasswordError) {
+      setError(newPasswordError);
+      return;
+    }
+
+    const confirmPasswordError = getPasswordValidationError(confirmPassword);
+    if (confirmPasswordError) {
+      setError(confirmPasswordError);
       return;
     }
 
