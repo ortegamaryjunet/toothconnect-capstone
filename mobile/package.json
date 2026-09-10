@@ -10,7 +10,10 @@
     "ios": "expo start --ios",
     "ios:offline": "expo start --ios --offline",
     "web": "expo start --web",
-    "web:offline": "expo start --web --offline"
+    "web:offline": "expo start --web --offline",
+    "doctor": "npx expo-doctor@latest",
+    "deps:check": "expo install --check",
+    "deps:tree": "npm ls uuid glob"
   },
   "dependencies": {
     "@react-navigation/native": "^7.2.4",
@@ -31,5 +34,9 @@
     "react-native-screens": "~4.26.0",
     "react-native-web": "^0.21.0"
   },
-  "private": true
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0 <25",
+    "npm": ">=10"
+  }
 }
