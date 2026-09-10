@@ -899,6 +899,14 @@ export default function ProfileScreen({ navigation }) {
     }
 
     if (!hasProfileChanges()) {
+      setErrors({});
+      setTouched({});
+      originalFormRef.current = {
+        ...form,
+      };
+      setIsEditing(false);
+      Keyboard.dismiss();
+
       Alert.alert(
         "No Changes",
         "No changes were made to your profile account"
