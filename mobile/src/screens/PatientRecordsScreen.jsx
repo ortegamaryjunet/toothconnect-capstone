@@ -564,7 +564,7 @@ export default function PatientRecordsScreen({ navigation }) {
                 </Text>
               ) : billingHistory.length === 0 ? (
                 <Text style={s.emptyText}>
-                  No billing records yet.
+                  No transaction records yet.
                 </Text>
               ) : (
                 billingHistory.map((a, i) => (
