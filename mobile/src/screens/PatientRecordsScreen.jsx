@@ -27,34 +27,6 @@ function formatMethod(method) {
   return method || '';
 }
 
-function getTotalAmount(appt) {
-  return Number(
-    appt.total_amount ??
-    appt.totalAmount ??
-    appt.service_price ??
-    appt.price ??
-    0
-  );
-}
-
-function getPaidAmount(appt) {
-  return Number(
-    appt.paid_amount ??
-    appt.paidAmount ??
-    appt.amount_paid ??
-    appt.amountPaid ??
-    appt.payment_amount ??
-    0
-  );
-}
-
-function getOutstandingBalance(appt) {
-  const totalAmount = getTotalAmount(appt);
-  const paidAmount = getPaidAmount(appt);
-
-  return Math.max(totalAmount - paidAmount, 0);
-}
-
 function isPaymentAcknowledged(appt) {
   return (
     appt.payment_status === 'verified' ||
@@ -294,80 +266,6 @@ function BillingItem({ appt, isLast }) {
   );
 }
 
-// ── Transaction History 
-function OutstandingItem({ appt, isLast }) {
-  const totalAmount = getTotalAmount(appt);
-  const paidAmount = getPaidAmount(appt);
-  const outstandingBalance = getOutstandingBalance(appt);
-  const txStatus = getTxStatus(appt);
-
-  return (
-    <View style={[s.txItem, isLast && s.txItemLast]}>
-      <View style={s.txTopRow}>
-        <Text style={s.txDate}>
-          {formatDateTime(appt.start_time)}
-        </Text>
-
-        <Text style={s.txAmount}>
-          {formatPeso(outstandingBalance)}
-        </Text>
-      </View>
-
-      <Text style={s.txService}>
-        {appt.service_name}
-      </Text>
-
-      <Text style={s.txMethod}>
-        Total bill: {formatPeso(totalAmount)}
-      </Text>
-
-      <Text style={s.txMethod}>
-        Amount paid: {formatPeso(paidAmount)}
-      </Text>
-
-      <View style={s.txMethodRow}>
-        <Text style={s.txMethod}>
-          Outstanding balance
-        </Text>
-
-        <View
-          style={[
-            s.badge,
-            {
-              backgroundColor:
-                txStatus === 'pending_validation'
-                  ? '#fef9c3'
-                  : txStatus === 'rejected'
-                    ? '#fee2e2'
-                    : '#fee2e2',
-            },
-          ]}
-        >
-          <Text
-            style={[
-              s.badgeText,
-              {
-                color:
-                  txStatus === 'pending_validation'
-                    ? '#a16207'
-                    : txStatus === 'rejected'
-                      ? '#dc2626'
-                      : '#dc2626',
-              },
-            ]}
-          >
-            {txStatus === 'pending_validation'
-              ? 'Pending acknowledgement'
-              : txStatus === 'rejected'
-                ? 'Payment rejected'
-                : 'Unpaid'}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
 // ── Dental Chart 
 function ToothBox({ tooth, plan, onPress }) {
   const { bg, border } = toothColor(
@@ -559,44 +457,11 @@ export default function PatientRecordsScreen({ navigation }) {
   //
   // Result:
   // Billing History       → YES
-  // Transaction History   → NO
   const billingHistory = appointments.filter(
     (a) =>
       a.status === 'completed' &&
       isPaymentAcknowledged(a) &&
       hasPaymentRecord(a)
-  );
-
-  // ── Transaction History 
-  // Completed appointments that are NOT yet acknowledged.
-  //
-  // This includes:
-  // - unpaid records
-  // - partially paid records
-  // - payments waiting for acknowledgement
-  // - rejected payments
-  //
-  // IMPORTANT:
-  // Once payment_status becomes "verified" or "acknowledged",
-  // the record is automatically removed from this list.
-  const transactionHistory = appointments.filter(
-    (a) => {
-      if (a.status !== 'completed') {
-        return false;
-      }
-
-      if (isPaymentAcknowledged(a)) {
-        return false;
-      }
-
-      const outstandingBalance = getOutstandingBalance(a);
-      const paymentExists = hasPaymentRecord(a);
-
-      return (
-        outstandingBalance > 0 ||
-        paymentExists
-      );
-    }
   );
 
   return (
@@ -708,29 +573,6 @@ export default function PatientRecordsScreen({ navigation }) {
                     appt={a}
                     isLast={
                       i === billingHistory.length - 1
-                    }
-                  />
-                ))
-              )}
-            </SectionCard>
-
-            {/* Transaction History Records */}
-            <SectionCard title="Transaction History Records" isOpen={expanded === 'transactions'} onToggle={() => toggleSection('transactions')}>
-              {loading ? (
-                <Text style={s.loadingText}>
-                  Loading...
-                </Text>
-              ) : transactionHistory.length === 0 ? (
-                <Text style={s.emptyText}>
-                  No outstanding transaction records.
-                </Text>
-              ) : (
-                transactionHistory.map((a, i) => (
-                  <OutstandingItem
-                    key={a.id}
-                    appt={a}
-                    isLast={
-                      i === transactionHistory.length - 1
                     }
                   />
                 ))
