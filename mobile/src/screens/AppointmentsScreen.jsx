@@ -94,6 +94,7 @@ export default function AppointmentsScreen({ navigation, route }) {
   const [cancelModal, setCancelModal] = useState({ visible: false, appointment: null });
   const [selectedReason, setSelectedReason] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [cancelSuccessVisible, setCancelSuccessVisible] = useState(false);
   const [rescheduleModal, setRescheduleModal] = useState({
     visible: false,
     appointment: null,
@@ -362,6 +363,7 @@ export default function AppointmentsScreen({ navigation, route }) {
       )));
       closeCancelModal();
       await fetchAppointments();
+      setCancelSuccessVisible(true);
     } catch (err) {
       Alert.alert('Error', formatErrorText(err.response?.data?.message || 'Failed to cancel appointment.'));
     } finally {
@@ -993,6 +995,32 @@ export default function AppointmentsScreen({ navigation, route }) {
           </Pressable>
         </Pressable>
       </Modal>
+      {/* Cancel Success Modal */}
+      <Modal
+        visible={cancelSuccessVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCancelSuccessVisible(false)}
+      >
+        <Pressable
+          style={styles.policyModalOverlay}
+          onPress={() => setCancelSuccessVisible(false)}
+        >
+          <Pressable style={styles.policyModalCard} onPress={() => {}}>
+            <Text style={styles.policyModalTitle}>Appointment Cancelled</Text>
+            <Text style={styles.policyModalBody}>
+              Your appointment has been cancelled successfully
+            </Text>
+            <TouchableOpacity
+              style={styles.policyModalButton}
+              onPress={() => setCancelSuccessVisible(false)}
+            >
+              <Text style={styles.policyModalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Rating / Feedback Modal */}
       <Modal
         visible={ratingModal.visible}
