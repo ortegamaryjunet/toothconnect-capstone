@@ -1371,16 +1371,23 @@ function getImageExtension(mimeType, fileName) {
 }
 
 async function uploadReceiptToCloudinary(asset, signature) {
+  if (
+    !signature?.cloudName ||
+    !signature?.apiKey ||
+    !signature?.timestamp ||
+    !signature?.folder ||
+    !signature?.signature
+  ) {
+    throw new Error('Cloudinary upload is not ready. Please try again.');
+  }
+
+  const receiptBlob = await getReceiptBlob(asset);
   const formData = new FormData();
-  formData.append('file', {
-    uri: asset.uri,
-    type: asset.mimeType || 'image/jpeg',
-    name: asset.fileName || 'payment-receipt.jpg',
-  });
-  formData.append('api_key', signature.apiKey);
+  formData.append('file', receiptBlob, asset.fileName || 'payment-receipt.jpg');
+  formData.append('api_key', String(signature.apiKey));
   formData.append('timestamp', String(signature.timestamp));
-  formData.append('folder', signature.folder);
-  formData.append('signature', signature.signature);
+  formData.append('folder', String(signature.folder));
+  formData.append('signature', String(signature.signature));
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
@@ -1396,4 +1403,17 @@ async function uploadReceiptToCloudinary(asset, signature) {
   }
 
   return data;
+}
+
+async function getReceiptBlob(asset) {
+  const response = await fetch(asset.uri);
+  const sourceBlob = await response.blob();
+
+  if (sourceBlob.type === asset.mimeType) {
+    return sourceBlob;
+  }
+
+  return new Blob([sourceBlob], {
+    type: asset.mimeType || sourceBlob.type || 'image/jpeg',
+  });
 }
