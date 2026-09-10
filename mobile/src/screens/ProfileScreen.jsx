@@ -306,6 +306,36 @@ export default function ProfileScreen({ navigation }) {
     dental_history: form.dentalHistory.trim() || null,
   });
 
+  const normalizeFormForComparison = (value = {}) => ({
+    fullName: String(value.fullName || "").trim(),
+    birthday: String(value.birthday || "").trim(),
+    age: String(value.age || "").trim(),
+    nationality: String(value.nationality || "").trim(),
+    homeAddress: String(value.homeAddress || "").trim(),
+    occupation: String(value.occupation || "").trim(),
+    sex: String(value.sex || "").trim(),
+    contact: String(value.contact || "").replace(/\D/g, ""),
+    contactCountry: String(value.contactCountry || "").trim(),
+    email: String(value.email || "").trim().toLowerCase(),
+    civilStatus: String(value.civilStatus || "").trim(),
+    emergencyContactName: String(value.emergencyContactName || "").trim(),
+    emergencyContactNumber: String(value.emergencyContactNumber || "").replace(/\D/g, ""),
+    emergencyContactCountry: String(value.emergencyContactCountry || "").trim(),
+    medicalConditions: String(value.medicalConditions || "").trim(),
+    allergies: String(value.allergies || "").trim(),
+    medications: String(value.medications || "").trim(),
+    dentalHistory: String(value.dentalHistory || "").trim(),
+  });
+
+  const hasProfileChanges = () => {
+    if (!originalFormRef.current) {
+      return true;
+    }
+
+    return JSON.stringify(normalizeFormForComparison(form)) !==
+      JSON.stringify(normalizeFormForComparison(originalFormRef.current));
+  };
+
   function openSidebar() {
     Keyboard.dismiss();
     setSidebarOpen(true);
@@ -865,6 +895,14 @@ export default function ProfileScreen({ navigation }) {
     const isValid = validateForm();
 
     if (!isValid) {
+      return;
+    }
+
+    if (!hasProfileChanges()) {
+      Alert.alert(
+        "No Changes",
+        "No changes were made to your profile account"
+      );
       return;
     }
 
