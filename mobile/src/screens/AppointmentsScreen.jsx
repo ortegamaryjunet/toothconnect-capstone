@@ -902,7 +902,10 @@ export default function AppointmentsScreen({ navigation, route }) {
                     setRescheduleModal((prev) => ({
                       ...prev,
                       reason: text,
-                      error: text.trim() ? '' : prev.error,
+                      error:
+                        text.length > RESCHEDULE_REASON_MAX_LENGTH
+                          ? 'Your rescheduling reason must not exceed 500 characters'
+                          : '',
                     }))
                   }
                 />
