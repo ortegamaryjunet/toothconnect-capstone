@@ -5,9 +5,85 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
+const { v2: cloudinary } = require('cloudinary');
+
 const websiteService = require('../services/websiteService');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { sendEmail } = require('../services/email');
+
+const websiteServiceUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/heic',
+      'image/heif',
+    ];
+
+    if (allowedTypes.includes(String(file.mimetype || '').toLowerCase())) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error('Website service image must be an image file.'));
+  },
+});
+
+function configureCloudinary() {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    return false;
+  }
+
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+  });
+
+  return true;
+}
+
+async function uploadWebsiteServiceImage(file, folder) {
+  if (!file) {
+    return null;
+  }
+
+  if (!configureCloudinary()) {
+    const err = new Error('Cloudinary is not configured.');
+    err.statusCode = 500;
+    throw err;
+  }
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: `toothconnect/website-services/${folder}`,
+        resource_type: 'image',
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+        });
+      }
+    );
+
+    stream.end(file.buffer);
+  });
+}
 
 // Path to the main uploads folder.
 const uploadDir = path.join(__dirname, "../../uploads");
@@ -932,135 +1008,145 @@ router.get("/website-services/all", authenticate, requireRole("admin"),
 );
 
 // Create a new website service.
-router.post("/website-services", authenticate, requireRole("admin"),
-    upload.fields([
-        { name: "image_path", maxCount: 1 },
-        { name: "before_image", maxCount: 1 },
-        { name: "after_image", maxCount: 1 },
-    ]),
-    async (req, res) => {
-        try {
-            const files = req.files || {};
-            const image_path = files.image_path?.[0]  ? `/uploads/services/${files.image_path[0].filename}` : req.body.image_path || "";
-            const before_image = files.before_image?.[0] ? `/uploads/treatment/before/${files.before_image[0].filename}` : req.body.before_image || "";
-            const after_image = files.after_image?.[0] ? `/uploads/treatment/after/${files.after_image[0].filename}` : req.body.after_image || "";
+router.post('/website-services', authenticate, requireRole('admin'),
+  websiteServiceUpload.fields([
+    { name: 'image_path', maxCount: 1 },
+    { name: 'before_image', maxCount: 1 },
+    { name: 'after_image', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const files = req.files || {};
 
-            const { name, description, slug, sort_order, status, } = req.body;
+      const mainImage = files.image_path?.[0];
+      const beforeImage = files.before_image?.[0];
+      const afterImage = files.after_image?.[0];
 
-            if (!name) {
-                return res.status(400).json({
-                    message: "name is required.",
-                });
-            }
+      const mainUpload = await uploadWebsiteServiceImage(
+        mainImage,
+        'main'
+      );
 
-            const id = await websiteService.createWebsiteService({
-                name,
-                image_path,
-                before_image,
-                after_image,
-                description,
-                slug,
-                sort_order,
-                status,
-            });
+      const beforeUpload = await uploadWebsiteServiceImage(
+        beforeImage,
+        'before'
+      );
 
-            const services = await websiteService.listWebsiteServices({
-                all: true,
-            });
+      const afterUpload = await uploadWebsiteServiceImage(
+        afterImage,
+        'after'
+      );
 
-            res.status(201).json({
-                message: "Service created.",
-                id,
-                services,
-            });
-        } catch (err) {
-            res.status(500).json({
-                message: err.message || "Failed to create website service.",
-            });
-        }
+      const image_path =
+        mainUpload?.url || req.body.image_path || '';
+
+      const before_image =
+        beforeUpload?.url || req.body.before_image || null;
+
+      const after_image =
+        afterUpload?.url || req.body.after_image || null;
+
+      const service = await websiteService.createWebsiteService({
+        ...req.body,
+        image_path,
+        before_image,
+        after_image,
+      });
+
+      res.status(201).json({
+        message: 'Website service created successfully.',
+        service,
+      });
+    } catch (err) {
+      console.error('Create website service error:', err);
+
+      res.status(err.statusCode || 500).json({
+        message: err.statusCode
+          ? err.message
+          : 'Failed to create website service.',
+      });
     }
+  }
 );
 
 // Update an existing website service.
-router.put("/website-services/:id", authenticate, requireRole("admin"),
-    upload.fields([
-        { name: "image_path", maxCount: 1 },
-        { name: "before_image", maxCount: 1 },
-        { name: "after_image", maxCount: 1 },
-    ]),
-    async (req, res) => {
-        try {
-            // Get uploaded files.
-            const files = req.files || {};
+router.put('/website-services/:id', authenticate, requireRole('admin'),
+  websiteServiceUpload.fields([
+    { name: 'image_path', maxCount: 1 },
+    { name: 'before_image', maxCount: 1 },
+    { name: 'after_image', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const serviceId = Number.parseInt(req.params.id, 10);
 
-            // Use uploaded images if available.
-            // Otherwise, keep the existing image paths.
-            const image_path = files.image_path?.[0] ? `/uploads/services/${files.image_path[0].filename}` : req.body.image_path;
-            const before_image = files.before_image?.[0] ? `/uploads/treatment/before/${files.before_image[0].filename}` : req.body.before_image;
-            const after_image = files.after_image?.[0] ? `/uploads/treatment/after/${files.after_image[0].filename}` : req.body.after_image;
+      if (Number.isNaN(serviceId)) {
+        return res.status(400).json({
+          message: 'Invalid service ID.',
+        });
+      }
 
-            // Get the service details.
-            const {
-                name,
-                intro,
-                heading,
-                overview,
-                benefits,
-                process,
-                care,
-                duration,
-                ideal_for,
-                reminder,
-                description,
-                slug,
-                sort_order,
-                status,
-            } = req.body;
+      const files = req.files || {};
 
-            // Validate the required fields.
-            if (!name) {
-                return res.status(400).json({
-                    message: "name is required.",
-                });
-            }
+      const mainImage = files.image_path?.[0];
+      const beforeImage = files.before_image?.[0];
+      const afterImage = files.after_image?.[0];
 
-            // Update the website service.
-            await websiteService.updateWebsiteService(req.params.id, {
-                name,
-                image_path,
-                before_image,
-                after_image,
-                intro,
-                heading,
-                overview,
-                benefits,
-                process,
-                care,
-                duration,
-                ideal_for,
-                reminder,
-                description,
-                slug,
-                sort_order,
-                status,
-            });
+      let image_path = req.body.image_path || null;
+      let before_image = req.body.before_image || null;
+      let after_image = req.body.after_image || null;
 
-            // Retrieve the updated service list.
-            const services = await websiteService.listWebsiteServices({
-                all: true,
-            });
+      if (mainImage) {
+        const uploaded = await uploadWebsiteServiceImage(
+          mainImage,
+          'main'
+        );
 
-            // Return the updated list.
-            res.json({
-                message: "Service updated.",
-                services,
-            });
-        } catch (err) {
-            res.status(500).json({
-                message: err.message || "Failed to update website service.",
-            });
+        image_path = uploaded.url;
+      }
+
+      if (beforeImage) {
+        const uploaded = await uploadWebsiteServiceImage(
+          beforeImage,
+          'before'
+        );
+
+        before_image = uploaded.url;
+      }
+
+      if (afterImage) {
+        const uploaded = await uploadWebsiteServiceImage(
+          afterImage,
+          'after'
+        );
+
+        after_image = uploaded.url;
+      }
+
+      const service = await websiteService.updateWebsiteService(
+        serviceId,
+        {
+          ...req.body,
+          image_path,
+          before_image,
+          after_image,
         }
+      );
+
+      res.json({
+        message: 'Website service updated successfully.',
+        service,
+      });
+    } catch (err) {
+      console.error('Update website service error:', err);
+
+      res.status(err.statusCode || 500).json({
+        message: err.statusCode
+          ? err.message
+          : 'Failed to update website service.',
+      });
     }
+  }
 );
 
 // Delete a website service.
