@@ -106,9 +106,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function normalizeText(value) {
-        return String(value || "")
-            .toLowerCase()
-            .replace(/[\s\-_\/]/g, "");
+        return String(value || "").toLowerCase().replace(/[\s\-_\/]/g, "");
     }
 
     function addCacheBuster(url) {
@@ -121,43 +119,30 @@ document.addEventListener("DOMContentLoaded", function () {
         return url + separator + "_cb=" + Date.now();
     }
 
-    function buildImage(path, fallbackImage) {
-        if (!path) {
-            return fallbackImage || "";
-        }
-
-        const value = String(path).trim();
-
+    function buildImage(value) {
         if (!value) {
-            return fallbackImage || "";
+            return "";
         }
 
-        if (
-            value.startsWith("http://") ||
-            value.startsWith("https://")
-        ) {
-            return addCacheBuster(value);
+        const image = String(value).trim();
+
+        if (image.startsWith("http://") || image.startsWith("https://")) {
+            return image;
         }
 
-        if (value.startsWith("./images/")) {
-            return value;
+        if (image.startsWith("/images/")) {
+            return image;
         }
 
-        if (value.startsWith("/images/")) {
-            return value;
+        if (image.startsWith("/uploads/")) {
+            return `${API_BASE_URL}${image}`;
         }
 
-        if (value.startsWith("images/")) {
-            return "./" + value;
+        if (image.startsWith("uploads/")) {
+            return `${API_BASE_URL}/${image}`;
         }
 
-        if (value.startsWith("/uploads/")) {
-            return addCacheBuster(API_BASE_URL + value);
-        }
-
-        return addCacheBuster(
-            API_BASE_URL + "/uploads/" + value.replace(/^\/+/, "")
-        );
+        return `${API_BASE_URL}/uploads/${image}`;
     }
 
     function setComparisonImage(img, src, altText) {
@@ -168,19 +153,11 @@ document.addEventListener("DOMContentLoaded", function () {
         img.src = "";
 
         img.onload = function () {
-            console.log(
-                "[Services] Loaded image:",
-                img.id,
-                img.currentSrc || img.src
-            );
+            console.log("[Services] Loaded image:", img.id, img.currentSrc || img.src);
         };
 
         img.onerror = function () {
-            console.error(
-                "[Services] Failed to load image:",
-                img.id,
-                src
-            );
+            console.error("[Services] Failed to load image:", img.id, src);
         };
 
         img.alt = altText;

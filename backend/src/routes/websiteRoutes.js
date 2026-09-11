@@ -27,19 +27,31 @@ if (!fs.existsSync(teamDir)) {
 
 // Configure Multer storage settings.
 const storage = multer.diskStorage({
-    // Set the folder where uploaded files will be saved.
     destination: (req, file, cb) => {
-        cb(null, uploadDir);
+        let folder = uploadDir;
+
+        if (file.fieldname === "before_image") {
+            folder = path.join(uploadDir, "treatment", "before");
+        }
+
+        if (file.fieldname === "after_image") {
+            folder = path.join(uploadDir, "treatment", "after");
+        }
+
+        if (file.fieldname === "image_path") {
+            folder = path.join(uploadDir, "services");
+        }
+
+        fs.mkdirSync(folder, { recursive: true });
+
+        cb(null, folder);
     },
 
-    // Generate a unique filename using the current timestamp.
-    // Example: 1754389023456.jpg
     filename: (req, file, cb) => {
         cb(null, `${Date.now()}${path.extname(file.originalname)}`);
     },
 });
 
-// Create the Multer upload middleware.
 const upload = multer({ storage });
 
 // Save a new appointment booking from the website.
@@ -983,17 +995,9 @@ router.put("/website-services/:id", authenticate, requireRole("admin"),
 
             // Use uploaded images if available.
             // Otherwise, keep the existing image paths.
-            const image_path = files.image_path?.[0]
-                ? `/uploads/${files.image_path[0].filename}`
-                : req.body.image_path;
-
-            const before_image = files.before_image?.[0]
-                ? `/uploads/${files.before_image[0].filename}`
-                : req.body.before_image;
-
-            const after_image = files.after_image?.[0]
-                ? `/uploads/${files.after_image[0].filename}`
-                : req.body.after_image;
+            const image_path = files.image_path?.[0] ? `/uploads/services/${files.image_path[0].filename}` : req.body.image_path;
+            const before_image = files.before_image?.[0] ? `/uploads/treatment/before/${files.before_image[0].filename}` : req.body.before_image;
+            const after_image = files.after_image?.[0] ? `/uploads/treatment/after/${files.after_image[0].filename}` : req.body.after_image;
 
             // Get the service details.
             const {
@@ -1138,8 +1142,7 @@ router.post("/announcements", authenticate, requireRole("admin"),
                 !end_time
             ) {
                 return res.status(400).json({
-                    message:
-                        "Title, message, start date, start time, end date, and end time are required.",
+                    message: "Title, message, start date, start time, end date, and end time are required.",
                 });
             }
 
@@ -1220,8 +1223,7 @@ router.put("/announcements/:id", authenticate, requireRole("admin"),
                 !end_time
             ) {
                 return res.status(400).json({
-                    message:
-                        "Title, message, start date, start time, end date, and end time are required.",
+                    message: "Title, message, start date, start time, end date, and end time are required.",
                 });
             }
 
