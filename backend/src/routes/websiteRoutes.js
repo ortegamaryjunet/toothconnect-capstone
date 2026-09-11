@@ -993,14 +993,6 @@ router.put("/website-services/:id", authenticate, requireRole("admin"),
             // Get uploaded files.
             const files = req.files || {};
 
-console.log("========== WEBSITE SERVICE UPLOAD DEBUG ==========");
-console.log("FILES:", files);
-console.log("BEFORE FILE:", files.before_image?.[0]);
-console.log("AFTER FILE:", files.after_image?.[0]);
-console.log("BEFORE PATH:", files.before_image?.[0]?.path);
-console.log("AFTER PATH:", files.after_image?.[0]?.path);
-console.log("==================================================");
-
             // Use uploaded images if available.
             // Otherwise, keep the existing image paths.
             const image_path = files.image_path?.[0] ? `/uploads/services/${files.image_path[0].filename}` : req.body.image_path;
