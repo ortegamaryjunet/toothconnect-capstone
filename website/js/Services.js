@@ -142,13 +142,23 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function setComparisonImage(img, src, altText) {
-        if (!img) {
-            return;
+        if (!img || !src) {
+            return Promise.resolve(false);
         }
 
-        img.src = "";
-        img.alt = altText;
-        img.src = src;
+        return new Promise(function (resolve) {
+            img.onload = function () {
+                resolve(true);
+            };
+
+            img.onerror = function () {
+                console.error("Failed to load comparison image:", src);
+                resolve(false);
+            };
+
+            img.alt = altText;
+            img.src = src;
+        });
     }
 
     function applyToPage(service) {
@@ -188,39 +198,32 @@ document.addEventListener("DOMContentLoaded", function () {
         const afterTag = document.getElementById("afterTag");
 
         if (comparisonSection && service.beforeImage && service.afterImage) {
-            comparisonSection.style.display = "";
+            comparisonSection.style.display = "none";
 
-            if (beforeImg) {
-                beforeImg.style.width = "100%";
-                beforeImg.style.height = "100%";
-                beforeImg.style.objectFit = "cover";
-                beforeImg.style.objectPosition = "center";
+            Promise.all([
+                setComparisonImage(beforeImg, service.beforeImage, "Before dental treatment"),
+                setComparisonImage(afterImg, service.afterImage, "After dental treatment")
+            ]).then(function (results) {
+                if (results[0] && results[1]) {
+                    comparisonSection.style.display = "";
 
-                setComparisonImage(beforeImg, service.beforeImage, "Before dental treatment");
-            }
+                    if (comparisonRange && comparisonBefore && comparisonLine) {
+                        comparisonRange.value = 50;
+                        comparisonBefore.style.clipPath = "inset(0 50% 0 0)";
+                        comparisonLine.style.left = "50%";
+                    }
 
-            if (afterImg) {
-                afterImg.style.width = "100%";
-                afterImg.style.height = "100%";
-                afterImg.style.objectFit = "cover";
-                afterImg.style.objectPosition = "center";
+                    if (beforeTag) {
+                        beforeTag.style.opacity = "1";
+                    }
 
-                setComparisonImage(afterImg, service.afterImage, "After dental treatment");
-            }
-
-            if (comparisonRange && comparisonBefore && comparisonLine) {
-                comparisonRange.value = 50;
-                comparisonBefore.style.clipPath = "inset(0 50% 0 0)";
-                comparisonLine.style.left = "50%";
-            }
-
-            if (beforeTag) {
-                beforeTag.style.opacity = "1";
-            }
-
-            if (afterTag) {
-                afterTag.style.opacity = "1";
-            }
+                    if (afterTag) {
+                        afterTag.style.opacity = "1";
+                    }
+                } else {
+                    comparisonSection.style.display = "none";
+                }
+            });
         } else if (comparisonSection) {
             comparisonSection.style.display = "none";
         }
