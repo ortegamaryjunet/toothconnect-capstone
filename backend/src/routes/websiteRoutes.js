@@ -933,41 +933,41 @@ router.get("/website-services/all", authenticate, requireRole("admin"),
 
 // Create a new website service.
 router.post("/website-services", authenticate, requireRole("admin"),
+    upload.fields([
+        { name: "image_path", maxCount: 1 },
+        { name: "before_image", maxCount: 1 },
+        { name: "after_image", maxCount: 1 },
+    ]),
     async (req, res) => {
         try {
-            // Get the service details.
-            const {
-                name,
-                image_path,
-                description,
-                slug,
-                sort_order,
-                status,
-            } = req.body;
+            const files = req.files || {};
+            const image_path = files.image_path?.[0]  ? `/uploads/services/${files.image_path[0].filename}` : req.body.image_path || "";
+            const before_image = files.before_image?.[0] ? `/uploads/treatment/before/${files.before_image[0].filename}` : req.body.before_image || "";
+            const after_image = files.after_image?.[0] ? `/uploads/treatment/after/${files.after_image[0].filename}` : req.body.after_image || "";
 
-            // Validate the required fields.
+            const { name, description, slug, sort_order, status, } = req.body;
+
             if (!name) {
                 return res.status(400).json({
                     message: "name is required.",
                 });
             }
 
-            // Create the website service.
             const id = await websiteService.createWebsiteService({
                 name,
                 image_path,
+                before_image,
+                after_image,
                 description,
                 slug,
                 sort_order,
                 status,
             });
 
-            // Retrieve the updated service list.
             const services = await websiteService.listWebsiteServices({
                 all: true,
             });
 
-            // Return the updated list.
             res.status(201).json({
                 message: "Service created.",
                 id,
@@ -975,7 +975,7 @@ router.post("/website-services", authenticate, requireRole("admin"),
             });
         } catch (err) {
             res.status(500).json({
-                message: "Failed to create website service.",
+                message: err.message || "Failed to create website service.",
             });
         }
     }
@@ -992,6 +992,14 @@ router.put("/website-services/:id", authenticate, requireRole("admin"),
         try {
             // Get uploaded files.
             const files = req.files || {};
+
+console.log("========== WEBSITE SERVICE UPLOAD DEBUG ==========");
+console.log("FILES:", files);
+console.log("BEFORE FILE:", files.before_image?.[0]);
+console.log("AFTER FILE:", files.after_image?.[0]);
+console.log("BEFORE PATH:", files.before_image?.[0]?.path);
+console.log("AFTER PATH:", files.after_image?.[0]?.path);
+console.log("==================================================");
 
             // Use uploaded images if available.
             // Otherwise, keep the existing image paths.

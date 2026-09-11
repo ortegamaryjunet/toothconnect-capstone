@@ -1840,42 +1840,24 @@ export default function AdminSettings() {
 
       const formData = new FormData();
 
-      [
-        "name",
-        "intro",
-        "heading",
-        "overview",
-        "benefits",
-        "process",
-        "care",
-        "duration",
-        "ideal_for",
-        "reminder",
-        "description",
-        "slug",
-        "sort_order",
-        "status",
-      ].forEach((key) => {
+      [ "name", "intro", "heading", "overview", "benefits", "process", "care", "duration", "ideal_for", "reminder", "description", "slug", "sort_order", "status", ].forEach((key) => {
         if (data[key] !== undefined && data[key] !== null) {
           formData.append(key, data[key]);
         }
       });
 
-      // Service Image
       if (data.image_path instanceof File) {
         formData.append("image_path", data.image_path);
       } else {
         formData.append("image_path", data.image_path || "");
       }
 
-      // Before Image
       if (data.before_image instanceof File) {
         formData.append("before_image", data.before_image);
       } else {
         formData.append("before_image", data.before_image || "");
       }
 
-      // After Image
       if (data.after_image instanceof File) {
         formData.append("after_image", data.after_image);
       } else {
@@ -1885,24 +1867,11 @@ export default function AdminSettings() {
       let res;
 
       if (data.id) {
-        res = await api.put(
-          `/website/website-services/${data.id}`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        res = await api.put(`/website/website-services/${data.id}`, formData);
       } else {
         res = await api.post(
           "/website/website-services",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
+          formData
         );
       }
 
@@ -1910,12 +1879,8 @@ export default function AdminSettings() {
       setWebsiteServiceOverlay(null);
       setWebsiteServiceSaveConfirmModal(null);
     } catch (err) {
-      console.error("Update website service error:", err);
 
-      showWebsiteValidationModal(
-        "Save Failed",
-        err.response?.data?.message || "Failed to update website service."
-      );
+      showWebsiteValidationModal("Save Failed", err.response?.data?.message || "Failed to update website service.");
     } finally {
       setWebsiteServiceSaving(false);
     }
@@ -1977,14 +1942,7 @@ export default function AdminSettings() {
       status: data.status || "active",
     };
 
-    if (
-      !payload.title ||
-      !payload.message ||
-      !payload.start_date ||
-      !payload.start_time ||
-      !payload.end_date ||
-      !payload.end_time
-    ) {
+    if (!payload.title || !payload.message || !payload.start_date || !payload.start_time || !payload.end_date || !payload.end_time) {
       showWebsiteValidationModal(
         "Required Fields Missing",
         "Please complete the announcement title, message, start date, start time, end date, and end time."
@@ -1994,14 +1952,10 @@ export default function AdminSettings() {
     }
 
     const startDateTime = new Date(`${payload.start_date}T${payload.start_time}`);
-
     const endDateTime = new Date(`${payload.end_date}T${payload.end_time}`);
 
     if (endDateTime < startDateTime) {
-      showWebsiteValidationModal(
-        "Invalid Date Range",
-        "End date and time must be the same as or later than the start date and time."
-      );
+      showWebsiteValidationModal("Invalid Date Range", "End date and time must be the same as or later than the start date and time.");
 
       return;
     }
@@ -2009,26 +1963,16 @@ export default function AdminSettings() {
     try {
       if (data.id) {
         const res = await api.put(`/website/announcements/${data.id}`, payload);
-
         setWebsiteAnnouncements(res.data.announcements || []);
       } else {
         const res = await api.post("/website/announcements", payload);
-
         setWebsiteAnnouncements(res.data.announcements || []);
       }
 
       setWebsiteAnnouncementOverlay(null);
-
-      showWebsiteValidationModal(
-        "Announcement Saved",
-        "Website announcement has been saved successfully.",
-        "success"
-      );
+      showWebsiteValidationModal("Announcement Saved", "Website announcement has been saved successfully.", "success");
     } catch (err) {
-      showWebsiteValidationModal(
-        "Save Failed",
-        err.response?.data?.message || "Failed to save announcement."
-      );
+      showWebsiteValidationModal("Save Failed", err.response?.data?.message || "Failed to save announcement.");
     }
   }
 
@@ -2037,10 +1981,7 @@ export default function AdminSettings() {
       const res = await api.delete(`/website/announcements/${id}`);
       setWebsiteAnnouncements(res.data.announcements || []);
     } catch (err) {
-      showWebsiteValidationModal(
-        'Delete Failed',
-        err.response?.data?.message || 'Failed to delete announcement.'
-      );
+      showWebsiteValidationModal('Delete Failed', err.response?.data?.message || 'Failed to delete announcement.');
     }
   }
 
@@ -2060,6 +2001,7 @@ export default function AdminSettings() {
         created_at: res.data.created_at || '',
         profilePhotoUrl: res.data.profile_photo_url || '',
       };
+
       setAdminAccountForm(loadedAdminAccount);
       setAdminAccountOriginal(loadedAdminAccount);
       publishAdminProfilePhoto(profileFileUrl(loadedAdminAccount.profilePhotoUrl));
@@ -2309,9 +2251,7 @@ export default function AdminSettings() {
       setCancellationPolicyEditing(false);
       setServiceSaveResultModal({
         title: isNewPolicyMessage ? 'Policy Saved' : 'Policy Updated',
-        message: isNewPolicyMessage
-          ? 'Appointment cancellation policy has been saved successfully.'
-          : 'Appointment cancellation policy has been updated successfully.',
+        message: isNewPolicyMessage ? 'Appointment cancellation policy has been saved successfully.' : 'Appointment cancellation policy has been updated successfully.',
         type: 'success',
       });
     } catch (err) {
@@ -3101,9 +3041,7 @@ export default function AdminSettings() {
         status: branchForm.status,
       };
 
-      const res = branchForm.id
-        ? await api.patch(`/auth/branches/${branchForm.id}`, payload)
-        : await api.post('/auth/branches', payload);
+      const res = branchForm.id ? await api.patch(`/auth/branches/${branchForm.id}`, payload) : await api.post('/auth/branches', payload);
 
       setBranches(res.data.branches || []);
       closeOverlay();
@@ -3171,9 +3109,7 @@ export default function AdminSettings() {
 
       setServiceSaveResultModal({
         title: isAddingService ? 'Service Added' : 'Service Updated',
-        message: isAddingService
-          ? 'Service has been added successfully.'
-          : 'Service has been updated successfully.',
+        message: isAddingService ? 'Service has been added successfully.' : 'Service has been updated successfully.',
         type: 'success',
       });
     } catch (err) {
@@ -3304,11 +3240,7 @@ export default function AdminSettings() {
       if (field === 'category') updated.category = value ? '' : 'Category is required';
       if (field === 'item_name') updated.item_name = value ? '' : 'Item is required';
       if (field === 'default_quantity' || field === 'current_stock') {
-        const n = Number(
-          field === 'default_quantity'
-            ? value || 0
-            : serviceKitItems[index]?.default_quantity || 0
-        );
+        const n = Number(field === 'default_quantity' ? value || 0 : serviceKitItems[index]?.default_quantity || 0);
         const stock = field === 'current_stock' ? value : serviceKitItems[index]?.current_stock;
         if (n < 1) {
           updated.default_quantity = 'Default quantity must be at least 1';
@@ -3349,10 +3281,8 @@ export default function AdminSettings() {
       else if (stock !== null && stock !== undefined && qty > Number(stock)) qtyErr = 'Exceeds current stock';
       return {
         category: row.category ? '' : 'Category is required',
-        item_name: row.item_name
-          ? duplicateIndexes.has(index)
-            ? 'This item already exists in the service kit'
-            : ''
+        item_name: row.item_name ? duplicateIndexes.has(index)
+            ? 'This item already exists in the service kit' : ''
           : 'Item is required',
         default_quantity: qtyErr,
       };
