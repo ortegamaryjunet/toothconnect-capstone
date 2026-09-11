@@ -193,17 +193,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (comparisonSection && service.beforeImage && service.afterImage) {
             comparisonSection.style.display = "";
 
-            setComparisonImage(
-                beforeImg,
-                service.beforeImage,
-                "Before dental treatment"
-            );
+            setComparisonImage(beforeImg, service.beforeImage, "Before dental treatment");
 
-            setComparisonImage(
-                afterImg,
-                service.afterImage,
-                "After dental treatment"
-            );
+            setComparisonImage(afterImg, service.afterImage, "After dental treatment");
 
             if (comparisonRange && comparisonBefore && comparisonLine) {
                 comparisonRange.value = 50;
