@@ -137,7 +137,7 @@ export default function LogoSection({
 
           <input
             type="file"
-            accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml"
+            accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
             hidden
             disabled={!websiteContentEditing}
             onChange={handleLogoUpload}

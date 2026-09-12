@@ -9419,7 +9419,7 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
                         >
                         <input
                           type="file"
-                          accept=".jpg,.jpeg,.png,.webp,.svg"
+                          accept=".jpg,.jpeg,.png,.webp"
                           onChange={(e) => handleImageUpload(e, f.key)}
                           style={{
                             width: "100%",

@@ -22,7 +22,6 @@ const websiteUpload = multer({
             'image/webp',
             'image/heic',
             'image/heif',
-            'image/svg+xml',
         ];
 
         if (allowedTypes.includes(String(file.mimetype || '').toLowerCase())) {
