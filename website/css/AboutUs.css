@@ -357,10 +357,6 @@ body {
     margin-top: 8px;
 }
 
-.owner-info {
-    margin-top: 50px !important;
-}
-
 .owner-content h3 {
     width: 100%;
     font-size: clamp(32px, 3vw, 44px);

@@ -78,10 +78,6 @@ section {
     font-weight: 500;
 }
 
-.invalid {
-    border-color: #dc2626 !important;
-}
-
 .form-group input.error,
 .form-group select.error,
 .form-group textarea.error {
@@ -513,8 +509,7 @@ section {
 
 /* COMMON SECTION */
 .services,
-.steps,
-.dentists {
+.steps {
     padding: 95px 7%;
 }
 
@@ -1687,11 +1682,6 @@ section {
     box-shadow: 0 18px 40px rgba(31, 26, 18, 0.12);
 }
 
-.call-icon i {
-    color: var(--gold-dark);
-    font-size: 24px;
-}
-
 .call-content small {
     display: block;
     color: var(--muted);
@@ -1794,11 +1784,6 @@ section {
 .facebook-social {
     background: #1877f2;
     box-shadow: 0 14px 25px rgba(24, 119, 242, 0.28);
-}
-
-.instagram-social {
-    background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af, #515bd4);
-    box-shadow: 0 14px 25px rgba(221, 42, 123, 0.28);
 }
 
 .contact-socials a:hover {
@@ -2365,8 +2350,7 @@ section {
         height: 560px;
     }
 
-    .steps-grid,
-    .dentist-grid {
+    .steps-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 }
@@ -2458,8 +2442,7 @@ section {
     }
 
     .steps-grid,
-    .benefit-grid,
-    .dentist-grid {
+    .benefit-grid {
         grid-template-columns: 1fr 1fr;
     }
 
@@ -2507,7 +2490,6 @@ section {
     .steps,
     .benefits,
     .about,
-    .dentists,
     .faq-section,
     .contact {
         padding-left: 5%;
@@ -2546,7 +2528,6 @@ section {
     .hero-stats,
     .steps-grid,
     .benefit-grid,
-    .dentist-grid,
     .footer-top,
     .form-row {
         grid-template-columns: 1fr;

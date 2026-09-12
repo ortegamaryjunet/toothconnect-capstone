@@ -540,12 +540,6 @@ a {
     right: 16px;
 }
 
-.comparison-label,
-.before-label,
-.after-label {
-    display: none !important;
-}
-
 footer {
     padding: 28px;
     text-align: center;
