@@ -5091,8 +5091,7 @@ const contentEditActions = (
         )}
 
         {websiteServiceSaveConfirmModal && (
-          <div
-            style={styles.modal}
+          <div style={styles.modal}
             onClick={(event) => {
               if (event.target === event.currentTarget) {
                 setWebsiteServiceSaveConfirmModal(null);
@@ -5107,10 +5106,7 @@ const contentEditActions = (
               }}
             >
               <div style={styles.modalIcon}>
-                <i
-                  className="fi fi-rr-check-circle"
-                  style={styles.modalIconText}
-                ></i>
+                <i className="fi fi-rr-check-circle" style={styles.modalIconText}></i>
               </div>
 
               <h2 style={styles.modalTitle}>Confirm Website Service Changes</h2>
@@ -9417,7 +9413,7 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
                         >
                         <input
                           type="file"
-                          accept=".jpg,.jpeg,.png"
+                          accept=".jpg,.jpeg,.png,.webp,.svg"
                           onChange={(e) => handleImageUpload(e, f.key)}
                           style={{
                             width: "100%",
@@ -9463,28 +9459,23 @@ function WebsiteItemOverlay({ styles, title, onClose, onSave, onValidationError,
                           marginBottom: 16,
                         }}
                       >
-                        <div
-                          style={{
-                            border: errors[f.key]
-                              ? "1px dashed #dc2626"
-                              : "1px dashed #d1d5db",
-                            borderRadius: 12,
-                            background: "#fff",
-                            width: 260,
-                            height: 260,
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            overflow: "hidden",
-                          }}
-                        >
+                      <div
+                        style={{border: errors[f.key] ? "1px dashed #dc2626" : "1px dashed #d1d5db",
+                          borderRadius: 12,
+                          background: "#fff",
+                          width: 180,
+                          height: 120,
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          overflow: "hidden",
+                        }}
+                      >
                           {imagePreview[f.key] ? (
-                            <img
-                              src={imagePreview[f.key]}
-                              alt={f.label}
+                            <img src={imagePreview[f.key]} alt={f.label}
                               style={{
-                                maxWidth: "100%",
-                                maxHeight: "100%",
+                                width: "100%",
+                                height: "100%",
                                 objectFit: "contain",
                                 borderRadius: 12,
                               }}
