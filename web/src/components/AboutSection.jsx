@@ -8,7 +8,6 @@ export default function AboutSection({
   websiteContentEditing,
   websiteContent,
   websiteContentForm,
-  setWebsiteContent,
   setWebsiteContentForm,
   contentEditActions,
   collectFieldsByPrefixes,
@@ -67,12 +66,13 @@ export default function AboutSection({
         }
       );
 
-      const uploadedPath = response.data.path;
+      const uploadedPath = response.data?.url || response.data?.path;
 
-      setWebsiteContent((prev) => ({
-        ...prev,
-        [field]: uploadedPath,
-      }));
+      if (!uploadedPath) {
+        throw new Error(
+          "Cloudinary image URL was not returned."
+        );
+      }
 
       setWebsiteContentForm((prev) => ({
         ...prev,

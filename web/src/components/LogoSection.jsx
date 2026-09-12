@@ -6,17 +6,12 @@ export default function LogoSection({
   websiteContent = {},
   websiteContentForm = {},
   websiteContentEditing,
-  setWebsiteContent,
   setWebsiteContentForm,
   contentEditActions,
   showWebsiteValidationModal,
 }) {
-  const baseURL = api?.defaults?.baseURL
-    ? api.defaults.baseURL.replace("/api", "")
-    : "";
-
+  const baseURL = api?.defaults?.baseURL ? api.defaults.baseURL.replace("/api", "") : "";
   const logoPath = websiteContentForm.website_logo_path || websiteContent.website_logo_path || "";
-
   const logoFit = websiteContentForm.website_logo_fit || websiteContent.website_logo_fit || "contain";
 
   const logoSrc = logoPath ? logoPath.startsWith("http://") ||
@@ -61,20 +56,12 @@ export default function LogoSection({
         }
       );
 
-      const uploadedPath =
-        response.data?.url || response.data?.path;
+      const uploadedPath = response.data?.url || response.data?.path;
 
       if (!uploadedPath) {
         throw new Error(
           "Cloudinary image URL was not returned."
         );
-      }
-
-      if (typeof setWebsiteContent === "function") {
-        setWebsiteContent((prev) => ({
-          ...prev,
-          website_logo_path: uploadedPath,
-        }));
       }
 
       if (typeof setWebsiteContentForm === "function") {
@@ -101,9 +88,7 @@ export default function LogoSection({
       <div style={styles.logoPreviewPanel}>
         <div style={styles.logoPreview}>
           {logoSrc ? (
-            <img
-              src={logoSrc}
-              alt="Website Logo"
+            <img src={logoSrc} alt="Website Logo"
               style={{
                 width: "100%",
                 height: "100%",
@@ -112,8 +97,7 @@ export default function LogoSection({
               }}
             />
           ) : (
-            <div
-              style={{
+            <div style={{
                 width: "100%",
                 height: "100%",
                 display: "flex",
@@ -130,9 +114,7 @@ export default function LogoSection({
           )}
         </div>
 
-        <h3 style={styles.logoHeading}>
-          Website Logo
-        </h3>
+        <h3 style={styles.logoHeading}>Website Logo</h3>
 
         <p style={styles.logoText}>
           Upload a logo from your computer or mobile device.

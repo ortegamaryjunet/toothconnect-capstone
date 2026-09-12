@@ -1,18 +1,10 @@
 import React from "react";
 
-export default function HeroSection({ api, styles, websiteContent, websiteContentForm, websiteContentEditing, setWebsiteContent, setWebsiteContentForm, showWebsiteValidationModal, fieldRow, textDesignFields, contentEditActions, collectFieldsByPrefixes, }) {
-  const baseURL = api?.defaults?.baseURL
-    ? api.defaults.baseURL.replace("/api", "")
-    : "";
+export default function HeroSection({ api, styles, websiteContent, websiteContentForm, websiteContentEditing, setWebsiteContentForm, showWebsiteValidationModal, fieldRow, textDesignFields, contentEditActions, collectFieldsByPrefixes, }) {
+  const baseURL = api?.defaults?.baseURL ? api.defaults.baseURL.replace("/api", "") : "";
 
-  const imagePath =
-    websiteContentForm.hero_dentist_image ??
-    websiteContent.hero_dentist_image;
-
-  const imageFit =
-    websiteContentForm.hero_dentist_image_fit ||
-    websiteContent.hero_dentist_image_fit ||
-    "contain";
+  const imagePath = websiteContentForm.hero_dentist_image ?? websiteContent.hero_dentist_image;
+  const imageFit = websiteContentForm.hero_dentist_image_fit || websiteContent.hero_dentist_image_fit || "contain";
 
   const imageSrc = imagePath
     ? imagePath.startsWith("http") ||
@@ -44,7 +36,6 @@ export default function HeroSection({ api, styles, websiteContent, websiteConten
 
     try {
       const token = localStorage.getItem("token");
-
       const formData = new FormData();
 
       formData.append("heroImage", file);
@@ -53,12 +44,13 @@ export default function HeroSection({ api, styles, websiteContent, websiteConten
         { headers: { Authorization: `Bearer ${token}`, }, }
       );
 
-      const uploadedPath = response.data.path;
+      const uploadedPath = response.data?.url || response.data?.path;
 
-      setWebsiteContent((prev) => ({
-        ...prev,
-        hero_dentist_image: uploadedPath,
-      }));
+      if (!uploadedPath) {
+        throw new Error(
+          "Cloudinary image URL was not returned."
+        );
+      }
 
       setWebsiteContentForm((prev) => ({
         ...prev,
