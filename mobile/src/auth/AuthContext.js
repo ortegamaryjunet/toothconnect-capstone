@@ -115,6 +115,12 @@ export function AuthProvider({ children }) {
   return res.data;
 }
 
+  function updateUser(nextUserFields) {
+    setUser((currentUser) => (
+      currentUser ? { ...currentUser, ...nextUserFields } : currentUser
+    ));
+  }
+
   async function logout() {
     try {
       await clearPushToken();
@@ -133,7 +139,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, registerStart, registerVerify, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, registerStart, registerVerify, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   );
