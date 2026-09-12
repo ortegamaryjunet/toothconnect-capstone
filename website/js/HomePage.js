@@ -50,16 +50,58 @@ function setHref(id, value) {
     }
 }
 
-function setImage(id, value) {
+function stripVolatileImageParams(url) {
+    if (!url) return "";
+
+    try {
+        const parsed = new URL(url, window.location.origin);
+
+        ["v", "_cb", "cb", "cacheBust"].forEach(function (param) {
+            parsed.searchParams.delete(param);
+        });
+
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return parsed.toString();
+        }
+
+        return parsed.pathname + parsed.search + parsed.hash;
+    } catch (_) {
+        return String(url).replace(/([?&])(?:v|_cb|cb|cacheBust)=\d+&?/g, "$1").replace(/[?&]$/, "");
+    }
+}
+
+function optimizeCloudinaryImage(url, width) {
+    if (!url || !/res\.cloudinary\.com\/[^/]+\/image\/upload\//.test(url)) {
+        return url;
+    }
+
+    return url.replace(
+        /\/image\/upload\/(?!f_auto|q_auto|c_limit|w_\d+)(?:v\d+\/)?/,
+        function (match) {
+            return match + `f_auto,q_auto:eco,c_limit,w_${width || 900}/`;
+        }
+    );
+}
+
+function buildCmsImage(value, width) {
+    if (!value) return "";
+
+    const image = stripVolatileImageParams(String(value).trim());
+    const resolved = image.startsWith("http")
+        ? image
+        : API_BASE_URL + (image.startsWith("/") ? image : `/${image}`);
+
+    return optimizeCloudinaryImage(resolved, width);
+}
+
+function setImage(id, value, width) {
     const el = document.getElementById(id);
 
     if (!el || !value) {
         return;
     }
 
-    el.src = value.startsWith("http")
-        ? value
-        : API_BASE_URL + value;
+    el.src = buildCmsImage(value, width);
 }
 
 function applyTextDesign(id, prefix, c) {
@@ -128,9 +170,7 @@ function loadWebsiteContent() {
 
             if (websiteLogo) {
                 if (c.website_logo_path) {
-                    websiteLogo.src = c.website_logo_path.startsWith("http")
-                        ? c.website_logo_path
-                        : API_BASE_URL + c.website_logo_path;
+                    websiteLogo.src = buildCmsImage(c.website_logo_path, 220);
                 } else {
                     websiteLogo.removeAttribute("src");
                 }
@@ -246,9 +286,7 @@ function loadWebsiteContent() {
 
             if (heroImage) {
                 if (c.hero_dentist_image) {
-                    heroImage.src = c.hero_dentist_image.startsWith("http")
-                        ? c.hero_dentist_image
-                        : API_BASE_URL + c.hero_dentist_image;
+                    heroImage.src = buildCmsImage(c.hero_dentist_image, 900);
                 }
 
                 heroImage.style.objectFit = c.hero_dentist_image_fit || "contain";
@@ -541,22 +579,24 @@ function loadWebsiteServices() {
 function buildImage(imagePath) {
     if (!imagePath) return "";
 
-    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-        return `${imagePath}?v=${Date.now()}`;
+    const image = stripVolatileImageParams(String(imagePath).trim());
+
+    if (image.startsWith("http://") || image.startsWith("https://")) {
+        return optimizeCloudinaryImage(image, 700);
     }
 
-    if (imagePath.startsWith("/uploads/")) {
-        return `${API_BASE_URL}${imagePath}?v=${Date.now()}`;
+    if (image.startsWith("/uploads/")) {
+        return `${API_BASE_URL}${image}`;
     }
 
-    if (imagePath.startsWith("./images/") || imagePath.startsWith("/images/")) {
-        const fileName = imagePath
+    if (image.startsWith("./images/") || image.startsWith("/images/")) {
+        const fileName = image
             .replace(/^\.?\/images\//, "");
 
-        return `${API_BASE_URL}/uploads/services/${fileName}?v=${Date.now()}`;
+        return `${API_BASE_URL}/uploads/services/${fileName}`;
     }
 
-    return `${API_BASE_URL}/${imagePath.replace(/^\/+/, "")}?v=${Date.now()}`;
+    return `${API_BASE_URL}/${image.replace(/^\/+/, "")}`;
 }
 
 function rewireServiceCarousel() {

@@ -267,14 +267,51 @@ function setText(id, value) {
     element.textContent = value ?? "";
 }
 
+function stripVolatileImageParams(url) {
+    if (!url) return "";
+
+    try {
+        const parsed = new URL(url, window.location.origin);
+
+        ["v", "_cb", "cb", "cacheBust"].forEach((param) => {
+            parsed.searchParams.delete(param);
+        });
+
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return parsed.toString();
+        }
+
+        return parsed.pathname + parsed.search + parsed.hash;
+    } catch (_) {
+        return String(url).replace(/([?&])(?:v|_cb|cb|cacheBust)=\d+&?/g, "$1").replace(/[?&]$/, "");
+    }
+}
+
+function optimizeCloudinaryImage(url, width = 700) {
+    if (!url || !/res\.cloudinary\.com\/[^/]+\/image\/upload\//.test(url)) {
+        return url;
+    }
+
+    return url.replace(
+        /\/image\/upload\/(?!f_auto|q_auto|c_limit|w_\d+)(?:v\d+\/)?/,
+        function (match) {
+            return match + `f_auto,q_auto:eco,c_limit,w_${width}/`;
+        }
+    );
+}
+
 function setImage(id, value, alt = "") {
     const element = document.getElementById(id);
     if (!element) return;
     if (value) {
-        if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("blob:")) {
-            element.src = value;
+        const image = stripVolatileImageParams(String(value).trim());
+
+        if (image.startsWith("blob:")) {
+            element.src = image;
+        } else if (image.startsWith("http://") || image.startsWith("https://")) {
+            element.src = optimizeCloudinaryImage(image);
         } else {
-            element.src = `${API_BASE_URL}${value.startsWith("/") ? value : `/${value}`}`;
+            element.src = `${API_BASE_URL}${image.startsWith("/") ? image : `/${image}`}`;
         }
     } else {
         element.removeAttribute("src");

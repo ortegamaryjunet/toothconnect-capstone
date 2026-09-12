@@ -5,9 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Our Service | Smile Empress Dental Hub</title>
 
-    <link rel="stylesheet" href="./css/Services.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"></noscript>
+    <link rel="preload" href="./css/Services.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="./css/Services.min.css"></noscript>
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+    <link rel="preload" href="./images/braces.jpg" as="image" fetchpriority="high">
 </head>
 <body>
 
@@ -17,6 +23,15 @@
 </a>
 
 <section class="service-hero" id="serviceHero">
+    <img
+        id="serviceHeroImage"
+        class="service-hero-image"
+        src="./images/braces.jpg"
+        alt=""
+        loading="eager"
+        decoding="async"
+        fetchpriority="high">
+
     <div class="hero-box">
         <div class="breadcrumb">
             <a href="index.html">Home</a>
