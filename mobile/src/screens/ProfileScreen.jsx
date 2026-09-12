@@ -192,7 +192,7 @@ function toApiDate(value) {
 }
 
 export default function ProfileScreen({ navigation }) {
-  const { user, logout } = useAuth();
+  const { user, updateUser, logout } = useAuth();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -926,6 +926,11 @@ export default function ProfileScreen({ navigation }) {
         profileToForm(savedProfile);
 
       setForm(nextForm);
+      updateUser?.({
+        name: savedProfile.full_name || nextForm.fullName,
+        email: savedProfile.email || nextForm.email,
+        phone: savedProfile.contact_number || savedProfile.phone || user?.phone || null,
+      });
       setErrors({});
       setTouched({});
       originalFormRef.current =
