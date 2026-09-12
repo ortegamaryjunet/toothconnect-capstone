@@ -111,7 +111,8 @@ document.addEventListener("DOMContentLoaded", function () {
             return "";
         }
 
-        return url;
+        const separator = url.includes("?") ? "&" : "?";
+        return url + separator + "_cb=" + Date.now();
     }
 
     function buildImage(value) {
@@ -119,10 +120,10 @@ document.addEventListener("DOMContentLoaded", function () {
             return "";
         }
 
-        const image = stripVolatileImageParams(String(value).trim());
+        const image = String(value).trim();
 
         if (image.startsWith("http://") || image.startsWith("https://")) {
-            return optimizeCloudinaryImage(image, 1200);
+            return image;
         }
 
         if (image.startsWith("/images/")) {
@@ -138,39 +139,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         return `${API_BASE_URL}/uploads/${image}`;
-    }
-
-    function stripVolatileImageParams(url) {
-        if (!url) return "";
-
-        try {
-            const parsed = new URL(url, window.location.origin);
-
-            ["v", "_cb", "cb", "cacheBust"].forEach(function (param) {
-                parsed.searchParams.delete(param);
-            });
-
-            if (url.startsWith("http://") || url.startsWith("https://")) {
-                return parsed.toString();
-            }
-
-            return parsed.pathname + parsed.search + parsed.hash;
-        } catch (_) {
-            return String(url).replace(/([?&])(?:v|_cb|cb|cacheBust)=\d+&?/g, "$1").replace(/[?&]$/, "");
-        }
-    }
-
-    function optimizeCloudinaryImage(url, width) {
-        if (!url || !/res\.cloudinary\.com\/[^/]+\/image\/upload\//.test(url)) {
-            return url;
-        }
-
-        return url.replace(
-            /\/image\/upload\/(?!f_auto|q_auto|c_limit|w_\d+)(?:v\d+\/)?/,
-            function (match) {
-                return match + `f_auto,q_auto:eco,c_limit,w_${width || 1200}/`;
-            }
-        );
     }
 
     function setComparisonImage(img, src, altText) {
@@ -203,15 +171,14 @@ document.addEventListener("DOMContentLoaded", function () {
         setText("remindersText", service.reminders || "Please follow your dentist's recommendations before and after treatment.");
 
         const hero = document.getElementById("serviceHero");
-        const heroImg = document.getElementById("serviceHeroImage");
 
         if (hero) {
             const heroImage = service.image || fallback.image;
 
-            if (heroImg && heroImage) {
-                heroImg.src = heroImage;
-                heroImg.alt = service.title ? `${service.title} dental service` : "";
-            }
+            hero.style.backgroundImage = `linear-gradient(rgba(15,23,42,.38), rgba(15,23,42,.38)), url("${heroImage}")`;
+            hero.style.backgroundSize = "cover";
+            hero.style.backgroundPosition = "center";
+            hero.style.backgroundRepeat = "no-repeat";
         }
 
         const comparisonSection = document.getElementById("comparisonSection");

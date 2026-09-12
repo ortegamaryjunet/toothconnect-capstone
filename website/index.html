@@ -5,22 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smile Empress Dental Hub</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"></noscript>
-    <link rel="preload" href="./css/HomePage.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="./css/HomePage.min.css"></noscript>
+    <link rel="stylesheet" href="./css/HomePage.min.css">
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
-    <link rel="preload" href="./images/dentist-lcp.jpg" as="image" fetchpriority="high">
 </head>
 <body>
 
 <header class="header" id="header">
 	<a href="#home" class="logo-box">
         <div class="brand-mark">
-            <img id="website-logo" alt="Clinic Logo" loading="eager" decoding="async" fetchpriority="high">
+            <img id="website-logo" alt="Clinic Logo" loading="lazy">
         </div>
 	
 	    <div class="logo-text">
@@ -84,11 +78,7 @@
         <div class="image-panel">
             <img
                 id="hero-dentist-image"
-                src="./images/dentist-lcp.jpg"
                 alt="Featured Dentist"
-                loading="eager"
-                decoding="async"
-                fetchpriority="high"
             >
         </div>
 
@@ -165,7 +155,7 @@
 <section class="benefits">
     <div class="benefit-img">
         <div class="benefit-bg"></div>
-        <img src="./images/DocTwinky.jpg" alt="Smile Empress Dental Hub" loading="lazy" decoding="async">
+        <img src="./images/DocTwinky.jpg" alt="Smile Empress Dental Hub">
 
         <div class="benefit-floating-card">
             <i class="fa-solid fa-heart-pulse"></i>
@@ -276,16 +266,12 @@
         <img
             class="main-image"
             src="./images/dental-clinic.jpg"
-            alt="Smile Empress Dental Hub"
-            loading="lazy"
-            decoding="async">
+            alt="Smile Empress Dental Hub">
 
         <img
             class="floating-image"
             src="./images/about-dentist.jpg"
-            alt="Dentist"
-            loading="lazy"
-            decoding="async">
+            alt="Dentist">
 
         <div class="experience-card">
             <div class="experience-number">
@@ -832,7 +818,7 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.12.11/bundle/libphonenumber-max.js" defer></script>
-<script src="./js/HomePage.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.12.11/bundle/libphonenumber-max.js"></script>
+<script src="./js/HomePage.js"></script>
 </body>
 </html>
