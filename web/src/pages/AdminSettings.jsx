@@ -1864,23 +1864,29 @@ export default function AdminSettings() {
         formData.append("after_image", data.after_image || "");
       }
 
-      let res;
-
       if (data.id) {
-        res = await api.put(`/website/website-services/${data.id}`, formData);
+        await api.put(
+          `/website/website-services/${data.id}`,
+          formData
+        );
       } else {
-        res = await api.post(
+        await api.post(
           "/website/website-services",
           formData
         );
       }
 
-      setWebsiteServices(res.data.services || []);
+      await loadWebsiteServices();
+
       setWebsiteServiceOverlay(null);
       setWebsiteServiceSaveConfirmModal(null);
-    } catch (err) {
 
-      showWebsiteValidationModal("Save Failed", err.response?.data?.message || "Failed to update website service.");
+    } catch (err) {
+      showWebsiteValidationModal(
+        "Save Failed",
+        err.response?.data?.message ||
+          "Failed to update website service."
+      );
     } finally {
       setWebsiteServiceSaving(false);
     }
