@@ -4132,26 +4132,6 @@ export default function AdminSettings() {
     });
   }
 
-  function handleWebsiteLogoFile(event) {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      setWebsiteContentForm((prev) => ({
-        ...prev,
-        website_logo_path: reader.result,
-        website_logo_file_name: file.name,
-      }));
-    };
-
-    reader.readAsDataURL(file);
-  }
-
   function renderWebsitePanel() {
 
     const contentSectionBtnStyle = (active) => ({

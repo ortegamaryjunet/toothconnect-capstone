@@ -15,19 +15,13 @@ export default function LogoSection({
     ? api.defaults.baseURL.replace("/api", "")
     : "";
 
-  const logoPath =
-    websiteContentForm.website_logo_path ??
-    websiteContent.website_logo_path;
+  const logoPath = websiteContentForm.website_logo_path || websiteContent.website_logo_path || "";
 
-  const logoFit =
-    websiteContentForm.website_logo_fit ||
-    websiteContent.website_logo_fit ||
-    "contain";
+  const logoFit = websiteContentForm.website_logo_fit || websiteContent.website_logo_fit || "contain";
 
-  const logoSrc = logoPath
-    ? logoPath.startsWith("http") || logoPath.startsWith("blob:")
-      ? logoPath
-      : `${baseURL}${logoPath}`
+  const logoSrc = logoPath ? logoPath.startsWith("http://") ||
+      logoPath.startsWith("https://") || logoPath.startsWith("blob:")
+      ? logoPath : `${baseURL}${logoPath.startsWith("/") ? "" : "/"}${logoPath}`
     : null;
 
   const showModal = (title, message) => {
@@ -67,7 +61,14 @@ export default function LogoSection({
         }
       );
 
-      const uploadedPath = response.data.path;
+      const uploadedPath =
+        response.data?.url || response.data?.path;
+
+      if (!uploadedPath) {
+        throw new Error(
+          "Cloudinary image URL was not returned."
+        );
+      }
 
       if (typeof setWebsiteContent === "function") {
         setWebsiteContent((prev) => ({
