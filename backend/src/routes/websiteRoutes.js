@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 
 const { v2: cloudinary } = require('cloudinary');
 
@@ -11,26 +9,28 @@ const websiteService = require('../services/websiteService');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { sendEmail } = require('../services/email');
 
-const websiteServiceUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/webp',
-      'image/heic',
-      'image/heif',
-    ];
+const websiteUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/webp',
+            'image/heic',
+            'image/heif',
+        ];
 
-    if (allowedTypes.includes(String(file.mimetype || '').toLowerCase())) {
-      cb(null, true);
-      return;
-    }
+        if (allowedTypes.includes(String(file.mimetype || '').toLowerCase())) {
+            cb(null, true);
+            return;
+        }
 
-    cb(new Error('Website service image must be an image file.'));
-  },
+        cb(new Error('Only image files are allowed.'));
+    },
 });
 
 function configureCloudinary() {
@@ -49,6 +49,40 @@ function configureCloudinary() {
   });
 
   return true;
+}
+
+async function uploadWebsiteImage(file, folder) {
+    if (!file) {
+        return null;
+    }
+
+    if (!configureCloudinary()) {
+        const err = new Error('Cloudinary is not configured.');
+        err.statusCode = 500;
+        throw err;
+    }
+
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            {
+                folder: `toothconnect/website/${folder}`,
+                resource_type: 'image',
+            },
+            (error, result) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+
+                resolve({
+                    url: result.secure_url,
+                    publicId: result.public_id,
+                });
+            }
+        );
+
+        stream.end(file.buffer);
+    });
 }
 
 async function uploadWebsiteServiceImage(file, folder) {
@@ -84,51 +118,6 @@ async function uploadWebsiteServiceImage(file, folder) {
     stream.end(file.buffer);
   });
 }
-
-// Path to the main uploads folder.
-const uploadDir = path.join(__dirname, "../../uploads");
-
-// Create the uploads folder if it does not exist.
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Path to the team images folder.
-const teamDir = path.join(__dirname, "../../uploads/team");
-
-// Create the team folder if it does not exist.
-if (!fs.existsSync(teamDir)) {
-    fs.mkdirSync(teamDir, { recursive: true });
-}
-
-// Configure Multer storage settings.
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        let folder = uploadDir;
-
-        if (file.fieldname === "before_image") {
-            folder = path.join(uploadDir, "treatment", "before");
-        }
-
-        if (file.fieldname === "after_image") {
-            folder = path.join(uploadDir, "treatment", "after");
-        }
-
-        if (file.fieldname === "image_path") {
-            folder = path.join(uploadDir, "services");
-        }
-
-        fs.mkdirSync(folder, { recursive: true });
-
-        cb(null, folder);
-    },
-
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}${path.extname(file.originalname)}`);
-    },
-});
-
-const upload = multer({ storage });
 
 // Save a new appointment booking from the website.
 router.post("/saveAppointment", async (req, res) => {
@@ -1009,7 +998,7 @@ router.get("/website-services/all", authenticate, requireRole("admin"),
 
 // Create a new website service.
 router.post('/website-services', authenticate, requireRole('admin'),
-  websiteServiceUpload.fields([
+  websiteUpload.fields([
     { name: 'image_path', maxCount: 1 },
     { name: 'before_image', maxCount: 1 },
     { name: 'after_image', maxCount: 1 },
@@ -1071,7 +1060,7 @@ router.post('/website-services', authenticate, requireRole('admin'),
 
 // Update an existing website service.
 router.put('/website-services/:id', authenticate, requireRole('admin'),
-  websiteServiceUpload.fields([
+  websiteUpload.fields([
     { name: 'image_path', maxCount: 1 },
     { name: 'before_image', maxCount: 1 },
     { name: 'after_image', maxCount: 1 },
@@ -1380,83 +1369,92 @@ router.delete("/announcements/:id", authenticate, requireRole("admin"),
 );
 
 // Upload the website logo.
-router.post("/upload-logo", authenticate, requireRole("admin"), upload.single("logo"),
-    (req, res) => {
-        // Check if a logo file was uploaded.
-        if (!req.file) {
-            return res.status(400).json({
-                message: "No logo uploaded.",
+router.post("/upload-logo", authenticate, requireRole("admin"), websiteUpload.single("logo"),
+    async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({
+                    message: "No logo uploaded.",
+                });
+            }
+
+            const uploaded = await uploadWebsiteImage(
+                req.file,
+                "logo"
+            );
+
+            return res.json({
+                path: uploaded.url,
+                url: uploaded.url,
+                publicId: uploaded.publicId,
+            });
+        } catch (error) {
+            console.error("Upload logo error:", error);
+
+            return res.status(error.statusCode || 500).json({
+                message: error.message || "Failed to upload logo.",
             });
         }
-
-        // Return the uploaded file path.
-        res.json({
-            path: `/uploads/${req.file.filename}`,
-        });
     }
 );
 
 // Upload the homepage hero image.
-router.post("/upload-hero-image", authenticate, requireRole("admin"), upload.single("heroImage"),
-    (req, res) => {
-        // Check if a hero image was uploaded.
-        if (!req.file) {
-            return res.status(400).json({
-                message: "No hero image uploaded.",
+router.post("/upload-hero-image", authenticate, requireRole("admin"), websiteUpload.single("heroImage"),
+    async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({
+                    message: "No hero image uploaded.",
+                });
+            }
+
+            const uploaded = await uploadWebsiteImage(
+                req.file,
+                "hero"
+            );
+
+            return res.json({
+                path: uploaded.url,
+                url: uploaded.url,
+                publicId: uploaded.publicId,
+            });
+        } catch (error) {
+            console.error("Upload hero image error:", error);
+
+            return res.status(error.statusCode || 500).json({
+                message: error.message || "Failed to upload hero image.",
             });
         }
-
-        // Return the uploaded file path.
-        res.json({
-            path: `/uploads/${req.file.filename}`,
-        });
     }
 );
 
-// Create the team image folder if it does not exist.
-if (!fs.existsSync(teamDir)) {
-    fs.mkdirSync(teamDir, {
-        recursive: true,
-    });
-}
-
-// Configure Multer storage for team member images.
-const teamStorage = multer.diskStorage({
-    // Save uploaded files inside the team folder.
-    destination(req, file, cb) {
-        cb(null, teamDir);
-    },
-
-    // Generate a unique filename.
-    filename(req, file, cb) {
-        const ext = path.extname(file.originalname);
-
-        cb(
-            null,
-            `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
-        );
-    },
-});
-
-// Create the upload middleware for team images.
-const uploadTeam = multer({
-    storage: teamStorage,
-});
-
 // Upload a team member image.
-router.post("/upload-team-image", authenticate, requireRole("admin"),  uploadTeam.single("image"),
-    (req, res) => {
-        // Check if an image was uploaded.
-        if (!req.file) {
-            return res.status(400).json({
-                message: "No image uploaded.",
+router.post("/upload-team-image", authenticate, requireRole("admin"), websiteUpload.single("image"),
+    async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({
+                    message: "No image uploaded.",
+                });
+            }
+
+            const uploaded = await uploadWebsiteImage(
+                req.file,
+                "team"
+            );
+
+            return res.json({
+                path: uploaded.url,
+                url: uploaded.url,
+                publicId: uploaded.publicId,
+            });
+        } catch (error) {
+            console.error("Upload team image error:", error);
+
+            return res.status(error.statusCode || 500).json({
+                message: error.message || "Failed to upload team image.",
             });
         }
-
-        // Return the uploaded image path.
-        res.json({
-            path: `/uploads/team/${req.file.filename}`,
-        });
     }
 );
 
