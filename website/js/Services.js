@@ -111,8 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return "";
         }
 
-        const separator = url.includes("?") ? "&" : "?";
-        return url + separator + "_cb=" + Date.now();
+        return url;
     }
 
     function buildImage(value) {

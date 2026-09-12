@@ -270,6 +270,10 @@ function setText(id, value) {
 function setImage(id, value, alt = "") {
     const element = document.getElementById(id);
     if (!element) return;
+
+    element.loading = "lazy";
+    element.decoding = "async";
+
     if (value) {
         if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("blob:")) {
             element.src = value;

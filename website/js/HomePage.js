@@ -127,6 +127,9 @@ function loadWebsiteContent() {
             const websiteLogo = document.getElementById("website-logo");
 
             if (websiteLogo) {
+                websiteLogo.decoding = "async";
+                websiteLogo.fetchPriority = "high";
+
                 if (c.website_logo_path) {
                     websiteLogo.src = c.website_logo_path.startsWith("http")
                         ? c.website_logo_path
@@ -245,6 +248,9 @@ function loadWebsiteContent() {
             const heroImage = document.getElementById("hero-dentist-image");
 
             if (heroImage) {
+                heroImage.decoding = "async";
+                heroImage.fetchPriority = "high";
+
                 if (c.hero_dentist_image) {
                     heroImage.src = c.hero_dentist_image.startsWith("http")
                         ? c.hero_dentist_image
@@ -476,7 +482,7 @@ function loadWebsiteServices() {
 
                 return `
                     <div class="service-card${i < 3 ? " show" : ""}${i === 2 ? " active" : ""}" data-modal="${modalId}">
-                        <img src="${escapeHtml(buildImage(svc.image_path))}" alt="${escapeHtml(svc.name)}" loading="lazy">
+                        <img src="${escapeHtml(buildImage(svc.image_path))}" alt="${escapeHtml(svc.name)}" loading="lazy" decoding="async" width="390" height="520">
                         <span>${escapeHtml(svc.name)}</span>
                     </div>
                 `;
@@ -500,6 +506,9 @@ function loadWebsiteServices() {
                                     src="${escapeHtml(buildImage(svc.image_path))}"
                                     alt="${escapeHtml(svc.name)}"
                                     loading="lazy"
+                                    decoding="async"
+                                    width="620"
+                                    height="290"
                                 >
                             </div>
 
@@ -542,21 +551,21 @@ function buildImage(imagePath) {
     if (!imagePath) return "";
 
     if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-        return `${imagePath}?v=${Date.now()}`;
+        return imagePath;
     }
 
     if (imagePath.startsWith("/uploads/")) {
-        return `${API_BASE_URL}${imagePath}?v=${Date.now()}`;
+        return `${API_BASE_URL}${imagePath}`;
     }
 
     if (imagePath.startsWith("./images/") || imagePath.startsWith("/images/")) {
         const fileName = imagePath
             .replace(/^\.?\/images\//, "");
 
-        return `${API_BASE_URL}/uploads/services/${fileName}?v=${Date.now()}`;
+        return `${API_BASE_URL}/uploads/services/${fileName}`;
     }
 
-    return `${API_BASE_URL}/${imagePath.replace(/^\/+/, "")}?v=${Date.now()}`;
+    return `${API_BASE_URL}/${imagePath.replace(/^\/+/, "")}`;
 }
 
 function rewireServiceCarousel() {

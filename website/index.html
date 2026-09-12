@@ -14,7 +14,7 @@
 <header class="header" id="header">
 	<a href="#home" class="logo-box">
         <div class="brand-mark">
-            <img id="website-logo" alt="Clinic Logo" loading="lazy">
+            <img id="website-logo" alt="Clinic Logo" width="70" height="70" decoding="async" fetchpriority="high">
         </div>
 	
 	    <div class="logo-text">
@@ -79,6 +79,10 @@
             <img
                 id="hero-dentist-image"
                 alt="Featured Dentist"
+                width="500"
+                height="560"
+                decoding="async"
+                fetchpriority="high"
             >
         </div>
 
@@ -155,7 +159,14 @@
 <section class="benefits">
     <div class="benefit-img">
         <div class="benefit-bg"></div>
-        <img src="./images/DocTwinky.jpg" alt="Smile Empress Dental Hub">
+        <img
+            src="./images/DocTwinky.jpg"
+            alt="Smile Empress Dental Hub"
+            width="560"
+            height="747"
+            loading="lazy"
+            decoding="async"
+            sizes="(max-width: 768px) 90vw, 560px">
 
         <div class="benefit-floating-card">
             <i class="fa-solid fa-heart-pulse"></i>
@@ -266,12 +277,23 @@
         <img
             class="main-image"
             src="./images/dental-clinic.jpg"
-            alt="Smile Empress Dental Hub">
+            alt="Smile Empress Dental Hub"
+            width="720"
+            height="960"
+            loading="lazy"
+            decoding="async"
+            sizes="(max-width: 768px) 90vw, 44vw">
 
         <img
             class="floating-image"
-            src="./images/about-dentist.jpg"
-            alt="Dentist">
+            src="./images/about-dentist-720.jpg"
+            srcset="./images/about-dentist-720.jpg 720w, ./images/about-dentist.jpg 1296w"
+            alt="Dentist"
+            width="720"
+            height="1031"
+            loading="lazy"
+            decoding="async"
+            sizes="(max-width: 768px) 90vw, 420px">
 
         <div class="experience-card">
             <div class="experience-number">

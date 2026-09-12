@@ -82,7 +82,17 @@ app.use(cookieParser());
 //FOR WEBSITE
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/website', express.static(path.join(__dirname, 'website')));
+const cacheableAssetPattern = /\.(?:avif|gif|ico|jpe?g|png|svg|webp)$/i;
+
+function setStaticAssetCacheHeaders(res, filePath) {
+  if (cacheableAssetPattern.test(filePath)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+}
+
+app.use('/website', express.static(path.join(__dirname, '..', 'website'), {
+  setHeaders: setStaticAssetCacheHeaders,
+}));
 
 app.use('/api/website', websiteRoutes);
 
@@ -101,7 +111,9 @@ app.use('/api/auth/forgot-password', passwordResetLimiter);
 app.use('/api/auth/reset-password', passwordResetLimiter);
 app.use('/api/auth', authRoutes);
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+  setHeaders: setStaticAssetCacheHeaders,
+}));
 
 const appointmentRoutes = require('./src/routes/appointments');
 app.use('/api/appointments', appointmentRoutes);
