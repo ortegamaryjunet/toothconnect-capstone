@@ -33,6 +33,17 @@ const API_BASE_URL = (() => {
     }
 })();
 
+const PHONE_LIBRARY_URL = "https://cdn.jsdelivr.net/npm/libphonenumber-js@1.12.11/bundle/libphonenumber-max.js";
+
+function scheduleIdleWork(callback, timeout = 1200) {
+    if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(callback, { timeout });
+        return;
+    }
+
+    window.setTimeout(callback, timeout);
+}
+
 // ── CMS helpers ───────────────────────────────────────────────────────────────
 function setText(id, value) {
     var el = document.getElementById(id);
@@ -764,10 +775,13 @@ function escapeHtml(str) {
 
 document.addEventListener("DOMContentLoaded", function () {
     loadWebsiteContent();
-    loadWebsiteFaqs();
-    loadWebsiteServices();
-    loadWebsiteAnnouncements();
-
+    window.addEventListener("load", function () {
+        scheduleIdleWork(function () {
+            loadWebsiteFaqs();
+            loadWebsiteServices();
+            loadWebsiteAnnouncements();
+        });
+    }, { once: true });
 
     const header = document.getElementById("header");
     const menuBtn = document.getElementById("menuBtn");
@@ -794,8 +808,71 @@ document.addEventListener("DOMContentLoaded", function () {
     const stepCloseButtons = document.querySelectorAll(".step-modal-close");
 
     const phoneCountry = document.getElementById("phoneCountry");
-    const phoneLib = window.libphonenumber;
+    let phoneLibraryRequested = false;
 
+    function populatePhoneCountries() {
+        if (!phoneCountry) {
+            return;
+        }
+
+        const phoneLib = window.libphonenumber;
+
+        phoneCountry.innerHTML = "";
+
+        if (phoneLib?.getCountries) {
+            phoneLib.getCountries().forEach((country) => {
+                const option = document.createElement("option");
+
+                option.value = country;
+                option.textContent =
+                    `${country} +${phoneLib.getCountryCallingCode(country)}`;
+
+                if (country === "PH") {
+                    option.selected = true;
+                }
+
+                phoneCountry.appendChild(option);
+            });
+
+            return;
+        }
+
+        const option = document.createElement("option");
+
+        option.value = "PH";
+        option.textContent = "PH +63";
+        option.selected = true;
+        phoneCountry.appendChild(option);
+    }
+
+    function loadPhoneLibrary() {
+        if (phoneLibraryRequested || window.libphonenumber) {
+            populatePhoneCountries();
+            return;
+        }
+
+        phoneLibraryRequested = true;
+
+        const script = document.createElement("script");
+
+        script.src = PHONE_LIBRARY_URL;
+        script.async = true;
+        script.onload = populatePhoneCountries;
+
+        document.head.appendChild(script);
+    }
+
+    populatePhoneCountries();
+
+    window.addEventListener("load", function () {
+        scheduleIdleWork(loadPhoneLibrary, 1800);
+    }, { once: true });
+
+    if (phoneCountry) {
+        phoneCountry.addEventListener("focus", loadPhoneLibrary, { once: true });
+    }
+
+    /*
     if (phoneCountry && phoneLib?.getCountries) {
         phoneLib.getCountries().forEach((country) => {
             const option = document.createElement("option");
@@ -817,6 +894,7 @@ document.addEventListener("DOMContentLoaded", function () {
         option.selected = true;
         phoneCountry.appendChild(option);
     }
+    */
 
     function showMessage(title, text, type = "error") {
         if (!messageModal || !messageTitle || !messageText || !messageIcon) {
@@ -966,6 +1044,8 @@ function validateEmail() {
 }
 
 function parsePhoneNumber(value, country) {
+    const phoneLib = window.libphonenumber;
+
     if (phoneLib?.parsePhoneNumberFromString) {
         return phoneLib.parsePhoneNumberFromString(value, country);
     }
