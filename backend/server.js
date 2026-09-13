@@ -43,6 +43,10 @@ const securityHeaders = {
 };
 
 app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=2592000');
+  }
+
   Object.entries(securityHeaders).forEach(([key, value]) => {
     res.setHeader(key, value);
   });
