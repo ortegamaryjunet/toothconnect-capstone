@@ -529,7 +529,7 @@ function loadWebsiteServices() {
                                 href="./Services.html?service=${encodeURIComponent(svc.slug || "")}"
                                 class="quote-btn"
                             >
-                                Read More
+                                Read more about ${escapeHtml(svc.name)}
                             </a>
 
                         </div>
