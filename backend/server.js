@@ -28,7 +28,7 @@ const securityHeaders = {
     "object-src 'none'",
     "frame-ancestors 'self'",
     "form-action 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
+    "script-src 'self' https://cdn.jsdelivr.net https://unpkg.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn-uicons.flaticon.com",
     "font-src 'self' data: https://fonts.gstatic.com https://cdn-uicons.flaticon.com",
     "img-src 'self' data: blob: https://api.smileempressdentalhub.com https://res.cloudinary.com",
