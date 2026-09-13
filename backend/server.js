@@ -29,7 +29,7 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com", "data:"],
         imgSrc: ["'self'", "data:", "blob:", "https://api.smileempressdentalhub.com", "https://res.cloudinary.com"],
         connectSrc: ["'self'", "https://api.smileempressdentalhub.com", "https://api.cloudinary.com", "https://res.cloudinary.com"],
         frameSrc: ["'self'", "https://api.smileempressdentalhub.com", "https://www.google.com"],
@@ -70,7 +70,16 @@ const allowedOrigins = [
   ...(process.env.WEB_ORIGIN      || '').split(','),
   ...(process.env.WEBSITE_ORIGIN  || '').split(','),
   ...(process.env.WEBSITE_ORIGIN_2|| '').split(','),
-].map(s => s.trim()).filter(Boolean);
+].map(normalizeOrigin).filter(Boolean);
+
+function normalizeOrigin(origin) {
+  try {
+    const url = new URL(String(origin || '').trim());
+    return url.origin;
+  } catch {
+    return '';
+  }
+}
 
 function originHostname(origin) {
   try {
@@ -114,7 +123,8 @@ app.use(cors({
       }
     }
 
-    if (allowedOrigins.some(allowed => origin.startsWith(allowed) || isEquivalentLocalhost(origin, allowed))) {
+    const requestOrigin = normalizeOrigin(origin);
+    if (allowedOrigins.some(allowed => requestOrigin === allowed || isEquivalentLocalhost(requestOrigin, allowed))) {
       return callback(null, true);
     }
     callback(new Error('CORS not allowed for this origin'));
