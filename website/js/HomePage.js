@@ -283,7 +283,11 @@ function loadWebsiteContent() {
                 heroImage.fetchPriority = "high";
 
                 if (c.hero_dentist_image) {
-                    heroImage.src = buildContentImage(c.hero_dentist_image, 500);
+                    const heroImageSrc = buildContentImage(c.hero_dentist_image, 500);
+
+                    if (heroImageSrc && heroImage.currentSrc !== heroImageSrc && heroImage.src !== heroImageSrc) {
+                        heroImage.src = heroImageSrc;
+                    }
                 }
 
                 heroImage.style.objectFit = c.hero_dentist_image_fit || "contain";

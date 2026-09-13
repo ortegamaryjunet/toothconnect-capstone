@@ -29,7 +29,7 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com", "data:"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         imgSrc: ["'self'", "data:", "blob:", "https://api.smileempressdentalhub.com", "https://res.cloudinary.com"],
         connectSrc: ["'self'", "https://api.smileempressdentalhub.com", "https://api.cloudinary.com", "https://res.cloudinary.com"],
         frameSrc: ["'self'", "https://api.smileempressdentalhub.com", "https://www.google.com"],
@@ -137,7 +137,7 @@ app.use(cookieParser());
 //FOR WEBSITE
 app.use(express.urlencoded({ extended: true }));
 
-const cacheableAssetPattern = /\.(?:avif|gif|ico|jpe?g|png|svg|webp)$/i;
+const cacheableAssetPattern = /\.(?:avif|gif|ico|jpe?g|png|svg|webp|woff2?)$/i;
 
 function setStaticAssetCacheHeaders(res, filePath) {
   if (cacheableAssetPattern.test(filePath)) {
