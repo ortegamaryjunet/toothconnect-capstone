@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const multer = require("multer");
 const fs = require("fs");
+const helmet = require("helmet");
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 console.log(
@@ -20,6 +21,50 @@ const websiteRoutes = require('./src/routes/websiteRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
+        connectSrc: ["'self'", "https://api.cloudinary.com", "https://res.cloudinary.com"],
+        frameSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"]
+      }
+    },
+    frameguard: {
+      action: "deny"
+    },
+    referrerPolicy: {
+      policy: "strict-origin-when-cross-origin"
+    }
+  })
+);
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=()"
+  );
+  next();
+});
+
+app.use((req, res, next) => {
+  if (req.secure) {
+    res.setHeader(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains"
+    );
+  }
+  next();
+});
 
 const allowedOrigins = [
   ...(process.env.WEB_ORIGIN      || '').split(','),
