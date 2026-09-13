@@ -1097,10 +1097,11 @@ async function issueTokens(user, platform, userAgent) {
 
 function setRefreshCookie(res, token) {
   const maxAge = parseInt(process.env.JWT_REFRESH_WEB_IDLE_MIN, 10) * 60 * 1000;
+  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('refresh_token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge,
     path: '/api/auth',
   });

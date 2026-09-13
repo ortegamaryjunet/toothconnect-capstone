@@ -1,7 +1,39 @@
 import axios from 'axios';
 
+const PRODUCTION_API_URL = 'https://api.smileempressdentalhub.com/api';
+const LOCAL_API_URL = 'http://localhost:4000/api';
+
+function resolveApiBaseURL() {
+  const configuredUrl = import.meta.env.VITE_API_URL;
+
+  if (typeof window === 'undefined') {
+    return configuredUrl || PRODUCTION_API_URL;
+  }
+
+  const hostname = String(window.location.hostname || '').toLowerCase();
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+
+  if (!configuredUrl) {
+    return isLocalhost ? LOCAL_API_URL : PRODUCTION_API_URL;
+  }
+
+  const configuredHostname = (() => {
+    try {
+      return new URL(configuredUrl).hostname.toLowerCase();
+    } catch {
+      return '';
+    }
+  })();
+
+  if (!isLocalhost && (configuredHostname === 'localhost' || configuredHostname === '127.0.0.1')) {
+    return PRODUCTION_API_URL;
+  }
+
+  return configuredUrl;
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: resolveApiBaseURL(),
   withCredentials: true,
 });
 

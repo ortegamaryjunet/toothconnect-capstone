@@ -27,12 +27,12 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-        imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
-        connectSrc: ["'self'", "https://api.cloudinary.com", "https://res.cloudinary.com"],
-        frameSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "blob:", "https://api.smileempressdentalhub.com", "https://res.cloudinary.com"],
+        connectSrc: ["'self'", "https://api.smileempressdentalhub.com", "https://api.cloudinary.com", "https://res.cloudinary.com"],
+        frameSrc: ["'self'", "https://api.smileempressdentalhub.com", "https://www.google.com"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
