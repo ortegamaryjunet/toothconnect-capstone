@@ -4,7 +4,6 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const multer = require("multer");
 const fs = require("fs");
-const helmet = require("helmet");
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 console.log(
@@ -22,64 +21,11 @@ const websiteRoutes = require('./src/routes/websiteRoutes');
 const app = express();
 app.set('trust proxy', 1);
 
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-        imgSrc: ["'self'", "data:", "blob:", "https://api.smileempressdentalhub.com", "https://res.cloudinary.com"],
-        connectSrc: ["'self'", "https://api.smileempressdentalhub.com", "https://api.cloudinary.com", "https://res.cloudinary.com"],
-        frameSrc: ["'self'", "https://api.smileempressdentalhub.com", "https://www.google.com"],
-        objectSrc: ["'none'"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"],
-        frameAncestors: ["'none'"]
-      }
-    },
-    frameguard: {
-      action: "deny"
-    },
-    referrerPolicy: {
-      policy: "strict-origin-when-cross-origin"
-    }
-  })
-);
-
-app.use((req, res, next) => {
-  res.setHeader(
-    "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=()"
-  );
-  next();
-});
-
-app.use((req, res, next) => {
-  if (req.secure) {
-    res.setHeader(
-      "Strict-Transport-Security",
-      "max-age=31536000; includeSubDomains"
-    );
-  }
-  next();
-});
-
 const allowedOrigins = [
   ...(process.env.WEB_ORIGIN      || '').split(','),
   ...(process.env.WEBSITE_ORIGIN  || '').split(','),
   ...(process.env.WEBSITE_ORIGIN_2|| '').split(','),
-].map(normalizeOrigin).filter(Boolean);
-
-function normalizeOrigin(origin) {
-  try {
-    const url = new URL(String(origin || '').trim());
-    return url.origin;
-  } catch {
-    return '';
-  }
-}
+].map(s => s.trim()).filter(Boolean);
 
 function originHostname(origin) {
   try {
@@ -123,8 +69,7 @@ app.use(cors({
       }
     }
 
-    const requestOrigin = normalizeOrigin(origin);
-    if (allowedOrigins.some(allowed => requestOrigin === allowed || isEquivalentLocalhost(requestOrigin, allowed))) {
+    if (allowedOrigins.some(allowed => origin.startsWith(allowed) || isEquivalentLocalhost(origin, allowed))) {
       return callback(null, true);
     }
     callback(new Error('CORS not allowed for this origin'));
@@ -137,7 +82,7 @@ app.use(cookieParser());
 //FOR WEBSITE
 app.use(express.urlencoded({ extended: true }));
 
-const cacheableAssetPattern = /\.(?:avif|gif|ico|jpe?g|png|svg|webp|woff2?)$/i;
+const cacheableAssetPattern = /\.(?:avif|gif|ico|jpe?g|png|svg|webp)$/i;
 
 function setStaticAssetCacheHeaders(res, filePath) {
   if (cacheableAssetPattern.test(filePath)) {

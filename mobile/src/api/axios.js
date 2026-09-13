@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import logger from '../utils/logger';
 
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://api.smileempressdentalhub.com/api').replace(/[\\/]+$/, '');
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || '').replace(/[\\/]+$/, '');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
