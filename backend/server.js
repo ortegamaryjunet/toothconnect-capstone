@@ -21,6 +21,34 @@ const websiteRoutes = require('./src/routes/websiteRoutes');
 const app = express();
 app.set('trust proxy', 1);
 
+const securityHeaders = {
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'self'",
+    "form-action 'self'",
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn-uicons.flaticon.com",
+    "font-src 'self' data: https://fonts.gstatic.com https://cdn-uicons.flaticon.com",
+    "img-src 'self' data: blob: https://api.smileempressdentalhub.com https://res.cloudinary.com",
+    "connect-src 'self' https://api.smileempressdentalhub.com",
+    "frame-src 'self' https://www.google.com https://maps.google.com",
+    "media-src 'self' data: blob:",
+  ].join('; '),
+  'X-Frame-Options': 'SAMEORIGIN',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+};
+
+app.use((req, res, next) => {
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    res.setHeader(key, value);
+  });
+  next();
+});
+
 const allowedOrigins = [
   ...(process.env.WEB_ORIGIN      || '').split(','),
   ...(process.env.WEBSITE_ORIGIN  || '').split(','),
