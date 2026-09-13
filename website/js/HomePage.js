@@ -68,9 +68,31 @@ function setImage(id, value) {
         return;
     }
 
-    el.src = value.startsWith("http")
+    el.src = buildContentImage(value);
+}
+
+function optimizeCloudinaryImage(url, width) {
+    if (!url || !url.includes("res.cloudinary.com") || !url.includes("/image/upload/v")) {
+        return url;
+    }
+
+    const transforms = ["f_auto", "q_auto"];
+
+    if (width) {
+        transforms.unshift(`w_${width}`);
+    }
+
+    return url.replace("/image/upload/", `/image/upload/${transforms.join(",")}/`);
+}
+
+function buildContentImage(value, width) {
+    if (!value) return "";
+
+    const url = value.startsWith("http")
         ? value
         : API_BASE_URL + value;
+
+    return optimizeCloudinaryImage(url, width);
 }
 
 function applyTextDesign(id, prefix, c) {
@@ -142,9 +164,7 @@ function loadWebsiteContent() {
                 websiteLogo.fetchPriority = "high";
 
                 if (c.website_logo_path) {
-                    websiteLogo.src = c.website_logo_path.startsWith("http")
-                        ? c.website_logo_path
-                        : API_BASE_URL + c.website_logo_path;
+                    websiteLogo.src = buildContentImage(c.website_logo_path, 140);
                 } else {
                     websiteLogo.removeAttribute("src");
                 }
@@ -263,9 +283,7 @@ function loadWebsiteContent() {
                 heroImage.fetchPriority = "high";
 
                 if (c.hero_dentist_image) {
-                    heroImage.src = c.hero_dentist_image.startsWith("http")
-                        ? c.hero_dentist_image
-                        : API_BASE_URL + c.hero_dentist_image;
+                    heroImage.src = buildContentImage(c.hero_dentist_image, 500);
                 }
 
                 heroImage.style.objectFit = c.hero_dentist_image_fit || "contain";
