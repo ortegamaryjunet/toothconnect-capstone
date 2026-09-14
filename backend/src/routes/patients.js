@@ -871,6 +871,30 @@ router.get('/:patientId/profile', requireRole('dentist', 'admin', 'receptionist'
   }
 
   try {
+    if (role === 'admin') {
+      const profile = await getPatientProfile(patientId);
+      if (!profile) return res.status(404).json({ message: 'Patient not found' });
+
+      const [appointmentRows] = await pool.query(
+        `SELECT
+           COUNT(a.id) AS total_appointments,
+           MAX(a.start_time) AS last_visit
+         FROM appointments a
+         WHERE a.patient_id = ?`,
+        [patientId]
+      );
+
+      const appointmentSummary = appointmentRows[0] || {};
+
+      return res.json({
+        profile: {
+          ...profile,
+          total_appointments: Number(appointmentSummary.total_appointments || 0),
+          last_visit: appointmentSummary.last_visit || null,
+        },
+      });
+    }
+
     const params = [patientId];
     let accessCondition = '';
 

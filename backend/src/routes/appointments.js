@@ -292,6 +292,7 @@ async function validateExplicitDentistAssignment(conn, {
   treatmentEnd,
   blockedEnd,
   clinicDateKey,
+  excludeAppointmentId = null,
 }) {
   const [offers] = await conn.query(
     `SELECT 1
@@ -331,6 +332,17 @@ async function validateExplicitDentistAssignment(conn, {
     });
   }
 
+  const conflictParams = [
+    dentistId,
+    toMySQLDateTime(blockedEnd),
+    APPOINTMENT_BUFFER_MINUTES,
+    toMySQLDateTime(start),
+  ];
+  const excludeConflictSql = excludeAppointmentId ? 'AND a.id <> ?' : '';
+  if (excludeAppointmentId) {
+    conflictParams.push(excludeAppointmentId);
+  }
+
   const [conflicts] = await conn.query(
     `SELECT a.id
      FROM appointments a
@@ -339,8 +351,9 @@ async function validateExplicitDentistAssignment(conn, {
        AND a.status IN ('scheduled','arrived')
        AND a.start_time < ?
        AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(s.time_buffer_min, ?), a.start_time) > ?
-     LIMIT 1`,
-    [dentistId, toMySQLDateTime(blockedEnd), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(start)]
+       ${excludeConflictSql}
+      LIMIT 1`,
+    conflictParams
   );
   if (conflicts.length > 0) {
     throw httpError(409, 'This dentist already has an appointment at that time');
@@ -990,6 +1003,9 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
   let isReschedule = false;
   let assignedDentistId = Number(dentist_id) || null;
   let committed = false;
+  const rescheduleId = reschedule_appointment_id
+    ? parseInt(reschedule_appointment_id, 10)
+    : null;
 
   try {
     conn = await pool.getConnection();
@@ -1045,6 +1061,17 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
 
     // Branch-wide rule: block overlapping windows across the branch.
     // This blocks the slot span for all dentists at that branch.
+    const branchConflictParams = [
+      effectiveBranchId,
+      toMySQLDateTime(blockedEnd),
+      APPOINTMENT_BUFFER_MINUTES,
+      toMySQLDateTime(start),
+    ];
+    const excludeBranchConflictSql = rescheduleId ? 'AND a.id <> ?' : '';
+    if (rescheduleId) {
+      branchConflictParams.push(rescheduleId);
+    }
+
     const [branchSlotConflicts] = await conn.query(
       `SELECT a.id
        FROM appointments a
@@ -1053,8 +1080,9 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
          AND a.status IN ('scheduled','arrived')
          AND a.start_time < ?
          AND TIMESTAMPADD(MINUTE, a.duration_min + COALESCE(s.time_buffer_min, ?), a.start_time) > ?
+         ${excludeBranchConflictSql}
        LIMIT 1`,
-      [effectiveBranchId, toMySQLDateTime(blockedEnd), APPOINTMENT_BUFFER_MINUTES, toMySQLDateTime(start)]
+      branchConflictParams
     );
     if (branchSlotConflicts.length > 0) {
       throw httpError(409, 'This time slot is already taken at this branch');
@@ -1078,6 +1106,7 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
         treatmentEnd,
         blockedEnd,
         clinicDateKey,
+        excludeAppointmentId: rescheduleId,
       });
     }
 
@@ -1087,7 +1116,6 @@ router.post('/', requireRole('receptionist', 'admin', 'patient'), async (req, re
     if (reschedule_appointment_id) {
       const normalizedRescheduleReason =
         typeof reschedule_reason === 'string' ? reschedule_reason.trim() : '';
-      const rescheduleId = parseInt(reschedule_appointment_id, 10);
       const [oldRows] = await conn.query(
         'SELECT * FROM appointments WHERE id = ? AND status = ?',
         [rescheduleId, 'scheduled']

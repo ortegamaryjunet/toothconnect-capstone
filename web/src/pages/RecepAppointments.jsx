@@ -4,7 +4,6 @@ import { useAuth } from '../auth/AuthContext';
 import {
   cancelAppointment as cancelAppointmentRequest,
   getAppointmentMeta,
-  getDentistBusySlots,
   listAppointments,
   createAppointment,
   setAppointmentStatus,
@@ -325,25 +324,17 @@ export default function RecepAppointments() {
         );
         const bounds = dayBoundsUTC(rescheduleModal.selectedDate);
 
-        const [dayAppointmentsRaw, dentistBusyMeta] = await Promise.all([
-          listAppointments({
-            from: bounds.fromUTC,
-            to: bounds.toUTC,
-            ...(rescheduleModal.appointment.branchId
-              ? { branch_id: Number(rescheduleModal.appointment.branchId) }
-              : {}),
-          }),
-          rescheduleModal.appointment.dentistId
-            ? getDentistBusySlots(rescheduleModal.appointment.dentistId, rescheduleModal.selectedDate)
-            : Promise.resolve({ appointments: [], on_leave: false, leave: null }),
-        ]);
+        const branchId = recepBranchId || rescheduleModal.appointment.branchId;
+        const dayAppointmentsRaw = await listAppointments({
+          from: bounds.fromUTC,
+          to: bounds.toUTC,
+          ...(branchId ? { branch_id: Number(branchId) } : {}),
+        });
 
         if (cancelled) return;
 
-        const combined = [
-          ...(Array.isArray(dentistBusyMeta?.appointments) ? dentistBusyMeta.appointments : []),
-          ...(Array.isArray(dayAppointmentsRaw) ? dayAppointmentsRaw : []),
-        ].filter((a) => String(a?.id) !== String(rescheduleModal.appointment.id));
+        const combined = (Array.isArray(dayAppointmentsRaw) ? dayAppointmentsRaw : [])
+          .filter((a) => String(a?.id) !== String(rescheduleModal.appointment.id));
 
         const slots = computeAvailableSlotsForSchedule({
           appointments: combined,
@@ -355,8 +346,8 @@ export default function RecepAppointments() {
         setRescheduleModal((current) => ({
           ...current,
           availableSlots: slots,
-          dentistOnLeave: !!dentistBusyMeta?.on_leave,
-          dentistLeaveInfo: dentistBusyMeta?.leave || null,
+          dentistOnLeave: false,
+          dentistLeaveInfo: null,
           loadingSlots: false,
           selectedTime: slots.some((s) => s.value === current.selectedTime) ? current.selectedTime : '',
         }));
@@ -377,7 +368,7 @@ export default function RecepAppointments() {
     return () => {
       cancelled = true;
     };
-  }, [rescheduleModal.show, rescheduleModal.appointment, rescheduleModal.selectedDate, treatmentOptions]);
+  }, [rescheduleModal.show, rescheduleModal.appointment, rescheduleModal.selectedDate, treatmentOptions, recepBranchId]);
 
 
   const filteredPending = useMemo(() => {
@@ -949,7 +940,9 @@ export default function RecepAppointments() {
       return;
     }
 
-    if (!rescheduleModal.appointment.patientId || !rescheduleModal.appointment.branchId) {
+    const rescheduleBranchId = recepBranchId || rescheduleModal.appointment.branchId;
+
+    if (!rescheduleModal.appointment.patientId || !rescheduleBranchId) {
       setRescheduleError('Unable to reschedule: missing patient or branch details.');
       return;
     }
@@ -1006,9 +999,10 @@ export default function RecepAppointments() {
         newTime: formatTimePickerValue(rescheduleModal.selectedTime),
         durationMinutes,
       });
+      const rescheduleBranchId = recepBranchId || rescheduleModal.appointment.branchId;
 
       await createAppointment({
-        branch_id: Number(rescheduleModal.appointment.branchId),
+        branch_id: Number(rescheduleBranchId),
         patient_id: Number(rescheduleModal.appointment.patientId),
         dentist_id: Number(rescheduleModal.appointment.dentistId),
         service_id: Number(rescheduleModal.appointment.serviceId),
