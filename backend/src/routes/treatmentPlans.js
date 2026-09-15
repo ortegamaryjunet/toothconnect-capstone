@@ -80,7 +80,7 @@ async function loadPlanForAccess(planId, user) {
     }
   }
 
-  if ((role === 'receptionist' || role === 'admin') && userBranches.length > 0) {
+  if (role === 'receptionist' && userBranches.length > 0) {
     const [check] = await pool.query(
       `SELECT 1 FROM appointments
        WHERE patient_id = ? AND branch_id IN (${userBranches.map(() => '?').join(',')})
@@ -139,7 +139,7 @@ router.get('/by-patient/:patientId', async (req, res) => {
       }
     }
 
-    if (role === 'receptionist' || role === 'admin') {
+    if (role === 'receptionist') {
       if (userBranches.length > 0) {
         const [check] = await pool.query(
           `SELECT 1 FROM appointments

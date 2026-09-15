@@ -804,7 +804,7 @@ router.get('/', async (req, res) => {
     } else if (role === 'dentist') {
       conditions.push('a.dentist_id = ?');
       params.push(userId);
-    } else if (role === 'receptionist' || role === 'admin') {
+    } else if (role === 'receptionist') {
       if (userBranches.length === 0) {
         return res.json({ appointments: [] });
       }
@@ -819,6 +819,9 @@ router.get('/', async (req, res) => {
         conditions.push('a.branch_id = ?');
         params.push(requestedBranch);
       }
+    } else if (role === 'admin' && branch_id) {
+      conditions.push('a.branch_id = ?');
+      params.push(parseInt(branch_id, 10));
     }
 
     if (from) {

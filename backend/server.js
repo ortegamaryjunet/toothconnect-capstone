@@ -6,10 +6,6 @@ const multer = require("multer");
 const fs = require("fs");
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-console.log(
-  `[email] Mode: ${process.env.MOCK_EMAIL === 'true' ? 'MOCK (console only)' : 'REAL (Resend)'}`
-);
-
 const pool = require('./src/config/db');
 const authRoutes = require('./src/routes/auth');
 const { authenticate, requireRole } = require('./src/middleware/auth');
