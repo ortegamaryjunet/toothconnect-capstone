@@ -1067,6 +1067,8 @@ export default function RecepAppointmentForm() {
 
                     <div style={styles.calendarDropdowns}>
                       <select
+                        id="recep-appointment-calendar-month"
+                        name="recepAppointmentCalendarMonth"
                         value={calendarMonth}
                         onChange={(event) =>
                           setCalendarMonth(Number(event.target.value))
@@ -1081,6 +1083,8 @@ export default function RecepAppointmentForm() {
                       </select>
 
                       <select
+                        id="recep-appointment-calendar-year"
+                        name="recepAppointmentCalendarYear"
                         value={calendarYear}
                         onChange={(event) =>
                           setCalendarYear(Number(event.target.value))

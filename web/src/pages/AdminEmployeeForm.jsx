@@ -466,15 +466,33 @@ function BirthdayFieldRaw({ type, prefix, birthdayParts, onPartChange, hasError 
       </label>
       <input type="hidden" name={`${prefix}Birthday`} value={birthdayValue} onChange={() => {}} />
       <div style={{ ...styles.timeGroup, ...(hasError ? { border: '2px solid #dc2626', borderRadius: 12, padding: '6px 8px' } : {}) }}>
-        <select value={month} onChange={(e) => onPartChange(type, 'month', e.target.value)} style={styles.input}>
+        <select
+          id={`${prefix}-birthday-month`}
+          name={`${prefix}BirthdayMonth`}
+          value={month}
+          onChange={(e) => onPartChange(type, 'month', e.target.value)}
+          style={styles.input}
+        >
           <option value="">Month</option>
           {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
-        <select value={day} onChange={(e) => onPartChange(type, 'day', e.target.value)} style={styles.input}>
+        <select
+          id={`${prefix}-birthday-day`}
+          name={`${prefix}BirthdayDay`}
+          value={day}
+          onChange={(e) => onPartChange(type, 'day', e.target.value)}
+          style={styles.input}
+        >
           <option value="">Day</option>
           {days.map((d) => <option key={d} value={d}>{parseInt(d, 10)}</option>)}
         </select>
-        <select value={year} onChange={(e) => onPartChange(type, 'year', e.target.value)} style={styles.input}>
+        <select
+          id={`${prefix}-birthday-year`}
+          name={`${prefix}BirthdayYear`}
+          value={year}
+          onChange={(e) => onPartChange(type, 'year', e.target.value)}
+          style={styles.input}
+        >
           <option value="">Year</option>
           {years.map((y) => <option key={y} value={String(y)}>{y}</option>)}
         </select>

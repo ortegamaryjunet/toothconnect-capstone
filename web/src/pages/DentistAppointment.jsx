@@ -1070,6 +1070,8 @@ export default function DentistAppointment() {
 
                 <div style={styles.calendarSelects}>
                   <select
+                    id="dentist-calendar-month"
+                    name="dentistCalendarMonth"
                     value={selectedMonth}
                     onChange={(event) => handleMonthChange(event.target.value)}
                     style={styles.calendarSelect}
@@ -1082,6 +1084,8 @@ export default function DentistAppointment() {
                   </select>
 
                   <select
+                    id="dentist-calendar-year"
+                    name="dentistCalendarYear"
                     value={selectedYear}
                     onChange={(event) => handleYearChange(event.target.value)}
                     style={styles.calendarSelect}

@@ -639,6 +639,8 @@ export default function AdminDashboard() {
 
                 <div style={styles.dateFilter}>
                   <select
+                    id="admin-patient-visit-month"
+                    name="adminPatientVisitMonth"
                     value={visitMonth}
                     onChange={(event) =>
                       setVisitMonth(Number(event.target.value))
@@ -660,6 +662,8 @@ export default function AdminDashboard() {
                   </select>
 
                   <select
+                    id="admin-patient-visit-year"
+                    name="adminPatientVisitYear"
                     value={visitYear}
                     onChange={(event) =>
                       setVisitYear(Number(event.target.value))
@@ -741,6 +745,8 @@ export default function AdminDashboard() {
                 </div>
 
                 <select
+                  id="admin-income-expense-year"
+                  name="adminIncomeExpenseYear"
                   value={incomeYear}
                   onChange={(event) => setIncomeYear(Number(event.target.value))}
                   style={styles.select}

@@ -424,6 +424,8 @@ export default function DentistDashboard() {
 
                 <div style={styles.dateFilter}>
                   <select
+                    id="dentist-patient-visit-month"
+                    name="dentistPatientVisitMonth"
                     value={visitMonth}
                     onChange={(e) => setVisitMonth(Number(e.target.value))}
                     style={styles.select}
@@ -434,6 +436,8 @@ export default function DentistDashboard() {
                   </select>
 
                   <select
+                    id="dentist-patient-visit-year"
+                    name="dentistPatientVisitYear"
                     value={visitYear}
                     onChange={(e) => setVisitYear(Number(e.target.value))}
                     style={styles.select}

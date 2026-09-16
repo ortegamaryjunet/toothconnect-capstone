@@ -2237,6 +2237,8 @@ export default function RecepAppointments() {
 
                     <div style={scheduleStyles.calendarDropdowns}>
                       <select
+                        id="recep-reschedule-calendar-month"
+                        name="recepRescheduleCalendarMonth"
                         value={rescheduleModal.calendarMonth}
                         onChange={(event) =>
                           setRescheduleModal((current) => ({
@@ -2254,6 +2256,8 @@ export default function RecepAppointments() {
                       </select>
 
                       <select
+                        id="recep-reschedule-calendar-year"
+                        name="recepRescheduleCalendarYear"
                         value={rescheduleModal.calendarYear}
                         onChange={(event) =>
                           setRescheduleModal((current) => ({

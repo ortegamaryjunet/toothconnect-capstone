@@ -530,6 +530,8 @@ export default function RecepDashboard() {
 
                 <div style={styles.dateFilter}>
                   <select
+                    id="recep-patient-visit-month"
+                    name="recepPatientVisitMonth"
                     value={visitMonth}
                     onChange={(event) =>
                       setVisitMonth(Number(event.target.value))
@@ -551,6 +553,8 @@ export default function RecepDashboard() {
                   </select>
 
                   <select
+                    id="recep-patient-visit-year"
+                    name="recepPatientVisitYear"
                     value={visitYear}
                     onChange={(event) =>
                       setVisitYear(Number(event.target.value))
