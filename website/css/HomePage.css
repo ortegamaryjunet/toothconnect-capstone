@@ -2612,7 +2612,7 @@ section {
 
     .service-carousel {
         min-height: 540px;
-        padding: 0 8px;
+        padding: 0 20px;
     }
 
     .service-stack {
@@ -2620,12 +2620,12 @@ section {
     }
 
     .service-card {
-        width: 350px;
+        width: min(350px, calc(100vw - 72px));
         height: 410px;
     }
 
     .service-card.active {
-        width: 390px;
+        width: min(390px, calc(100vw - 56px));
         height: 455px;
     }
 
@@ -2780,7 +2780,7 @@ section {
 
     .service-carousel {
         min-height: 515px;
-        padding: 0 6px;
+        padding: 0 18px;
     }
 
     .service-stack {
@@ -2788,12 +2788,12 @@ section {
     }
 
     .service-card {
-        width: 350px;
+        width: min(350px, calc(100vw - 72px));
         height: 410px;
     }
 
     .service-card.active {
-        width: 385px;
+        width: min(385px, calc(100vw - 56px));
         height: 450px;
     }
 
@@ -2866,7 +2866,7 @@ section {
 
     .service-carousel {
         min-height: 495px;
-        padding: 0 4px;
+        padding: 0 16px;
     }
 
     .service-stack {
@@ -2874,12 +2874,12 @@ section {
     }
 
     .service-card {
-        width: 342px;
+        width: min(342px, calc(100vw - 72px));
         height: 398px;
     }
 
     .service-card.active {
-        width: 376px;
+        width: min(376px, calc(100vw - 56px));
         height: 430px;
     }
 
