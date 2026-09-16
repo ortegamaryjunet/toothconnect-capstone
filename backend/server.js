@@ -3,7 +3,6 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const multer = require("multer");
-const fs = require("fs");
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const pool = require('./src/config/db');
@@ -129,7 +128,8 @@ app.get('/api/health', async (req, res) => {
     const [rows] = await pool.query('SELECT 1 AS ok');
     res.json({ status: 'ok', db: rows[0].ok === 1 ? 'connected' : 'unknown' });
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    console.error('[health] Database check failed:', err.message);
+    res.status(500).json({ status: 'error', message: 'Health check failed' });
   }
 });
 
@@ -578,22 +578,6 @@ pool.query(`
 const { startCronJobs } = require('./src/services/cron');
 
 const PORT = process.env.PORT || 4000;
-
-const uploadsPath = path.join(__dirname, "uploads");
-
-app.get("/test-image", (req, res) => {
-    const file = path.join(
-        __dirname,
-        "uploads",
-        "team",
-        "1785760714621-773494830.jpg"
-    );
-
-    console.log("File:", file);
-    console.log("Exists:", fs.existsSync(file));
-
-    res.sendFile(file);
-});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

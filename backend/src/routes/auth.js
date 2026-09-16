@@ -1869,7 +1869,7 @@ router.post('/refresh', async (req, res) => {
 
   try {
     const [tokens] = await pool.query(
-      `SELECT * FROM refresh_tokens
+      `SELECT id, user_id, token_hash FROM refresh_tokens
        WHERE platform = ? AND revoked_at IS NULL AND expires_at > NOW()`,
       [platform]
     );
