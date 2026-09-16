@@ -2583,8 +2583,8 @@ section {
     .benefit-img img {
         position: static;
         width: 100%;
-        height: 330px !important;
-        max-height: 330px;
+        height: 380px !important;
+        max-height: 380px;
         margin-bottom: 18px;
         border-width: 5px;
         object-fit: cover;
@@ -2611,22 +2611,22 @@ section {
     }
 
     .service-carousel {
-        min-height: 340px;
+        min-height: 440px;
         padding: 0 22px;
     }
 
     .service-stack {
-        height: 275px;
+        height: 375px;
     }
 
     .service-card {
         width: 150px;
-        height: 210px;
+        height: 310px;
     }
 
     .service-card.active {
         width: 190px;
-        height: 255px;
+        height: 355px;
     }
 
     .service-card.prev,
@@ -2763,8 +2763,8 @@ section {
     .floating-image,
     .about-gallery img,
     .benefit-img img {
-        height: 295px !important;
-        max-height: 295px;
+        height: 345px !important;
+        max-height: 345px;
     }
 
     .about-content {
@@ -2779,22 +2779,22 @@ section {
     }
 
     .service-carousel {
-        min-height: 315px;
+        min-height: 415px;
         padding: 0 16px;
     }
 
     .service-stack {
-        height: 255px;
+        height: 355px;
     }
 
     .service-card {
         width: 150px;
-        height: 210px;
+        height: 310px;
     }
 
     .service-card.active {
         width: 185px;
-        height: 250px;
+        height: 350px;
     }
 
     .service-arrow {
@@ -2860,27 +2860,27 @@ section {
     .floating-image,
     .about-gallery img,
     .benefit-img img {
-        height: 285px !important;
-        max-height: 285px;
+        height: 335px !important;
+        max-height: 335px;
     }
 
     .service-carousel {
-        min-height: 295px;
+        min-height: 395px;
         padding: 0 12px;
     }
 
     .service-stack {
-        height: 238px;
+        height: 338px;
     }
 
     .service-card {
         width: 142px;
-        height: 198px;
+        height: 298px;
     }
 
     .service-card.active {
         width: 176px;
-        height: 230px;
+        height: 330px;
     }
 
     .service-arrow {
