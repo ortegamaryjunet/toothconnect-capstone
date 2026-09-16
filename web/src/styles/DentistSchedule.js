@@ -30,7 +30,9 @@ export default function createDentistScheduleStyles({
       display: 'flex',
       flexDirection: 'column',
       boxSizing: 'border-box',
+      overflowY: 'auto',
       overflowX: 'hidden',
+      scrollbarWidth: 'thin',
     },
 
     logo: {

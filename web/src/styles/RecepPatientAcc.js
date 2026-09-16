@@ -32,6 +32,9 @@
       display: 'flex',
       flexDirection: 'column',
       boxSizing: 'border-box',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      scrollbarWidth: 'thin',
     },
 
     logo: {

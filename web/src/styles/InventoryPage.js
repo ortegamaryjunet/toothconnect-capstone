@@ -1,4 +1,4 @@
-﻿export default function createInventoryPageStyles({
+export default function createInventoryPageStyles({
   isMobile = false,
   isTablet = false,
   isSmallScreen = false,
@@ -31,7 +31,9 @@
       display: 'flex',
       flexDirection: 'column',
       boxSizing: 'border-box',
+      overflowY: 'auto',
       overflowX: 'hidden',
+      scrollbarWidth: 'thin',
     },
 
     logo: {

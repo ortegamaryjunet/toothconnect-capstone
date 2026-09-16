@@ -1,4 +1,4 @@
-﻿const createDentistAppointmentStyles = ({
+const createDentistAppointmentStyles = ({
   isMobile = false,
   isTablet = false,
   isSmallScreen = false,
@@ -30,7 +30,9 @@
       display: 'flex',
       flexDirection: 'column',
       boxSizing: 'border-box',
+      overflowY: 'auto',
       overflowX: 'hidden',
+      scrollbarWidth: 'thin',
     },
 
     logo: {
