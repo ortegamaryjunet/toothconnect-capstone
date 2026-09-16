@@ -332,9 +332,9 @@
 
     filterActionGroup: {
       display: 'flex',
-      alignItems: 'flex-end',
+      alignItems: isSmallScreen ? 'stretch' : 'flex-end',
       gap: 10,
-      flexDirection: isMobile ? 'column' : 'row',
+      flexDirection: isSmallScreen ? 'column' : 'row',
       width: isSmallScreen ? '100%' : 'auto',
     },
 
