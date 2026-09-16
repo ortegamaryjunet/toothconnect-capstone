@@ -76,7 +76,7 @@ const createDentistDashboardStyles = ({
     },
 
     menuItemIcon: {
-      marginRight: isMobile ? 0 : 12,
+      marginRight: 0,
       fontSize: 18,
       verticalAlign: 'middle',
       flexShrink: 0,

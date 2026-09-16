@@ -70,18 +70,22 @@
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
       boxSizing: 'border-box',
+      width: '100%',
+      minWidth: 0,
     },
 
     menuItemIcon: {
-      marginRight: isMobile ? 0 : 12,
+      marginRight: 0,
       fontSize: 18,
       verticalAlign: 'middle',
+      flexShrink: 0,
     },
 
     menuItemText: {
       display: isMobile ? 'none' : 'inline',
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
+      lineHeight: 1.15,
     },
 
     menuItemActive: {
