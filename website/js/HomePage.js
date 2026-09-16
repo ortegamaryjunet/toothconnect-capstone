@@ -33,7 +33,7 @@ const API_BASE_URL = (() => {
     }
 })();
 
-const PHONE_LIBRARY_URL = "https://cdn.jsdelivr.net/npm/libphonenumber-js@1.12.11/bundle/libphonenumber-max.js";
+const PHONE_LIBRARY_URL = "./js/libphonenumber-max.js";
 
 function scheduleIdleWork(callback, timeout = 1200) {
     if ("requestIdleCallback" in window) {
