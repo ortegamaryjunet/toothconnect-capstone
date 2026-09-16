@@ -237,12 +237,53 @@ function normalizeBranchIdArray(value) {
   )];
 }
 
-function formatScheduleEntries(entries = []) {
-  if (!Array.isArray(entries) || entries.length === 0) {
+function normalizeScheduleEntry(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const weekday = Number(entry.weekday);
+  const branchId = Number(entry.branch_id);
+  const startTime = entry.start_time ? String(entry.start_time).slice(0, 5) : '';
+  const endTime = entry.end_time ? String(entry.end_time).slice(0, 5) : '';
+
+  if (
+    !Number.isInteger(weekday) ||
+    weekday < 0 ||
+    weekday > 6 ||
+    !Number.isInteger(branchId) ||
+    branchId <= 0 ||
+    !isValidTimeValue(startTime) ||
+    !isValidTimeValue(endTime)
+  ) {
+    return null;
+  }
+
+  return {
+    ...entry,
+    weekday,
+    branch_id: branchId,
+    start_time: startTime,
+    end_time: endTime,
+  };
+}
+
+function normalizeScheduleEntries(entries = []) {
+  if (!Array.isArray(entries)) {
     return [];
   }
 
-  return entries.map((e) => {
+  return entries.map(normalizeScheduleEntry).filter(Boolean);
+}
+
+function formatScheduleEntries(entries = []) {
+  const normalizedEntries = normalizeScheduleEntries(entries);
+
+  if (normalizedEntries.length === 0) {
+    return [];
+  }
+
+  return normalizedEntries.map((e) => {
     const day = WEEKDAY_LABELS[Number(e.weekday)] || `Day ${String(e.weekday)}`;
     const branch = e.branch_address || e.branch_name || `Branch #${e.branch_id}`;
     const start = e.start_time ? String(e.start_time).slice(0, 5) : '';
@@ -265,12 +306,8 @@ function makeScheduleDraftBlock(entry = {}) {
 function buildScheduleDraft(employee) {
   const draft = {};
 
-  for (const entry of employee?.scheduleEntries || []) {
-    const weekday = Number(entry.weekday);
-
-    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
-      continue;
-    }
+  for (const entry of normalizeScheduleEntries(employee?.scheduleEntries)) {
+    const weekday = entry.weekday;
 
     if (!Array.isArray(draft[weekday])) {
       draft[weekday] = [];
@@ -3875,13 +3912,14 @@ function employeeToStaffPayload(employee, options = {}) {
     status: employee.status,
   };
 
+  const scheduleEntries = normalizeScheduleEntries(employee?.scheduleEntries);
+
   if (
     includeScheduleEntries &&
     employee?.role === 'Dentist' &&
-    Array.isArray(employee?.scheduleEntries) &&
-    employee.scheduleEntries.length > 0
+    scheduleEntries.length > 0
   ) {
-    payload.schedule_entries = employee.scheduleEntries;
+    payload.schedule_entries = scheduleEntries;
   }
 
   return payload;
