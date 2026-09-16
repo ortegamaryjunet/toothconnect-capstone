@@ -2583,8 +2583,8 @@ section {
     .benefit-img img {
         position: static;
         width: 100%;
-        height: 260px !important;
-        max-height: 260px;
+        height: 280px !important;
+        max-height: 280px;
         margin-bottom: 18px;
         border-width: 5px;
         object-fit: cover;
@@ -2763,8 +2763,8 @@ section {
     .floating-image,
     .about-gallery img,
     .benefit-img img {
-        height: 225px !important;
-        max-height: 225px;
+        height: 245px !important;
+        max-height: 245px;
     }
 
     .about-content {
@@ -2860,8 +2860,8 @@ section {
     .floating-image,
     .about-gallery img,
     .benefit-img img {
-        height: 215px !important;
-        max-height: 215px;
+        height: 235px !important;
+        max-height: 235px;
     }
 
     .service-carousel {
