@@ -3,7 +3,7 @@
   isTablet = false,
   isSmallScreen = false,
 } = {}) => {
-  const sidebarWidth = isMobile ? 74 : isTablet ? 88 : 230;
+  const sidebarWidth = isMobile ? 80 : 230;
 
   return {
     page: {
@@ -25,7 +25,7 @@
       height: '100vh',
       background: '#ffffff',
       borderRight: '1px solid #e5e7eb',
-      padding: isMobile ? '16px 8px' : isTablet ? '18px 10px' : '22px 16px',
+      padding: isMobile ? '16px 8px' : '22px 16px',
       zIndex: 300,
       display: 'flex',
       flexDirection: 'column',
@@ -43,7 +43,7 @@
     },
 
     logoImg: {
-      width: isMobile ? 52 : isTablet ? 58 : 125,
+      width: isMobile ? 52 : 125,
       height: 'auto',
       maxWidth: '100%',
     },
@@ -58,9 +58,9 @@
     menuItem: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isMobile || isTablet ? 'center' : 'flex-start',
-      gap: isMobile || isTablet ? 0 : 12,
-      padding: isMobile || isTablet ? '13px 0' : '13px 14px',
+      justifyContent: isMobile ? 'center' : 'flex-start',
+      gap: isMobile ? 0 : 12,
+      padding: isMobile ? '13px 0' : '13px 14px',
       borderRadius: 14,
       textDecoration: 'none',
       color: '#475569',
@@ -74,13 +74,13 @@
     },
 
     menuItemIcon: {
-      marginRight: isMobile || isTablet ? 0 : 12,
+      marginRight: isMobile ? 0 : 12,
       fontSize: 18,
       verticalAlign: 'middle',
     },
 
     menuItemText: {
-      display: isMobile || isTablet ? 'none' : 'inline',
+      display: isMobile ? 'none' : 'inline',
       fontSize: 15,
       fontFamily: 'Arial, sans-serif',
     },

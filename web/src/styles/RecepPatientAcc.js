@@ -5,7 +5,7 @@
   isStacked = false,
   isSingleColumn = false,
 } = {}) => {
-  const sidebarWidth = isVerySmall ? 70 : isMobile ? 80 : 250;
+  const sidebarWidth = isMobile ? 80 : 230;
 
   return {
     page: {
