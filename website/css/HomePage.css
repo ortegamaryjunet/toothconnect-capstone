@@ -2578,10 +2578,12 @@ section {
     }
 
     .main-image,
-    .floating-image {
+    .floating-image,
+    .about-gallery img {
         position: static;
         width: 100%;
-        height: 280px;
+        height: 260px !important;
+        max-height: 260px;
         margin-bottom: 18px;
         border-width: 5px;
         object-fit: cover;
@@ -2757,8 +2759,10 @@ section {
     }
 
     .main-image,
-    .floating-image {
-        height: 235px;
+    .floating-image,
+    .about-gallery img {
+        height: 225px !important;
+        max-height: 225px;
     }
 
     .about-content {
@@ -2773,22 +2777,22 @@ section {
     }
 
     .service-carousel {
-        min-height: 285px;
+        min-height: 315px;
         padding: 0 16px;
     }
 
     .service-stack {
-        height: 225px;
+        height: 255px;
     }
 
     .service-card {
-        width: 133px;
-        height: 183px;
+        width: 150px;
+        height: 210px;
     }
 
     .service-card.active {
-        width: 163px;
-        height: 219px;
+        width: 185px;
+        height: 250px;
     }
 
     .service-arrow {
@@ -2851,27 +2855,29 @@ section {
     }
 
     .main-image,
-    .floating-image {
-        height: 205px;
+    .floating-image,
+    .about-gallery img {
+        height: 215px !important;
+        max-height: 215px;
     }
 
     .service-carousel {
-        min-height: 250px;
-        padding: 0 10px;
+        min-height: 295px;
+        padding: 0 12px;
     }
 
     .service-stack {
-        height: 195px;
+        height: 238px;
     }
 
     .service-card {
-        width: 117px;
-        height: 161px;
+        width: 142px;
+        height: 198px;
     }
 
     .service-card.active {
-        width: 143px;
-        height: 190px;
+        width: 176px;
+        height: 230px;
     }
 
     .service-arrow {
