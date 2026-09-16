@@ -2583,8 +2583,8 @@ section {
     .benefit-img img {
         position: static;
         width: 100%;
-        height: clamp(360px, 52vh, 500px) !important;
-        max-height: 500px;
+        height: clamp(320px, 45vh, 430px) !important;
+        max-height: 430px;
         margin-bottom: 18px;
         border-width: 5px;
         object-fit: cover;
@@ -2600,33 +2600,34 @@ section {
     .benefit-content h2,
     .about-content h2,
     .contact h2 {
-        font-size: 30px;
+        font-size: 27px;
+        line-height: 1.18;
     }
 
     .section-title p,
     .benefit-content>p,
     .about-content p {
-        font-size: 15px;
-        line-height: 1.8;
+        font-size: 14px;
+        line-height: 1.7;
     }
 
     .service-carousel {
-        min-height: 540px;
+        min-height: 455px;
         padding: 0 20px;
     }
 
     .service-stack {
-        height: 475px;
+        height: 405px;
     }
 
     .service-card {
-        width: min(350px, calc(100vw - 72px));
-        height: 410px;
+        width: min(300px, calc(100vw - 80px));
+        height: 335px;
     }
 
     .service-card.active {
-        width: min(390px, calc(100vw - 56px));
-        height: 455px;
+        width: min(330px, calc(100vw - 64px));
+        height: 385px;
     }
 
     .service-card.prev,
@@ -2636,8 +2637,19 @@ section {
     }
 
     .service-arrow {
-        width: 38px;
-        height: 38px;
+        width: 34px;
+        height: 34px;
+        font-size: 13px;
+    }
+
+    .service-card span {
+        top: 16px;
+        right: 14px;
+        max-width: calc(100% - 28px);
+        padding: 9px 14px;
+        border-radius: 10px;
+        font-size: 14px;
+        line-height: 1.2;
     }
 
     .faq-wrapper {
@@ -2715,12 +2727,12 @@ section {
     }
 
     .brand-mark {
-        width: 48px;
-        height: 48px;
+        width: 42px;
+        height: 42px;
     }
 
     .logo-text h2 {
-        font-size: 13px;
+        font-size: 11px;
     }
 
     .logo-subline {
@@ -2733,11 +2745,12 @@ section {
     }
 
     .hero h1 {
-        font-size: 29px;
+        font-size: 25px;
+        line-height: 1.18;
     }
 
     .hero p {
-        font-size: 13px;
+        font-size: 12.5px;
     }
 
     .hero-stats {
@@ -2763,8 +2776,8 @@ section {
     .floating-image,
     .about-gallery img,
     .benefit-img img {
-        height: clamp(320px, 48vh, 430px) !important;
-        max-height: 430px;
+        height: clamp(280px, 42vh, 360px) !important;
+        max-height: 360px;
     }
 
     .about-content {
@@ -2775,32 +2788,33 @@ section {
     .benefit-content h2,
     .about-content h2,
     .contact h2 {
-        font-size: 25px;
+        font-size: 22px;
+        line-height: 1.2;
     }
 
     .service-carousel {
-        min-height: 515px;
+        min-height: 410px;
         padding: 0 18px;
     }
 
     .service-stack {
-        height: 455px;
+        height: 365px;
     }
 
     .service-card {
-        width: min(350px, calc(100vw - 72px));
-        height: 410px;
+        width: min(280px, calc(100vw - 84px));
+        height: 315px;
     }
 
     .service-card.active {
-        width: min(385px, calc(100vw - 56px));
-        height: 450px;
+        width: min(308px, calc(100vw - 68px));
+        height: 350px;
     }
 
     .service-arrow {
-        width: 36px;
-        height: 36px;
-        font-size: 13px;
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
     }
 
     .faq-item button {
@@ -2840,11 +2854,12 @@ section {
 
 @media (max-width: 400px) {
     .hero h1 {
-        font-size: 25px;
+        font-size: 23px;
+        line-height: 1.2;
     }
 
     .hero p {
-        font-size: 13px;
+        font-size: 12px;
     }
 
     .hero-stats strong {
@@ -2860,33 +2875,33 @@ section {
     .floating-image,
     .about-gallery img,
     .benefit-img img {
-        height: clamp(300px, 45vh, 380px) !important;
-        max-height: 380px;
+        height: clamp(260px, 40vh, 330px) !important;
+        max-height: 330px;
     }
 
     .service-carousel {
-        min-height: 495px;
+        min-height: 380px;
         padding: 0 16px;
     }
 
     .service-stack {
-        height: 438px;
+        height: 340px;
     }
 
     .service-card {
-        width: min(342px, calc(100vw - 72px));
-        height: 398px;
+        width: min(252px, calc(100vw - 86px));
+        height: 290px;
     }
 
     .service-card.active {
-        width: min(376px, calc(100vw - 56px));
-        height: 430px;
+        width: min(282px, calc(100vw - 70px));
+        height: 325px;
     }
 
     .service-arrow {
-        width: 34px;
-        height: 34px;
-        font-size: 13px;
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
     }
 
     .hours-card p,
