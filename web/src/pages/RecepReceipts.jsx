@@ -16,15 +16,6 @@ import createRecepReceiptsStyles from '../styles/RecepReceipts';
 
 import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
 
-function getReceiptStatusLabel(status) {
-  const labels = {
-    'Pending Validation': 'Pending',
-    Validated: 'Acknowledged',
-  };
-
-  return labels[status] || status;
-}
-
 function mapPaymentToReceipt(payment) {
   const paidOrCreated = payment.paid_at || payment.receipt_uploaded_at || payment.created_at;
   const isStaffRecorded = payment.payment_source === 'staff_recorded';
@@ -723,7 +714,7 @@ export default function RecepReceipts() {
       setReceipts(
         prepareReceiptPayments(data).map(mapPaymentToReceipt)
       );
-    } catch (err) {
+    } catch {
       setReceipts([]);
     }
   }

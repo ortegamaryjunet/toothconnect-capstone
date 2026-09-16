@@ -2,16 +2,13 @@
   isMobile = false,
   isSmallScreen = false,
   isVerySmall = false,
-  isAdminView = false,
 } = {}) => {
   const topHeaderHeight = 70;
   const sidebarWidth = isMobile ? 84 : 260;
-  const primaryGradient = 'linear-gradient(135deg, #b8860b, #f4c430, #ffe08a)';
   const primary = '#d4af37';
   const primaryDark = '#8b6508';
   const primarySoft = '#fff9e8';
   const primaryBorder = '#f2dd92';
-  const primaryShadow = '0 12px 28px rgba(37, 99, 235, 0.18)';
 
   return {
     page: {

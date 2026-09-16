@@ -1,6 +1,5 @@
 const createAdminEmployeeFormStyles = ({
   isMobile = false,
-  isTablet = false,
   isSmallScreen = false,
 } = {}) => {
   return {

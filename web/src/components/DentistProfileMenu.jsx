@@ -16,7 +16,7 @@ export default function DentistProfileMenu({
   const [loadedPhotoUrl, setLoadedPhotoUrl] = useState(() =>
     profilePhotoUrl || localStorage.getItem(DENTIST_PROFILE_PHOTO_STORAGE_KEY) || ''
   );
-  const [photoVersion, setPhotoVersion] = useState(Date.now());
+  const [photoVersion, setPhotoVersion] = useState(() => Date.now());
   const profileMenuRef = useRef(null);
 
   useEffect(() => {

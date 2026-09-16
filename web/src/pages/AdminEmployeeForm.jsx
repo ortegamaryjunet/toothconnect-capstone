@@ -120,16 +120,16 @@ function makeInputFilter(disallowedRegex) {
     if (filtered !== el.value) {
       const pos = Math.max(0, el.selectionStart - (el.value.length - filtered.length));
       el.value = filtered;
-      try { el.setSelectionRange(pos, pos); } catch (_) {}
+      try { el.setSelectionRange(pos, pos); } catch { /* selection range is best-effort */ }
     }
   };
 }
 
 // Letters, spaces, hyphens, apostrophes only (name fields)
-const filterNameInput = makeInputFilter(/[^a-zA-ZÀ-ÿ\s'\-]/g);
+const filterNameInput = makeInputFilter(/[^a-zA-ZÀ-ÿ\s'-]/g);
 
 // Standard email characters only
-const filterEmailInput = makeInputFilter(/[^a-zA-Z0-9._%+\-@]/g);
+const filterEmailInput = makeInputFilter(/[^a-zA-Z0-9._%+@-]/g);
 
 // Letters and numbers only (password fields)
 const filterPasswordInput = makeInputFilter(/[^a-zA-Z0-9]/g);
@@ -524,7 +524,6 @@ export default function AdminEmployeeForm() {
   const [serviceCategories, setServiceCategories] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [branchSpecializationOptions, setBranchSpecializationOptions] = useState([]);
   const [specializationsLoading, setSpecializationsLoading] = useState(false);
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
   const [selectedDentistSpecializations, setSelectedDentistSpecializations] = useState([]);
@@ -576,7 +575,6 @@ export default function AdminEmployeeForm() {
   const [daShiftType, setDaShiftType] = useState('');
   const [daWorkStart, setDaWorkStart] = useState('');
   const [daWorkEnd, setDaWorkEnd] = useState('');
-  const [recepShiftType, setRecepShiftType] = useState('');
   const [recepUseStandardHours, setRecepUseStandardHours] = useState(true);
   const [recepWorkStart, setRecepWorkStart] = useState('');
   const [recepWorkEnd, setRecepWorkEnd] = useState('');
@@ -841,7 +839,6 @@ export default function AdminEmployeeForm() {
     setDaShiftType('');
     setDaWorkStart('');
     setDaWorkEnd('');
-    setRecepShiftType('');
     setRecepUseStandardHours(true);
     setRecepWorkStart('');
     setRecepWorkEnd('');
@@ -851,7 +848,6 @@ export default function AdminEmployeeForm() {
   }, [employeeType]);
 
   useEffect(() => {
-    setBranchSpecializationOptions([]);
     setSpecializationsLoading(false);
   }, [selectedBranchId]);
 
@@ -862,7 +858,6 @@ export default function AdminEmployeeForm() {
     }
 
     if (employeeType === 'receptionist' && recepUseStandardHours) {
-      setRecepShiftType('Full Day');
       setRecepWorkStart(standardReceptionistHours.start);
       setRecepWorkEnd(standardReceptionistHours.end);
     }
@@ -1093,7 +1088,7 @@ export default function AdminEmployeeForm() {
 
   function validateEmailValue(value) {
     if (!value || !value.trim()) return REQUIRED_FIELD_MESSAGE;
-    return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(value.trim())
+    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value.trim())
       ? null : 'Email format is invalid';
   }
 
@@ -2548,7 +2543,6 @@ export default function AdminEmployeeForm() {
                     onChange={(event) => {
                       const checked = event.target.checked;
                       setRecepUseStandardHours(checked);
-                      setRecepShiftType(checked ? 'Full Day' : 'Custom Hours');
                       if (checked) {
                         setRecepWorkStart(standardReceptionistHours.start);
                         setRecepWorkEnd(standardReceptionistHours.end);

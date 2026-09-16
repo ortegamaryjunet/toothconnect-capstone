@@ -9,7 +9,7 @@ export default function StaffHeaderAvatar({ styles }) {
   const [photoUrl, setPhotoUrl] = useState(() =>
     localStorage.getItem(RECEPTIONIST_PROFILE_PHOTO_STORAGE_KEY) || ''
   );
-  const [photoVersion, setPhotoVersion] = useState(Date.now());
+  const [photoVersion, setPhotoVersion] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;

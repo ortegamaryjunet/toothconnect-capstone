@@ -186,6 +186,24 @@ export default function RecepRecords() {
 
   const receptionistName = user?.name || user?.email || 'Receptionist';
 
+  function closeAllModals() {
+    setShowLogoutModal(false);
+    setShowDetailsModal(false);
+    setShowEditModal(false);
+    setShowEditCloseModal(false);
+    setShowEditConfirmModal(false);
+    setShowExportModal(false);
+  }
+
+  async function fetchPatients() {
+    try {
+      const data = await listPatients();
+      setPatients(normalizePatients(data));
+    } catch {
+      setPatients([]);
+    }
+  }
+
   useEffect(() => {
     function handleResize() {
       setScreenWidth(window.innerWidth);
@@ -294,24 +312,6 @@ export default function RecepRecords() {
     window.location.href = '/login';
   }
 
-  function closeAllModals() {
-    setShowLogoutModal(false);
-    setShowDetailsModal(false);
-    setShowEditModal(false);
-    setShowEditCloseModal(false);
-    setShowEditConfirmModal(false);
-    setShowExportModal(false);
-  }
-
-  async function fetchPatients() {
-    try {
-      const data = await listPatients();
-      setPatients(normalizePatients(data));
-    } catch (err) {
-      setPatients([]);
-    }
-  }
-
   function handleModalOverlayClick(event, closeHandler) {
     if (event.target === event.currentTarget) {
       closeHandler();
@@ -385,11 +385,6 @@ export default function RecepRecords() {
     } else {
       setEditProfileLoading(false);
     }
-  }
-
-  function closePatientDetails() {
-    setShowDetailsModal(false);
-    setSelectedPatient(null);
   }
 
   function closeEditPatient() {
@@ -477,6 +472,7 @@ export default function RecepRecords() {
         dentalHistory: profile.dental_history || current?.dentalHistory || '',
       }));
     } catch {
+      // Keep the edit form usable even when optional profile hydration fails.
     } finally {
       setEditProfileLoading(false);
     }
@@ -497,7 +493,7 @@ export default function RecepRecords() {
       'emergencyContactName',
     ];
 
-    if (nameFields.includes(field) && !/^[A-Za-zÀ-ÿ\s'\-]+$/.test(stringValue)) {
+    if (nameFields.includes(field) && !/^[A-Za-zÀ-ÿ\s'-]+$/.test(stringValue)) {
       return 'This field must contain letters, spaces, apostrophes, and hyphens only.';
     }
 
@@ -1204,7 +1200,7 @@ export default function RecepRecords() {
       nextY
     );
 
-    nextY = addAttachmentSection(nextY);
+    addAttachmentSection(nextY);
 
     const totalPdfPages = doc.internal.getNumberOfPages();
 
@@ -2395,7 +2391,7 @@ async function loadPdfAttachmentItems(plans) {
     try {
       const dataUrl = await imageUrlToPngDataUrl(attachmentUrl(item.fileUrl));
       return { label, dataUrl };
-    } catch (_err) {
+    } catch {
       return { label: `${label}: image unavailable`, isTextOnly: true };
     }
   }));

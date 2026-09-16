@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function FaqSection({ styles, websiteFaqs, setWebsiteFaqOverlay, getStatusStyle, deleteFaq }) {
   return (
     <div>

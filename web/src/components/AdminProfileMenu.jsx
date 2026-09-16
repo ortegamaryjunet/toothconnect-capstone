@@ -8,7 +8,7 @@ const ADMIN_PROFILE_PHOTO_EVENT = 'admin-profile-photo-updated';
 
 export default function AdminProfileMenu({ styles, adminName = 'Admin', profilePhotoUrl = '' }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [photoVersion, setPhotoVersion] = useState(Date.now());
+  const [photoVersion, setPhotoVersion] = useState(() => Date.now());
   const [loadedPhotoUrl, setLoadedPhotoUrl] = useState(() =>
     profilePhotoUrl || localStorage.getItem(ADMIN_PROFILE_PHOTO_STORAGE_KEY) || ''
   );

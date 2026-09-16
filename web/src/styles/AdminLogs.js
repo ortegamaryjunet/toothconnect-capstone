@@ -1,6 +1,5 @@
 ﻿const createAdminLogsStyles = ({
   isMobile = false,
-  isTablet = false,
   isSmallScreen = false,
 } = {}) => {
   const sidebarWidth = isMobile ? 80 : 230;

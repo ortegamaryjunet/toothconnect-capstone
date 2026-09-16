@@ -1527,43 +1527,6 @@ const createDentistProfileStyles = ({
       resize: 'vertical',
     },
 
-    editModalActions: {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      gap: 12,
-      marginTop: 24,
-      flexDirection: isMobile ? 'column' : 'row',
-    },
-
-    saveBtn: {
-      height: 40,
-      border: 'none',
-      borderRadius: 10,
-      background: '#d4af37',
-      color: '#ffffff',
-      padding: '0 18px',
-      fontWeight: 800,
-      cursor: 'pointer',
-      width: isMobile ? '100%' : 'auto',
-      fontFamily: 'Arial, sans-serif',
-      whiteSpace: 'nowrap',
-      fontSize: 14,
-      boxShadow: '0 10px 22px rgba(139, 101, 8, 0.18)',
-    },
-
-    cancelEditBtn: {
-      border: 'none',
-      padding: '13px 18px',
-      borderRadius: 14,
-      fontSize: 14,
-      cursor: 'pointer',
-      background: '#e2e8f0',
-      color: '#334155',
-      width: isMobile ? '100%' : 'auto',
-      fontFamily: 'Arial, sans-serif',
-      whiteSpace: 'nowrap',
-    },
-
     editErrorText: {
       margin: '0 0 16px',
       fontSize: 16,

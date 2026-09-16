@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function HeroSection({ api, styles, websiteContent, websiteContentForm, websiteContentEditing, setWebsiteContentForm, showWebsiteValidationModal, fieldRow, textDesignFields, contentEditActions, collectFieldsByPrefixes, }) {
   const baseURL = api?.defaults?.baseURL ? api.defaults.baseURL.replace("/api", "") : "";
 

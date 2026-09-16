@@ -1,6 +1,5 @@
 ﻿const createAdminSettingsStyles = ({
   isMobile = false,
-  isTablet = false,
   isSmallScreen = false,
 } = {}) => {
   const sidebarWidth = isMobile ? 80 : 230;
@@ -274,7 +273,6 @@
       borderRadius: isMobile ? 20 : 24,
       padding: isMobile ? 10 : 14,
       marginBottom: 20,
-      display: 'flex',
       alignItems: 'center',
       gap: 10,
       overflowX: 'auto',
@@ -440,12 +438,6 @@
     },
 
     websiteFieldsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-      gap: 20,
-    },
-
-    websiteFieldsGrid: {
       display: "grid",
       gridTemplateColumns: "340px 1fr",
       gap: 24,
@@ -580,17 +572,6 @@
       gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, minmax(0, 1fr))',
       gap: 16,
       marginTop: 14,
-    },
-
-    announcementCard: {
-      position: 'relative',
-      border: '1px solid #eadfbd',
-      borderRadius: 18,
-      padding: isMobile ? 16 : 18,
-      background: 'linear-gradient(180deg, #ffffff 0%, #fffaf0 100%)',
-      boxShadow: '0 10px 24px rgba(139, 101, 8, 0.08)',
-      boxSizing: 'border-box',
-      overflow: 'hidden',
     },
 
     announcementCard: {
@@ -1276,7 +1257,6 @@
     clearBtn: {
       height: 48,
       padding: '0 22px',
-      border: 'none',
       outline: 'none',
       borderRadius: 15,
       background: "#fff1f2",

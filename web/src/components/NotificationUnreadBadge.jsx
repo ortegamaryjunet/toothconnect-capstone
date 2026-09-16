@@ -37,7 +37,7 @@ export default function NotificationUnreadBadge({ count }) {
         if (!cancelled) {
           setUnreadCount(nextCount);
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           setUnreadCount(0);
         }

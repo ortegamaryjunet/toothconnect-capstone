@@ -583,16 +583,6 @@ export default function createInventoryPageStyles({
       boxSizing: 'border-box',
     },
 
-    tableHeaderRow: {
-      display: 'grid',
-      gridTemplateColumns: isSmallScreen ? '1fr' : 'minmax(0, 1fr) auto',
-      alignItems: 'center',
-      gap: 16,
-      marginBottom: 18,
-      width: '100%',
-      minWidth: 0,
-    },
-
     tableActionGroup: {
       display: 'flex',
       alignItems: 'center',
