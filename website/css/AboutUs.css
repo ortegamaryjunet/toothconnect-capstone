@@ -693,16 +693,17 @@ footer {
 
 @media (max-width: 768px) {
     .hero {
-        padding: 105px 22px 60px;
+        padding: 96px 20px 48px;
     }
 
     .hero h1 {
-        font-size: 40px;
+        font-size: 34px;
         line-height: 1.15;
     }
 
     .hero-text p {
-        font-size: 16px;
+        font-size: 15px;
+        line-height: 1.65;
     }
 
     .hero-actions {
@@ -710,7 +711,8 @@ footer {
     }
 
     .hero-panel {
-        padding: 24px;
+        padding: 20px;
+        border-radius: 24px;
     }
 
     .hero-mini-grid,
@@ -723,19 +725,19 @@ footer {
 
     .section-title h2,
     .branch-header h2 {
-        font-size: 34px;
+        font-size: 30px;
     }
 
     .owner-photo {
-        min-height: 320px;
+        min-height: 270px;
     }
 
     .team-card img {
-        height: 320px;
+        height: 270px;
     }
 
     .map-wrapper {
-        height: 320px;
+        height: 280px;
     }
 }
 
@@ -746,55 +748,7 @@ footer {
     }
 
     .hero {
-        padding: 95px 18px 55px;
-    }
-
-    .hero h1 {
-        font-size: 32px;
-    }
-
-    .hero-text p {
-        font-size: 15px;
-    }
-
-    .hero-panel {
-        padding: 20px;
-    }
-
-    .hero-mini-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .section,
-    .team-section,
-    .branch-section,
-    .map-section {
-        padding: 60px 18px;
-    }
-
-    .section-title h2,
-    .branch-header h2 {
-        font-size: 28px;
-    }
-
-    .about-card,
-    .branch-box,
-    .owner-content {
-        padding: 22px;
-    }
-
-    .team-card img {
-        height: 280px;
-    }
-
-    .map-wrapper {
-        height: 260px;
-    }
-}
-
-@media (max-width: 400px) {
-    .hero {
-        padding: 85px 15px 50px;
+        padding: 86px 16px 44px;
     }
 
     .hero h1 {
@@ -809,29 +763,77 @@ footer {
         padding: 18px;
     }
 
-    .hero-icon {
-        width: 56px;
-        height: 56px;
-        font-size: 24px;
+    .hero-mini-grid {
+        grid-template-columns: 1fr;
     }
 
-    .hero-panel h3 {
-        font-size: 22px;
+    .section,
+    .team-section,
+    .branch-section,
+    .map-section {
+        padding: 46px 16px;
     }
 
-    .hero-mini-grid strong {
-        font-size: 22px;
+    .section-title h2,
+    .branch-header h2 {
+        font-size: 25px;
     }
 
-    .owner-photo {
-        min-height: 240px;
+    .about-card,
+    .branch-box,
+    .owner-content {
+        padding: 18px;
     }
 
     .team-card img {
-        height: 240px;
+        height: 225px;
     }
 
     .map-wrapper {
-        height: 220px;
+        height: 225px;
+    }
+}
+
+@media (max-width: 400px) {
+    .hero {
+        padding: 80px 14px 40px;
+    }
+
+    .hero h1 {
+        font-size: 25px;
+    }
+
+    .hero-text p {
+        font-size: 13px;
+    }
+
+    .hero-panel {
+        padding: 16px;
+    }
+
+    .hero-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 21px;
+    }
+
+    .hero-panel h3 {
+        font-size: 20px;
+    }
+
+    .hero-mini-grid strong {
+        font-size: 20px;
+    }
+
+    .owner-photo {
+        min-height: 205px;
+    }
+
+    .team-card img {
+        height: 200px;
+    }
+
+    .map-wrapper {
+        height: 190px;
     }
 }

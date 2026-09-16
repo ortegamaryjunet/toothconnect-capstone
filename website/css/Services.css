@@ -659,26 +659,28 @@ footer {
     .service-hero {
         width: calc(100% - 28px);
         margin-top: 74px;
-        min-height: 370px;
-        padding: 20px;
-        border-radius: 26px;
+        min-height: 320px;
+        padding: 16px;
+        border-radius: 22px;
     }
 
     .service-hero::after {
-        inset: 14px;
-        border-radius: 20px;
+        inset: 12px;
+        border-radius: 18px;
     }
 
     .hero-box {
-        padding: 28px 22px;
+        padding: 24px 18px;
+        border-radius: 24px;
     }
 
     .hero-box h1 {
-        font-size: 36px;
+        font-size: 31px;
     }
 
     .hero-box p {
-        font-size: 15px;
+        font-size: 14px;
+        line-height: 1.65;
     }
 
     .summary-card {
@@ -706,20 +708,21 @@ footer {
     }
 
     .detail-section {
-        padding: 28px;
+        padding: 24px;
+        border-radius: 24px;
     }
 
     .content h2 {
-        font-size: 30px;
+        font-size: 27px;
     }
 
     .content h3 {
-        font-size: 22px;
+        font-size: 20px;
     }
 
     .tooth-comparison {
-        height: 300px;
-        border-radius: 24px;
+        height: 260px;
+        border-radius: 20px;
     }
 
     .comparison-tag {
@@ -744,23 +747,23 @@ footer {
 
 @media (max-width: 576px) {
     .service-hero {
-        min-height: 340px;
-        padding: 18px;
+        min-height: 280px;
+        padding: 14px;
     }
 
     .hero-box {
-        padding: 22px 18px;
+        padding: 20px 16px;
     }
 
     .hero-box h1 {
-        font-size: 30px;
+        font-size: 26px;
         line-height: 1.1;
     }
 
     .hero-box p,
     .content p {
-        font-size: 14px;
-        line-height: 1.8;
+        font-size: 13px;
+        line-height: 1.7;
     }
 
     .summary-links {
@@ -773,7 +776,7 @@ footer {
     }
 
     .detail-section {
-        padding: 22px;
+        padding: 18px;
     }
 
     .section-label,
@@ -782,8 +785,8 @@ footer {
     }
 
     .tooth-comparison {
-        height: 240px;
-        border-radius: 20px;
+        height: 205px;
+        border-radius: 18px;
     }
 
     .comparison-line {
@@ -807,15 +810,15 @@ footer {
 
 @media (max-width: 400px) {
     .service-hero {
-        min-height: 300px;
+        min-height: 250px;
     }
 
     .hero-box {
-        padding: 18px 16px;
+        padding: 16px 14px;
     }
 
     .hero-box h1 {
-        font-size: 26px;
+        font-size: 23px;
     }
 
     .hero-box p,
@@ -828,15 +831,15 @@ footer {
     }
 
     .content h2 {
-        font-size: 25px;
+        font-size: 23px;
     }
 
     .content h3 {
-        font-size: 19px;
+        font-size: 18px;
     }
 
     .tooth-comparison {
-        height: 210px;
+        height: 180px;
     }
 
     .comparison-line span {

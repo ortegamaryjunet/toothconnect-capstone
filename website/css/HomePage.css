@@ -2496,25 +2496,30 @@ section {
     }
 
     .hero {
-        padding-top: 130px;
-        gap: 40px;
+        min-height: auto;
+        padding-top: 118px;
+        padding-bottom: 52px;
+        gap: 28px;
         text-align: center;
     }
 
     .hero h1 {
-        font-size: 40px;
+        font-size: 34px;
         line-height: 1.15;
+        letter-spacing: -1px;
     }
 
     .hero p {
-        font-size: 15px;
+        font-size: 14px;
+        line-height: 1.65;
         max-width: 100%;
     }
 
     .hero-actions {
         flex-direction: column;
         width: 100%;
-        gap: 14px;
+        gap: 10px;
+        margin-top: 22px;
     }
 
     .primary-btn,
@@ -2522,6 +2527,9 @@ section {
     .header-btn {
         width: 100%;
         max-width: none;
+        height: 48px;
+        border-radius: 14px;
+        font-size: 14px;
     }
 
     .hero-stats,
@@ -2533,13 +2541,19 @@ section {
     }
 
     .hero-stats {
-        gap: 16px;
+        gap: 10px;
+        margin-top: 24px;
+    }
+
+    .hero-stats div {
+        padding: 16px;
+        border-radius: 18px;
     }
 
     .image-panel {
         width: 100%;
-        max-width: 340px;
-        height: 380px;
+        max-width: 300px;
+        height: 320px;
     }
 
     .float-card,
@@ -2550,7 +2564,7 @@ section {
 
     .about,
     .benefits {
-        gap: 45px;
+        gap: 32px;
     }
 
     .about-gallery,
@@ -2573,7 +2587,8 @@ section {
     }
 
     .about-content {
-        padding: 30px 22px;
+        padding: 24px 18px;
+        border-radius: 24px;
         text-align: center;
     }
 
@@ -2581,7 +2596,7 @@ section {
     .benefit-content h2,
     .about-content h2,
     .contact h2 {
-        font-size: 34px;
+        font-size: 30px;
     }
 
     .section-title p,
@@ -2592,22 +2607,22 @@ section {
     }
 
     .service-carousel {
-        min-height: 400px;
-        padding: 0 30px;
+        min-height: 340px;
+        padding: 0 22px;
     }
 
     .service-stack {
-        height: 320px;
+        height: 275px;
     }
 
     .service-card {
-        width: 180px;
-        height: 250px;
+        width: 150px;
+        height: 210px;
     }
 
     .service-card.active {
-        width: 220px;
-        height: 300px;
+        width: 190px;
+        height: 255px;
     }
 
     .service-card.prev,
@@ -2617,8 +2632,8 @@ section {
     }
 
     .service-arrow {
-        width: 44px;
-        height: 44px;
+        width: 38px;
+        height: 38px;
     }
 
     .faq-wrapper {
@@ -2627,11 +2642,11 @@ section {
     }
 
     .faq-item button {
-        padding: 18px;
+        padding: 16px;
     }
 
     .faq-item button span {
-        font-size: 17px;
+        font-size: 16px;
     }
 
     .faq-answer {
@@ -2641,8 +2656,8 @@ section {
     .help-card,
     .hours-card,
     .call-card {
-        padding: 22px;
-        border-radius: 22px;
+        padding: 18px;
+        border-radius: 18px;
     }
 
     .hours-card p {
@@ -2664,10 +2679,10 @@ section {
     }
 
     .contact {
-        padding: 28px 18px;
-        border-radius: 28px;
-        gap: 28px;
-        margin: 35px 5%;
+        padding: 24px 16px;
+        border-radius: 22px;
+        gap: 22px;
+        margin: 28px 5%;
     }
 
     .contact-content {
@@ -2709,34 +2724,35 @@ section {
     }
 
     .hero {
-        padding-top: 120px;
+        padding-top: 108px;
+        padding-bottom: 44px;
     }
 
     .hero h1 {
-        font-size: 32px;
+        font-size: 29px;
     }
 
     .hero p {
-        font-size: 14px;
+        font-size: 13px;
     }
 
     .hero-stats {
-        gap: 12px;
+        gap: 9px;
     }
 
     .hero-stats div {
-        padding: 16px;
+        padding: 14px;
         min-height: auto;
     }
 
     .hero-stats strong {
-        font-size: 26px;
+        font-size: 23px;
     }
 
     .image-panel {
         width: 100%;
-        max-width: 280px;
-        height: 300px;
+        max-width: 240px;
+        height: 255px;
     }
 
     .about-content {
@@ -2747,31 +2763,32 @@ section {
     .benefit-content h2,
     .about-content h2,
     .contact h2 {
-        font-size: 28px;
+        font-size: 25px;
     }
 
     .service-carousel {
-        min-height: 340px;
-        padding: 0 20px;
+        min-height: 285px;
+        padding: 0 16px;
     }
 
     .service-stack {
-        height: 270px;
+        height: 225px;
     }
 
     .service-card {
-        width: 150px;
-        height: 210px;
+        width: 128px;
+        height: 178px;
     }
 
     .service-card.active {
-        width: 185px;
-        height: 250px;
+        width: 158px;
+        height: 214px;
     }
 
     .service-arrow {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
+        font-size: 13px;
     }
 
     .faq-item button {
@@ -2811,7 +2828,7 @@ section {
 
 @media (max-width: 400px) {
     .hero h1 {
-        font-size: 28px;
+        font-size: 25px;
     }
 
     .hero p {
@@ -2819,30 +2836,31 @@ section {
     }
 
     .hero-stats strong {
-        font-size: 22px;
+        font-size: 20px;
     }
 
     .image-panel {
-        height: 240px;
-    }
-
-    .service-carousel {
-        min-height: 290px;
-        padding: 0 14px;
-    }
-
-    .service-stack {
+        max-width: 210px;
         height: 220px;
     }
 
+    .service-carousel {
+        min-height: 250px;
+        padding: 0 10px;
+    }
+
+    .service-stack {
+        height: 195px;
+    }
+
     .service-card {
-        width: 130px;
-        height: 180px;
+        width: 112px;
+        height: 156px;
     }
 
     .service-card.active {
-        width: 160px;
-        height: 215px;
+        width: 138px;
+        height: 185px;
     }
 
     .service-arrow {
