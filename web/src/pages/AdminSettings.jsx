@@ -105,11 +105,11 @@ const branchRequiredFields = [
   'status',
 ];
 const BRANCH_SPECIAL_CHARACTER_FIELDS = ['name', 'address', 'contact_person'];
-const BRANCH_TEXT_FIELD_REGEX = /^[a-zA-Z0-9\s]+$/;
-
+const BRANCH_TEXT_FIELD_REGEX = /^[a-zA-Z0-9\s.,'’&/()#:+\-]+$/;
+const BRANCH_NAME_FORMAT = 'Smile Empress Dental Hub - Paranaque Branch';
+const BRANCH_NAME_REGEX = /^[a-zA-Z0-9\s.,'’&/()#:+\-]+ - [a-zA-Z0-9\s.,'’&/()#:+\-]+$/;
 const BRANCH_OPERATING_HOURS_FORMAT = 'Mon - Sat, 10:00 AM - 7:00 PM';
-const BRANCH_OPERATING_HOURS_REGEX =
-  /^[A-Z][a-z]+(?: - [A-Z][a-z]+)?, (?:0?[1-9]|1[0-2]):[0-5]\d (?:AM|PM) - (?:0?[1-9]|1[0-2]):[0-5]\d (?:AM|PM)$/;
+const BRANCH_OPERATING_HOURS_REGEX = /^[A-Z][a-z]+(?: - [A-Z][a-z]+)?, (?:0?[1-9]|1[0-2]):[0-5]\d (?:AM|PM) - (?:0?[1-9]|1[0-2]):[0-5]\d (?:AM|PM)$/;
 
 const initialServiceForm = {
   id: '',
@@ -2511,37 +2511,45 @@ export default function AdminSettings() {
   }
 
   function getBranchFieldError(name, { force = false } = {}) {
-    if (!force && !branchTouchedFields[name]) {
-      return '';
-    }
+      if (!force && !branchTouchedFields[name]) {
+          return '';
+      }
 
-    const value = String(branchForm[name] ?? '');
-    const trimmedValue = value.trim();
+      const value = String(branchForm[name] ?? '');
+      const trimmedValue = value.trim();
 
-    if (branchRequiredFields.includes(name) && !trimmedValue) {
-      return 'This field is required.';
-    }
+      if (branchRequiredFields.includes(name) && !trimmedValue) {
+          return 'This field is required.';
+      }
 
-    if (name === 'phone') {
-      return validatePhoneNumber(branchForm.phone, branchPhoneCountry);
-    }
+      if (name === 'name') {
+          if (!BRANCH_NAME_REGEX.test(trimmedValue)) {
+              return `Follow this format: ${BRANCH_NAME_FORMAT}`;
+          }
 
-    if (name === 'operating_hours') {
-      if (!BRANCH_OPERATING_HOURS_REGEX.test(trimmedValue)) {
-        return `Follow this format: ${BRANCH_OPERATING_HOURS_FORMAT}`;
+          return '';
+      }
+
+      if (name === 'phone') {
+          return validatePhoneNumber(branchForm.phone, branchPhoneCountry);
+      }
+
+      if (name === 'operating_hours') {
+          if (!BRANCH_OPERATING_HOURS_REGEX.test(trimmedValue)) {
+              return `Follow this format: ${BRANCH_OPERATING_HOURS_FORMAT}`;
+          }
+
+          return '';
+      }
+
+      if (
+          BRANCH_SPECIAL_CHARACTER_FIELDS.includes(name) &&
+          !BRANCH_TEXT_FIELD_REGEX.test(trimmedValue)
+      ) {
+          return 'Please enter valid characters.';
       }
 
       return '';
-    }
-
-    if (
-      BRANCH_SPECIAL_CHARACTER_FIELDS.includes(name) &&
-      !BRANCH_TEXT_FIELD_REGEX.test(trimmedValue)
-    ) {
-      return 'Please enter valid characters.';
-    }
-
-    return '';
   }
 
   function isBranchFieldInvalid(name) {
@@ -6436,21 +6444,22 @@ const contentEditActions = (
         >
           <form onSubmit={handleBranchSubmit} noValidate>
             <div style={styles.formGrid}>
-              <Field label={renderBranchRequiredLabel('Branch Name')} styles={styles}>
+              <Field label={renderBranchRequiredLabel('Branch Name - Branch Location')} styles={styles}>
                 <input
-                  type="text"
-                  value={branchForm.name}
-                  onChange={(event) =>
-                    handleBranchChange('name', event.target.value)
-                  }
-                  onBlur={() => handleBranchFieldBlur('name')}
-                  style={getBranchFieldStyle('name')}
-                  required
+                    type="text"
+                    value={branchForm.name}
+                    onChange={(event) =>
+                        handleBranchChange('name', event.target.value)
+                    }
+                    onBlur={() => handleBranchFieldBlur('name')}
+                    style={getBranchFieldStyle('name')}
+                    placeholder="e.g., Smile Empress Dental Hub - Paranaque Branch"
+                    required
                 />
                 {renderBranchFieldError('name')}
-              </Field>
+            </Field>
 
-              <Field label={renderBranchRequiredLabel('Clinic Location')} styles={styles}>
+              <Field label={renderBranchRequiredLabel('Clinic Address')} styles={styles}>
                 <input
                   type="text"
                   value={branchForm.address}

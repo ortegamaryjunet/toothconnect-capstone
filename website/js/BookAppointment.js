@@ -433,37 +433,22 @@ document.addEventListener("DOMContentLoaded", function () {
     async function loadBranches() {
         const locationGrid = document.getElementById("locationGrid");
 
-        if (!locationGrid) {
-            console.error("locationGrid was not found.");
-            return;
-        }
+        if (!locationGrid) return;
 
-        locationGrid.innerHTML = `
-            <p class="disabled-option">Loading branches...</p>
-        `;
+        locationGrid.innerHTML = "";
 
         try {
-            const branchUrl = API_BASE_URL + "/api/website/branches";
-
-            console.log("Loading branches from:", branchUrl);
-
-            const res = await fetch(branchUrl, {
-                cache: "no-store"
-            });
-
-            console.log("Branches response status:", res.status);
+            const res = await fetch(
+                API_BASE_URL + "/api/website/branches",
+                { cache: "no-store" }
+            );
 
             if (!res.ok) {
-                throw new Error("Branches API returned HTTP " + res.status);
+                throw new Error("Unable to load branches.");
             }
 
             const data = await res.json();
-
-            console.log("Branches API response:", data);
-
-            const branches = Array.isArray(data.branches)
-                ? data.branches
-                : [];
+            const branches = Array.isArray(data.branches) ? data.branches : [];
 
             if (branches.length === 0) {
                 locationGrid.innerHTML = `
@@ -471,8 +456,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 `;
                 return;
             }
-
-            locationGrid.innerHTML = "";
 
             branches.forEach(function (branch) {
                 const label = document.createElement("label");
@@ -529,9 +512,7 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Load branches error:", error);
 
             locationGrid.innerHTML = `
-                <p class="disabled-option">
-                    Unable to load branches.
-                </p>
+                <p class="disabled-option">Branches are temporarily unavailable.</p>
             `;
         }
     }
