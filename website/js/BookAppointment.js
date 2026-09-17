@@ -430,19 +430,20 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ---- Branches from DB ----
-    async function loadBranches() {
-        const locationGrid = document.getElementById("locationGrid");
+async function loadBranches() {
+    const locationGrid = document.getElementById("locationGrid");
 
-        if (!locationGrid) return;
+    if (!locationGrid) return;
 
-        locationGrid.innerHTML = "";
+    locationGrid.innerHTML = "";
 
-        try {
-            const res = await fetch(
-                API_BASE_URL + "/api/website/branches",
-                { cache: "no-store" }
-            );
+    try {
+        const res = await fetch(
+            API_BASE_URL + "/api/website/branches",
+            { cache: "no-store" }
+        );
 
+<<<<<<< HEAD
             if (!res.ok) {
                 throw new Error("Unable to load branches.");
             }
@@ -514,8 +515,81 @@ document.addEventListener("DOMContentLoaded", function () {
             locationGrid.innerHTML = `
                 <p class="disabled-option">Branches are temporarily unavailable.</p>
             `;
+=======
+        if (!res.ok) {
+            throw new Error("Unable to load branches.");
+>>>>>>> 4e1adc4 (Update website pages and styles)
         }
+
+        const data = await res.json();
+        const branches = Array.isArray(data.branches) ? data.branches : [];
+
+        if (branches.length === 0) {
+            locationGrid.innerHTML = `
+                <p class="disabled-option">No branches available.</p>
+            `;
+            return;
+        }
+
+        branches.forEach(function (branch) {
+            const label = document.createElement("label");
+            label.className = "location-option";
+
+            const input = document.createElement("input");
+            input.type = "radio";
+            input.name = "location";
+            input.value = branch.name || "";
+
+            const radioDesign = document.createElement("span");
+            radioDesign.className = "radio-design";
+
+            const content = document.createElement("div");
+
+            const strong = document.createElement("strong");
+            strong.textContent = branch.name || "Branch";
+
+            content.appendChild(strong);
+            label.appendChild(input);
+            label.appendChild(radioDesign);
+            label.appendChild(content);
+            locationGrid.appendChild(label);
+
+            input.addEventListener("change", function () {
+                selectedBranch = this.value;
+
+                clearFieldError("locationError");
+
+                document.querySelectorAll(".location-option").forEach(function (el) {
+                    el.classList.remove("input-error");
+                });
+
+                if (reasonText) {
+                    reasonText.textContent = "Select reason";
+                }
+
+                if (selectedReason) {
+                    selectedReason.value = "";
+                }
+
+                if (reasonBtn) {
+                    reasonBtn.classList.remove("input-error");
+                }
+
+                renderReasonOptions();
+                updateStepLocks();
+                refreshBookedSlots();
+                refreshAvailableSlots();
+                refreshAvailableDays();
+            });
+        });
+    } catch (error) {
+        console.error("Load branches error:", error);
+
+        locationGrid.innerHTML = `
+            <p class="disabled-option">Branches are temporarily unavailable.</p>
+        `;
     }
+}
 
     // ---- Branch selection → filter services + unlock step 3 ----
     function renderReasonOptions() {
