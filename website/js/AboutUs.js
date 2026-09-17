@@ -170,6 +170,12 @@ function setAboutContent(content) {
 
     setText("receptionistSectionDescription", content.receptionist_section_description);
     applyTextStyle("receptionistSectionDescription", content, "receptionist_section_description");
+
+    setText("branchSectionTag", content.branch_section_tag);
+    applyTextStyle("branchSectionTag", content, "branch_section_tag");
+
+    setText("branchSectionTitle", content.branch_section_title);
+    applyTextStyle("branchSectionTitle", content, "branch_section_title");
 }
 
 function setTeamContent(content) {
@@ -904,50 +910,50 @@ function applyTextStyle(id, content, prefix) {
     }
 }
 
-
 document.addEventListener("click", function (event) {
-    const button = event.target.closest(".branch-btn");
+    const branchButton = event.target.closest(".branch-btn");
 
-    if (!button) {
+    if (!branchButton) {
         return;
     }
 
     event.preventDefault();
 
-    const locationSection = document.getElementById("location");
-    const branchId = button.dataset.branchId;
+    const branchId = branchButton.dataset.branchId;
 
-    if (!locationSection || !branchId) {
+    if (!branchId) {
         return;
     }
 
-    locationSection.scrollIntoView({
+    const targetMap = document.querySelector(
+        `.branch-map-card[data-map-branch-id="${CSS.escape(branchId)}"]`
+    );
+
+    if (!targetMap) {
+        console.warn("Map card not found for branch:", branchId);
+        return;
+    }
+
+    document.querySelectorAll(".branch-map-card").forEach(function (mapCard) {
+        mapCard.classList.remove("map-highlight");
+    });
+
+    branchButton.classList.add("is-clicked");
+
+    setTimeout(function () {
+        branchButton.classList.remove("is-clicked");
+    }, 180);
+
+    targetMap.scrollIntoView({
         behavior: "smooth",
-        block: "start"
+        block: "center"
     });
 
     setTimeout(function () {
-        const targetMap = document.querySelector(
-            `[data-map-branch-id="${branchId}"]`
-        );
-
-        if (!targetMap) {
-            return;
-        }
-
-        document.querySelectorAll(".branch-map-card").forEach(function (map) {
-            map.classList.remove("map-highlight");
-        });
-
         targetMap.classList.add("map-highlight");
+    }, 700);
 
-        targetMap.scrollIntoView({
-            behavior: "smooth",
-            block: "center"
-        });
-
-        setTimeout(function () {
-            targetMap.classList.remove("map-highlight");
-        }, 2000);
-    }, 500);
+    setTimeout(function () {
+        targetMap.classList.remove("map-highlight");
+    }, 3000);
 });

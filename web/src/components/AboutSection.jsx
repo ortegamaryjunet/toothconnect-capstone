@@ -509,6 +509,102 @@ export default function AboutSection({
         </div>
       </div>
 
+      <h3 style={styles.websiteSectionTitle}>Dentist Section</h3>
+
+      <div style={styles.websiteFieldsGrid}>
+          <div>
+              {fieldRow("Dentist Section Tag", "dentist_section_tag")}
+          </div>
+
+          <div style={styles.websiteFields}>
+              {textDesignFields("dentist_section_tag", "Dentist Section Tag")}
+          </div>
+      </div>
+
+      <div style={styles.websiteFieldsGrid}>
+          <div>
+              {fieldRow("Dentist Section Title", "dentist_section_title")}
+          </div>
+
+          <div style={styles.websiteFields}>
+              {textDesignFields("dentist_section_title", "Dentist Section Title")}
+          </div>
+      </div>
+
+      <div style={styles.websiteFieldsGrid}>
+          <div>
+              {fieldRow("Dentist Section Description", "dentist_section_description", "textarea")}
+          </div>
+
+          <div style={styles.websiteFields}>
+              {textDesignFields("dentist_section_description", "Dentist Section Description")}
+          </div>
+      </div>
+
+      <h3 style={styles.websiteSectionTitle}>Dental Assistant Section</h3>
+
+      <div style={styles.websiteFieldsGrid}>
+          <div>
+              {fieldRow("Assistant Section Tag", "assistant_section_tag")}
+          </div>
+
+          <div style={styles.websiteFields}>
+              {textDesignFields("assistant_section_tag", "Assistant Section Tag")}
+          </div>
+      </div>
+
+      <div style={styles.websiteFieldsGrid}>
+          <div>
+              {fieldRow("Assistant Section Title", "assistant_section_title")}
+          </div>
+
+          <div style={styles.websiteFields}>
+              {textDesignFields("assistant_section_title", "Assistant Section Title")}
+          </div>
+      </div>
+
+      <div style={styles.websiteFieldsGrid}>
+          <div>
+              {fieldRow("Assistant Section Description", "assistant_section_description", "textarea")}
+          </div>
+
+          <div style={styles.websiteFields}>
+              {textDesignFields("assistant_section_description", "Assistant Section Description")}
+          </div>
+      </div>
+
+      <h3 style={styles.websiteSectionTitle}>Receptionist Section</h3>
+
+      <div style={styles.websiteFieldsGrid}>
+          <div>
+              {fieldRow("Receptionist Section Tag", "receptionist_section_tag")}
+          </div>
+
+          <div style={styles.websiteFields}>
+              {textDesignFields("receptionist_section_tag", "Receptionist Section Tag")}
+          </div>
+      </div>
+
+      <div style={styles.websiteFieldsGrid}>
+          <div>
+              {fieldRow("Receptionist Section Title", "receptionist_section_title")}
+          </div>
+
+          <div style={styles.websiteFields}>
+              {textDesignFields("receptionist_section_title", "Receptionist Section Title")}
+          </div>
+      </div>
+
+      <div style={styles.websiteFieldsGrid}>
+          <div>
+              {fieldRow("Receptionist Section Description", "receptionist_section_description", "textarea")}
+          </div>
+
+          <div style={styles.websiteFields}>
+              {textDesignFields("receptionist_section_description", "Receptionist Section Description")}
+          </div>
+      </div>
+
       <h3 style={styles.websiteSectionTitle}>Branch Section</h3>
 
       <div style={styles.websiteFieldsGrid}>
@@ -589,6 +685,9 @@ export default function AboutSection({
             "vision_",
             "care_",
             "team_section_",
+            "dentist_section_",
+            "assistant_section_",
+            "receptionist_section_",
             "owner_",
             "branch_section_",
             "map_section_",
@@ -802,6 +901,78 @@ export default function AboutSection({
             "team_section_description_font_style",
             "team_section_description_text_color",
             "team_section_description_text_alignment",
+
+            "dentist_section_tag",
+            "dentist_section_tag_font_family",
+            "dentist_section_tag_font_size",
+            "dentist_section_tag_font_weight",
+            "dentist_section_tag_font_style",
+            "dentist_section_tag_text_color",
+            "dentist_section_tag_text_alignment",
+
+            "dentist_section_title",
+            "dentist_section_title_font_family",
+            "dentist_section_title_font_size",
+            "dentist_section_title_font_weight",
+            "dentist_section_title_font_style",
+            "dentist_section_title_text_color",
+            "dentist_section_title_text_alignment",
+
+            "dentist_section_description",
+            "dentist_section_description_font_family",
+            "dentist_section_description_font_size",
+            "dentist_section_description_font_weight",
+            "dentist_section_description_font_style",
+            "dentist_section_description_text_color",
+            "dentist_section_description_text_alignment",
+
+            "assistant_section_tag",
+            "assistant_section_tag_font_family",
+            "assistant_section_tag_font_size",
+            "assistant_section_tag_font_weight",
+            "assistant_section_tag_font_style",
+            "assistant_section_tag_text_color",
+            "assistant_section_tag_text_alignment",
+
+            "assistant_section_title",
+            "assistant_section_title_font_family",
+            "assistant_section_title_font_size",
+            "assistant_section_title_font_weight",
+            "assistant_section_title_font_style",
+            "assistant_section_title_text_color",
+            "assistant_section_title_text_alignment",
+
+            "assistant_section_description",
+            "assistant_section_description_font_family",
+            "assistant_section_description_font_size",
+            "assistant_section_description_font_weight",
+            "assistant_section_description_font_style",
+            "assistant_section_description_text_color",
+            "assistant_section_description_text_alignment",
+
+            "receptionist_section_tag",
+            "receptionist_section_tag_font_family",
+            "receptionist_section_tag_font_size",
+            "receptionist_section_tag_font_weight",
+            "receptionist_section_tag_font_style",
+            "receptionist_section_tag_text_color",
+            "receptionist_section_tag_text_alignment",
+
+            "receptionist_section_title",
+            "receptionist_section_title_font_family",
+            "receptionist_section_title_font_size",
+            "receptionist_section_title_font_weight",
+            "receptionist_section_title_font_style",
+            "receptionist_section_title_text_color",
+            "receptionist_section_title_text_alignment",
+
+            "receptionist_section_description",
+            "receptionist_section_description_font_family",
+            "receptionist_section_description_font_size",
+            "receptionist_section_description_font_weight",
+            "receptionist_section_description_font_style",
+            "receptionist_section_description_text_color",
+            "receptionist_section_description_text_alignment",
 
             "map_section_tag",
             "map_section_tag_font_family",

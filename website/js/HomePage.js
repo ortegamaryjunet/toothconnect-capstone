@@ -791,8 +791,119 @@ function escapeHtml(str) {
         .replace(/"/g, "&quot;");
 }
 
+async function loadContactBranches() {
+    const branchGrid = document.getElementById("contactBranchGrid");
+
+    if (!branchGrid) {
+        return;
+    }
+
+    branchGrid.innerHTML = "";
+
+    try {
+        const response = await fetch(
+            API_BASE_URL + "/api/website/branches",
+            {
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Unable to load branches.");
+        }
+
+        const data = await response.json();
+
+        const branches = Array.isArray(data.branches)
+            ? data.branches
+            : [];
+
+        if (branches.length === 0) {
+            branchGrid.innerHTML = `
+                <p class="disabled-option">
+                    No branches available.
+                </p>
+            `;
+
+            return;
+        }
+
+        branches.forEach(function (branch) {
+            const label = document.createElement("label");
+            label.className = "location-option";
+
+            const input = document.createElement("input");
+            input.type = "radio";
+            input.name = "branch";
+            input.value =
+                branch.name ||
+                branch.branch_name ||
+                branch.location_name ||
+                "";
+
+            const radioDesign = document.createElement("span");
+            radioDesign.className = "radio-design";
+
+            const content = document.createElement("div");
+            content.className = "branch-content";
+
+            const strong = document.createElement("strong");
+
+            const branchName =
+                branch.name ||
+                branch.branch_name ||
+                branch.location_name ||
+                "Branch";
+
+            const branchLocation =
+                branch.location ||
+                branch.address ||
+                branch.branch_location ||
+                branch.branch_address ||
+                branch.clinic_location ||
+                "";
+
+            strong.textContent = branchName;
+
+            const location = document.createElement("div");
+            location.className = "branch-location";
+
+            location.textContent = branchLocation
+                ? branchLocation + " City Branch"
+                : "Location Unavailable";
+
+            content.appendChild(strong);
+            content.appendChild(location);
+
+            label.appendChild(input);
+            label.appendChild(radioDesign);
+            label.appendChild(content);
+
+            branchGrid.appendChild(label);
+        });
+
+    } catch (error) {
+        console.error("Load contact branches error:", error);
+
+        branchGrid.innerHTML = `
+            <p class="disabled-option">
+                Branches are temporarily unavailable.
+            </p>
+        `;
+    }
+}
+
+document.addEventListener("change", function (event) {
+    if (
+        event.target.matches('#contactBranchGrid input[name="branch"]')
+    ) {
+        validateBranch();
+    }
+});
+
 document.addEventListener("DOMContentLoaded", function () {
     loadWebsiteContent();
+    loadContactBranches();
     window.addEventListener("load", function () {
         scheduleIdleWork(function () {
             loadWebsiteFaqs();
@@ -813,6 +924,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const phoneInput = document.getElementById("phoneNumber");
     const concernInput = document.getElementById("inquiryConcern");
     const messageInput = document.getElementById("inquiryMessage");
+    const inquirySuccessAnimation = document.getElementById("inquirySuccessAnimation");
 
     const messageModal = document.getElementById("messageModal");
     const closeMessageModal = document.getElementById("closeMessageModal");
@@ -1129,35 +1241,58 @@ function validateConcern() {
 }
 
 function validateBranch() {
-    const radios = document.querySelectorAll('input[name="branch"]');
-    const selected = document.querySelector('input[name="branch"]:checked');
-    const group = document.querySelector(".location-grid");
+    const radios = document.querySelectorAll(
+        '#contactBranchGrid input[name="branch"]'
+    );
+
+    const selected = document.querySelector(
+        '#contactBranchGrid input[name="branch"]:checked'
+    );
+
+    const group = document.getElementById("contactBranchGrid");
+
+    if (!group) {
+        return false;
+    }
+
     const error = group.parentElement.querySelector(".input-error");
 
-    radios.forEach((radio) => {
-        radio.closest(".location-option").classList.remove("valid", "error");
+    radios.forEach(function (radio) {
+        const option = radio.closest(".location-option");
+
+        if (option) {
+            option.classList.remove("valid", "error");
+        }
     });
 
     if (!selected) {
-        error.textContent = "Please select a preferred branch.";
+        if (error) {
+            error.textContent = "Please select a preferred branch.";
+        }
 
-        radios.forEach((radio) => {
-            radio.closest(".location-option").classList.add("error");
+        radios.forEach(function (radio) {
+            const option = radio.closest(".location-option");
+
+            if (option) {
+                option.classList.add("error");
+            }
         });
 
         return false;
     }
 
-    error.textContent = "";
+    if (error) {
+        error.textContent = "";
+    }
 
-    selected.closest(".location-option").classList.add("valid");
+    const selectedOption = selected.closest(".location-option");
+
+    if (selectedOption) {
+        selectedOption.classList.add("valid");
+    }
 
     return true;
 }
-
-document.querySelectorAll('input[name="branch"]').forEach((radio) => {
-    radio.addEventListener("change", validateBranch);
-});
 
 function validateMessage() {
     const input = document.getElementById("inquiryMessage");
@@ -1295,6 +1430,12 @@ function validateMessage() {
         }
 
         const internationalPhone = toInternationalPhone(phoneNumber, country);
+            const submitButton = inquiryForm.querySelector('button[type="submit"]');
+
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.classList.add("sending");
+            }
 
             try {
                 const response = await fetch(`${API_BASE_URL}/api/website/saveInquiry`, {

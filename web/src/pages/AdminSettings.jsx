@@ -105,13 +105,7 @@ const branchRequiredFields = [
   'status',
 ];
 const BRANCH_SPECIAL_CHARACTER_FIELDS = ['name', 'address', 'contact_person'];
-<<<<<<< HEAD
 const BRANCH_TEXT_FIELD_REGEX = /^[a-zA-Z0-9\s.,'’&/()#:+\-]+$/;
-const BRANCH_NAME_FORMAT = 'Smile Empress Dental Hub - Paranaque Branch';
-const BRANCH_NAME_REGEX = /^[a-zA-Z0-9\s.,'’&/()#:+\-]+ - [a-zA-Z0-9\s.,'’&/()#:+\-]+$/;
-=======
-const BRANCH_TEXT_FIELD_REGEX = /^[a-zA-Z0-9\s]+$/;
->>>>>>> 4e1adc4 (Update website pages and styles)
 const BRANCH_OPERATING_HOURS_FORMAT = 'Mon - Sat, 10:00 AM - 7:00 PM';
 const BRANCH_OPERATING_HOURS_REGEX = /^[A-Z][a-z]+(?: - [A-Z][a-z]+)?, (?:0?[1-9]|1[0-2]):[0-5]\d (?:AM|PM) - (?:0?[1-9]|1[0-2]):[0-5]\d (?:AM|PM)$/;
 

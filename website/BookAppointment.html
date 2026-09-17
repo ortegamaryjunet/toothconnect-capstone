@@ -204,7 +204,7 @@
                     </div>
 
                     <div class="input-group">
-                        <label>Location <span class="required">*</span></label>
+                        <label>Preferred Branch <span class="required">*</span></label>
 
                         <div class="location-grid" id="locationGrid"></div>
 
@@ -243,9 +243,15 @@
 </div>
 
 <div class="tooth-loading" id="toothLoading" aria-hidden="true">
-    <div class="tooth-loader">
-        <i class="fa-solid fa-tooth"></i>
-        <span>Processing your appointment...</span>
+    <div class="tooth-modal">
+        <div class="tooth-loader">
+            <div class="loading-circle">
+                <div class="loading-ring"></div>
+                <i class="fa-solid fa-tooth"></i>
+            </div>
+            <h3>Processing your appointment</h3>
+            <span>Please wait while we confirm your request...</span>
+        </div>
     </div>
 </div>
 

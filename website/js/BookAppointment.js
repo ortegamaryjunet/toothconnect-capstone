@@ -121,23 +121,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const toothLoading = document.getElementById("toothLoading");
 
     function showToothLoading() {
-        if (!toothLoading) {
-            return;
-        }
-
         toothLoading.classList.add("show");
         toothLoading.setAttribute("aria-hidden", "false");
-        document.body.style.overflow = "hidden";
     }
 
     function hideToothLoading() {
-        if (!toothLoading) {
-            return;
-        }
-
         toothLoading.classList.remove("show");
         toothLoading.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
     }
 
     function showMessage(title, text, type) {
@@ -693,19 +683,45 @@ document.addEventListener("DOMContentLoaded", function () {
                 const input = document.createElement("input");
                 input.type = "radio";
                 input.name = "location";
-                input.value = branch.name || "";
+                input.value =
+                    branch.name ||
+                    branch.branch_name ||
+                    branch.location_name ||
+                    "";
 
-                const radioDesign =
-                    document.createElement("span");
-
+                const radioDesign = document.createElement("span");
                 radioDesign.className = "radio-design";
 
                 const content = document.createElement("div");
+                content.className = "branch-content";
 
                 const strong = document.createElement("strong");
-                strong.textContent = branch.name || "Branch";
+
+                const branchName =
+                    branch.name ||
+                    branch.branch_name ||
+                    branch.location_name ||
+                    "Branch";
+
+                const branchLocation =
+                    branch.location ||
+                    branch.address ||
+                    branch.branch_location ||
+                    branch.branch_address ||
+                    branch.clinic_location ||
+                    "";
+
+                strong.textContent = branchName;
+
+                const location = document.createElement("div");
+                location.className = "branch-location";
+                location.textContent = branchLocation
+                    ? branchLocation + " City Branch"
+                    : "Location Unavailable";
 
                 content.appendChild(strong);
+                content.appendChild(location);
+
                 label.appendChild(input);
                 label.appendChild(radioDesign);
                 label.appendChild(content);
@@ -742,13 +758,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     selectedTime24 = null;
 
                     if (summaryDate) {
-                        summaryDate.textContent =
-                            "No date selected";
+                        summaryDate.textContent = "No date selected";
                     }
 
                     if (summaryTime) {
-                        summaryTime.textContent =
-                            "No time selected";
+                        summaryTime.textContent = "No time selected";
                     }
 
                     if (appointmentDateInput) {
@@ -1743,21 +1757,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 clearFieldError("timeError");
 
-                const allRequiredFieldsEmpty =
-                    !patientName.value.trim() &&
-                    !emailInput.value.trim() &&
-                    !phoneInput.value.trim() &&
-                    !selectedLocation &&
-                    (
-                        !selectedReason ||
-                        !selectedReason.value ||
-                        (
-                            reasonText &&
-                            reasonText.textContent === "Select reason"
-                        )
-                    ) &&
-                    !appointmentDateInput.value &&
-                    !appointmentTimeInput.value;
+                const allRequiredFieldsEmpty = !patientName.value.trim() && !emailInput.value.trim() && !phoneInput.value.trim() && !selectedLocation &&
+                    (!selectedReason || !selectedReason.value || (reasonText && reasonText.textContent === "Select reason")) && !appointmentDateInput.value && !appointmentTimeInput.value;
 
                 if (hasError) {
                     if (allRequiredFieldsEmpty) {
@@ -1772,33 +1773,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 const appointmentData = {
-                    appointmentDate:
-                        appointmentDateInput.value,
+                    appointmentDate: appointmentDateInput.value,
 
-                    appointmentTime:
-                        appointmentTimeInput.value,
+                    appointmentTime: appointmentTimeInput.value,
 
                     durationMinutes:
                         Number(
                             durationMinutesInput?.value
                         ) || 30,
 
-                    fullName:
-                        patientName.value.trim(),
+                    fullName: patientName.value.trim(),
 
-                    email:
-                        emailInput.value.trim(),
+                    email: emailInput.value.trim(),
 
-                    phoneNumber:
-                        fullPhoneNumber
-                            ? fullPhoneNumber.value
-                            : internationalPhoneNumber,
+                    phoneNumber: fullPhoneNumber ? fullPhoneNumber.value : internationalPhoneNumber,
 
-                    location:
-                        selectedLocation.value,
+                    location: selectedLocation.value,
 
-                    reasonForBooking:
-                        selectedReason.value
+                    reasonForBooking: selectedReason.value
                 };
 
                 const submitButton =
@@ -1842,12 +1834,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         !result.success
                     ) {
                         showMessage(
-                            result.messageTitle ||
-                                "Appointment Status",
-
-                            result.message ||
-                                "Appointment request processed.",
-
+                            result.messageTitle || "Appointment Status",
+                            result.message || "Appointment request processed.",
                             "error"
                         );
 
@@ -1857,18 +1845,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     showToothLoading();
 
                     await new Promise(function (resolve) {
-                        setTimeout(resolve, 1500);
+                        setTimeout(resolve, 10000);
                     });
 
                     hideToothLoading();
 
                     showMessage(
-                        result.messageTitle ||
-                            "Appointment Status",
-
-                        result.message ||
-                            "Appointment request processed.",
-
+                        result.messageTitle || "Appointment Status",
+                        result.message || "Appointment request processed.",
                         "success"
                     );
 
@@ -1885,13 +1869,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     currentAvailableDays = null;
 
                     if (summaryDate) {
-                        summaryDate.textContent =
-                            "No date selected";
+                        summaryDate.textContent = "No date selected";
                     }
 
                     if (summaryTime) {
-                        summaryTime.textContent =
-                            "No time selected";
+                        summaryTime.textContent = "No time selected";
                     }
 
                     if (appointmentDateInput) {
@@ -1907,8 +1889,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     if (reasonText) {
-                        reasonText.textContent =
-                            "Select reason";
+                        reasonText.textContent = "Select reason";
                     }
 
                     if (selectedReason) {
@@ -1941,9 +1922,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     });
 
                     if (reasonBtn) {
-                        reasonBtn.classList.remove(
-                            "input-error"
-                        );
+                        reasonBtn.classList.remove("input-error");
                     }
 
                     updateStepLocks();
@@ -1970,8 +1949,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     );
                 } finally {
                     submitButton.disabled = false;
-                    submitButton.textContent =
-                        "Schedule Appointment";
+                    submitButton.textContent = "Schedule Appointment";
                 }
             }
         );

@@ -6,6 +6,7 @@
     <meta name="description" content="Smile Empress Dental Hub provides gentle, modern dental care, online appointment booking, and trusted treatments for healthier, brighter smiles.">
     <title>Smile Empress Dental Hub</title>
 
+    <link rel="stylesheet" href="./css/HomePage.css">
     <link rel="stylesheet" href="./css/HomePage.min.css">
     <link rel="stylesheet" href="./css/fontawesome-local.min.css">
     <link rel="preload" href="https://res.cloudinary.com/dfr4kv2qq/image/upload/f_auto,q_auto,w_500/v1789221280/toothconnect/website/hero/l9g2ftyzhd1nu0bkicem.png" as="image" fetchpriority="high">
@@ -409,57 +410,56 @@
 
         </div>
 
-<div class="faq-right">
+        <div class="faq-right">
 
-    <div class="help-card">
-        <i class="fa-solid fa-comments"></i>
+            <div class="help-card">
+                <i class="fa-solid fa-comments"></i>
 
-        <h3>We're Ready to Assist You</h3>
+                <h3>We're Ready to Assist You</h3>
 
-        <p>
-            Our dental team can guide you based on your concern and preferred schedule.
-        </p>
+                <p>
+                    Our dental team can guide you based on your concern and preferred schedule.
+                </p>
 
-        <a href="#contact">Contact Us</a>
-    </div>
+                <a href="#contact">Contact Us</a>
+            </div>
 
-    <div class="hours-card">
-        <h3>
-            <i class="fa-solid fa-clock"></i>
-            Clinic Hours
-        </h3>
+            <div class="hours-card">
+                <h3>
+                    <i class="fa-solid fa-clock"></i>
+                    Clinic Hours
+                </h3>
 
-        <p>
-            <span id="hours-weekdays"></span>
-            <b id="hours-weekday-time"></b>
-        </p>
+                <p>
+                    <span id="hours-weekdays"></span>
+                    <b id="hours-weekday-time"></b>
+                </p>
 
-        <p>
-            <span id="hours-sunday"></span>
-            <b id="hours-sunday-note"></b>
-        </p>
-    </div>
+                <p>
+                    <span id="hours-sunday"></span>
+                    <b id="hours-sunday-note"></b>
+                </p>
+            </div>
 
-    <div class="call-card">
-        <div class="call-content">
+            <div class="call-card">
+                <div class="call-content">
 
-            <small id="call-tagline"></small>
-            <h4>
-                <i class="fa-solid fa-phone"></i>
-                <span id="call-phone1"></span>
-                <span id="call-separator">or</span>
-                <span id="call-phone2"></span>
-            </h4>
+                    <small id="call-tagline"></small>
+                    <h4>
+                        <i class="fa-solid fa-phone"></i>
+                        <span id="call-phone1"></span>
+                        <span id="call-separator">or</span>
+                        <span id="call-phone2"></span>
+                    </h4>
 
-            <div class="call-email">
-                <i class="fa-solid fa-envelope"></i>
+                    <div class="call-email">
+                        <i class="fa-solid fa-envelope"></i>
 
-                <span id="call-email"></span>
+                        <span id="call-email"></span>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
-
 </section>
 
 <section class="contact" id="contact">
@@ -543,48 +543,21 @@
         </div>
 
         <div class="form-group full">
-            <label>Preferred Branch <span class="required">*</span></label>
+            <label>
+                Preferred Branch <span class="required">*</span>
+            </label>
 
-            <div class="location-grid">
-
-                <label class="location-option">
-                    <input
-                        type="radio"
-                        name="branch"
-                        value="Makati">
-
-                    <span class="radio-design"></span>
-
-                    <div>
-                        <strong>Makati Branch</strong>
-                    </div>
-                </label>
-
-                <label class="location-option">
-                    <input
-                        type="radio"
-                        name="branch"
-                        value="Las Piñas">
-
-                    <span class="radio-design"></span>
-
-                    <div>
-                        <strong>Las Piñas Branch</strong>
-                    </div>
-                </label>
-
-            </div>
+            <div class="location-grid" id="contactBranchGrid"></div>
 
             <small class="input-error"></small>
         </div>
 
         <div class="form-group full">
-            <label for="inquiryMessage">Message <span class="required">*</span></label>
+            <label for="inquiryMessage">
+                Message <span class="required">*</span>
+            </label>
 
-            <textarea
-                id="inquiryMessage"
-                name="message"
-                placeholder="Tell us about your inquiry..."></textarea>
+            <textarea id="inquiryMessage" name="message" placeholder="Tell us about your inquiry..."></textarea>
 
             <small class="input-error"></small>
         </div>
@@ -846,6 +819,6 @@
     </div>
 </div>
 
-<script src="./js/HomePage.min.js" defer></script>
+<script src="./js/HomePage.js" defer></script>
 </body>
 </html>
