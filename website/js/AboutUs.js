@@ -5,21 +5,20 @@ const API_BASE_URL = hostname === "localhost" || hostname === "127.0.0.1" ? (por
 
 document.addEventListener("DOMContentLoaded", function () {
     initializeRevealAnimation();
-    initializeTeamHoverEffect();
     loadAboutPageContent();
 });
 
 function initializeRevealAnimation() {
-    const revealItems = document.querySelectorAll(
-        ".section-title, .team-title, .about-card, .value-card, .owner-row, .team-card, .branch-info, .branch-box, .map-card"
-    );
+    const revealItems = document.querySelectorAll(".section-title, .team-title, .about-card, .value-card, .owner-row, .team-card, .branch-info, .branch-box, .map-card");
 
     revealItems.forEach(function (item) {
         item.classList.add("reveal");
     });
 
     function revealOnScroll() {
-        revealItems.forEach(function (item) {
+        const items = document.querySelectorAll(".section-title, .team-title, .about-card, .value-card, .owner-row, .team-card, .branch-info, .branch-box, .map-card");
+
+        items.forEach(function (item) {
             const itemTop = item.getBoundingClientRect().top;
             const windowHeight = window.innerHeight;
 
@@ -31,7 +30,6 @@ function initializeRevealAnimation() {
 
     window.addEventListener("scroll", revealOnScroll);
     window.addEventListener("load", revealOnScroll);
-
     revealOnScroll();
 }
 
@@ -63,190 +61,560 @@ async function loadAboutPageContent() {
             throw new Error("Failed to load website content.");
         }
 
-        const { content = {} } = await response.json();
+        const responseData = await response.json();
+        const content = responseData.content || {};
 
-        setText("aboutHeroTag", content.about_hero_tag);
-        applyTextStyle("aboutHeroTag", content, "about_hero_tag");
+        setAboutContent(content);
+        setTeamContent(content);
+        setGeneralContent(content);
 
-        setText("aboutHeroTitle", content.about_hero_title);
-        applyTextStyle("aboutHeroTitle", content, "about_hero_title");
-
-        setText("aboutHeroDescription", content.about_hero_description);
-        applyTextStyle("aboutHeroDescription", content, "about_hero_description");
-
-        setLink("viewBranchesButton", content.view_branches_button_text, "#branches");
-        applyTextStyle("viewBranchesButton", content, "view_branches_button");
-
-        setLink("meetTeamButton", content.meet_team_button_text, "#team");
-        applyTextStyle("meetTeamButton", content, "meet_team_button");
-
-        setText("heroCardTitle", content.hero_card_title);
-        applyTextStyle("heroCardTitle", content, "hero_card_title");
-
-        setText("heroCardDescription", content.hero_card_description);
-        applyTextStyle("heroCardDescription", content, "hero_card_description");
-
-        setText("branchCount", content.branch_count);
-        applyTextStyle("branchCount", content, "branch_count");
-
-        setText("branchCountLabel", content.branch_count_label);
-        applyTextStyle("branchCountLabel", content, "branch_count_label");
-
-        setText("careTeamCount", content.care_team_count);
-        applyTextStyle("careTeamCount", content, "care_team_count");
-
-        setText("careTeamCountLabel", content.care_team_count_label);
-        applyTextStyle("careTeamCountLabel", content, "care_team_count_label");
-
-        setText("whoWeAreTag", content.who_we_are_tag);
-        applyTextStyle("whoWeAreTag", content, "who_we_are_tag");
-
-        setText("whoWeAreTitle", content.who_we_are_title);
-        applyTextStyle("whoWeAreTitle", content, "who_we_are_title");
-
-        setText("whoWeAreDescription", content.who_we_are_description);
-        applyTextStyle("whoWeAreDescription", content, "who_we_are_description");
-
-        setText("missionTitle", content.mission_title);
-        applyTextStyle("missionTitle", content, "mission_title");
-
-        setText("missionContent", content.mission_content);
-        applyTextStyle("missionContent", content, "mission_content");
-
-        setText("visionTitle", content.vision_title);
-        applyTextStyle("visionTitle", content, "vision_title");
-
-        setText("visionContent", content.vision_content);
-        applyTextStyle("visionContent", content, "vision_content");
-
-        setText("careTitle", content.care_title);
-        applyTextStyle("careTitle", content, "care_title");
-
-        setText("careContent", content.care_content);
-        applyTextStyle("careContent", content, "care_content");
-
-        setText("teamSectionTag", content.team_section_tag);
-        applyTextStyle("teamSectionTag", content, "team_section_tag");
-
-        setText("teamSectionTitle", content.team_section_title);
-        applyTextStyle("teamSectionTitle", content, "team_section_title");
-
-        setText("teamSectionDescription", content.team_section_description);
-        applyTextStyle("teamSectionDescription", content, "team_section_description");
-
-        setText("ownerLabel", content.owner_label);
-        applyTextStyle("ownerLabel", content, "owner_label");
-
-        setText("ownerName", content.owner_name);
-        applyTextStyle("ownerName", content, "owner_name");
-
-        setText("ownerPosition", content.owner_position);
-        applyTextStyle("ownerPosition", content, "owner_position");
-        
-        setText("ownerMessage1", content.owner_message1);
-        applyTextStyle("ownerMessage1", content, "owner_message1");
-
-        setText("ownerMessage2", content.owner_message2);
-        applyTextStyle("ownerMessage2", content, "owner_message2");
-        setImage("ownerImage", content.owner_image, content.owner_name, API_BASE_URL);
-
-        setText("doctor1Name", content.doctor1_name);
-        applyTextStyle("doctor1Name", content, "doctor1_name");
-        setText("doctor1Position", content.doctor1_position);
-        applyTextStyle("doctor1Position", content, "doctor1_position");
-        setImage("doctor1Image", content.doctor1_image, content.doctor1_name, API_BASE_URL);
-
-        setText("doctor2Name", content.doctor2_name);
-        applyTextStyle("doctor2Name", content, "doctor2_name");
-        setText("doctor2Position", content.doctor2_position);
-        applyTextStyle("doctor2Position", content, "doctor2_position");
-        setImage("doctor2Image", content.doctor2_image, content.doctor2_name, API_BASE_URL);
-        
-        setText("assistant1Name", content.assistant1_name);
-        applyTextStyle("assistant1Name", content, "assistant1_name");
-        setText("assistant1Position", content.assistant1_position);
-        applyTextStyle("assistant1Position", content, "assistant1_position");
-        setImage("assistant1Image", content.assistant1_image, content.assistant1_name, API_BASE_URL);
-
-        setText("assistant2Name", content.assistant2_name);
-        applyTextStyle("assistant2Name", content, "assistant2_name");
-        setText("assistant2Position", content.assistant2_position);
-        applyTextStyle("assistant2Position", content, "assistant2_position");
-        setImage("assistant2Image", content.assistant2_image, content.assistant2_name, API_BASE_URL);
-
-        setText("branchSectionTag", content.branch_section_tag);
-        applyTextStyle("branchSectionTag", content, "branch_section_tag");
-
-        setText("branchSectionTitle", content.branch_section_title);
-        applyTextStyle("branchSectionTitle", content, "branch_section_title");
-
-        setText("makatiBranchName", content.makati_branch_name);
-        applyTextStyle("makatiBranchName", content, "makati_branch_name");
-
-        setText("makatiBranchStatus", content.makati_branch_status);
-        applyTextStyle("makatiBranchStatus", content, "makati_branch_status");
-
-        setText("makatiBranchAddress", content.makati_branch_address);
-        applyTextStyle("makatiBranchAddress", content, "makati_branch_address");
-
-        setText("makatiBranchHours", content.makati_branch_hours);
-        applyTextStyle("makatiBranchHours", content, "makati_branch_hours");
-
-        setText("makatiBranchSchedule", content.makati_branch_schedule);
-        applyTextStyle("makatiBranchSchedule", content, "makati_branch_schedule");
-
-        setLink("makatiBranchMapButton", content.makati_branch_map_button, "#makati-map");
-        applyTextStyle("makatiBranchMapButton", content, "makati_branch_map_button");
-
-        setText("makatiMapBranchName", content.makati_branch_name);
-        applyTextStyle("makatiMapBranchName", content, "makati_branch_name");
-
-        document.getElementById("makatiMapBranchName").style.color = "#222";
-        setText("makatiMapBranchAddress", content.makati_branch_address);
-
-        applyTextStyle("makatiMapBranchAddress", content, "makati_branch_address");
-        document.getElementById("makatiMapBranchAddress").style.color = "#666";
-        setIframe("makatiBranchMap", getMapUrl(content.makati_branch_address));
-
-        setText("lasPinasBranchName", content.las_pinas_branch_name);
-        applyTextStyle("lasPinasBranchName", content, "las_pinas_branch_name");
-
-        setText("lasPinasBranchStatus", content.las_pinas_branch_status);
-        applyTextStyle("lasPinasBranchStatus", content, "las_pinas_branch_status");
-
-        setText("lasPinasBranchAddress", content.las_pinas_branch_address);
-        applyTextStyle("lasPinasBranchAddress", content, "las_pinas_branch_address");
-        
-        setText("lasPinasBranchHours", content.las_pinas_branch_hours);
-        applyTextStyle("lasPinasBranchHours", content, "las_pinas_branch_hours");
-
-        setLink("lasPinasBranchMapButton", content.las_pinas_branch_map_button, "#laspinas-map");
-        applyTextStyle("lasPinasBranchMapButton", content, "laspinas_branch_map_button");
-
-        setText("lasPinasMapBranchName", content.las_pinas_branch_name);
-        applyTextStyle("lasPinasMapBranchName", content, "las_pinas_branch_name");
-
-        document.getElementById("lasPinasMapBranchName").style.color = "#222";
-        setText("lasPinasMapBranchAddress", content.las_pinas_branch_address);
-
-        applyTextStyle("lasPinasMapBranchAddress", content, "las_pinas_branch_address");
-        document.getElementById("lasPinasMapBranchAddress").style.color = "#666";
-        setIframe("lasPinasBranchMap", getMapUrl(content.las_pinas_branch_address));
-
-        setText("mapSectionTag", content.map_section_tag);
-        applyTextStyle("mapSectionTag", content, "map_section_tag");
-
-        setText("mapSectionTitle", content.map_section_title);
-        applyTextStyle("mapSectionTitle", content, "map_section_title");
-
-        setText("mapSectionDescription", content.map_section_description);
-        applyTextStyle("mapSectionDescription", content, "map_section_description");
-        
-        setText("footerCopyright", content.footer_copyright);
-        applyTextStyle("footerCopyright", content, "footer_copyright");
+        await Promise.all([
+            loadBranches(),
+            loadTeamProfiles()
+        ]);
     } catch (error) {
         console.error("Error loading About page content:", error);
     }
+}
+
+function setAboutContent(content) {
+    setText("aboutHeroTag", content.about_hero_tag);
+    applyTextStyle("aboutHeroTag", content, "about_hero_tag");
+
+    setText("aboutHeroTitle", content.about_hero_title);
+    applyTextStyle("aboutHeroTitle", content, "about_hero_title");
+
+    setText("aboutHeroDescription", content.about_hero_description);
+    applyTextStyle("aboutHeroDescription", content, "about_hero_description");
+
+    setLink("viewBranchesButton", content.view_branches_button_text, "#branches");
+    applyTextStyle("viewBranchesButton", content, "view_branches_button");
+
+    setLink("meetTeamButton", content.meet_team_button_text, "#team");
+    applyTextStyle("meetTeamButton", content, "meet_team_button");
+
+    setText("heroCardTitle", content.hero_card_title);
+    applyTextStyle("heroCardTitle", content, "hero_card_title");
+
+    setText("heroCardDescription", content.hero_card_description);
+    applyTextStyle("heroCardDescription", content, "hero_card_description");
+
+    setText("branchCountLabel", content.branch_count_label);
+    applyTextStyle("branchCountLabel", content, "branch_count_label");
+
+    setText("careTeamCount", content.care_team_count);
+    applyTextStyle("careTeamCount", content, "care_team_count");
+
+    setText("careTeamCountLabel", content.care_team_count_label);
+    applyTextStyle("careTeamCountLabel", content, "care_team_count_label");
+
+    setText("whoWeAreTag", content.who_we_are_tag);
+    applyTextStyle("whoWeAreTag", content, "who_we_are_tag");
+
+    setText("whoWeAreTitle", content.who_we_are_title);
+    applyTextStyle("whoWeAreTitle", content, "who_we_are_title");
+
+    setText("whoWeAreDescription", content.who_we_are_description);
+    applyTextStyle("whoWeAreDescription", content, "who_we_are_description");
+
+    setText("missionTitle", content.mission_title);
+    applyTextStyle("missionTitle", content, "mission_title");
+
+    setText("missionContent", content.mission_content);
+    applyTextStyle("missionContent", content, "mission_content");
+
+    setText("visionTitle", content.vision_title);
+    applyTextStyle("visionTitle", content, "vision_title");
+
+    setText("visionContent", content.vision_content);
+    applyTextStyle("visionContent", content, "vision_content");
+
+    setText("careTitle", content.care_title);
+    applyTextStyle("careTitle", content, "care_title");
+
+    setText("careContent", content.care_content);
+    applyTextStyle("careContent", content, "care_content");
+
+    setText("teamSectionTag", content.team_section_tag);
+    applyTextStyle("teamSectionTag", content, "team_section_tag");
+
+    setText("teamSectionTitle", content.team_section_title);
+    applyTextStyle("teamSectionTitle", content, "team_section_title");
+
+    setText("teamSectionDescription", content.team_section_description);
+    applyTextStyle("teamSectionDescription", content, "team_section_description");
+}
+
+function setTeamContent(content) {
+    setText("ownerLabel", content.owner_label);
+    applyTextStyle("ownerLabel", content, "owner_label");
+
+    setText("ownerName", content.owner_name);
+    applyTextStyle("ownerName", content, "owner_name");
+
+    setText("ownerPosition", content.owner_position);
+    applyTextStyle("ownerPosition", content, "owner_position");
+
+    setText("ownerMessage1", content.owner_message1);
+    applyTextStyle("ownerMessage1", content, "owner_message1");
+
+    setText("ownerMessage2", content.owner_message2);
+    applyTextStyle("ownerMessage2", content, "owner_message2");
+
+    setImage("ownerImage", content.owner_image, content.owner_name);
+}
+
+function setGeneralContent(content) {
+    setText("mapSectionTag", content.map_section_tag);
+    applyTextStyle("mapSectionTag", content, "map_section_tag");
+
+    setText("mapSectionTitle", content.map_section_title);
+    applyTextStyle("mapSectionTitle", content, "map_section_title");
+
+    setText("mapSectionDescription", content.map_section_description);
+    applyTextStyle("mapSectionDescription", content, "map_section_description");
+
+    setText("footerCopyright", content.footer_copyright);
+    applyTextStyle("footerCopyright", content, "footer_copyright");
+}
+
+async function loadTeamProfiles() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/website/team`);
+
+        if (!response.ok) {
+            throw new Error("Failed to load team profiles.");
+        }
+
+        const responseData = await response.json();
+
+        const profiles = responseData.team || responseData.staff || responseData.profiles || responseData.data || [];
+
+        renderTeamProfiles(profiles);
+    } catch (error) {
+        console.error("Error loading team profiles:", error);
+        clearTeamProfileGrids();
+    }
+}
+
+function renderTeamProfiles(profiles) {
+    const dentistGrid = document.getElementById("dentistGrid");
+    const assistantGrid = document.getElementById("assistantGrid");
+    const receptionistGrid = document.getElementById("receptionistGrid");
+
+    if (!dentistGrid && !assistantGrid && !receptionistGrid) {
+        return;
+    }
+
+    if (dentistGrid) {
+        dentistGrid.innerHTML = "";
+    }
+
+    if (assistantGrid) {
+        assistantGrid.innerHTML = "";
+    }
+
+    if (receptionistGrid) {
+        receptionistGrid.innerHTML = "";
+    }
+
+    if (!Array.isArray(profiles)) {
+        return;
+    }
+
+    let dentistCount = 0;
+    let assistantCount = 0;
+    let receptionistCount = 0;
+
+    profiles.forEach(function (profile) {
+        if (!profile) {
+            return;
+        }
+
+        const role = getProfileRole(profile);
+        const card = createTeamProfileCard(profile);
+
+        if (isDentistRole(role)) {
+            if (dentistGrid) {
+                dentistGrid.appendChild(card);
+                dentistCount++;
+            }
+            return;
+        }
+
+        if (isAssistantRole(role)) {
+            if (assistantGrid) {
+                assistantGrid.appendChild(card);
+                assistantCount++;
+            }
+            return;
+        }
+
+        if (isReceptionistRole(role)) {
+            if (receptionistGrid) {
+                receptionistGrid.appendChild(card);
+                receptionistCount++;
+            }
+        }
+    });
+
+    updateTeamSectionVisibility("dentistGrid", dentistCount);
+    updateTeamSectionVisibility("assistantGrid", assistantCount);
+    updateTeamSectionVisibility("receptionistGrid", receptionistCount);
+
+    setText("careTeamCount", profiles.length);
+
+    initializeTeamHoverEffect();
+    initializeRevealAnimation();
+}
+
+function createTeamProfileCard(profile) {
+    const card = document.createElement("div");
+    card.className = "team-card";
+
+    const image = document.createElement("img");
+    image.width = 280;
+    image.height = 340;
+    image.loading = "lazy";
+    image.decoding = "async";
+
+    const name = getProfileValue(profile, ["name", "full_name", "employee_name", "staff_name"]);
+    const position = getProfileValue(profile, ["position", "role", "job_title", "employee_position"]);
+    const description = getProfileValue(profile, ["description", "bio", "profile_description", "about"]);
+    const imageValue = getProfileValue(profile, ["image", "image_path", "profile_image", "photo", "photo_url"]);
+
+    setProfileImage(image, imageValue, name);
+
+    const info = document.createElement("div");
+    info.className = "team-info";
+
+    const nameElement = document.createElement("h3");
+    nameElement.textContent = name;
+
+    const positionElement = document.createElement("p");
+    positionElement.textContent = position;
+
+    info.appendChild(nameElement);
+    info.appendChild(positionElement);
+
+    if (description) {
+        const descriptionElement = document.createElement("p");
+        descriptionElement.className = "team-description";
+        descriptionElement.textContent = description;
+        info.appendChild(descriptionElement);
+    }
+
+    card.appendChild(image);
+    card.appendChild(info);
+
+    return card;
+}
+
+function setProfileImage(element, value, alt = "") {
+    if (!element) {
+        return;
+    }
+
+    element.alt = alt || "";
+    element.loading = "lazy";
+    element.decoding = "async";
+
+    if (!value) {
+        element.removeAttribute("src");
+        return;
+    }
+
+    const imageValue = String(value).trim();
+
+    if (imageValue.startsWith("https://res.cloudinary.com/")) {
+        element.src = imageValue;
+        return;
+    }
+
+    if (imageValue.startsWith("http://") || imageValue.startsWith("https://")) {
+        element.src = imageValue;
+        return;
+    }
+
+    element.src = `${API_BASE_URL}${imageValue.startsWith("/") ? imageValue : `/${imageValue}`}`;
+}
+
+function getProfileRole(profile) {
+    return getProfileValue(profile, ["role", "position", "job_title", "employee_position"]).toLowerCase().trim();
+}
+
+function isDentistRole(role) {
+    return role.includes("dentist") && !role.includes("assistant");
+}
+
+function isAssistantRole(role) {
+    return role.includes("assistant") || role.includes("dental assistant");
+}
+
+function isReceptionistRole(role) {
+    return role.includes("receptionist");
+}
+
+function getProfileValue(profile, keys) {
+    for (const key of keys) {
+        if (profile[key] !== undefined && profile[key] !== null && String(profile[key]).trim() !== "") {
+            return String(profile[key]);
+        }
+    }
+
+    return "";
+}
+
+function updateTeamSectionVisibility(gridId, count) {
+    const grid = document.getElementById(gridId);
+
+    if (!grid) {
+        return;
+    }
+
+    const category = grid.closest(".team-category");
+
+    if (!category) {
+        return;
+    }
+
+    category.style.display = count > 0 ? "" : "none";
+}
+
+function clearTeamProfileGrids() {
+    const grids = [
+        document.getElementById("dentistGrid"),
+        document.getElementById("assistantGrid"),
+        document.getElementById("receptionistGrid")
+    ];
+
+    grids.forEach(function (grid) {
+        if (grid) {
+            grid.innerHTML = "";
+        }
+    });
+}
+
+async function loadBranches() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/website/branches`);
+
+        if (!response.ok) {
+            throw new Error("Failed to load branch locations.");
+        }
+
+        const responseData = await response.json();
+
+        const branches = responseData.branches || responseData.data || responseData.locations || [];
+
+        renderBranches(branches);
+    } catch (error) {
+        console.error("Error loading branch locations:", error);
+        clearBranches();
+    }
+}
+
+function renderBranches(branches) {
+    const branchesGrid = document.getElementById("branchesGrid");
+    const mapGrid = document.getElementById("mapGrid");
+
+    if (!branchesGrid || !mapGrid) {
+        return;
+    }
+
+    branchesGrid.innerHTML = "";
+    mapGrid.innerHTML = "";
+
+    if (!Array.isArray(branches) || branches.length === 0) {
+        setText("branchCount", "0");
+        return;
+    }
+
+    setText("branchCount", branches.length);
+
+    branches.forEach(function (branch, index) {
+        const branchId = getBranchId(branch, index);
+        const branchName = getBranchValue(branch, ["branch_name", "name", "location_name"]);
+        const branchStatus = getBranchValue(branch, ["branch_status", "status"]);
+        const branchAddress = getBranchValue(branch, ["branch_address", "address", "location"]);
+        const branchHours = getBranchValue(branch, ["branch_hours", "hours", "operating_hours"]);
+        const branchSchedule = getBranchValue(branch, ["branch_schedule", "schedule"]);
+        const branchMapButton = getBranchValue(branch, ["branch_map_button", "map_button", "map_button_text"]) || "View Location";
+        const branchIcon = getBranchValue(branch, ["branch_icon", "icon"]) || "fa-building";
+
+        const branchCard = document.createElement("div");
+        branchCard.className = "branch-box";
+        branchCard.id = `branch-${branchId}`;
+
+        const branchTop = document.createElement("div");
+        branchTop.className = "branch-top";
+
+        const iconContainer = document.createElement("div");
+        iconContainer.className = "branch-icon";
+
+        const icon = document.createElement("i");
+        icon.className = `fa-solid ${branchIcon}`;
+
+        iconContainer.appendChild(icon);
+
+        const branchText = document.createElement("div");
+        branchText.className = "branch-text";
+
+        const nameElement = document.createElement("h3");
+        nameElement.textContent = branchName;
+
+        const statusElement = document.createElement("p");
+        statusElement.textContent = branchStatus;
+
+        branchText.appendChild(nameElement);
+        branchText.appendChild(statusElement);
+
+        branchTop.appendChild(iconContainer);
+        branchTop.appendChild(branchText);
+
+        const details = document.createElement("div");
+        details.className = "branch-details";
+
+        if (branchAddress) {
+            details.appendChild(createBranchDetail("fa-location-dot", branchAddress));
+        }
+
+        if (branchHours) {
+            details.appendChild(createBranchDetail("fa-clock", branchHours));
+        }
+
+        if (branchSchedule) {
+            details.appendChild(createBranchDetail("fa-calendar-check", branchSchedule));
+        }
+
+        const mapButton = document.createElement("a");
+        mapButton.className = "branch-btn";
+        mapButton.href = `#${branchId}-map`;
+        mapButton.textContent = branchMapButton;
+
+        branchCard.appendChild(branchTop);
+        branchCard.appendChild(details);
+        branchCard.appendChild(mapButton);
+
+        branchesGrid.appendChild(branchCard);
+
+        const mapCard = createMapCard(branchId, branchName, branchAddress);
+        mapGrid.appendChild(mapCard);
+    });
+
+    initializeBranchReveal();
+}
+
+function createBranchDetail(iconClass, text) {
+    const row = document.createElement("div");
+    row.className = "branch-detail-row";
+
+    const icon = document.createElement("i");
+    icon.className = `fa-solid ${iconClass}`;
+
+    const paragraph = document.createElement("p");
+    paragraph.textContent = text;
+
+    row.appendChild(icon);
+    row.appendChild(paragraph);
+
+    return row;
+}
+
+function createMapCard(branchId, branchName, branchAddress) {
+    const mapCard = document.createElement("div");
+    mapCard.className = "map-card";
+    mapCard.id = `${branchId}-map`;
+
+    const mapHeader = document.createElement("div");
+    mapHeader.className = "map-header";
+
+    const mapText = document.createElement("div");
+    mapText.className = "map-text";
+
+    const name = document.createElement("h3");
+    name.textContent = branchName;
+
+    const address = document.createElement("p");
+    address.textContent = branchAddress;
+
+    mapText.appendChild(name);
+    mapText.appendChild(address);
+    mapHeader.appendChild(mapText);
+
+    const mapWrapper = document.createElement("div");
+    mapWrapper.className = "map-wrapper";
+
+    const iframe = document.createElement("iframe");
+    iframe.loading = "lazy";
+    iframe.referrerPolicy = "no-referrer-when-downgrade";
+    iframe.src = getMapUrl(branchAddress);
+    iframe.title = `${branchName} location map`;
+
+    mapWrapper.appendChild(iframe);
+    mapCard.appendChild(mapHeader);
+    mapCard.appendChild(mapWrapper);
+
+    return mapCard;
+}
+
+function getBranchId(branch, index) {
+    const value = branch.branch_id ?? branch.id ?? branch.location_id ?? branch.branch_name ?? branch.name ?? `branch-${index + 1}`;
+
+    return String(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+
+function getBranchValue(branch, keys) {
+    for (const key of keys) {
+        if (branch[key] !== undefined && branch[key] !== null && String(branch[key]).trim() !== "") {
+            return String(branch[key]);
+        }
+    }
+
+    return "";
+}
+
+function initializeBranchReveal() {
+    const revealItems = document.querySelectorAll(".branch-box, .map-card");
+
+    revealItems.forEach(function (item) {
+        item.classList.add("reveal");
+    });
+
+    function revealBranches() {
+        const items = document.querySelectorAll(".branch-box, .map-card");
+
+        items.forEach(function (item) {
+            const itemTop = item.getBoundingClientRect().top;
+            const windowHeight = window.innerHeight;
+
+            if (itemTop < windowHeight - 80) {
+                item.classList.add("show");
+            }
+        });
+    }
+
+    window.addEventListener("scroll", revealBranches);
+    window.addEventListener("load", revealBranches);
+    revealBranches();
+}
+
+function clearBranches() {
+    const branchesGrid = document.getElementById("branchesGrid");
+    const mapGrid = document.getElementById("mapGrid");
+
+    if (branchesGrid) {
+        branchesGrid.innerHTML = "";
+    }
+
+    if (mapGrid) {
+        mapGrid.innerHTML = "";
+    }
+
+    setText("branchCount", "0");
 }
 
 function getMapUrl(address) {
@@ -269,21 +637,31 @@ function setText(id, value) {
 
 function setImage(id, value, alt = "") {
     const element = document.getElementById(id);
-    if (!element) return;
+
+    if (!element) {
+        return;
+    }
 
     element.loading = "lazy";
     element.decoding = "async";
-
-    if (value) {
-        if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("blob:")) {
-            element.src = value;
-        } else {
-            element.src = `${API_BASE_URL}${value.startsWith("/") ? value : `/${value}`}`;
-        }
-    } else {
-        element.removeAttribute("src");
-    }
     element.alt = alt || "";
+
+    if (!value) {
+        element.removeAttribute("src");
+        return;
+    }
+
+    const imageValue = String(value);
+
+    if (
+        imageValue.startsWith("http://") ||
+        imageValue.startsWith("https://") ||
+        imageValue.startsWith("blob:")
+    ) {
+        element.src = imageValue;
+    } else {
+        element.src = `${API_BASE_URL}${imageValue.startsWith("/") ? imageValue : `/${imageValue}`}`;
+    }
 }
 
 function setLink(id, text, href) {
@@ -295,16 +673,6 @@ function setLink(id, text, href) {
 
     element.textContent = text ?? "";
     element.href = href || "#";
-}
-
-function setIframe(id, value) {
-    const element = document.getElementById(id);
-
-    if (!element) {
-        return;
-    }
-
-    element.src = value || "";
 }
 
 function applyTextStyle(id, content, prefix) {
@@ -319,22 +687,16 @@ function applyTextStyle(id, content, prefix) {
     const fontWeight = content[`${prefix}_font_weight`];
     const fontStyle = content[`${prefix}_font_style`];
 
-    const textColor =
-        content[`${prefix}_text_color`] ??
-        content[`${prefix}_color`];
+    const textColor = content[`${prefix}_text_color`] ?? content[`${prefix}_color`];
 
-    const textAlignment =
-        content[`${prefix}_text_alignment`] ??
-        content[`${prefix}_alignment`];
+    const textAlignment = content[`${prefix}_text_alignment`] ?? content[`${prefix}_alignment`];
 
     if (fontFamily) {
         element.style.fontFamily = fontFamily;
     }
 
     if (fontSize) {
-        element.style.fontSize = /^\d+$/.test(String(fontSize))
-            ? `${fontSize}px`
-            : fontSize;
+        element.style.fontSize = /^\d+$/.test(String(fontSize)) ? `${fontSize}px` : fontSize;
     }
 
     if (fontWeight) {
@@ -363,7 +725,6 @@ function applyTextStyle(id, content, prefix) {
     const branchDetails = element.closest(".branch-details");
     const mapHeader = element.closest(".map-header");
 
-    // Section titles
     if (sectionTitle || branchHeader) {
         const container = sectionTitle || branchHeader;
 
@@ -378,7 +739,6 @@ function applyTextStyle(id, content, prefix) {
         }
     }
 
-    // Owner section
     if (ownerContent) {
         ownerContent.style.textAlign = textAlignment;
         element.style.textAlign = textAlignment;
@@ -407,18 +767,14 @@ function applyTextStyle(id, content, prefix) {
             }
         }
 
-
-        // Ito ang kulang
         if (element.classList.contains("owner-label")) {
             switch (textAlignment) {
                 case "left":
                     element.style.alignSelf = "flex-start";
                     break;
-
                 case "center":
                     element.style.alignSelf = "center";
                     break;
-
                 case "right":
                     element.style.alignSelf = "flex-end";
                     break;
@@ -426,12 +782,10 @@ function applyTextStyle(id, content, prefix) {
         }
     }
 
-    // Team cards
     if (teamInfo) {
         teamInfo.style.textAlign = textAlignment;
     }
 
-    // Branch header
     if (branchTop) {
         const textContainer = element.parentElement;
 
@@ -444,9 +798,8 @@ function applyTextStyle(id, content, prefix) {
         element.style.textAlign = textAlignment;
     }
 
-    // Branch details
     if (branchDetails) {
-        branchDetails.querySelectorAll("div").forEach((row) => {
+        branchDetails.querySelectorAll("div").forEach(function (row) {
             const icon = row.querySelector("i");
             const text = row.querySelector("p");
 
@@ -462,30 +815,50 @@ function applyTextStyle(id, content, prefix) {
             switch (textAlignment) {
                 case "left":
                     row.style.justifyContent = "flex-start";
-                    if (icon) icon.style.order = "0";
-                    if (text) text.style.order = "1";
+
+                    if (icon) {
+                        icon.style.order = "0";
+                    }
+
+                    if (text) {
+                        text.style.order = "1";
+                    }
+
                     break;
 
                 case "center":
                     row.style.justifyContent = "center";
-                    if (icon) icon.style.order = "0";
-                    if (text) text.style.order = "1";
+
+                    if (icon) {
+                        icon.style.order = "0";
+                    }
+
+                    if (text) {
+                        text.style.order = "1";
+                    }
+
                     break;
 
                 case "right":
                     row.style.justifyContent = "flex-end";
-                    if (icon) icon.style.order = "1";
-                    if (text) text.style.order = "0";
+
+                    if (icon) {
+                        icon.style.order = "1";
+                    }
+
+                    if (text) {
+                        text.style.order = "0";
+                    }
+
                     break;
             }
         });
     }
 
-    // Map header
     if (mapHeader) {
         mapHeader.style.textAlign = textAlignment;
 
-        mapHeader.querySelectorAll("h3, p").forEach((item) => {
+        mapHeader.querySelectorAll("h3, p").forEach(function (item) {
             item.style.width = "100%";
             item.style.textAlign = textAlignment;
         });
