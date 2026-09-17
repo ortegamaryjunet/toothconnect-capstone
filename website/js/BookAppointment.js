@@ -433,22 +433,37 @@ document.addEventListener("DOMContentLoaded", function () {
     async function loadBranches() {
         const locationGrid = document.getElementById("locationGrid");
 
-        if (!locationGrid) return;
+        if (!locationGrid) {
+            console.error("locationGrid was not found.");
+            return;
+        }
 
-        locationGrid.innerHTML = "";
+        locationGrid.innerHTML = `
+            <p class="disabled-option">Loading branches...</p>
+        `;
 
         try {
-            const res = await fetch(
-                API_BASE_URL + "/api/website/branches",
-                { cache: "no-store" }
-            );
+            const branchUrl = API_BASE_URL + "/api/website/branches";
+
+            console.log("Loading branches from:", branchUrl);
+
+            const res = await fetch(branchUrl, {
+                cache: "no-store"
+            });
+
+            console.log("Branches response status:", res.status);
 
             if (!res.ok) {
-                throw new Error("Unable to load branches.");
+                throw new Error("Branches API returned HTTP " + res.status);
             }
 
             const data = await res.json();
-            const branches = Array.isArray(data.branches) ? data.branches : [];
+
+            console.log("Branches API response:", data);
+
+            const branches = Array.isArray(data.branches)
+                ? data.branches
+                : [];
 
             if (branches.length === 0) {
                 locationGrid.innerHTML = `
@@ -456,6 +471,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 `;
                 return;
             }
+
+            locationGrid.innerHTML = "";
 
             branches.forEach(function (branch) {
                 const label = document.createElement("label");
@@ -485,11 +502,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     clearFieldError("locationError");
 
-                    document
-                        .querySelectorAll(".location-option")
-                        .forEach(function (el) {
-                            el.classList.remove("input-error");
-                        });
+                    document.querySelectorAll(".location-option").forEach(function (el) {
+                        el.classList.remove("input-error");
+                    });
 
                     if (reasonText) {
                         reasonText.textContent = "Select reason";
@@ -514,7 +529,9 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Load branches error:", error);
 
             locationGrid.innerHTML = `
-                <p class="disabled-option">Branches are temporarily unavailable.</p>
+                <p class="disabled-option">
+                    Unable to load branches.
+                </p>
             `;
         }
     }
