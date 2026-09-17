@@ -1,0 +1,52 @@
+.tooth-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(5px);
+}
+
+.tooth-loading.show {
+    display: flex;
+}
+
+.tooth-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    text-align: center;
+    font-weight: 600;
+    color: #2f80ed;
+}
+
+.tooth-loader i {
+    font-size: 64px;
+    animation: toothLoadingAnimation 1s ease-in-out infinite;
+}
+
+.tooth-loader span {
+    font-size: 16px;
+}
+
+@keyframes toothLoadingAnimation {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg) scale(1);
+    }
+
+    25% {
+        transform: translateY(-10px) rotate(-8deg) scale(1.05);
+    }
+
+    50% {
+        transform: translateY(0) rotate(0deg) scale(1);
+    }
+
+    75% {
+        transform: translateY(-10px) rotate(8deg) scale(1.05);
+    }
+}

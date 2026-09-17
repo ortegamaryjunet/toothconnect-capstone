@@ -242,6 +242,7 @@ a {
     color: var(--gold-dark);
     font-size: 28px;
     font-weight: 900;
+    text-align: center;
     overflow-wrap: break-word;
 }
 
@@ -564,7 +565,7 @@ a {
     max-width: 1120px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 28px;
 }
 
@@ -726,37 +727,42 @@ footer {
     overflow-wrap: break-word;
 }
 
-.branch-location-btn {
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+.branch-btn {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.branch-location-btn:hover {
-    transform: translateY(-2px);
+.branch-btn:hover {
+    transform: translateY(-3px);
 }
 
 .branch-map-card {
     position: relative;
-    transition: transform 0.35s ease, box-shadow 0.35s ease;
+    transition: transform 0.5s ease, box-shadow 0.5s ease;
 }
 
 .branch-map-card.map-highlight {
-    animation: branchLocationHighlight 1.8s ease;
+    animation: branchMapFocus 2s ease;
 }
 
-@keyframes branchLocationHighlight {
+@keyframes branchMapFocus {
     0% {
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
     }
 
-    25% {
-        transform: scale(1.02);
-        box-shadow: 0 0 0 8px rgba(212, 175, 55, 0.18);
+    20% {
+        transform: scale(1.03);
+        box-shadow: 0 0 0 10px rgba(212, 175, 55, 0.20);
     }
 
-    50% {
-        transform: scale(1.01);
-        box-shadow: 0 0 0 14px rgba(212, 175, 55, 0.08);
+    45% {
+        transform: scale(1.015);
+        box-shadow: 0 0 0 18px rgba(212, 175, 55, 0.10);
+    }
+
+    70% {
+        transform: scale(1.02);
+        box-shadow: 0 0 0 10px rgba(212, 175, 55, 0.15);
     }
 
     100% {

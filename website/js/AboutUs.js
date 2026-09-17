@@ -301,7 +301,6 @@ card.innerHTML = `
     <div class="team-info">
         <h3>${escapeHtml(profile.name || 'Team Member')}</h3>
         <span class="team-position">${escapeHtml(profile.position || profile.role || '')}</span>
-        <p class="team-description">${escapeHtml(profile.description || '')}</p>
     </div>
 `;
 
@@ -529,7 +528,7 @@ function renderBranches(branches) {
         mapButton.className = "branch-btn";
         mapButton.href = "#location";
         mapButton.dataset.branchId = branchId;
-        mapButton.textContent = "View Branch Location";
+        mapButton.textContent = "View Location";
 
         branchCard.appendChild(branchTop);
         branchCard.appendChild(details);
@@ -905,6 +904,7 @@ function applyTextStyle(id, content, prefix) {
     }
 }
 
+
 document.addEventListener("click", function (event) {
     const button = event.target.closest(".branch-btn");
 
@@ -927,18 +927,27 @@ document.addEventListener("click", function (event) {
     });
 
     setTimeout(function () {
-        const targetMap = document.querySelector(`[data-map-branch-id="${branchId}"]`);
+        const targetMap = document.querySelector(
+            `[data-map-branch-id="${branchId}"]`
+        );
+
+        if (!targetMap) {
+            return;
+        }
 
         document.querySelectorAll(".branch-map-card").forEach(function (map) {
             map.classList.remove("map-highlight");
         });
 
-        if (targetMap) {
-            targetMap.classList.add("map-highlight");
+        targetMap.classList.add("map-highlight");
 
-            setTimeout(function () {
-                targetMap.classList.remove("map-highlight");
-            }, 1800);
-        }
-    }, 600);
+        targetMap.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+
+        setTimeout(function () {
+            targetMap.classList.remove("map-highlight");
+        }, 2000);
+    }, 500);
 });

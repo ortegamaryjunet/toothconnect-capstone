@@ -1719,7 +1719,14 @@ export default function AdminSettings() {
   }
 
   function handleWebsiteContentSaveRequest(sectionFields, requiredKeys = []) {
-    const isValid = validateWebsiteFields(sectionFields, requiredKeys);
+    const currentFields = Object.fromEntries(
+      Object.keys(sectionFields).map((key) => [
+        key,
+        websiteContentForm[key] ?? websiteContent[key] ?? "",
+      ])
+    );
+
+    const isValid = validateWebsiteFields(currentFields, requiredKeys);
 
     if (!isValid) {
       setTimeout(() => {
@@ -1732,7 +1739,7 @@ export default function AdminSettings() {
       return;
     }
 
-    const details = Object.entries(sectionFields).map(([key, value]) => ({
+    const details = Object.entries(currentFields).map(([key, value]) => ({
       key,
       label: formatWebsiteContentFieldLabel(key),
       value: String(value ?? "").trim() || "Not entered",
@@ -1753,7 +1760,7 @@ export default function AdminSettings() {
 
     setWebsiteContentSaveConfirmModal({
       details: details.filter((detail) => detail.changed),
-      sectionFields,
+      sectionFields: currentFields,
       requiredKeys,
     });
   }
@@ -2531,7 +2538,7 @@ export default function AdminSettings() {
       BRANCH_SPECIAL_CHARACTER_FIELDS.includes(name) &&
       !BRANCH_TEXT_FIELD_REGEX.test(trimmedValue)
     ) {
-      return 'Special characters are not allowed.';
+      return 'Please enter valid characters.';
     }
 
     return '';

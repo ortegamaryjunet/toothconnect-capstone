@@ -79,6 +79,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const messageText  = document.getElementById("messageText");
     const messageIcon  = document.getElementById("messageIcon");
     const messageBtn   = document.getElementById("messageBtn");
+    const toothLoading = document.getElementById("toothLoading");
+
+    function showToothLoading() {
+        if (!toothLoading) return;
+        toothLoading.classList.add("show");
+        toothLoading.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+    }
+
+    function hideToothLoading() {
+        if (!toothLoading) return;
+        toothLoading.classList.remove("show");
+        toothLoading.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    }
 
     function showMessage(title, text, type) {
         messageTitle.textContent = title;
@@ -1073,15 +1088,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 const result = await response.json();
 
+                if (!response.ok || !result.success) {
+                    showMessage(
+                        result.messageTitle || "Appointment Status",
+                        result.message || "Appointment request processed.",
+                        "error"
+                    );
+                    return;
+                }
+
+                showToothLoading();
+
+                await new Promise(function (resolve) {
+                    setTimeout(resolve, 1500);
+                });
+
+                hideToothLoading();
+
                 showMessage(
                     result.messageTitle || "Appointment Status",
                     result.message || "Appointment request processed.",
-                    result.success ? "success" : "error"
+                    "success"
                 );
-
-                if (!response.ok || !result.success) {
-                    return;
-                }
 
                 appointmentForm.reset();
 
@@ -1137,6 +1165,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             } catch (error) {
                 console.error("Appointment submit error:", error);
+                hideToothLoading();
 
                 showMessage(
                     "Something Went Wrong",

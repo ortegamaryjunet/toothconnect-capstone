@@ -7,6 +7,7 @@
     <title>Book Appointment | Smile Empress Dental Hub</title>
 
     <link rel="stylesheet" href="./css/BookAppointment.min.css">
+    <link rel="stylesheet" href="./css/BookAppointmentLoading.css">
     <link rel="stylesheet" href="./css/fontawesome-local.min.css">
 </head>
 <body>
@@ -204,27 +205,7 @@
                     <div class="input-group">
                         <label>Location <span class="required">*</span></label>
 
-                        <div class="location-grid">
-                            <label class="location-option">
-                                <input type="radio" name="location" value="Makati Branch">
-
-                                <span class="radio-design"></span>
-
-                                <div>
-                                    <strong>Makati Branch</strong>
-                                </div>
-                            </label>
-
-                            <label class="location-option">
-                                <input type="radio" name="location" value="Las Piñas Branch">
-
-                                <span class="radio-design"></span>
-
-                                <div>
-                                    <strong>Las Piñas Branch</strong>
-                                </div>
-                            </label>
-                        </div>
+                        <div class="location-grid" id="locationGrid"></div>
 
                         <span class="field-error-text" id="locationError"></span>
                     </div>
@@ -259,6 +240,14 @@
         </div>
     </section>
 </div>
+
+<div class="tooth-loading" id="toothLoading" aria-hidden="true">
+    <div class="tooth-loader">
+        <i class="fa-solid fa-tooth"></i>
+        <span>Processing your appointment...</span>
+    </div>
+</div>
+
 
 <div class="message-modal" id="messageModal">
     <div class="message-box">

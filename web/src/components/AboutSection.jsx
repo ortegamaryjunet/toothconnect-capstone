@@ -13,14 +13,10 @@ export default function AboutSection({
   contentEditActions,
   collectFieldsByPrefixes,
 }) {
-  const baseURL = api?.defaults?.baseURL
-    ? api.defaults.baseURL.replace("/api", "")
-    : "";
+  const baseURL = api?.defaults?.baseURL ? api.defaults.baseURL.replace("/api", "") : "";
 
   const getImageSrc = (field) => {
-    const path =
-      websiteContentForm[field] ||
-      websiteContent[field];
+    const path = websiteContentForm[field] || websiteContent[field];
 
     if (!path) return null;
 
@@ -61,17 +57,12 @@ export default function AboutSection({
         }
       );
 
-      const uploadedPath = response.data.path;
+    const uploadedPath = response.data.path || response.data.url || response.data.secure_url;
 
-      setWebsiteContent((prev) => ({
-        ...prev,
-        [field]: uploadedPath,
-      }));
-
-      setWebsiteContentForm((prev) => ({
-        ...prev,
-        [field]: uploadedPath,
-      }));
+    setWebsiteContentForm((prev) => ({
+      ...prev,
+      [field]: uploadedPath,
+    }));
     } catch (err) {
       console.error(err);
     }
@@ -240,572 +231,347 @@ export default function AboutSection({
 
   return (
     <div>
-      <h3 style={styles.websiteSectionTitle}>
-        Hero Section
-      </h3>
+      <h3 style={styles.websiteSectionTitle}>Hero Section</h3>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Hero Tag",
-            "about_hero_tag"
-          )}
+          {fieldRow("Hero Tag", "about_hero_tag")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "about_hero_tag",
-            "Hero Tag"
-          )}
+          {textDesignFields("about_hero_tag", "Hero Tag")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Hero Title",
-            "about_hero_title"
-          )}
+          {fieldRow("Hero Title", "about_hero_title")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "about_hero_title",
-            "Hero Title"
-          )}
+          {textDesignFields("about_hero_title", "Hero Title")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Hero Description",
-            "about_hero_description",
-            "textarea"
-          )}
+          {fieldRow("Hero Description", "about_hero_description", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "about_hero_description",
-            "Hero Description"
-          )}
+          {textDesignFields("about_hero_description", "Hero Description")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "View Branches Button",
-            "view_branches_button_text"
-          )}
+          {fieldRow("View Branches Button", "view_branches_button_text")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "view_branches_button",
-            "View Branches Button"
-          )}
+          {textDesignFields("view_branches_button", "View Branches Button")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Meet Team Button",
-            "meet_team_button_text"
-          )}
+          {fieldRow("Meet Team Button", "meet_team_button_text")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "meet_team_button",
-            "Meet Team Button"
-          )}
+          {textDesignFields("meet_team_button", "Meet Team Button")}
         </div>
       </div>
 
-      <h3 style={styles.websiteSectionTitle}>
-        Hero Card
-      </h3>
+      <h3 style={styles.websiteSectionTitle}>Hero Card</h3>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Hero Card Title",
-            "hero_card_title"
-          )}
+          {fieldRow("Hero Card Title", "hero_card_title")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "hero_card_title",
-            "Hero Card Title"
-          )}
+          {textDesignFields("hero_card_title", "Hero Card Title")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Hero Card Description",
-            "hero_card_description",
-            "textarea"
-          )}
+          {fieldRow("Hero Card Description", "hero_card_description", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "hero_card_description",
-            "Hero Card Description"
-          )}
+          {textDesignFields("hero_card_description", "Hero Card Description")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Branch Count",
-            "branch_count"
-          )}
+          {fieldRow("Branch Count Label", "branch_count_label")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "branch_count",
-            "Branch Count"
-          )}
+          {textDesignFields("branch_count_label", "Branch Count Label")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Branch Count Label",
-            "branch_count_label"
-          )}
+          {fieldRow("Care Team Count Label", "care_team_count_label")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "branch_count_label",
-            "Branch Count Label"
-          )}
+          {textDesignFields("care_team_count_label", "Care Team Count Label")}
+        </div>
+      </div>
+
+      <h3 style={styles.websiteSectionTitle}>Who We Are</h3>
+
+      <div style={styles.websiteFieldsGrid}>
+        <div>
+          {fieldRow("Who We Are Tag", "who_we_are_tag")}
+        </div>
+
+        <div style={styles.websiteFields}>
+          {textDesignFields("who_we_are_tag", "Who We Are Tag")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Care Team Count",
-            "care_team_count"
-          )}
+          {fieldRow("Who We Are Title", "who_we_are_title")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "care_team_count",
-            "Care Team Count"
-          )}
+          {textDesignFields("who_we_are_title", "Who We Are Title")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Care Team Count Label",
-            "care_team_count_label"
-          )}
+          {fieldRow("Who We Are Description", "who_we_are_description", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "care_team_count_label",
-            "Care Team Count Label"
-          )}
+          {textDesignFields("who_we_are_description", "Who We Are Description")}
         </div>
       </div>
 
-      <h3 style={styles.websiteSectionTitle}>
-        Who We Are
-      </h3>
+      <h3 style={styles.websiteSectionTitle}>Mission</h3>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Who We Are Tag",
-            "who_we_are_tag"
-          )}
+          {fieldRow("Mission Title", "mission_title")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "who_we_are_tag",
-            "Who We Are Tag"
-          )}
+          {textDesignFields("mission_title", "Mission Title")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Who We Are Title",
-            "who_we_are_title"
-          )}
+          {fieldRow("Mission Content", "mission_content", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "who_we_are_title",
-            "Who We Are Title"
-          )}
+          {textDesignFields("mission_content", "Mission Content")}
+        </div>
+      </div>
+
+      <h3 style={styles.websiteSectionTitle}>Vision</h3>
+
+      <div style={styles.websiteFieldsGrid}>
+        <div>
+          {fieldRow("Vision Title", "vision_title")}
+        </div>
+
+        <div style={styles.websiteFields}>
+          {textDesignFields("vision_title", "Vision Title")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Who We Are Description",
-            "who_we_are_description",
-            "textarea"
-          )}
+          {fieldRow("Vision Content", "vision_content", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "who_we_are_description",
-            "Who We Are Description"
-          )}
+          {textDesignFields("vision_content", "Vision Content")}
         </div>
       </div>
 
-      <h3 style={styles.websiteSectionTitle}>
-        Mission
-      </h3>
+      <h3 style={styles.websiteSectionTitle}>Our Care</h3>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Mission Title",
-            "mission_title"
-          )}
+          {fieldRow("Care Title", "care_title")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "mission_title",
-            "Mission Title"
-          )}
+          {textDesignFields("care_title", "Care Title")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Mission Content",
-            "mission_content",
-            "textarea"
-          )}
+          {fieldRow("Care Content", "care_content", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "mission_content",
-            "Mission Content"
-          )}
+          {textDesignFields("care_content", "Care Content")}
         </div>
       </div>
 
-      <h3 style={styles.websiteSectionTitle}>
-        Vision
-      </h3>
+      <h3 style={styles.websiteSectionTitle}>Team Section</h3>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Vision Title",
-            "vision_title"
-          )}
+          {fieldRow("Team Section Tag", "team_section_tag")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "vision_title",
-            "Vision Title"
-          )}
+          {textDesignFields("team_section_tag", "Team Section Tag")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Vision Content",
-            "vision_content",
-            "textarea"
-          )}
+          {fieldRow("Team Section Title", "team_section_title")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "vision_content",
-            "Vision Content"
-          )}
-        </div>
-      </div>
-
-      <h3 style={styles.websiteSectionTitle}>
-        Our Care
-      </h3>
-
-      <div style={styles.websiteFieldsGrid}>
-        <div>
-          {fieldRow(
-            "Care Title",
-            "care_title"
-          )}
-        </div>
-
-        <div style={styles.websiteFields}>
-          {textDesignFields(
-            "care_title",
-            "Care Title"
-          )}
+          {textDesignFields("team_section_title", "Team Section Title")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Care Content",
-            "care_content",
-            "textarea"
-          )}
+          {fieldRow("Team Section Description", "team_section_description", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "care_content",
-            "Care Content"
-          )}
+          {textDesignFields("team_section_description", "Team Section Description")}
         </div>
       </div>
 
-      <h3 style={styles.websiteSectionTitle}>
-        Team Section
-      </h3>
+      <h3 style={styles.websiteSectionTitle}>Owner</h3>
+
+      {imageUploadCard("Owner Image", "Upload the clinic owner's image.", ownerImage, "owner_image")}
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Team Section Tag",
-            "team_section_tag"
-          )}
+          {fieldRow("Owner Message 1", "owner_message1", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "team_section_tag",
-            "Team Section Tag"
-          )}
+          {textDesignFields("owner_message1", "Owner Message 1")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Team Section Title",
-            "team_section_title"
-          )}
+          {fieldRow("Owner Message 2", "owner_message2", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "team_section_title",
-            "Team Section Title"
-          )}
+          {textDesignFields("owner_message2", "Owner Message 2")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Team Section Description",
-            "team_section_description",
-            "textarea"
-          )}
+          {fieldRow("Owner Label", "owner_label")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "team_section_description",
-            "Team Section Description"
-          )}
-        </div>
-      </div>
-
-      <h3 style={styles.websiteSectionTitle}>
-        Owner
-      </h3>
-
-      {imageUploadCard(
-        "Owner Image",
-        "Upload the clinic owner's image.",
-        ownerImage,
-        "owner_image"
-      )}
-
-      <div style={styles.websiteFieldsGrid}>
-        <div>
-          {fieldRow(
-            "Owner Message 1",
-            "owner_message1",
-            "textarea"
-          )}
-        </div>
-
-        <div style={styles.websiteFields}>
-          {textDesignFields(
-            "owner_message1",
-            "Owner Message 1"
-          )}
+          {textDesignFields("owner_label", "Owner Label")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Owner Message 2",
-            "owner_message2",
-            "textarea"
-          )}
+          {fieldRow("Owner Name", "owner_name")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "owner_message2",
-            "Owner Message 2"
-          )}
+          {textDesignFields("owner_name", "Owner Name")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Owner Label",
-            "owner_label"
-          )}
+          {fieldRow("Owner Position", "owner_position")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "owner_label",
-            "Owner Label"
-          )}
+          {textDesignFields("owner_position", "Owner Position")}
+        </div>
+      </div>
+
+      <h3 style={styles.websiteSectionTitle}>Branch Section</h3>
+
+      <div style={styles.websiteFieldsGrid}>
+        <div>
+          {fieldRow("Branch Section Tag", "branch_section_tag")}
+        </div>
+
+        <div>
+          {textDesignFields("branch_section_tag", "Branch Section Tag")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Owner Name",
-            "owner_name"
-          )}
+          {fieldRow("Branch Section Title", "branch_section_title")}
+        </div>
+
+        <div>
+          {textDesignFields("branch_section_title", "Branch Section Title")}
+        </div>
+      </div>
+
+      <h3 style={styles.websiteSectionTitle}>Map Section</h3>
+
+      <div style={styles.websiteFieldsGrid}>
+        <div>
+          {fieldRow("Map Section Tag", "map_section_tag")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "owner_name",
-            "Owner Name"
-          )}
+          {textDesignFields("map_section_tag", "Map Section Tag")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Owner Position",
-            "owner_position"
-          )}
+          {fieldRow("Map Section Title", "map_section_title")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "owner_position",
-            "Owner Position"
-          )}
-        </div>
-      </div>
-
-      <h3 style={styles.websiteSectionTitle}>
-        Map Section
-      </h3>
-
-      <div style={styles.websiteFieldsGrid}>
-        <div>
-          {fieldRow(
-            "Map Section Tag",
-            "map_section_tag"
-          )}
-        </div>
-
-        <div style={styles.websiteFields}>
-          {textDesignFields(
-            "map_section_tag",
-            "Map Section Tag"
-          )}
+          {textDesignFields("map_section_title", "Map Section Title")}
         </div>
       </div>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Map Section Title",
-            "map_section_title"
-          )}
+          {fieldRow("Map Section Description", "map_section_description", "textarea")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "map_section_title",
-            "Map Section Title"
-          )}
+          {textDesignFields("map_section_description", "Map Section Description")}
         </div>
       </div>
 
-      <div style={styles.websiteFieldsGrid}>
-        <div>
-          {fieldRow(
-            "Map Section Description",
-            "map_section_description",
-            "textarea"
-          )}
-        </div>
-
-        <div style={styles.websiteFields}>
-          {textDesignFields(
-            "map_section_description",
-            "Map Section Description"
-          )}
-        </div>
-      </div>
-
-      <h3 style={styles.websiteSectionTitle}>
-        Footer
-      </h3>
+      <h3 style={styles.websiteSectionTitle}>Footer</h3>
 
       <div style={styles.websiteFieldsGrid}>
         <div>
-          {fieldRow(
-            "Footer Copyright",
-            "footer_copyright"
-          )}
+          {fieldRow("Footer Copyright", "footer_copyright")}
         </div>
 
         <div style={styles.websiteFields}>
-          {textDesignFields(
-            "footer_copyright",
-            "Footer Copyright"
-          )}
+          {textDesignFields("footer_copyright", "Footer Copyright")}
         </div>
       </div>
 
@@ -824,6 +590,7 @@ export default function AboutSection({
             "care_",
             "team_section_",
             "owner_",
+            "branch_section_",
             "map_section_",
             "footer_",
           ]),
@@ -891,6 +658,22 @@ export default function AboutSection({
             "branch_count_font_style",
             "branch_count_text_color",
             "branch_count_text_alignment",
+            
+            "branch_section_tag",
+            "branch_section_tag_font_family",
+            "branch_section_tag_font_size",
+            "branch_section_tag_font_weight",
+            "branch_section_tag_font_style",
+            "branch_section_tag_text_color",
+            "branch_section_tag_text_alignment",
+
+            "branch_section_title",
+            "branch_section_title_font_family",
+            "branch_section_title_font_size",
+            "branch_section_title_font_weight",
+            "branch_section_title_font_style",
+            "branch_section_title_text_color",
+            "branch_section_title_text_alignment",
 
             "branch_count_label",
             "branch_count_label_font_family",
