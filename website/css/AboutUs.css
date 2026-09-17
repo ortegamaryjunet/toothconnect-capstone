@@ -514,13 +514,26 @@ a {
     line-height: 1.5;
     overflow-wrap: break-word;
 }
+.team-card .team-position {
+    display: block;
+    margin-top: 2px;
+    margin-bottom: 8px;
+    color: var(--gold-dark);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.4;
+    text-align: center;
+    overflow-wrap: break-word;
+}
 
 .team-card .team-description {
-    margin-top: 8px;
+    margin-top: 0;
     color: var(--text);
     font-size: 14px;
     font-weight: 500;
     line-height: 1.6;
+    text-align: center;
+    overflow-wrap: break-word;
 }
 
 .branch-section {
@@ -711,6 +724,45 @@ footer {
     font-weight: 700;
     line-height: 1.6;
     overflow-wrap: break-word;
+}
+
+.branch-location-btn {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.branch-location-btn:hover {
+    transform: translateY(-2px);
+}
+
+.branch-map-card {
+    position: relative;
+    transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.branch-map-card.map-highlight {
+    animation: branchLocationHighlight 1.8s ease;
+}
+
+@keyframes branchLocationHighlight {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+    }
+
+    25% {
+        transform: scale(1.02);
+        box-shadow: 0 0 0 8px rgba(212, 175, 55, 0.18);
+    }
+
+    50% {
+        transform: scale(1.01);
+        box-shadow: 0 0 0 14px rgba(212, 175, 55, 0.08);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+    }
 }
 
 /* LARGE DESKTOP */
@@ -1011,6 +1063,10 @@ footer {
         gap: 22px;
     }
 
+    .team-position {
+        font-size: 13px;
+    }
+
     .team-card img {
         height: 300px;
         border-radius: 22px;
@@ -1267,6 +1323,10 @@ footer {
         margin-bottom: 25px;
     }
 
+    .team-position {
+        font-size: 12px;
+    }
+
     .team-grid {
         grid-template-columns: 1fr;
         gap: 26px;
@@ -1521,6 +1581,10 @@ footer {
 
     .team-card p {
         font-size: 13px;
+    }
+
+    .team-position {
+        font-size: 12px;
     }
 
     .branch-box {

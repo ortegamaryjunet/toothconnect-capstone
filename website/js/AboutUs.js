@@ -296,6 +296,15 @@ function renderTeamProfiles(profiles) {
     initializeRevealAnimation();
 }
 
+card.innerHTML = `
+    <img src="${imageUrl}" alt="${escapeHtml(profile.name || profile.role || 'Team Member')}" loading="lazy" decoding="async">
+    <div class="team-info">
+        <h3>${escapeHtml(profile.name || 'Team Member')}</h3>
+        <span class="team-position">${escapeHtml(profile.position || profile.role || '')}</span>
+        <p class="team-description">${escapeHtml(profile.description || '')}</p>
+    </div>
+`;
+
 function createTeamProfileCard(profile) {
     const card = document.createElement("div");
     card.className = "team-card";
@@ -307,7 +316,7 @@ function createTeamProfileCard(profile) {
     image.decoding = "async";
 
     const name = getProfileValue(profile, ["name", "full_name", "employee_name", "staff_name"]);
-    const position = getProfileValue(profile, ["position", "role", "job_title", "employee_position"]);
+    const position = getProfileValue(profile, ["position", "staff_type", "role", "job_title", "employee_position"]);
     const description = getProfileValue(profile, ["description", "bio", "profile_description", "about"]);
     const imageValue = getProfileValue(profile, ["image_url", "image", "image_path", "profile_image", "photo", "photo_url"]);
 
@@ -368,7 +377,7 @@ function setProfileImage(element, value, alt = "") {
 }
 
 function getProfileRole(profile) {
-    return getProfileValue(profile, ["role", "position", "job_title", "employee_position"]).toLowerCase().trim();
+    return getProfileValue(profile, ["staff_type", "role", "position", "job_title", "employee_position"]).toLowerCase().trim();
 }
 
 function isDentistRole(role) {
@@ -376,7 +385,8 @@ function isDentistRole(role) {
 }
 
 function isAssistantRole(role) {
-    return role.includes("assistant") || role.includes("dental assistant");
+    const normalizedRole = String(role || "").toLowerCase().trim();
+    return normalizedRole.includes("dental assistant") || normalizedRole === "assistant" || normalizedRole.includes("assistant");
 }
 
 function isReceptionistRole(role) {
@@ -517,8 +527,9 @@ function renderBranches(branches) {
 
         const mapButton = document.createElement("a");
         mapButton.className = "branch-btn";
-        mapButton.href = `#${branchId}-map`;
-        mapButton.textContent = branchMapButton;
+        mapButton.href = "#location";
+        mapButton.dataset.branchId = branchId;
+        mapButton.textContent = "View Branch Location";
 
         branchCard.appendChild(branchTop);
         branchCard.appendChild(details);
@@ -551,8 +562,9 @@ function createBranchDetail(iconClass, text) {
 
 function createMapCard(branchId, branchName, branchAddress) {
     const mapCard = document.createElement("div");
-    mapCard.className = "map-card";
+    mapCard.className = "map-card branch-map-card";
     mapCard.id = `${branchId}-map`;
+    mapCard.dataset.mapBranchId = branchId;
 
     const mapHeader = document.createElement("div");
     mapHeader.className = "map-header";
@@ -892,3 +904,41 @@ function applyTextStyle(id, content, prefix) {
         });
     }
 }
+
+document.addEventListener("click", function (event) {
+    const button = event.target.closest(".branch-btn");
+
+    if (!button) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const locationSection = document.getElementById("location");
+    const branchId = button.dataset.branchId;
+
+    if (!locationSection || !branchId) {
+        return;
+    }
+
+    locationSection.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+
+    setTimeout(function () {
+        const targetMap = document.querySelector(`[data-map-branch-id="${branchId}"]`);
+
+        document.querySelectorAll(".branch-map-card").forEach(function (map) {
+            map.classList.remove("map-highlight");
+        });
+
+        if (targetMap) {
+            targetMap.classList.add("map-highlight");
+
+            setTimeout(function () {
+                targetMap.classList.remove("map-highlight");
+            }, 1800);
+        }
+    }, 600);
+});
