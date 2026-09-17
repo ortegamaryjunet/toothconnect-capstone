@@ -747,6 +747,38 @@ router.get("/content", async (req, res) => {
     }
 });
 
+router.get('/branches', async (req, res) => {
+  try {
+    const branches = await websiteService.listWebsiteBranches();
+
+    res.json({
+      branches
+    });
+  } catch (err) {
+    console.error('Get website branches error:', err);
+
+    res.status(500).json({
+      message: 'Failed to load website branches.'
+    });
+  }
+});
+
+router.get('/team', async (req, res) => {
+  try {
+    const team = await websiteService.listWebsiteTeam();
+
+    res.json({
+      team
+    });
+  } catch (err) {
+    console.error('Get website team error:', err);
+
+    res.status(500).json({
+      message: 'Failed to load website team.'
+    });
+  }
+});
+
 // Get all published FAQs.
 router.get("/faqs", async (req, res) => {
     try {

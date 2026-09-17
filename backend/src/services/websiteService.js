@@ -1416,6 +1416,86 @@ async function listInquiries({ search = '', branchNames = [] } = {}) {
 }
 
 // ── Website CMS ──────────────────────────────────────────────────────────────
+async function listWebsiteBranches() {
+  const [rows] = await db.query(
+    `SELECT
+       id,
+       name,
+       address,
+       phone,
+       contact_person,
+       date_opened,
+       operating_hours,
+       years_active,
+       status,
+       created_at
+     FROM branches
+     WHERE status <> 'Closed'
+     ORDER BY id ASC`
+  );
+
+  return rows;
+}
+
+async function listWebsiteTeam() {
+  const [rows] = await db.query(
+    `SELECT
+       sp.id,
+       sp.user_id,
+       sp.branch_id,
+       sp.staff_type,
+       CONCAT(
+         sp.first_name,
+         CASE
+           WHEN sp.middle_name IS NOT NULL AND TRIM(sp.middle_name) <> ''
+           THEN CONCAT(' ', sp.middle_name)
+           ELSE ''
+         END,
+         ' ',
+         sp.last_name,
+         CASE
+           WHEN sp.suffix IS NOT NULL AND TRIM(sp.suffix) <> ''
+           THEN CONCAT(' ', sp.suffix)
+           ELSE ''
+         END
+       ) AS name,
+       sp.position,
+       sp.specialization,
+       sp.medical_degree,
+       sp.years_experience,
+       sp.skills,
+       sp.profile_photo_url,
+       u.name AS user_name,
+       u.profile_photo_url AS user_profile_photo_url,
+       b.id AS branch_id,
+       b.name AS branch_name,
+       b.address AS branch_address
+     FROM staff_profile sp
+     LEFT JOIN users u ON u.id = sp.user_id
+     LEFT JOIN branches b ON b.id = sp.branch_id
+     WHERE sp.staff_type IN ('Dentist', 'Dental Assistant', 'Receptionist')
+       AND sp.status = 'Active'
+     ORDER BY
+       CASE sp.staff_type
+         WHEN 'Dentist' THEN 1
+         WHEN 'Dental Assistant' THEN 2
+         WHEN 'Receptionist' THEN 3
+         ELSE 4
+       END,
+       sp.id ASC`
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    image_url: row.profile_photo_url || row.user_profile_photo_url || '',
+    role: row.staff_type,
+    description:
+      row.specialization ||
+      row.medical_degree ||
+      row.skills ||
+      ''
+  }));
+}
 
 async function getContent() {
   const [rows] = await db.query(
@@ -1722,8 +1802,10 @@ module.exports = {
   createWebsiteService,
   updateWebsiteService,
   deleteWebsiteService,
+  listWebsiteBranches,
+  listWebsiteTeam,
   listAnnouncements,
   createAnnouncement,
   updateAnnouncement,
-  deleteAnnouncement,
+  deleteAnnouncement
 };

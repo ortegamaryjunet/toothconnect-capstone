@@ -143,6 +143,33 @@ function setAboutContent(content) {
 
     setText("teamSectionDescription", content.team_section_description);
     applyTextStyle("teamSectionDescription", content, "team_section_description");
+
+    setText("dentistSectionTag", content.dentist_section_tag);
+    applyTextStyle("dentistSectionTag", content, "dentist_section_tag");
+
+    setText("dentistSectionTitle", content.dentist_section_title);
+    applyTextStyle("dentistSectionTitle", content, "dentist_section_title");
+
+    setText("dentistSectionDescription", content.dentist_section_description);
+    applyTextStyle("dentistSectionDescription", content, "dentist_section_description");
+
+    setText("assistantSectionTag", content.assistant_section_tag);
+    applyTextStyle("assistantSectionTag", content, "assistant_section_tag");
+
+    setText("assistantSectionTitle", content.assistant_section_title);
+    applyTextStyle("assistantSectionTitle", content, "assistant_section_title");
+
+    setText("assistantSectionDescription", content.assistant_section_description);
+    applyTextStyle("assistantSectionDescription", content, "assistant_section_description");
+
+    setText("receptionistSectionTag", content.receptionist_section_tag);
+    applyTextStyle("receptionistSectionTag", content, "receptionist_section_tag");
+
+    setText("receptionistSectionTitle", content.receptionist_section_title);
+    applyTextStyle("receptionistSectionTitle", content, "receptionist_section_title");
+
+    setText("receptionistSectionDescription", content.receptionist_section_description);
+    applyTextStyle("receptionistSectionDescription", content, "receptionist_section_description");
 }
 
 function setTeamContent(content) {
@@ -262,7 +289,8 @@ function renderTeamProfiles(profiles) {
     updateTeamSectionVisibility("assistantGrid", assistantCount);
     updateTeamSectionVisibility("receptionistGrid", receptionistCount);
 
-    setText("careTeamCount", profiles.length);
+    const careTeamCount = dentistCount + assistantCount + receptionistCount;
+    setText("careTeamCount", careTeamCount);
 
     initializeTeamHoverEffect();
     initializeRevealAnimation();
@@ -281,7 +309,7 @@ function createTeamProfileCard(profile) {
     const name = getProfileValue(profile, ["name", "full_name", "employee_name", "staff_name"]);
     const position = getProfileValue(profile, ["position", "role", "job_title", "employee_position"]);
     const description = getProfileValue(profile, ["description", "bio", "profile_description", "about"]);
-    const imageValue = getProfileValue(profile, ["image", "image_path", "profile_image", "photo", "photo_url"]);
+    const imageValue = getProfileValue(profile, ["image_url", "image", "image_path", "profile_image", "photo", "photo_url"]);
 
     setProfileImage(image, imageValue, name);
 
@@ -331,7 +359,7 @@ function setProfileImage(element, value, alt = "") {
         return;
     }
 
-    if (imageValue.startsWith("http://") || imageValue.startsWith("https://")) {
+    if (imageValue.startsWith("http://") || imageValue.startsWith("https://") || imageValue.startsWith("blob:")) {
         element.src = imageValue;
         return;
     }
