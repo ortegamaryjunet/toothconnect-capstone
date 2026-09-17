@@ -2522,14 +2522,6 @@ export default function AdminSettings() {
           return 'This field is required.';
       }
 
-      if (name === 'name') {
-          if (!BRANCH_NAME_REGEX.test(trimmedValue)) {
-              return `Follow this format: ${BRANCH_NAME_FORMAT}`;
-          }
-
-          return '';
-      }
-
       if (name === 'phone') {
           return validatePhoneNumber(branchForm.phone, branchPhoneCountry);
       }
@@ -2542,10 +2534,7 @@ export default function AdminSettings() {
           return '';
       }
 
-      if (
-          BRANCH_SPECIAL_CHARACTER_FIELDS.includes(name) &&
-          !BRANCH_TEXT_FIELD_REGEX.test(trimmedValue)
-      ) {
+      if (BRANCH_SPECIAL_CHARACTER_FIELDS.includes(name) && !BRANCH_TEXT_FIELD_REGEX.test(trimmedValue)) {
           return 'Please enter valid characters.';
       }
 
@@ -6444,7 +6433,7 @@ const contentEditActions = (
         >
           <form onSubmit={handleBranchSubmit} noValidate>
             <div style={styles.formGrid}>
-              <Field label={renderBranchRequiredLabel('Branch Name - Branch Location')} styles={styles}>
+              <Field label={renderBranchRequiredLabel('Branch Name')} styles={styles}>
                 <input
                     type="text"
                     value={branchForm.name}
@@ -6459,7 +6448,7 @@ const contentEditActions = (
                 {renderBranchFieldError('name')}
             </Field>
 
-              <Field label={renderBranchRequiredLabel('Clinic Address')} styles={styles}>
+              <Field label={renderBranchRequiredLabel('Clinic Location')} styles={styles}>
                 <input
                   type="text"
                   value={branchForm.address}
