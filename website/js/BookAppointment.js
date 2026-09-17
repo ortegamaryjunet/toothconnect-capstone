@@ -155,6 +155,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const step3Notice = document.getElementById("step3Notice");
     const step3Content = document.getElementById("step3Content");
 
+    const closeMessageModal = document.getElementById("closeMessageModal");
+
     let currentDate = new Date();
     let selectedDate = null;
     let selectedTime = null;
@@ -427,6 +429,96 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // ---- Branches from DB ----
+    async function loadBranches() {
+        const locationGrid = document.getElementById("locationGrid");
+
+        if (!locationGrid) return;
+
+        locationGrid.innerHTML = "";
+
+        try {
+            const res = await fetch(
+                API_BASE_URL + "/api/website/branches",
+                { cache: "no-store" }
+            );
+
+            if (!res.ok) {
+                throw new Error("Unable to load branches.");
+            }
+
+            const data = await res.json();
+            const branches = Array.isArray(data.branches) ? data.branches : [];
+
+            if (branches.length === 0) {
+                locationGrid.innerHTML = `
+                    <p class="disabled-option">No branches available.</p>
+                `;
+                return;
+            }
+
+            branches.forEach(function (branch) {
+                const label = document.createElement("label");
+                label.className = "location-option";
+
+                const input = document.createElement("input");
+                input.type = "radio";
+                input.name = "location";
+                input.value = branch.name || "";
+
+                const radioDesign = document.createElement("span");
+                radioDesign.className = "radio-design";
+
+                const content = document.createElement("div");
+
+                const strong = document.createElement("strong");
+                strong.textContent = branch.name || "Branch";
+
+                content.appendChild(strong);
+                label.appendChild(input);
+                label.appendChild(radioDesign);
+                label.appendChild(content);
+                locationGrid.appendChild(label);
+
+                input.addEventListener("change", function () {
+                    selectedBranch = this.value;
+
+                    clearFieldError("locationError");
+
+                    document
+                        .querySelectorAll(".location-option")
+                        .forEach(function (el) {
+                            el.classList.remove("input-error");
+                        });
+
+                    if (reasonText) {
+                        reasonText.textContent = "Select reason";
+                    }
+
+                    if (selectedReason) {
+                        selectedReason.value = "";
+                    }
+
+                    if (reasonBtn) {
+                        reasonBtn.classList.remove("input-error");
+                    }
+
+                    renderReasonOptions();
+                    updateStepLocks();
+                    refreshBookedSlots();
+                    refreshAvailableSlots();
+                    refreshAvailableDays();
+                });
+            });
+        } catch (error) {
+            console.error("Load branches error:", error);
+
+            locationGrid.innerHTML = `
+                <p class="disabled-option">Branches are temporarily unavailable.</p>
+            `;
+        }
+    }
+
     // ---- Branch selection → filter services + unlock step 3 ----
     function renderReasonOptions() {
         if (!reasonOptions) return;
@@ -479,31 +571,6 @@ document.addEventListener("DOMContentLoaded", function () {
             reasonOptions.appendChild(p);
         });
     }
-
-    const locationRadios = document.querySelectorAll("input[name='location']");
-    locationRadios.forEach(function (radio) {
-        radio.addEventListener("change", function () {
-            selectedBranch = this.value;
-            clearFieldError("locationError");
-
-            if (this.checked) {
-                document
-                    .querySelectorAll(".location-option")
-                    .forEach(el => el.classList.remove("input-error"));
-            }
-
-            // Reset reason when branch changes
-            if (reasonText) reasonText.textContent = "Select reason";
-            if (selectedReason) selectedReason.value = "";
-            if (reasonBtn) reasonBtn.classList.remove("input-error");
-
-            renderReasonOptions();
-            updateStepLocks();
-            refreshBookedSlots();
-            refreshAvailableSlots();
-            refreshAvailableDays();
-        });
-    });
 
     // ---- Calendar ----
     function formatDateForDatabase(date) {
@@ -1183,7 +1250,11 @@ document.addEventListener("DOMContentLoaded", function () {
     updateStepLocks();
     renderCalendar();
     renderTimeSlots();
-    loadServices().then(function () {
+
+    Promise.all([
+        loadBranches(),
+        loadServices()
+    ]).then(function () {
         renderReasonOptions();
         refreshAvailableDays();
     });
