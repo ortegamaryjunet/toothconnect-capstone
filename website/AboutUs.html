@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Learn about Smile Empress Dental Hub, our dental team, clinic branches, and commitment to compassionate care for healthy, confident smiles.">
     <title>About Us | Smile Empress Dental Hub</title>
-
     <link rel="stylesheet" href="./css/AboutUs.min.css">
     <link rel="stylesheet" href="./css/fontawesome-local.min.css">
 </head>
@@ -21,7 +20,6 @@
         <span class="tag" id="aboutHeroTag"></span>
         <h1 id="aboutHeroTitle"></h1>
         <p id="aboutHeroDescription"></p>
-
         <div class="hero-actions">
             <a id="viewBranchesButton" href="#branches" class="btn primary-btn"></a>
             <a id="meetTeamButton" href="#team" class="btn outline-btn"></a>
@@ -32,16 +30,13 @@
         <div class="hero-icon">
             <i class="fa-solid fa-tooth"></i>
         </div>
-
         <h3 id="heroCardTitle"></h3>
         <p id="heroCardDescription"></p>
-
         <div class="hero-mini-grid">
             <div>
                 <strong id="branchCount"></strong>
                 <span id="branchCountLabel"></span>
             </div>
-
             <div>
                 <strong id="careTeamCount"></strong>
                 <span id="careTeamCountLabel"></span>
@@ -93,47 +88,37 @@
         <div class="owner-content">
             <p id="ownerMessage1"></p>
             <p id="ownerMessage2"></p>
-
             <span class="owner-label" id="ownerLabel"></span>
-
             <h3 id="ownerName"></h3>
-
             <p class="owner-role" id="ownerPosition"></p>
         </div>
     </div>
 
-    <div class="team-grid">
-        <div class="team-card">
-            <img id="doctor1Image" src="" alt="" width="280" height="340" loading="lazy" decoding="async">
-            <div class="team-info">
-                <h3 id="doctor1Name"></h3>
-                <p id="doctor1Position"></p>
-            </div>
+    <div class="team-category" id="dentistCategory">
+        <div class="section-title">
+            <span id="dentistSectionTag"></span>
+            <h2 id="dentistSectionTitle"></h2>
+            <p id="dentistSectionDescription"></p>
         </div>
+        <div class="team-grid" id="dentistGrid"></div>
+    </div>
 
-        <div class="team-card">
-            <img id="doctor2Image" src="" alt="" width="280" height="340" loading="lazy" decoding="async">
-            <div class="team-info">
-                <h3 id="doctor2Name"></h3>
-                <p id="doctor2Position"></p>
-            </div>
+    <div class="team-category" id="assistantCategory">
+        <div class="section-title">
+            <span id="assistantSectionTag"></span>
+            <h2 id="assistantSectionTitle"></h2>
+            <p id="assistantSectionDescription"></p>
         </div>
+        <div class="team-grid" id="assistantGrid"></div>
+    </div>
 
-        <div class="team-card">
-            <img id="assistant1Image" src="" alt="" width="280" height="340" loading="lazy" decoding="async">
-            <div class="team-info">
-                <h3 id="assistant1Name"></h3>
-                <p id="assistant1Position"></p>
-            </div>
+    <div class="team-category" id="receptionistCategory">
+        <div class="section-title">
+            <span id="receptionistSectionTag"></span>
+            <h2 id="receptionistSectionTitle"></h2>
+            <p id="receptionistSectionDescription"></p>
         </div>
-
-        <div class="team-card">
-            <img id="assistant2Image" src="" alt="" width="280" height="340" loading="lazy" decoding="async">
-            <div class="team-info">
-                <h3 id="assistant2Name"></h3>
-                <p id="assistant2Position"></p>
-            </div>
-        </div>
+        <div class="team-grid" id="receptionistGrid"></div>
     </div>
 </section>
 
@@ -142,83 +127,7 @@
         <span id="branchSectionTag"></span>
         <h2 id="branchSectionTitle"></h2>
     </div>
-
-    <div class="branches-grid">
-
-        <!-- Makati -->
-        <div class="branch-box">
-            <div class="branch-top">
-                <div class="branch-icon">
-                    <i class="fa-solid fa-building"></i>
-                </div>
-
-                <div class="branch-text">
-                    <h3 id="makatiBranchName"></h3>
-                    <p id="makatiBranchStatus"></p>
-                </div>
-            </div>
-
-            <div class="branch-details">
-
-                <div class="branch-detail-row">
-                    <i class="fa-solid fa-location-dot"></i>
-                    <p id="makatiBranchAddress"></p>
-                </div>
-
-                <div class="branch-detail-row">
-                    <i class="fa-solid fa-clock"></i>
-                    <p id="makatiBranchHours"></p>
-                </div>
-
-                <div class="branch-detail-row">
-                    <i class="fa-solid fa-calendar-check"></i>
-                    <p id="makatiBranchSchedule"></p>
-                </div>
-
-            </div>
-
-            <a
-                id="makatiBranchMapButton"
-                class="branch-btn"
-                href="#makati-map">
-            </a>
-        </div>
-
-        <!-- Las Piñas -->
-        <div class="branch-box">
-            <div class="branch-top">
-                <div class="branch-icon">
-                    <i class="fa-solid fa-hospital"></i>
-                </div>
-
-                <div class="branch-text">
-                    <h3 id="lasPinasBranchName"></h3>
-                    <p id="lasPinasBranchStatus"></p>
-                </div>
-            </div>
-
-            <div class="branch-details">
-
-                <div class="branch-detail-row">
-                    <i class="fa-solid fa-location-dot"></i>
-                    <p id="lasPinasBranchAddress"></p>
-                </div>
-
-                <div class="branch-detail-row">
-                    <i class="fa-solid fa-clock"></i>
-                    <p id="lasPinasBranchHours"></p>
-                </div>
-
-            </div>
-
-            <a
-                id="lasPinasBranchMapButton"
-                class="branch-btn"
-                href="#laspinas-map">
-            </a>
-        </div>
-
-    </div>
+    <div class="branches-grid" id="branchesGrid"></div>
 </section>
 
 <section class="map-section" id="location">
@@ -227,50 +136,7 @@
         <h2 id="mapSectionTitle"></h2>
         <p id="mapSectionDescription"></p>
     </div>
-
-    <div class="map-grid">
-
-        <!-- Makati -->
-        <div class="map-card" id="makati-map">
-
-            <div class="map-header">
-                <div class="map-text">
-                    <h3 id="makatiMapBranchName"></h3>
-                    <p id="makatiMapBranchAddress"></p>
-                </div>
-            </div>
-
-            <div class="map-wrapper">
-                <iframe
-                    id="makatiBranchMap"
-                    src=""
-                    loading="lazy"
-                    referrerpolicy="no-referrer-when-downgrade">
-                </iframe>
-            </div>
-
-        </div>
-
-        <!-- Las Piñas -->
-        <div class="map-card" id="laspinas-map">
-
-            <div class="map-header">
-                <div class="map-text">
-                    <h3 id="lasPinasMapBranchName"></h3>
-                    <p id="lasPinasMapBranchAddress"></p>
-                </div>
-            </div>
-
-            <div class="map-wrapper">
-                <iframe
-                    id="lasPinasBranchMap"
-                    src=""
-                    loading="lazy"
-                    referrerpolicy="no-referrer-when-downgrade">
-                </iframe>
-            </div>
-        </div>
-    </div>
+    <div class="map-grid" id="mapGrid"></div>
 </section>
 
 <footer>
@@ -278,5 +144,6 @@
 </footer>
 
 <script src="./js/AboutUs.js" defer></script>
+
 </body>
 </html>
