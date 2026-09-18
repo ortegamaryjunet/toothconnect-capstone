@@ -33,26 +33,6 @@ function initializeRevealAnimation() {
     revealOnScroll();
 }
 
-function initializeTeamHoverEffect() {
-    const teamCards = document.querySelectorAll(".team-card");
-
-    teamCards.forEach(function (card) {
-        card.addEventListener("mouseenter", function () {
-            teamCards.forEach(function (item) {
-                if (item !== card) {
-                    item.classList.add("soft-blur");
-                }
-            });
-        });
-
-        card.addEventListener("mouseleave", function () {
-            teamCards.forEach(function (item) {
-                item.classList.remove("soft-blur");
-            });
-        });
-    });
-}
-
 async function loadAboutPageContent() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/website/content`);
@@ -75,6 +55,35 @@ async function loadAboutPageContent() {
     } catch (error) {
         console.error("Error loading About page content:", error);
     }
+}
+
+function enableAboutMarquee(grid) {
+    if (!grid) {
+        return;
+    }
+
+    if (grid.dataset.marqueeReady === "true") {
+        return;
+    }
+
+    const items = Array.from(grid.children);
+
+    if (!items.length) {
+        return;
+    }
+
+    items.forEach(function (item) {
+        const clone = item.cloneNode(true);
+
+        clone.removeAttribute("id");
+        clone.setAttribute("aria-hidden", "true");
+        clone.setAttribute("inert", "");
+        clone.classList.add("marquee-clone");
+
+        grid.appendChild(clone);
+    });
+
+    grid.dataset.marqueeReady = "true";
 }
 
 function setAboutContent(content) {
@@ -298,7 +307,10 @@ function renderTeamProfiles(profiles) {
     const careTeamCount = dentistCount + assistantCount + receptionistCount;
     setText("careTeamCount", careTeamCount);
 
-    initializeTeamHoverEffect();
+    enableAboutMarquee(dentistGrid);
+    enableAboutMarquee(assistantGrid);
+    enableAboutMarquee(receptionistGrid);
+
     initializeRevealAnimation();
 }
 
@@ -545,6 +557,9 @@ function renderBranches(branches) {
         const mapCard = createMapCard(branchId, branchName, branchAddress);
         mapGrid.appendChild(mapCard);
     });
+
+    enableAboutMarquee(branchesGrid);
+    enableAboutMarquee(mapGrid);
 
     initializeBranchReveal();
 }
