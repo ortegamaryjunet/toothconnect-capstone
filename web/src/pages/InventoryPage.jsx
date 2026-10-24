@@ -18,7 +18,7 @@ import api from '../api/axios';
 import AdminProfileMenu from '../components/AdminProfileMenu';
 import createInventoryPageStyles from '../styles/InventoryPage';
 
-import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 function formatDateOnly(value) {
   if (!value) return 'N/A';

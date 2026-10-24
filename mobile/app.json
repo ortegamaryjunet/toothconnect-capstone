@@ -13,6 +13,7 @@
       "url": "https://u.expo.dev/6b614310-33eb-43e0-8e49-f77f48d598d4"
     },
     "ios": {
+      "icon": "./assets/app-icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.capstone.toothconnect",
       "buildNumber": "4",
@@ -21,9 +22,10 @@
       }
     },
     "android": {
+      "icon": "./assets/app-icon.png",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/app-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.capstone.toothconnect",

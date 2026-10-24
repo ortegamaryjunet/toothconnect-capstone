@@ -9,7 +9,7 @@ import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepNotificationsStyles from '../styles/RecepNotifications';
 
-import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 export default function RecepNotifications() {
   const navigate = useNavigate();

@@ -9,7 +9,7 @@ import createDentistRecordsStyles from '../styles/DentistRecords';
 import DentistProfileMenu from '../components/DentistProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
-import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 async function loadPdfTools() {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([

@@ -14,7 +14,7 @@ import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepReceiptsStyles from '../styles/RecepReceipts';
 
-import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 function mapPaymentToReceipt(payment) {
   const paidOrCreated = payment.paid_at || payment.receipt_uploaded_at || payment.created_at;

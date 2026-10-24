@@ -4,7 +4,6 @@ node_modules/
 .DS_Store
 .expo/
 dist/
-build/
-.claude/ 
+build/ 
 backend/uploads/
 backend/backups/

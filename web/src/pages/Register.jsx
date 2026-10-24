@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useIconStyles } from '../utils/iconStyles';
 import createRegisterStyles from '../styles/Register';
-import clinicLogo from '../assets/clinicLogo/clinic-logo-auth.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 export default function Register() {
   const navigate = useNavigate();

@@ -19,7 +19,7 @@ import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import StaffHeaderAvatar from '../components/StaffHeaderAvatar';
 import createRecepRecordsStyles from '../styles/RecepRecords';
 
-import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 async function loadPdfTools() {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([

@@ -26,8 +26,8 @@ const createRegisterStyles = ({ isMobile = false } = {}) => {
     },
 
     logo: {
-      width: '200px',
-      height: '150px',
+      width: isMobile ? '55px' : '125px',
+      height: 'auto',
       objectFit: 'contain',
       margin: '0 auto 18px',
       display: 'block',

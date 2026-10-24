@@ -8,7 +8,7 @@ import DentistProfileMenu from '../components/DentistProfileMenu';
 import { markAllNotificationsRead } from '../api/notifications';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
-import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 function formatNotifTime(createdAt) {
   if (!createdAt) return '';

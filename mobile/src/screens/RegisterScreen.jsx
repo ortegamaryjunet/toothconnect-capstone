@@ -8,6 +8,8 @@ import {
   ScrollView,
   Image,
   Alert,
+  StyleSheet,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
@@ -56,9 +58,44 @@ export default function RegisterScreen({ navigation }) {
   const [hasActiveOtpFlow, setHasActiveOtpFlow] = useState(false);
   const resendLimitReached = remainingResendAttempts === 0;
 
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsVisible, setTermsVisible] = useState(false);
+  const [privacyVisible, setPrivacyVisible] = useState(false);
+  const [termsContent, setTermsContent] = useState('');
+  const [privacyContent, setPrivacyContent] = useState('');
+  const [legalLoading, setLegalLoading] = useState(false);
+  const [legalError, setLegalError] = useState('');
+  const legalModalVisible = termsVisible || privacyVisible;
+  const legalModalTitle = termsVisible ? 'Terms and Conditions' : 'Privacy Policy';
+  const legalModalText = termsVisible ? termsContent : privacyContent;
+
   useEffect(() => {
     loadBranches();
   }, []);
+
+  useEffect(() => {
+    if (!legalModalVisible) return undefined;
+
+    let active = true;
+    setLegalLoading(true);
+    setLegalError('');
+    api.get('/website/legal-documents')
+      .then(({ data }) => {
+        if (!active) return;
+        setTermsContent(String(data.termsAndCondition || ''));
+        setPrivacyContent(String(data.privacyPolicy || ''));
+      })
+      .catch(() => {
+        if (active) setLegalError('Legal information could not be loaded. Please try again later.');
+      })
+      .finally(() => {
+        if (active) setLegalLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [legalModalVisible]);
 
   useEffect(() => {
     let interval;
@@ -276,6 +313,11 @@ export default function RegisterScreen({ navigation }) {
     setError('');
     setHasSubmittedForm(true);
 
+    if (!agreedToTerms) {
+      setError('Please read and agree to the Terms and Conditions and Privacy Policy.');
+      return;
+    }
+
     const fieldErrors = getFormFieldErrors();
     const firstError = fieldErrors.name ||
       fieldErrors.email ||
@@ -285,6 +327,11 @@ export default function RegisterScreen({ navigation }) {
       '';
     if (firstError) {
       setError(firstError);
+      return;
+    }
+
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms and Conditions and Privacy Policy.');
       return;
     }
 
@@ -649,6 +696,42 @@ export default function RegisterScreen({ navigation }) {
 
                 {formError ? <Text style={styles.error}>{formError}</Text> : null}
 
+                <View style={styles.termsContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.checkbox,
+                      agreedToTerms && styles.checkboxChecked,
+                    ]}
+                    onPress={() => {
+                      setAgreedToTerms(prev => !prev);
+                      setError('');
+                    }}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: agreedToTerms }}
+                  >
+                    {agreedToTerms && (
+                      <Text style={styles.checkmark}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <Text style={styles.termsText}>
+                    I agree to the{' '}
+                    <Text
+                      style={styles.termsLink}
+                      onPress={() => setTermsVisible(true)}
+                    >
+                      Terms and Conditions
+                    </Text>
+                    {' '}and{' '}
+                    <Text
+                      style={styles.termsLink}
+                      onPress={() => setPrivacyVisible(true)}
+                    >
+                      Privacy Policy
+                    </Text>
+                  </Text>
+                </View>
+
                 <TouchableOpacity
                   style={[styles.button, submitting && styles.buttonDisabled]}
                   onPress={handleStart}
@@ -718,7 +801,7 @@ export default function RegisterScreen({ navigation }) {
                   style={[
                     styles.button,
                     (submitting || otpCodeExhausted || otpRedirectSeconds !== null) &&
-                      styles.buttonDisabled,
+                    styles.buttonDisabled,
                   ]}
                   onPress={handleVerify}
                   disabled={submitting || otpCodeExhausted || otpRedirectSeconds !== null}
@@ -732,6 +815,44 @@ export default function RegisterScreen({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <Modal
+        visible={legalModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setTermsVisible(false);
+          setPrivacyVisible(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{legalModalTitle}</Text>
+            <ScrollView
+              style={styles.modalScroll}
+              showsVerticalScrollIndicator
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              {legalLoading ? (
+                <Text style={styles.modalText}>Loading...</Text>
+              ) : legalError ? (
+                <Text style={styles.modalText}>{legalError}</Text>
+              ) : (
+                <Text style={styles.modalText}>{legalModalText}</Text>
+              )}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => {
+                setTermsVisible(false);
+                setPrivacyVisible(false);
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.modalButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

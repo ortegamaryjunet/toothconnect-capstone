@@ -8,7 +8,7 @@ import DentistProfileMenu from '../components/DentistProfileMenu';
 import LazyChart from '../components/LazyChart';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 
-import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 import patientsIcon from '../assets/dentistImages/patients.png';
 import appointmentIcon from '../assets/dentistImages/appt.png';
 import newPatientsIcon from '../assets/dentistImages/new.png';

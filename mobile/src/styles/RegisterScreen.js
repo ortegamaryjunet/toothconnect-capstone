@@ -331,6 +331,94 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "900",
   },
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 4,
+    paddingHorizontal: 4,
+  },
+
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
+    borderColor: '#b77c00',
+    borderRadius: 4,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+
+  checkboxChecked: {
+    backgroundColor: '#c98904',
+    borderColor: '#c98904',
+  },
+
+  checkmark: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '900',
+    lineHeight: 18,
+  },
+
+  termsText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#2f2f2f',
+    lineHeight: 18,
+  },
+
+  termsLink: {
+    color: '#9b6500',
+    fontWeight: 'bold',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxHeight: '80%',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2f2f2f',
+    marginBottom: 16,
+  },
+  modalScroll: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  modalScrollContent: {
+    paddingBottom: 4,
+  },
+  modalText: {
+    fontSize: 14,
+    color: '#444444',
+    lineHeight: 22,
+  },
+  modalButton: {
+    backgroundColor: '#c98904',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+
 });
 
 export default styles;

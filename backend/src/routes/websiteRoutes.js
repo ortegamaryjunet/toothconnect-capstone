@@ -6,6 +6,7 @@ const multer = require("multer");
 const { v2: cloudinary } = require('cloudinary');
 
 const websiteService = require('../services/websiteService');
+const pool = require('../config/db');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { sendEmail } = require('../services/email');
 
@@ -31,6 +32,85 @@ const websiteUpload = multer({
 
         cb(new Error('Only image files are allowed.'));
     },
+});
+
+// Public legal copy used by the mobile registration screen.
+router.get('/legal-documents', async (req, res) => {
+    try {
+        const [[terms], [privacy]] = await Promise.all([
+            pool.query('SELECT content FROM termsandcondition WHERE id = 1 LIMIT 1'),
+            pool.query('SELECT content FROM privacypolicy WHERE id = 1 LIMIT 1'),
+        ]);
+
+        if (!terms[0] || !privacy[0]) {
+            return res.status(404).json({ message: 'Legal documents are not configured.' });
+        }
+
+        return res.json({
+            termsAndCondition: terms[0]?.content || '',
+            privacyPolicy: privacy[0]?.content || '',
+        });
+    } catch (error) {
+        console.error('Fetch legal documents error:', error);
+        return res.status(500).json({ message: 'Failed to load legal documents.' });
+    }
+});
+
+const legalDocumentTables = {
+    termsAndCondition: 'termsandcondition',
+    privacyPolicy: 'privacypolicy',
+};
+
+function getLegalDocumentTable(documentKey) {
+    return legalDocumentTables[documentKey] || null;
+}
+
+function getLegalDocumentValidationError(value) {
+    const rawValue = String(value ?? '');
+    const trimmedValue = rawValue.trim();
+
+    if (!trimmedValue) return 'Policy content cannot be empty.';
+    if (trimmedValue.length < 10) return 'Policy content must be at least 10 characters.';
+    if (rawValue.length > 1500) return 'Policy content must not exceed 1500 characters.';
+    if (!/[a-zA-Z]/.test(trimmedValue) && /[^0-9\s]/.test(trimmedValue)) {
+        return 'Special characters are not allowed.';
+    }
+    if (/^[0-9\s]+$/.test(trimmedValue)) return 'Please enter valid policy content.';
+    return '';
+}
+
+router.put('/legal-documents/:documentKey', authenticate, requireRole('admin'), async (req, res) => {
+    const table = getLegalDocumentTable(req.params.documentKey);
+    if (!table) return res.status(400).json({ message: 'Unknown legal document.' });
+
+    const content = String(req.body.content ?? '').trim();
+    const validationError = getLegalDocumentValidationError(content);
+    if (validationError) return res.status(400).json({ message: validationError });
+
+    try {
+        await pool.query(
+            `INSERT INTO ${table} (id, content) VALUES (1, ?)
+             ON DUPLICATE KEY UPDATE content = VALUES(content)`,
+            [content]
+        );
+        return res.json({ documentKey: req.params.documentKey, content });
+    } catch (error) {
+        console.error('Save legal document error:', error);
+        return res.status(500).json({ message: 'Failed to save legal document.' });
+    }
+});
+
+router.delete('/legal-documents/:documentKey', authenticate, requireRole('admin'), async (req, res) => {
+    const table = getLegalDocumentTable(req.params.documentKey);
+    if (!table) return res.status(400).json({ message: 'Unknown legal document.' });
+
+    try {
+        await pool.query(`UPDATE ${table} SET content = '' WHERE id = 1`);
+        return res.json({ documentKey: req.params.documentKey, content: '' });
+    } catch (error) {
+        console.error('Remove legal document error:', error);
+        return res.status(500).json({ message: 'Failed to remove legal document.' });
+    }
 });
 
 function configureCloudinary() {

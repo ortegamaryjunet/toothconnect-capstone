@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useIconStyles } from '../utils/iconStyles';
 import { roleHomePath } from '../utils/routes';
 import createLoginStyles from '../styles/Login.js';
-import clinicLogo from '../assets/clinicLogo/clinic-logo-auth.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 const styles = createLoginStyles({ isMobile: window.innerWidth < 520 });
 const LOGIN_LOCKOUT_STORAGE_KEY = 'loginLockout';

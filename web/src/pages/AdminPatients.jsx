@@ -9,7 +9,7 @@ import AdminProfileMenu from '../components/AdminProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminPatientsStyles from '../styles/AdminPatients';
 
-import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 async function loadPdfTools() {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([

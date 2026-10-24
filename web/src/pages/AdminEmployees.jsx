@@ -7,7 +7,7 @@ import AdminProfileMenu from '../components/AdminProfileMenu';
 import NotificationUnreadBadge from '../components/NotificationUnreadBadge';
 import createAdminEmployeesStyles from '../styles/AdminEmployees';
 
-import clinicLogo from '../assets/clinicLogo/clinic-logo-nav.png';
+import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
 import doctorIcon from '../assets/adminImages/doctor.png';
 import dentalAssistantIcon from '../assets/adminImages/dental-assistant.png';

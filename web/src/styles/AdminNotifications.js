@@ -43,7 +43,7 @@
     },
 
     logoImg: {
-      width: isMobile ? 54 : 125,
+      width: isMobile ? 55 : 125,
       height: 'auto',
     },
 
