@@ -66,12 +66,10 @@ function getLegalDocumentTable(documentKey) {
 }
 
 function getLegalDocumentValidationError(value) {
-    const rawValue = String(value ?? '');
-    const trimmedValue = rawValue.trim();
+    const trimmedValue = String(value ?? '').trim();
 
     if (!trimmedValue) return 'Policy content cannot be empty.';
     if (trimmedValue.length < 10) return 'Policy content must be at least 10 characters.';
-    if (rawValue.length > 1500) return 'Policy content must not exceed 1500 characters.';
     if (!/[a-zA-Z]/.test(trimmedValue) && /[^0-9\s]/.test(trimmedValue)) {
         return 'Special characters are not allowed.';
     }

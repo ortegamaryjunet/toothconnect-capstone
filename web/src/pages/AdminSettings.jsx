@@ -1096,7 +1096,7 @@ export default function AdminSettings() {
     ? 'Terms and Conditions'
     : 'Privacy Policy';
   const activeLegalDocumentError = activeLegalDocumentKey && legalDocumentEditing[activeLegalDocumentKey]
-    ? getCancellationPolicyError(legalDocumentDrafts[activeLegalDocumentKey])
+    ? getLegalDocumentError(legalDocumentDrafts[activeLegalDocumentKey])
     : '';
 
   const isBranchFormComplete = branchRequiredFields.every(
@@ -1684,7 +1684,7 @@ export default function AdminSettings() {
   function requestLegalDocumentSave(documentKey) {
     const content = String(legalDocumentDrafts[documentKey] || '').trim();
     const previousContent = String(legalDocuments[documentKey] || '').trim();
-    if (getCancellationPolicyError(legalDocumentDrafts[documentKey])) return;
+    if (getLegalDocumentError(legalDocumentDrafts[documentKey])) return;
 
     if (content === previousContent) {
       setLegalDocumentDrafts((current) => ({ ...current, [documentKey]: legalDocuments[documentKey] }));
@@ -2426,6 +2426,17 @@ export default function AdminSettings() {
       return 'Please enter a valid cancellation policy.';
     }
 
+    return '';
+  }
+
+  function getLegalDocumentError(value) {
+    const trimmedValue = String(value ?? '').trim();
+    if (!trimmedValue) return 'Policy content cannot be empty.';
+    if (trimmedValue.length < 10) return 'Policy content must be at least 10 characters.';
+    if (!/[a-zA-Z]/.test(trimmedValue) && /[^0-9\s]/.test(trimmedValue)) {
+      return 'Special characters are not allowed.';
+    }
+    if (/^[0-9\s]+$/.test(trimmedValue)) return 'Please enter valid policy content.';
     return '';
   }
 
@@ -6423,6 +6434,11 @@ const contentEditActions = (
                       style={{
                         ...styles.formInput,
                         ...styles.websiteTextarea,
+                        height: 'auto',
+                        minHeight: 110,
+                        boxSizing: 'border-box',
+                        width: '100%',
+                        maxWidth: '100%',
                         ...(cancellationPolicyError
                           ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' }
                           : {}),
@@ -6452,8 +6468,14 @@ const contentEditActions = (
                     style={{
                       ...styles.formInput,
                       ...styles.readOnlyInput,
+                      height: 'auto',
+                      boxSizing: 'border-box',
+                      width: '100%',
+                      maxWidth: '100%',
                       minHeight: 110,
                       whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word',
                       lineHeight: 1.5,
                     }}
                   >
@@ -6534,6 +6556,11 @@ const contentEditActions = (
                       style={{
                         ...styles.formInput,
                         ...styles.websiteTextarea,
+                        height: 'auto',
+                        minHeight: 110,
+                        boxSizing: 'border-box',
+                        width: '100%',
+                        maxWidth: '100%',
                         ...(activeLegalDocumentError ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' } : {}),
                       }}
                       placeholder={`Enter ${activeLegalDocumentTitle.toLowerCase()}`}
@@ -6543,12 +6570,12 @@ const contentEditActions = (
                         {activeLegalDocumentError.replace(/Cancellation policy/gi, 'Policy content')}
                       </span>
                     )}
-                    <span style={{ display: 'block', marginTop: 6, textAlign: 'right', color: String(legalDocumentDrafts[activeLegalDocumentKey] || '').length > 1500 ? '#dc2626' : '#64748b', fontSize: 12, fontWeight: 600 }}>
-                      {String(legalDocumentDrafts[activeLegalDocumentKey] || '').length}/1500
+                    <span style={{ display: 'block', marginTop: 6, textAlign: 'right', color: '#64748b', fontSize: 12, fontWeight: 600 }}>
+                      {String(legalDocumentDrafts[activeLegalDocumentKey] || '').length} characters
                     </span>
                   </>
                 ) : (
-                  <div style={{ ...styles.formInput, ...styles.readOnlyInput, boxSizing: 'border-box', width: '100%', maxWidth: '100%', minHeight: 110, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                  <div style={{ ...styles.formInput, ...styles.readOnlyInput, height: 'auto', boxSizing: 'border-box', width: '100%', maxWidth: '100%', minHeight: 110, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.5 }}>
                     {legalDocuments[activeLegalDocumentKey] || <span style={{ color: '#94a3b8' }}>No {activeLegalDocumentTitle.toLowerCase()} content set.</span>}
                   </div>
                 )}
