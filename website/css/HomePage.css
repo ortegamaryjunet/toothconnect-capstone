@@ -2054,7 +2054,8 @@ section {
 }
 
 .footer-column p,
-.footer-column a {
+.footer-column a,
+.footer-terms-trigger {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -2065,8 +2066,52 @@ section {
     transition: 0.25s ease;
 }
 
-.footer-column a:hover {
+.footer-terms-trigger {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.footer-column a:hover,
+.footer-terms-trigger:hover {
     color: #ffffff;
+}
+
+.website-terms-modal {
+    z-index: 10001;
+}
+
+.website-terms-card {
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 760px);
+    max-height: min(86vh, 820px);
+    box-sizing: border-box;
+}
+
+.website-terms-card .step-modal-top {
+    flex-shrink: 0;
+}
+
+.website-terms-content {
+    min-height: 120px;
+    overflow-y: auto;
+    padding: 18px 20px;
+    border: 1px solid #eee5cf;
+    border-radius: 16px;
+    background: #fffdf8;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.website-terms-content.is-error {
+    color: #9f2d25;
 }
 
 .footer-column i {

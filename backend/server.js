@@ -12,6 +12,7 @@ const { loginLimiter, registerLimiter, passwordResetLimiter } = require('./src/m
 
 //FOR WEBSITE
 const websiteRoutes = require('./src/routes/websiteRoutes');
+const systemSettingsRoutes = require('./src/routes/systemSettings');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -122,6 +123,7 @@ app.use('/website', express.static(path.join(__dirname, '..', 'website'), {
 }));
 
 app.use('/api/website', websiteRoutes);
+app.use('/api/system', systemSettingsRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {

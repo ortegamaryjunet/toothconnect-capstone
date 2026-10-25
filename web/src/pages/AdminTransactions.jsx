@@ -143,7 +143,7 @@ function AdminSidebar({ styles, openLogoutModal }) {
   return (
     <aside style={styles.sidebar}>
       <div style={styles.logo}>
-        <img src={clinicLogo} alt="Clinic Logo" style={styles.logoImg} />
+        <img src={localStorage.getItem('clinic_logo_path') || clinicLogo} alt="Clinic Logo" style={styles.logoImg} />
       </div>
 
       <nav style={styles.menu}>

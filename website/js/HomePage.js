@@ -936,6 +936,34 @@ document.addEventListener("DOMContentLoaded", function () {
     const stepButtons = document.querySelectorAll(".step-icon-btn");
     const stepModals = document.querySelectorAll(".step-modal");
     const stepCloseButtons = document.querySelectorAll(".step-modal-close");
+    const websiteTermsButton = document.getElementById("website-terms-button");
+    const websiteTermsModal = document.getElementById("website-terms-modal");
+    const websiteTermsContent = document.getElementById("website-terms-content");
+    const websiteTermsClose = document.getElementById("website-terms-close");
+
+    if (websiteTermsButton && websiteTermsModal && websiteTermsContent) {
+        websiteTermsButton.addEventListener("click", async function () {
+            websiteTermsModal.classList.add("show");
+            websiteTermsModal.setAttribute("aria-hidden", "false");
+            document.body.style.overflow = "hidden";
+            websiteTermsContent.classList.remove("is-error");
+            websiteTermsContent.textContent = "Loading Terms and Conditions...";
+            if (websiteTermsClose) websiteTermsClose.focus();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/website/terms-and-conditions`);
+                if (!response.ok) throw new Error("Unable to load the Terms and Conditions.");
+                const data = await response.json();
+                const content = String(data.content || "").trim();
+                websiteTermsContent.textContent = content || "Terms and Conditions have not been added yet.";
+                if (!content) websiteTermsContent.classList.add("is-error");
+            } catch (error) {
+                console.error("Website terms load error:", error);
+                websiteTermsContent.textContent = "Terms and Conditions could not be loaded. Please try again later.";
+                websiteTermsContent.classList.add("is-error");
+            }
+        });
+    }
 
     const phoneCountry = document.getElementById("phoneCountry");
     let phoneLibraryRequested = false;
@@ -1480,7 +1508,9 @@ function validateMessage() {
 
         if (modal) {
             modal.classList.remove("show");
+            modal.setAttribute("aria-hidden", "true");
             document.body.style.overflow = "";
+            if (modal === websiteTermsModal && websiteTermsButton) websiteTermsButton.focus();
         }
     }
 
@@ -1506,7 +1536,9 @@ function validateMessage() {
         modal.addEventListener("click", function (event) {
             if (event.target === modal) {
                 modal.classList.remove("show");
+                modal.setAttribute("aria-hidden", "true");
                 document.body.style.overflow = "";
+                if (modal === websiteTermsModal && websiteTermsButton) websiteTermsButton.focus();
             }
         });
     });
@@ -1519,11 +1551,14 @@ function validateMessage() {
 
     document.addEventListener("keydown", function (event) {
         if (event.key === "Escape") {
+            const websiteTermsWasOpen = websiteTermsModal?.classList.contains("show");
             stepModals.forEach(function (modal) {
                 modal.classList.remove("show");
+                modal.setAttribute("aria-hidden", "true");
             });
 
             document.body.style.overflow = "";
+            if (websiteTermsWasOpen && websiteTermsButton) websiteTermsButton.focus();
         }
     });
 });

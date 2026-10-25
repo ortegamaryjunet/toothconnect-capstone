@@ -241,7 +241,7 @@ export default function RecepInquiries() {
     <div style={s.page}>
       <aside style={s.sidebar}>
         <div style={s.logo}>
-          <img src={clinicLogo} alt="Clinic Logo" style={s.logoImg} />
+          <img src={localStorage.getItem('clinic_logo_path') || clinicLogo} alt="Clinic Logo" style={s.logoImg} />
         </div>
 
         <nav style={s.menu}>

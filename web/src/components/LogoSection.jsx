@@ -135,7 +135,7 @@ export default function LogoSection({
 
           <input
             type="file"
-            accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+            accept=".png,.jpg,.jpeg,.webp,.heic,.heif,image/png,image/jpeg,image/webp,image/heic,image/heif"
             hidden
             disabled={!websiteContentEditing}
             onChange={handleLogoUpload}
@@ -143,7 +143,7 @@ export default function LogoSection({
         </label>
 
         <div style={styles.logoInfo}>
-          Supported formats: PNG, JPG, WEBP and SVG
+          Supported formats: PNG, JPG, WEBP, HEIC and HEIF (max 5 MB)
         </div>
 
         <div style={styles.logoOption}>

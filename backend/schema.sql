@@ -676,6 +676,12 @@ CREATE TABLE IF NOT EXISTS website_content (
   UNIQUE KEY uq_wc_section_key (section, field_key)
 );
 
+CREATE TABLE IF NOT EXISTS clinic_system_settings (
+  setting_key VARCHAR(100) PRIMARY KEY,
+  setting_value TEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS website_faqs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   question TEXT NOT NULL,
@@ -716,6 +722,16 @@ CREATE TABLE IF NOT EXISTS termsandcondition (
 
 INSERT IGNORE INTO termsandcondition (id, content)
 VALUES (1, 'By creating a ToothConnect account, you agree to provide accurate account and contact information and keep your password confidential. Your account lets you manage registration and access appointment services.\n\nUse the app respectfully and do not attempt to disrupt its services or access another person’s account. Appointment requests are subject to availability and clinic confirmation.\n\nYou may contact the clinic through its listed channels if you have questions about these terms or your account.');
+
+CREATE TABLE IF NOT EXISTS website_terms_and_conditions (
+  id TINYINT UNSIGNED PRIMARY KEY,
+  content MEDIUMTEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT chk_website_terms_singleton CHECK (id = 1)
+);
+
+INSERT IGNORE INTO website_terms_and_conditions (id, content)
+SELECT 1, content FROM termsandcondition WHERE id = 1;
 
 CREATE TABLE IF NOT EXISTS privacypolicy (
   id TINYINT UNSIGNED PRIMARY KEY,

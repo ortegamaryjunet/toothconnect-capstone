@@ -56,6 +56,19 @@ router.get('/legal-documents', async (req, res) => {
     }
 });
 
+// Website terms are stored separately from the mobile registration terms.
+router.get('/terms-and-conditions', async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            'SELECT content FROM website_terms_and_conditions WHERE id = 1 LIMIT 1'
+        );
+        return res.json({ content: rows[0]?.content || '' });
+    } catch (error) {
+        console.error('Fetch website terms error:', error);
+        return res.status(500).json({ message: 'Failed to load website terms and conditions.' });
+    }
+});
+
 const legalDocumentTables = {
     termsAndCondition: 'termsandcondition',
     privacyPolicy: 'privacypolicy',
@@ -76,6 +89,34 @@ function getLegalDocumentValidationError(value) {
     if (/^[0-9\s]+$/.test(trimmedValue)) return 'Please enter valid policy content.';
     return '';
 }
+
+router.put('/terms-and-conditions', authenticate, requireRole('admin'), async (req, res) => {
+    const content = String(req.body.content ?? '').trim();
+    const validationError = getLegalDocumentValidationError(content);
+    if (validationError) return res.status(400).json({ message: validationError });
+
+    try {
+        await pool.query(
+            `INSERT INTO website_terms_and_conditions (id, content) VALUES (1, ?)
+             ON DUPLICATE KEY UPDATE content = VALUES(content)`,
+            [content]
+        );
+        return res.json({ content });
+    } catch (error) {
+        console.error('Save website terms error:', error);
+        return res.status(500).json({ message: 'Failed to save website terms and conditions.' });
+    }
+});
+
+router.delete('/terms-and-conditions', authenticate, requireRole('admin'), async (req, res) => {
+    try {
+        await pool.query('UPDATE website_terms_and_conditions SET content = ? WHERE id = 1', ['']);
+        return res.json({ content: '' });
+    } catch (error) {
+        console.error('Remove website terms error:', error);
+        return res.status(500).json({ message: 'Failed to remove website terms and conditions.' });
+    }
+});
 
 router.put('/legal-documents/:documentKey', authenticate, requireRole('admin'), async (req, res) => {
     const table = getLegalDocumentTable(req.params.documentKey);

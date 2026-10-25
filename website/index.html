@@ -610,6 +610,7 @@
             <a href="#about">About</a>
             <a href="#faq">FAQs</a>
             <a href="#contact">Contact</a>
+            <button class="footer-terms-trigger" id="website-terms-button" type="button">Terms and Conditions</button>
         </div>
 
     </div>
@@ -620,6 +621,18 @@
         <p id="footer-system-name"></p>
     </div>
 </footer>
+
+<div class="step-modal website-terms-modal" id="website-terms-modal" role="dialog" aria-modal="true" aria-labelledby="website-terms-title" aria-hidden="true">
+    <div class="step-modal-card website-terms-card">
+        <button class="step-modal-close" id="website-terms-close" type="button" aria-label="Close Terms and Conditions">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="step-modal-top">
+            <div><h3 id="website-terms-title">Terms and Conditions</h3></div>
+        </div>
+        <div class="website-terms-content" id="website-terms-content" aria-live="polite">Loading Terms and Conditions...</div>
+    </div>
+</div>
 
 <div class="service-modal" id="modalScaling"></div>
 

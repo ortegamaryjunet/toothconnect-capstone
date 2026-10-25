@@ -434,7 +434,7 @@ export default function Login() {
     <main style={styles.page}>
       <form onSubmit={handleSubmit} noValidate style={styles.card}>
         <img
-          src={clinicLogo}
+          src={localStorage.getItem('clinic_logo_path') || clinicLogo}
           alt="Clinic Logo"
           width="200"
           height="150"

@@ -10,6 +10,7 @@ import createAdminSettingsStyles from '../styles/AdminSettings';
 import WebsiteContentRenderer from "../components/WebsiteContentRenderer";
 
 import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
+import { CLEARED_CLINIC_LOGO } from '../utils/clinicLogo';
 import AdminScheduleRequests from './AdminScheduleRequests';
 
 const rowsPerPage = 10;
@@ -66,6 +67,10 @@ const sectionConfig = {
   privacyPolicy: {
     label: 'Manage Privacy Policy',
     icon: 'fi fi-rr-shield-check',
+  },
+  clinicLogo: {
+    label: 'Manage Clinic Logo',
+    icon: 'fi fi-rr-picture',
   },
   website: {
     label: 'Manage Website',
@@ -947,6 +952,15 @@ export default function AdminSettings() {
   const [websiteAboutSaveConfirmModal, setWebsiteAboutSaveConfirmModal] = useState(null);
   const [websiteServiceSaveConfirmModal, setWebsiteServiceSaveConfirmModal] = useState(null);
   const [websiteContent, setWebsiteContent] = useState({});
+  const [clinicLogoPath, setClinicLogoPath] = useState('');
+  const [clinicLogoSavedPath, setClinicLogoSavedPath] = useState('');
+  const [clinicLogoIsCleared, setClinicLogoIsCleared] = useState(false);
+  const [clinicLogoSaving, setClinicLogoSaving] = useState(false);
+  const [clinicLogoEditing, setClinicLogoEditing] = useState(false);
+  const [clinicLogoClearRequested, setClinicLogoClearRequested] = useState(false);
+  const [clinicLogoSaveConfirmModal, setClinicLogoSaveConfirmModal] = useState(null);
+  const [clinicLogoClearConfirmModal, setClinicLogoClearConfirmModal] = useState(false);
+  const [clinicLogoCancelConfirmModal, setClinicLogoCancelConfirmModal] = useState(false);
   const [websiteFaqs, setWebsiteFaqs] = useState([]);
   const [websiteServices, setWebsiteServices] = useState([]);
   const [websiteAnnouncements, setWebsiteAnnouncements] = useState([]);
@@ -970,11 +984,11 @@ export default function AdminSettings() {
   const [cancellationPolicySaveConfirmModal, setCancellationPolicySaveConfirmModal] = useState(null);
   const [showCancellationPolicyRemoveConfirmModal, setShowCancellationPolicyRemoveConfirmModal] = useState(false);
   const [cancellationPolicyRemoving, setCancellationPolicyRemoving] = useState(false);
-  const [legalDocuments, setLegalDocuments] = useState({ termsAndCondition: '', privacyPolicy: '' });
-  const [legalDocumentDrafts, setLegalDocumentDrafts] = useState({ termsAndCondition: '', privacyPolicy: '' });
-  const [legalDocumentEditing, setLegalDocumentEditing] = useState({ termsAndCondition: false, privacyPolicy: false });
-  const [legalDocumentSaving, setLegalDocumentSaving] = useState({ termsAndCondition: false, privacyPolicy: false });
-  const [legalDocumentRemoving, setLegalDocumentRemoving] = useState({ termsAndCondition: false, privacyPolicy: false });
+  const [legalDocuments, setLegalDocuments] = useState({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '' });
+  const [legalDocumentDrafts, setLegalDocumentDrafts] = useState({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '' });
+  const [legalDocumentEditing, setLegalDocumentEditing] = useState({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false });
+  const [legalDocumentSaving, setLegalDocumentSaving] = useState({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false });
+  const [legalDocumentRemoving, setLegalDocumentRemoving] = useState({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false });
   const [legalDocumentCancelConfirmModal, setLegalDocumentCancelConfirmModal] = useState(null);
   const [legalDocumentSaveConfirmModal, setLegalDocumentSaveConfirmModal] = useState(null);
   const [legalDocumentRemoveConfirmModal, setLegalDocumentRemoveConfirmModal] = useState(null);
@@ -1091,8 +1105,10 @@ export default function AdminSettings() {
     : '';
   const activeLegalDocumentKey = ['termsAndCondition', 'privacyPolicy'].includes(activeSection)
     ? activeSection
-    : null;
-  const activeLegalDocumentTitle = activeLegalDocumentKey === 'termsAndCondition'
+    : activeSection === 'website' && websiteContentSection === 'websiteTerms'
+      ? 'websiteTermsAndCondition'
+      : null;
+  const activeLegalDocumentTitle = ['termsAndCondition', 'websiteTermsAndCondition'].includes(activeLegalDocumentKey)
     ? 'Terms and Conditions'
     : 'Privacy Policy';
   const activeLegalDocumentError = activeLegalDocumentKey && legalDocumentEditing[activeLegalDocumentKey]
@@ -1199,6 +1215,9 @@ export default function AdminSettings() {
   useEffect(() => {
     if (
       showLogoutModal ||
+      clinicLogoSaveConfirmModal ||
+      clinicLogoClearConfirmModal ||
+      clinicLogoCancelConfirmModal ||
       activeOverlay ||
       websiteFaqOverlay ||
       websiteServiceOverlay ||
@@ -1241,6 +1260,9 @@ export default function AdminSettings() {
     };
   }, [
     showLogoutModal,
+    clinicLogoSaveConfirmModal,
+    clinicLogoClearConfirmModal,
+    clinicLogoCancelConfirmModal,
     activeOverlay,
     websiteFaqOverlay,
     websiteServiceOverlay,
@@ -1342,7 +1364,7 @@ export default function AdminSettings() {
         setLegalDocumentCancelConfirmModal(null);
         setLegalDocumentSaveConfirmModal(null);
         setLegalDocumentRemoveConfirmModal(null);
-        setLegalDocumentEditing({ termsAndCondition: false, privacyPolicy: false });
+        setLegalDocumentEditing({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false });
         setWebsiteValidationModal(null);
         setWebsiteServiceSaveConfirmModal(null);
         setWebsiteAboutSaveConfirmModal(null);
@@ -1376,6 +1398,7 @@ export default function AdminSettings() {
     loadUsers();
     loadAdminAccount();
     loadWebsiteContent();
+    loadClinicLogo();
     loadWebsiteFaqs();
     loadWebsiteServices();
     loadWebsiteAnnouncements();
@@ -1432,6 +1455,18 @@ export default function AdminSettings() {
       setWebsiteContentForm(content);
     } catch (err) {
       console.error('Failed to load website content', err);
+    }
+  }
+
+  async function loadClinicLogo() {
+    try {
+      const res = await api.get('/system/clinic-logo');
+      const path = res.data?.path || '';
+      setClinicLogoPath(path);
+      setClinicLogoSavedPath(path);
+      setClinicLogoIsCleared(Boolean(res.data?.cleared));
+    } catch (err) {
+      console.error('Failed to load clinic logo', err);
     }
   }
 
@@ -1642,6 +1677,149 @@ export default function AdminSettings() {
     }
   }
 
+  function renderClinicLogoPanel() {
+    const logoPath = clinicLogoPath;
+    const baseURL = api?.defaults?.baseURL ? api.defaults.baseURL.replace('/api', '') : '';
+    const logoSrc = logoPath
+      ? (/^https?:\/\//i.test(logoPath) ? logoPath : `${baseURL}${logoPath.startsWith('/') ? '' : '/'}${logoPath}`)
+      : clinicLogoIsCleared || clinicLogoClearRequested ? null : clinicLogo;
+    const handleUpload = async (event) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
+      if (!allowedTypes.includes(String(file.type || '').toLowerCase())) {
+        showWebsiteValidationModal('Unsupported Image', 'Choose a PNG, JPG, WEBP, HEIC, or HEIF image.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showWebsiteValidationModal('Image Too Large', 'Choose an image smaller than 5 MB.');
+        return;
+      }
+      try {
+        const formData = new FormData();
+        formData.append('logo', file);
+        const response = await api.post('/system/clinic-logo/upload', formData);
+        const uploadedPath = response.data?.url || response.data?.path;
+        if (!uploadedPath) throw new Error('Image URL was not returned.');
+        setClinicLogoPath(uploadedPath);
+        setClinicLogoClearRequested(false);
+      } catch (err) {
+        showWebsiteValidationModal('Upload Failed', err.response?.data?.message || 'Unable to upload the clinic logo.');
+      }
+    };
+    const requestSaveLogo = () => {
+      if (logoPath === clinicLogoSavedPath && !clinicLogoClearRequested) {
+        showWebsiteValidationModal('No Changes Detected', 'There are no changes to save.');
+        return;
+      }
+      setClinicLogoSaveConfirmModal({ previousPath: clinicLogoSavedPath, nextPath: logoPath });
+    };
+    const confirmSaveLogo = async () => {
+      setClinicLogoSaving(true);
+      try {
+        const response = await api.put('/system/clinic-logo', { path: clinicLogoSaveConfirmModal.nextPath });
+        const savedPath = response.data?.path || '';
+        setClinicLogoPath(savedPath);
+        setClinicLogoSavedPath(savedPath);
+        setClinicLogoClearRequested(false);
+        setClinicLogoIsCleared(!savedPath);
+        if (savedPath) localStorage.setItem('clinic_logo_path', savedPath);
+        else if (clinicLogoSaveConfirmModal.nextPath === '') localStorage.setItem('clinic_logo_path', CLEARED_CLINIC_LOGO);
+        else localStorage.removeItem('clinic_logo_path');
+        window.dispatchEvent(new Event('clinic-logo-updated'));
+        setClinicLogoSaveConfirmModal(null);
+        setClinicLogoEditing(false);
+        showWebsiteValidationModal('Logo Saved', 'Clinic logo has been updated successfully.', 'success');
+      } catch (err) {
+        showWebsiteValidationModal('Save Failed', err.response?.data?.message || 'Unable to save the clinic logo.');
+      } finally {
+        setClinicLogoSaving(false);
+      }
+    };
+    const confirmClearLogo = () => {
+      setClinicLogoPath('');
+      setClinicLogoClearRequested(true);
+      setClinicLogoClearConfirmModal(false);
+    };
+    const confirmCancelLogo = () => {
+      setClinicLogoPath(clinicLogoSavedPath);
+      setClinicLogoClearRequested(false);
+      setClinicLogoEditing(false);
+      setClinicLogoCancelConfirmModal(false);
+    };
+
+    return (
+      <section style={styles.tableCard}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          {!clinicLogoEditing && (
+            <button type="button" style={styles.primaryBtn} onClick={() => { setClinicLogoPath(clinicLogoSavedPath); setClinicLogoClearRequested(false); setClinicLogoEditing(true); }}><i className="fi fi-rr-edit" /><span>Edit Content</span></button>
+          )}
+        </div>
+        <div style={styles.logoCard}>
+          <div style={styles.logoPreviewPanel}>
+          <div style={styles.logoPreview}>{logoSrc ? <img src={logoSrc} alt="Clinic Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ color: '#94a3b8', fontSize: 14 }}>No logo uploaded</span>}</div>
+            <h3 style={styles.logoHeading}>Clinic Logo</h3>
+            <p style={styles.logoText}>Upload the logo used throughout the clinic management system. Changes appear after saving.</p>
+          </div>
+          <div style={styles.logoRight}>
+            <label style={{ ...styles.logoUploadBtn, ...(clinicLogoEditing ? {} : styles.logoUploadBtnDisabled) }}>
+              <i className="fi fi-rr-picture" /><span>Choose Logo</span>
+              <input type="file" accept=".png,.jpg,.jpeg,.webp,.heic,.heif,image/png,image/jpeg,image/webp,image/heic,image/heif" hidden disabled={!clinicLogoEditing} onChange={handleUpload} />
+            </label>
+            <div style={styles.logoInfo}>Supported formats: PNG, JPG, WEBP, HEIC and HEIF (max 5 MB)</div>
+          </div>
+        </div>
+        {clinicLogoEditing && (
+          <div style={styles.overlayActions}>
+            <button type="button" style={styles.saveBtn} disabled={clinicLogoSaving} onClick={requestSaveLogo}>{clinicLogoSaving ? 'Saving...' : 'Save Content'}</button>
+            <button type="button" style={styles.clearBtn} disabled={clinicLogoSaving} onClick={() => setClinicLogoClearConfirmModal(true)}>Clear</button>
+            <button type="button" style={styles.secondaryBtn} disabled={clinicLogoSaving} onClick={() => setClinicLogoCancelConfirmModal(true)}>Cancel</button>
+          </div>
+        )}
+        {clinicLogoSaveConfirmModal && (
+          <div style={styles.modal} onClick={(event) => event.target === event.currentTarget && setClinicLogoSaveConfirmModal(null)}>
+            <div style={styles.modalContent}>
+              <div style={styles.modalIcon}><i className="fi fi-rr-check-circle" style={styles.modalIconText}></i></div>
+              <h2 style={styles.modalTitle}>Confirm Clinic Logo Changes</h2>
+              <p style={styles.modalText}>Save the selected clinic logo for the web system?</p>
+              <div style={styles.modalActions}>
+                <button type="button" style={{ ...styles.modalButton, ...styles.cancelBtn }} disabled={clinicLogoSaving} onClick={() => setClinicLogoSaveConfirmModal(null)}>Cancel</button>
+                <button type="button" style={{ ...styles.modalButton, ...styles.saveBtn }} disabled={clinicLogoSaving} onClick={confirmSaveLogo}>{clinicLogoSaving ? 'Saving...' : 'Save Content'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {clinicLogoClearConfirmModal && (
+          <div style={styles.modal} onClick={(event) => event.target === event.currentTarget && setClinicLogoClearConfirmModal(false)}>
+            <div style={styles.modalContent}>
+              <div style={styles.modalIcon}><i className="fi fi-rr-exclamation" style={styles.modalIconText}></i></div>
+              <h2 style={styles.modalTitle}>Clear Clinic Logo</h2>
+              <p style={styles.modalText}>Clear the selected clinic logo? Save Content to apply this change to the web system.</p>
+              <div style={styles.modalActions}>
+                <button type="button" style={{ ...styles.modalButton, ...styles.cancelBtn }} onClick={() => setClinicLogoClearConfirmModal(false)}>No</button>
+                <button type="button" style={{ ...styles.modalButton, ...styles.logoutBtn }} onClick={confirmClearLogo}>Yes, Clear</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {clinicLogoCancelConfirmModal && (
+          <div style={styles.modal} onClick={(event) => event.target === event.currentTarget && setClinicLogoCancelConfirmModal(false)}>
+            <div style={styles.modalContent}>
+              <div style={styles.modalIcon}><i className="fi fi-rr-exclamation" style={styles.modalIconText}></i></div>
+              <h2 style={styles.modalTitle}>Cancel Content Editing</h2>
+              <p style={styles.modalText}>Are you sure you want to cancel? Unsaved clinic logo changes will be discarded.</p>
+              <div style={styles.modalActions}>
+                <button type="button" style={{ ...styles.modalButton, ...styles.cancelBtn }} onClick={() => setClinicLogoCancelConfirmModal(false)}>No</button>
+                <button type="button" style={{ ...styles.modalButton, ...styles.logoutBtn }} onClick={confirmCancelLogo}>Yes, Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
+
   async function loadCancellationPolicy() {
     try {
       const res = await api.get('/appointments/settings/cancellation-policy');
@@ -1657,17 +1835,21 @@ export default function AdminSettings() {
 
   async function loadLegalDocuments() {
     try {
-      const res = await api.get('/website/legal-documents');
+      const [res, websiteTerms] = await Promise.all([
+        api.get('/website/legal-documents'),
+        api.get('/website/terms-and-conditions'),
+      ]);
       const documents = {
         termsAndCondition: String(res.data.termsAndCondition || ''),
         privacyPolicy: String(res.data.privacyPolicy || ''),
+        websiteTermsAndCondition: String(websiteTerms.data.content || ''),
       };
       setLegalDocuments(documents);
       setLegalDocumentDrafts(documents);
     } catch (err) {
       console.error('Failed to load legal documents', err);
-      setLegalDocuments({ termsAndCondition: '', privacyPolicy: '' });
-      setLegalDocumentDrafts({ termsAndCondition: '', privacyPolicy: '' });
+      setLegalDocuments({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '' });
+      setLegalDocumentDrafts({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '' });
     }
   }
 
@@ -1703,12 +1885,14 @@ export default function AdminSettings() {
     setLegalDocumentSaveConfirmModal(null);
 
     try {
-      const res = await api.put(`/website/legal-documents/${documentKey}`, { content });
+      const res = documentKey === 'websiteTermsAndCondition'
+        ? await api.put('/website/terms-and-conditions', { content })
+        : await api.put(`/website/legal-documents/${documentKey}`, { content });
       const savedContent = String(res.data.content || '');
       setLegalDocuments((current) => ({ ...current, [documentKey]: savedContent }));
       setLegalDocumentDrafts((current) => ({ ...current, [documentKey]: savedContent }));
       setLegalDocumentEditing((current) => ({ ...current, [documentKey]: false }));
-      const documentTitle = documentKey === 'termsAndCondition' ? 'Terms and Conditions' : 'Privacy Policy';
+      const documentTitle = ['termsAndCondition', 'websiteTermsAndCondition'].includes(documentKey) ? 'Terms and Conditions' : 'Privacy Policy';
       setServiceSaveResultModal({
         title: 'Policy Updated',
         message: `${documentTitle} has been updated successfully.`,
@@ -1734,7 +1918,8 @@ export default function AdminSettings() {
     const { documentKey } = legalDocumentRemoveConfirmModal;
     setLegalDocumentRemoving((current) => ({ ...current, [documentKey]: true }));
     try {
-      await api.delete(`/website/legal-documents/${documentKey}`);
+      if (documentKey === 'websiteTermsAndCondition') await api.delete('/website/terms-and-conditions');
+      else await api.delete(`/website/legal-documents/${documentKey}`);
       setLegalDocuments((current) => ({ ...current, [documentKey]: '' }));
       setLegalDocumentDrafts((current) => ({ ...current, [documentKey]: '' }));
       setLegalDocumentEditing((current) => ({ ...current, [documentKey]: false }));
@@ -4385,6 +4570,61 @@ const contentEditActions = (
     );
   }
 
+  function renderWebsiteTermsPanel() {
+    const key = 'websiteTermsAndCondition';
+    const content = legalDocuments[key] || '';
+    const editing = legalDocumentEditing[key];
+    const busy = legalDocumentSaving[key] || legalDocumentRemoving[key];
+    return (
+      <section style={styles.tableCard}>
+        <div style={styles.websiteAnnouncementHeader}>
+          <div>
+            <h3 style={styles.websiteAnnouncementTitle}>Terms and Conditions</h3>
+            <p style={styles.websiteAnnouncementSubtitle}>Manage the Terms and Conditions shown on the clinic website.</p>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {content.trim() && !editing && (
+              <button type="button" style={{ ...styles.primaryBtn, backgroundColor: '#dc2626' }} disabled={busy} onClick={() => setLegalDocumentRemoveConfirmModal({ documentKey: key })}>
+                <i className="fi fi-rr-trash" /><span>Remove</span>
+              </button>
+            )}
+            {!editing && (
+              <button type="button" style={styles.primaryBtn} disabled={busy} onClick={() => startLegalDocumentEdit(key)}>
+                <i className="fi fi-rr-edit" /><span>Edit</span>
+              </button>
+            )}
+          </div>
+        </div>
+        <div style={{ width: '100%', textAlign: 'left', marginTop: 22 }}>
+          <label style={styles.websiteFieldLabel}>Terms and Conditions</label>
+          {editing ? (
+            <>
+              <textarea
+                value={legalDocumentDrafts[key]}
+                onChange={(event) => setLegalDocumentDrafts((current) => ({ ...current, [key]: event.target.value }))}
+                rows={5}
+                style={{ ...styles.formInput, ...styles.websiteTextarea, height: 'auto', minHeight: 110, boxSizing: 'border-box', width: '100%', maxWidth: '100%', ...(activeLegalDocumentError ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' } : {}) }}
+                placeholder="Enter terms and conditions"
+              />
+              {activeLegalDocumentError && <span style={{ color: '#dc2626', fontSize: 12, fontWeight: 600, marginTop: 6, display: 'block' }}>{activeLegalDocumentError}</span>}
+              <span style={{ display: 'block', marginTop: 6, textAlign: 'right', color: '#64748b', fontSize: 12, fontWeight: 600 }}>{String(legalDocumentDrafts[key] || '').length} characters</span>
+            </>
+          ) : (
+            <div style={{ ...styles.formInput, ...styles.readOnlyInput, height: 'auto', boxSizing: 'border-box', width: '100%', maxWidth: '100%', minHeight: 110, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.5 }}>
+              {content || <span style={{ color: '#94a3b8' }}>No terms and conditions content set.</span>}
+            </div>
+          )}
+        </div>
+        {editing && (
+          <div style={{ ...styles.modalActions, justifyContent: 'flex-end', marginTop: 18 }}>
+            <button type="button" style={{ ...styles.modalButton, ...styles.cancelBtn }} disabled={legalDocumentSaving[key]} onClick={() => setLegalDocumentCancelConfirmModal({ documentKey: key })}>Cancel</button>
+            <button type="button" style={{ ...styles.modalButton, ...styles.saveBtn, ...(activeLegalDocumentError || legalDocumentSaving[key] ? { opacity: 0.55, cursor: 'not-allowed' } : {}) }} disabled={Boolean(activeLegalDocumentError) || legalDocumentSaving[key]} onClick={() => requestLegalDocumentSave(key)}>{legalDocumentSaving[key] ? 'Saving...' : 'Save Content'}</button>
+          </div>
+        )}
+      </section>
+    );
+  }
+
 
     const contentSections = [
       { key: 'logo', label: 'Logo' },
@@ -4394,6 +4634,7 @@ const contentEditActions = (
       { key: 'clinicContact', label: 'Clinic Contact & Details' },
       { key: 'about', label: 'About Us Page' },
       { key: 'services', label: 'Services Page' },
+      { key: 'websiteTerms', label: 'Terms and Conditions' },
     ];
 
     return (
@@ -4464,6 +4705,7 @@ const contentEditActions = (
               </div>
             )}
 
+            {websiteContentSection === 'websiteTerms' ? renderWebsiteTermsPanel() : (
             <WebsiteContentRenderer
               api={api}
               websiteContentSection={websiteContentSection}
@@ -4498,6 +4740,7 @@ const contentEditActions = (
               setDeleteWebsiteServiceModal={setDeleteWebsiteServiceModal}
               styles={styles}
             />
+            )}
           </div>
         </section>
 
@@ -6237,7 +6480,7 @@ const contentEditActions = (
 
       <aside style={styles.sidebar}>
         <div style={styles.logo}>
-          <img src={clinicLogo} alt="Clinic Logo" style={styles.logoImg} />
+          <img src={localStorage.getItem('clinic_logo_path') || clinicLogo} alt="Clinic Logo" style={styles.logoImg} />
         </div>
 
         <nav style={styles.menu}>
@@ -6379,6 +6622,8 @@ const contentEditActions = (
             />
           ) : activeSection === 'website' ? (
             renderWebsitePanel()
+          ) : activeSection === 'clinicLogo' ? (
+            renderClinicLogoPanel()
           ) : activeSection === 'cancellationPolicy' ? (
             <section style={styles.tableCard}>
               <div style={styles.websiteAnnouncementHeader}>
@@ -8450,7 +8695,7 @@ const contentEditActions = (
           <div style={{ ...styles.modalContent, width: isMobile ? '100%' : 520, maxWidth: 520 }}>
             <div style={styles.modalIcon}><i className="fi fi-rr-check-circle" style={styles.modalIconText}></i></div>
             <h2 style={styles.modalTitle}>Confirm Policy Changes</h2>
-            <p style={styles.modalText}>Review the updated {legalDocumentSaveConfirmModal.documentKey === 'termsAndCondition' ? 'Terms and Conditions' : 'Privacy Policy'} before saving.</p>
+            <p style={styles.modalText}>Review the updated {['termsAndCondition', 'websiteTermsAndCondition'].includes(legalDocumentSaveConfirmModal.documentKey) ? 'Terms and Conditions' : 'Privacy Policy'} before saving.</p>
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '7px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13, textAlign: 'left' }}>
                 <span style={{ color: '#64748b' }}>Previous Content</span>
@@ -8489,7 +8734,7 @@ const contentEditActions = (
         <div style={styles.modal} onClick={(event) => event.target === event.currentTarget && setLegalDocumentRemoveConfirmModal(null)}>
           <div style={styles.modalContent}>
             <div style={styles.modalIcon}><i className="fi fi-rr-exclamation" style={styles.modalIconText}></i></div>
-            <h2 style={styles.modalTitle}>Remove {legalDocumentRemoveConfirmModal.documentKey === 'termsAndCondition' ? 'Terms and Conditions' : 'Privacy Policy'}</h2>
+            <h2 style={styles.modalTitle}>Remove {['termsAndCondition', 'websiteTermsAndCondition'].includes(legalDocumentRemoveConfirmModal.documentKey) ? 'Terms and Conditions' : 'Privacy Policy'}</h2>
             <p style={styles.modalText}>Are you sure you want to remove this policy content?</p>
             <div style={styles.modalActions}>
               <button type="button" style={{ ...styles.modalButton, ...styles.cancelBtn }} disabled={legalDocumentRemoving[legalDocumentRemoveConfirmModal.documentKey]} onClick={() => setLegalDocumentRemoveConfirmModal(null)}>No</button>
