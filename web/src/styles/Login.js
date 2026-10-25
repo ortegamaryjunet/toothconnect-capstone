@@ -167,7 +167,8 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
       flexShrink: 0,
       marginTop: 1,
       padding: 0,
-      border: '1px solid #cbd5e1',
+      border: '1px solid #c98904',
+      outline: 'none',
       borderRadius: 4,
       background: '#ffffff',
       color: '#ffffff',
@@ -178,7 +179,7 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
     },
 
     termsCheckboxChecked: {
-      borderColor: '#c98904',
+      border: '1px solid #c98904',
       background: '#c98904',
     },
 
