@@ -384,6 +384,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
+    height: '72%',
     maxHeight: '80%',
     backgroundColor: '#ffffff',
     borderRadius: 16,
@@ -397,6 +398,7 @@ const styles = StyleSheet.create({
   },
   modalScroll: {
     flex: 1,
+    minHeight: 0,
     marginBottom: 16,
   },
   modalScrollContent: {
