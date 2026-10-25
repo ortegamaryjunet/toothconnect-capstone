@@ -184,7 +184,8 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
     },
 
     termsCheckboxError: {
-      borderColor: '#dc2626',
+      border: '1px solid #c98904',
+      outline: 'none',
     },
 
     termsText: {
