@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useIconStyles } from '../utils/iconStyles';
 import { roleHomePath } from '../utils/routes';
+import api from '../api/axios';
 import createLoginStyles from '../styles/Login.js';
 import clinicLogo from '../assets/clinicLogo/clinic-logo.png';
 
@@ -26,6 +27,12 @@ export default function Login() {
   const [submittedOnce, setSubmittedOnce] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsAgreementError, setTermsAgreementError] = useState('');
+  const [termsVisible, setTermsVisible] = useState(false);
+  const [termsContent, setTermsContent] = useState('');
+  const [termsLoading, setTermsLoading] = useState(false);
+  const [termsLoadError, setTermsLoadError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [showForgotPasswordPrompt, setShowForgotPasswordPrompt] = useState(false);
@@ -44,7 +51,34 @@ export default function Login() {
   const [banner, setBanner] = useState(stateMessage);
   const [bannerType, setBannerType] = useState(stateMessageType);
 
-  useIconStyles(showRegisterPrompt || showForgotPasswordPrompt);
+  useIconStyles(showRegisterPrompt || showForgotPasswordPrompt || termsVisible);
+
+  useEffect(() => {
+    if (!termsVisible) return undefined;
+    let active = true;
+    setTermsLoading(true);
+    setTermsLoadError('');
+    api.get('/system/web-login-terms-and-conditions')
+      .then(({ data }) => {
+        if (active) setTermsContent(String(data.content || ''));
+      })
+      .catch(() => {
+        if (active) setTermsLoadError('Terms and Conditions could not be loaded. Please try again later.');
+      })
+      .finally(() => {
+        if (active) setTermsLoading(false);
+      });
+    return () => { active = false; };
+  }, [termsVisible]);
+
+  useEffect(() => {
+    if (!termsVisible) return undefined;
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') setTermsVisible(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [termsVisible]);
 
   useEffect(() => {
     if (prefillEmail) {
@@ -351,6 +385,12 @@ export default function Login() {
     setError('');
     setSubmittedOnce(true);
 
+    if (!agreedToTerms) {
+      setTermsAgreementError('Please read and agree to the Terms and Conditions.');
+      return;
+    }
+    setTermsAgreementError('');
+
     const nextErrors = validateForm();
     setFieldErrors(nextErrors);
     setTouched({ email: true, password: true });
@@ -530,6 +570,30 @@ export default function Login() {
           )}
         </p>
 
+        <div style={styles.termsRow}>
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={agreedToTerms}
+            aria-label="I have read and agreed to the Terms and Conditions"
+            aria-describedby={termsAgreementError ? 'terms-agreement-error' : undefined}
+            onClick={() => {
+              setAgreedToTerms((checked) => !checked);
+              setTermsAgreementError('');
+            }}
+            style={{ ...styles.termsCheckbox, ...(agreedToTerms ? styles.termsCheckboxChecked : {}), ...(termsAgreementError ? styles.termsCheckboxError : {}) }}
+          >
+            {agreedToTerms ? '✓' : ''}
+          </button>
+          <span style={styles.termsText}>
+            I have read and agree to the{' '}
+            <button type="button" style={styles.termsLink} onClick={() => setTermsVisible(true)}>
+              Terms and Conditions
+            </button>
+          </span>
+        </div>
+        {termsAgreementError && <p id="terms-agreement-error" style={styles.termsError}>{termsAgreementError}</p>}
+
         <button
           type="submit"
           disabled={submitting || isCurrentEmailLocked}
@@ -562,6 +626,18 @@ export default function Login() {
           )}
         </p>
       </form>
+
+      {termsVisible && (
+        <div style={styles.termsModalOverlay} onClick={(event) => { if (event.target === event.currentTarget) setTermsVisible(false); }}>
+          <section style={styles.termsModalContent} role="dialog" aria-modal="true" aria-labelledby="login-terms-title">
+            <h2 id="login-terms-title" style={styles.termsModalTitle}>Terms and Conditions</h2>
+            <div style={styles.termsModalScroll}>
+              {termsLoading ? 'Loading...' : termsLoadError || termsContent || 'Terms and Conditions have not been added yet.'}
+            </div>
+            <button type="button" style={styles.termsModalButton} onClick={() => setTermsVisible(false)}>Close</button>
+          </section>
+        </div>
+      )}
 
       {showRegisterPrompt && (
         <div style={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) closeRegisterPrompt(); }}>

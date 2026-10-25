@@ -7,6 +7,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const router = express.Router();
 const CLINIC_LOGO_KEY = 'clinic_logo_path';
 let settingsTableReady = false;
+let webLoginTermsTableReady = false;
 
 const logoUpload = multer({
   storage: multer.memoryStorage(),
@@ -28,6 +29,23 @@ async function ensureSystemSettingsTable() {
     )
   `);
   settingsTableReady = true;
+}
+
+async function ensureWebLoginTermsTable() {
+  if (webLoginTermsTableReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS web_login_terms_and_conditions (
+      id TINYINT UNSIGNED PRIMARY KEY,
+      content MEDIUMTEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT chk_web_login_terms_singleton CHECK (id = 1)
+    )
+  `);
+  await pool.query(
+    `INSERT IGNORE INTO web_login_terms_and_conditions (id, content)
+     SELECT 1, content FROM termsandcondition WHERE id = 1`
+  );
+  webLoginTermsTableReady = true;
 }
 
 function configureCloudinary() {
@@ -62,6 +80,54 @@ router.get('/clinic-logo', async (req, res) => {
   } catch (error) {
     console.error('Fetch clinic logo error:', error);
     return res.status(500).json({ message: 'Failed to load clinic logo.' });
+  }
+});
+
+router.get('/web-login-terms-and-conditions', async (req, res) => {
+  try {
+    await ensureWebLoginTermsTable();
+    const [rows] = await pool.query(
+      'SELECT content FROM web_login_terms_and_conditions WHERE id = 1 LIMIT 1'
+    );
+    return res.json({ content: rows[0]?.content || '' });
+  } catch (error) {
+    console.error('Fetch web login terms error:', error);
+    return res.status(500).json({ message: 'Failed to load web login Terms and Conditions.' });
+  }
+});
+
+router.put('/web-login-terms-and-conditions', authenticate, requireRole('admin'), async (req, res) => {
+  const content = String(req.body?.content ?? '').trim();
+  if (!content) return res.status(400).json({ message: 'Policy content cannot be empty.' });
+  if (content.length < 10) return res.status(400).json({ message: 'Policy content must be at least 10 characters.' });
+  if (!/[a-zA-Z]/.test(content) && /[^0-9\s]/.test(content)) {
+    return res.status(400).json({ message: 'Special characters are not allowed.' });
+  }
+  if (/^[0-9\s]+$/.test(content)) {
+    return res.status(400).json({ message: 'Please enter valid policy content.' });
+  }
+  try {
+    await ensureWebLoginTermsTable();
+    await pool.query(
+      `INSERT INTO web_login_terms_and_conditions (id, content) VALUES (1, ?)
+       ON DUPLICATE KEY UPDATE content = VALUES(content)`,
+      [content]
+    );
+    return res.json({ content });
+  } catch (error) {
+    console.error('Save web login terms error:', error);
+    return res.status(500).json({ message: 'Failed to save staff Terms and Conditions.' });
+  }
+});
+
+router.delete('/web-login-terms-and-conditions', authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    await ensureWebLoginTermsTable();
+    await pool.query('UPDATE web_login_terms_and_conditions SET content = ? WHERE id = 1', ['']);
+    return res.json({ content: '' });
+  } catch (error) {
+    console.error('Remove web login terms error:', error);
+    return res.status(500).json({ message: 'Failed to remove staff Terms and Conditions.' });
   }
 });
 

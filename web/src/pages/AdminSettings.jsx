@@ -72,6 +72,10 @@ const sectionConfig = {
     label: 'Manage Clinic Logo',
     icon: 'fi fi-rr-picture',
   },
+  staffTerms: {
+    label: 'Manage Staff Terms and Conditions',
+    icon: 'fi fi-rr-document-signed',
+  },
   website: {
     label: 'Manage Website',
     icon: 'fi fi-rr-globe',
@@ -984,11 +988,11 @@ export default function AdminSettings() {
   const [cancellationPolicySaveConfirmModal, setCancellationPolicySaveConfirmModal] = useState(null);
   const [showCancellationPolicyRemoveConfirmModal, setShowCancellationPolicyRemoveConfirmModal] = useState(false);
   const [cancellationPolicyRemoving, setCancellationPolicyRemoving] = useState(false);
-  const [legalDocuments, setLegalDocuments] = useState({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '' });
-  const [legalDocumentDrafts, setLegalDocumentDrafts] = useState({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '' });
-  const [legalDocumentEditing, setLegalDocumentEditing] = useState({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false });
-  const [legalDocumentSaving, setLegalDocumentSaving] = useState({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false });
-  const [legalDocumentRemoving, setLegalDocumentRemoving] = useState({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false });
+  const [legalDocuments, setLegalDocuments] = useState({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '', staffTermsAndCondition: '' });
+  const [legalDocumentDrafts, setLegalDocumentDrafts] = useState({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '', staffTermsAndCondition: '' });
+  const [legalDocumentEditing, setLegalDocumentEditing] = useState({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false, staffTermsAndCondition: false });
+  const [legalDocumentSaving, setLegalDocumentSaving] = useState({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false, staffTermsAndCondition: false });
+  const [legalDocumentRemoving, setLegalDocumentRemoving] = useState({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false, staffTermsAndCondition: false });
   const [legalDocumentCancelConfirmModal, setLegalDocumentCancelConfirmModal] = useState(null);
   const [legalDocumentSaveConfirmModal, setLegalDocumentSaveConfirmModal] = useState(null);
   const [legalDocumentRemoveConfirmModal, setLegalDocumentRemoveConfirmModal] = useState(null);
@@ -1105,10 +1109,12 @@ export default function AdminSettings() {
     : '';
   const activeLegalDocumentKey = ['termsAndCondition', 'privacyPolicy'].includes(activeSection)
     ? activeSection
+    : activeSection === 'staffTerms'
+      ? 'staffTermsAndCondition'
     : activeSection === 'website' && websiteContentSection === 'websiteTerms'
       ? 'websiteTermsAndCondition'
       : null;
-  const activeLegalDocumentTitle = ['termsAndCondition', 'websiteTermsAndCondition'].includes(activeLegalDocumentKey)
+  const activeLegalDocumentTitle = ['termsAndCondition', 'websiteTermsAndCondition', 'staffTermsAndCondition'].includes(activeLegalDocumentKey)
     ? 'Terms and Conditions'
     : 'Privacy Policy';
   const activeLegalDocumentError = activeLegalDocumentKey && legalDocumentEditing[activeLegalDocumentKey]
@@ -1364,7 +1370,7 @@ export default function AdminSettings() {
         setLegalDocumentCancelConfirmModal(null);
         setLegalDocumentSaveConfirmModal(null);
         setLegalDocumentRemoveConfirmModal(null);
-        setLegalDocumentEditing({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false });
+        setLegalDocumentEditing({ termsAndCondition: false, privacyPolicy: false, websiteTermsAndCondition: false, staffTermsAndCondition: false });
         setWebsiteValidationModal(null);
         setWebsiteServiceSaveConfirmModal(null);
         setWebsiteAboutSaveConfirmModal(null);
@@ -1835,21 +1841,23 @@ export default function AdminSettings() {
 
   async function loadLegalDocuments() {
     try {
-      const [res, websiteTerms] = await Promise.all([
+      const [res, websiteTerms, staffTerms] = await Promise.all([
         api.get('/website/legal-documents'),
         api.get('/website/terms-and-conditions'),
+        api.get('/system/web-login-terms-and-conditions'),
       ]);
       const documents = {
         termsAndCondition: String(res.data.termsAndCondition || ''),
         privacyPolicy: String(res.data.privacyPolicy || ''),
         websiteTermsAndCondition: String(websiteTerms.data.content || ''),
+        staffTermsAndCondition: String(staffTerms.data.content || ''),
       };
       setLegalDocuments(documents);
       setLegalDocumentDrafts(documents);
     } catch (err) {
       console.error('Failed to load legal documents', err);
-      setLegalDocuments({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '' });
-      setLegalDocumentDrafts({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '' });
+      setLegalDocuments({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '', staffTermsAndCondition: '' });
+      setLegalDocumentDrafts({ termsAndCondition: '', privacyPolicy: '', websiteTermsAndCondition: '', staffTermsAndCondition: '' });
     }
   }
 
@@ -1887,12 +1895,14 @@ export default function AdminSettings() {
     try {
       const res = documentKey === 'websiteTermsAndCondition'
         ? await api.put('/website/terms-and-conditions', { content })
-        : await api.put(`/website/legal-documents/${documentKey}`, { content });
+        : documentKey === 'staffTermsAndCondition'
+          ? await api.put('/system/web-login-terms-and-conditions', { content })
+          : await api.put(`/website/legal-documents/${documentKey}`, { content });
       const savedContent = String(res.data.content || '');
       setLegalDocuments((current) => ({ ...current, [documentKey]: savedContent }));
       setLegalDocumentDrafts((current) => ({ ...current, [documentKey]: savedContent }));
       setLegalDocumentEditing((current) => ({ ...current, [documentKey]: false }));
-      const documentTitle = ['termsAndCondition', 'websiteTermsAndCondition'].includes(documentKey) ? 'Terms and Conditions' : 'Privacy Policy';
+      const documentTitle = ['termsAndCondition', 'websiteTermsAndCondition', 'staffTermsAndCondition'].includes(documentKey) ? 'Terms and Conditions' : 'Privacy Policy';
       setServiceSaveResultModal({
         title: 'Policy Updated',
         message: `${documentTitle} has been updated successfully.`,
@@ -1919,6 +1929,7 @@ export default function AdminSettings() {
     setLegalDocumentRemoving((current) => ({ ...current, [documentKey]: true }));
     try {
       if (documentKey === 'websiteTermsAndCondition') await api.delete('/website/terms-and-conditions');
+      else if (documentKey === 'staffTermsAndCondition') await api.delete('/system/web-login-terms-and-conditions');
       else await api.delete(`/website/legal-documents/${documentKey}`);
       setLegalDocuments((current) => ({ ...current, [documentKey]: '' }));
       setLegalDocumentDrafts((current) => ({ ...current, [documentKey]: '' }));
@@ -6765,7 +6776,9 @@ const contentEditActions = (
                 <div>
                   <h3 style={styles.websiteAnnouncementTitle}>{activeLegalDocumentTitle}</h3>
                   <p style={styles.websiteAnnouncementSubtitle}>
-                    Edit the legal content displayed in the mobile application for registration.
+                    {activeLegalDocumentKey === 'staffTermsAndCondition'
+                      ? 'Edit the Terms and Conditions shown to staff on the web sign-in page.'
+                      : 'Edit the legal content displayed in the mobile application for registration.'}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -8695,7 +8708,7 @@ const contentEditActions = (
           <div style={{ ...styles.modalContent, width: isMobile ? '100%' : 520, maxWidth: 520 }}>
             <div style={styles.modalIcon}><i className="fi fi-rr-check-circle" style={styles.modalIconText}></i></div>
             <h2 style={styles.modalTitle}>Confirm Policy Changes</h2>
-            <p style={styles.modalText}>Review the updated {['termsAndCondition', 'websiteTermsAndCondition'].includes(legalDocumentSaveConfirmModal.documentKey) ? 'Terms and Conditions' : 'Privacy Policy'} before saving.</p>
+            <p style={styles.modalText}>Review the updated {['termsAndCondition', 'websiteTermsAndCondition', 'staffTermsAndCondition'].includes(legalDocumentSaveConfirmModal.documentKey) ? 'Terms and Conditions' : 'Privacy Policy'} before saving.</p>
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '7px 0', borderBottom: '1px solid #f1f5f9', fontSize: 13, textAlign: 'left' }}>
                 <span style={{ color: '#64748b' }}>Previous Content</span>
@@ -8734,7 +8747,7 @@ const contentEditActions = (
         <div style={styles.modal} onClick={(event) => event.target === event.currentTarget && setLegalDocumentRemoveConfirmModal(null)}>
           <div style={styles.modalContent}>
             <div style={styles.modalIcon}><i className="fi fi-rr-exclamation" style={styles.modalIconText}></i></div>
-            <h2 style={styles.modalTitle}>Remove {['termsAndCondition', 'websiteTermsAndCondition'].includes(legalDocumentRemoveConfirmModal.documentKey) ? 'Terms and Conditions' : 'Privacy Policy'}</h2>
+            <h2 style={styles.modalTitle}>Remove {['termsAndCondition', 'websiteTermsAndCondition', 'staffTermsAndCondition'].includes(legalDocumentRemoveConfirmModal.documentKey) ? 'Terms and Conditions' : 'Privacy Policy'}</h2>
             <p style={styles.modalText}>Are you sure you want to remove this policy content?</p>
             <div style={styles.modalActions}>
               <button type="button" style={{ ...styles.modalButton, ...styles.cancelBtn }} disabled={legalDocumentRemoving[legalDocumentRemoveConfirmModal.documentKey]} onClick={() => setLegalDocumentRemoveConfirmModal(null)}>No</button>

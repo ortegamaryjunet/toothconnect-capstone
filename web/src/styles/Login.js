@@ -149,6 +149,125 @@ const createLoginStyles = ({ isMobile = false } = {}) => {
       gap: 4,
     },
 
+    termsRow: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      margin: '0 0 7px',
+      color: '#2f2f2f',
+      fontSize: 13,
+      lineHeight: 1.5,
+      textAlign: 'center',
+    },
+
+    termsCheckbox: {
+      width: 18,
+      height: 18,
+      flexShrink: 0,
+      marginTop: 1,
+      padding: 0,
+      border: '1px solid #cbd5e1',
+      borderRadius: 4,
+      background: '#ffffff',
+      color: '#ffffff',
+      fontSize: 14,
+      fontWeight: 800,
+      lineHeight: '16px',
+      cursor: 'pointer',
+    },
+
+    termsCheckboxChecked: {
+      borderColor: '#c98904',
+      background: '#c98904',
+    },
+
+    termsCheckboxError: {
+      borderColor: '#dc2626',
+    },
+
+    termsText: {
+      flex: '0 1 auto',
+    },
+
+    termsLink: {
+      padding: 0,
+      border: 0,
+      background: 'transparent',
+      color: '#9b6500',
+      font: 'inherit',
+      fontWeight: 800,
+      textDecoration: 'underline',
+      cursor: 'pointer',
+    },
+
+    termsError: {
+      margin: '0 0 14px',
+      color: '#b42318',
+      fontSize: 12,
+      fontWeight: 700,
+      lineHeight: 1.35,
+      textAlign: 'center',
+    },
+
+    termsModalOverlay: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 10000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: isMobile ? 18 : 24,
+      boxSizing: 'border-box',
+      background: 'rgba(15, 23, 42, 0.5)',
+    },
+
+    termsModalContent: {
+      display: 'flex',
+      flexDirection: 'column',
+      width: '100%',
+      maxWidth: 680,
+      maxHeight: '82vh',
+      padding: isMobile ? 20 : 28,
+      border: '1px solid rgba(212, 175, 55, 0.25)',
+      borderRadius: 18,
+      background: '#ffffff',
+      boxShadow: '0 22px 50px rgba(15, 23, 42, 0.25)',
+      boxSizing: 'border-box',
+    },
+
+    termsModalTitle: {
+      margin: '0 0 16px',
+      color: '#2f2f2f',
+      fontSize: 20,
+      fontWeight: 800,
+    },
+
+    termsModalScroll: {
+      minHeight: 120,
+      marginBottom: 16,
+      padding: '4px 2px',
+      overflowY: 'auto',
+      color: '#444444',
+      fontSize: 14,
+      lineHeight: 1.6,
+      whiteSpace: 'pre-wrap',
+      overflowWrap: 'anywhere',
+    },
+
+    termsModalButton: {
+      minHeight: 44,
+      padding: '0 20px',
+      border: 0,
+      borderRadius: 10,
+      background: '#c98904',
+      color: '#ffffff',
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: 'pointer',
+      alignSelf: 'flex-end',
+    },
+
     cooldownText: {
       color: '#b42318',
       fontSize: '12px',
