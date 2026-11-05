@@ -4,7 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   KeyboardAvoidingView,
   RefreshControl,
 } from 'react-native';
@@ -260,13 +260,61 @@ export default function MessageThreadScreen({ navigation, route }) {
         behavior="padding"
         keyboardVerticalOffset={0}
       >
-        <ScrollView
+        <FlatList
           ref={scrollRef}
           style={styles.messages}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          data={loading ? [] : messages}
+          keyExtractor={message => String(message.id)}
+          initialNumToRender={20}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          ListHeaderComponent={
+            <View style={styles.datePill}>
+              <Text style={styles.datePillText}>Today</Text>
+            </View>
+          }
+          ListEmptyComponent={
+            <Text style={loading ? styles.loading : styles.empty}>
+              {loading ? 'Loading...' : 'No messages yet. Say hello.'}
+            </Text>
+          }
+          renderItem={({ item: m }) => {
+            const isSelf = m.sender_id === user.id;
+
+            return (
+              <View
+                style={[
+                  styles.messageBlock,
+                  isSelf ? styles.messageBlockSelf : styles.messageBlockOther,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.bubble,
+                    isSelf ? styles.bubbleSelf : styles.bubbleOther,
+                  ]}
+                >
+                  <Text style={isSelf ? styles.bubbleTextSelf : styles.bubbleTextOther}>
+                    {m.content}
+                  </Text>
+                </View>
+
+                <Text
+                  style={[
+                    styles.bubbleTime,
+                    isSelf ? styles.bubbleTimeSelf : styles.bubbleTimeOther,
+                  ]}
+                >
+                  {formatBubbleTime(m.created_at)}
+                  {isSelf ? ` • ${getSelfMessageStatus(m)}` : ''}
+                </Text>
+              </View>
+            );
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -280,72 +328,7 @@ export default function MessageThreadScreen({ navigation, route }) {
               animated: false,
             })
           }
-        >
-          <View style={styles.datePill}>
-            <Text style={styles.datePillText}>
-              Today
-            </Text>
-          </View>
-
-          {loading ? (
-            <Text style={styles.loading}>
-              Loading...
-            </Text>
-          ) : messages.length === 0 ? (
-            <Text style={styles.empty}>
-              No messages yet. Say hello.
-            </Text>
-          ) : (
-            messages.map(m => {
-              const isSelf = m.sender_id === user.id;
-
-              return (
-                <View
-                  key={m.id}
-                  style={[
-                    styles.messageBlock,
-                    isSelf
-                      ? styles.messageBlockSelf
-                      : styles.messageBlockOther,
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.bubble,
-                      isSelf
-                        ? styles.bubbleSelf
-                        : styles.bubbleOther,
-                    ]}
-                  >
-                    <Text
-                      style={
-                        isSelf
-                          ? styles.bubbleTextSelf
-                          : styles.bubbleTextOther
-                      }
-                    >
-                      {m.content}
-                    </Text>
-                  </View>
-
-                  <Text
-                    style={[
-                      styles.bubbleTime,
-                      isSelf
-                        ? styles.bubbleTimeSelf
-                        : styles.bubbleTimeOther,
-                    ]}
-                  >
-                    {formatBubbleTime(m.created_at)}
-                    {isSelf
-                      ? ` • ${getSelfMessageStatus(m)}`
-                      : ''}
-                  </Text>
-                </View>
-              );
-            })
-          )}
-        </ScrollView>
+        />
 
         {error ? (
           <Text style={styles.error}>
