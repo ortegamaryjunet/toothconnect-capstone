@@ -84,12 +84,13 @@ const styles = StyleSheet.create({
 
   branchBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#d8d6d1",
+    backgroundColor: "#ffffff",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 7,
     marginTop: 8,
-    borderColor: "#b47a00"
+    borderColor: "#b47a00",
+    borderWidth: 2
   },
 
   branchBadgeLabel: {
