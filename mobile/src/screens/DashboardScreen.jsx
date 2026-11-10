@@ -212,8 +212,6 @@ export default function DashboardScreen({ navigation }) {
     }, [])
   );
 
-  // Logged-in patient's home branch.
-  // This is used for the header badge and sidebar profile branch only.
   const patientBranch = useMemo(() => {
     return (
       branches.find((branch) => String(branch.id) === String(user?.home_branch_id)) ||
@@ -221,7 +219,6 @@ export default function DashboardScreen({ navigation }) {
     );
   }, [branches, user?.home_branch_id]);
 
-  // Selected branch inside About the Clinic card only.
   const clinicBranch = useMemo(() => {
     return (
       branches.find((branch) => String(branch.id) === String(clinicBranchId)) ||

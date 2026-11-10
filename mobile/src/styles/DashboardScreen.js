@@ -84,16 +84,17 @@ const styles = StyleSheet.create({
 
   branchBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#334155",
+    backgroundColor: "#d8d6d1",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 7,
     marginTop: 8,
+    borderColor: "#b47a00"
   },
 
   branchBadgeLabel: {
     fontSize: 9,
-    color: "#cbd5e1",
+    color: "#000000",
     fontWeight: "800",
     textTransform: "uppercase",
     marginBottom: 2,
@@ -101,7 +102,7 @@ const styles = StyleSheet.create({
 
   branchBadgeText: {
     fontSize: 13,
-    color: "#ffffff",
+    color: "#b47a00",
     fontWeight: "800",
   },
 
