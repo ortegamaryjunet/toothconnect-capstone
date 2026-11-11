@@ -217,14 +217,29 @@ export default function AppointmentsScreen({ navigation, route }) {
   function getFilteredAppointments() {
     const now = new Date();
     if (filter === 'week') {
-      const weekEnd = new Date(now);
-      weekEnd.setDate(now.getDate() + (7 - now.getDay()));
-      weekEnd.setHours(23, 59, 59);
-      return appointments.filter((a) => new Date(a.start_time) <= weekEnd);
+      const weekStart = new Date(now);
+      const daysSinceMonday = (now.getDay() + 6) % 7;
+      weekStart.setDate(now.getDate() - daysSinceMonday);
+      weekStart.setHours(0, 0, 0, 0);
+
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      return appointments.filter((a) => {
+        const appointmentDate = new Date(a.start_time);
+        return appointmentDate >= weekStart && appointmentDate <= weekEnd;
+      });
     }
     if (filter === 'month') {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      return appointments.filter((a) => new Date(a.start_time) <= monthEnd);
+      monthEnd.setMilliseconds(999);
+
+      return appointments.filter((a) => {
+        const appointmentDate = new Date(a.start_time);
+        return appointmentDate >= monthStart && appointmentDate <= monthEnd;
+      });
     }
     return appointments;
   }
