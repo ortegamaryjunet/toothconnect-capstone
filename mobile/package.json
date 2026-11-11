@@ -11,7 +11,7 @@
     "ios:offline": "expo start --ios --offline",
     "web": "expo start --web",
     "web:offline": "expo start --web --offline",
-    "doctor": "npx expo-doctor@latest",
+    "doctor": "expo-doctor",
     "deps:check": "expo install --check",
     "deps:tree": "npm ls uuid glob"
   },
@@ -38,5 +38,8 @@
   "engines": {
     "node": ">=22.13.0 <25",
     "npm": ">=10"
+  },
+  "devDependencies": {
+    "expo-doctor": "1.21.3"
   }
 }
