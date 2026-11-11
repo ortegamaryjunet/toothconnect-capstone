@@ -53,10 +53,10 @@ export default function MessagesListScreen({ navigation }) {
     }, [])
   );
 
-  async function fetchMessagesData() {
-    setLoading(true);
+  async function fetchMessagesData(silent = false) {
+    if (!silent) setLoading(true);
     await Promise.all([fetchThreads(), fetchContacts()]);
-    setLoading(false);
+    if (!silent) setLoading(false);
     setRefreshing(false);
   }
 
@@ -347,7 +347,18 @@ export default function MessagesListScreen({ navigation }) {
             {loading ? (
               <Text style={styles.loading}>Loading...</Text>
             ) : threads.length === 0 ? (
-              <View style={styles.empty}>
+              <ScrollView
+                style={styles.body}
+                contentContainerStyle={[styles.empty, { flexGrow: 1 }]}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={() => { setRefreshing(true); fetchMessagesData(true); }}
+                    tintColor="#c98b00"
+                    colors={["#c98b00"]}
+                  />
+                }
+              >
                 <Text style={styles.emptyText}>
                   No conversations yet.{'\n'}Start one to talk with the clinic.
                 </Text>
@@ -355,7 +366,7 @@ export default function MessagesListScreen({ navigation }) {
                 <TouchableOpacity onPress={openContactPicker} style={styles.emptyButton}>
                   <Text style={styles.emptyButtonText}>Start a conversation</Text>
                 </TouchableOpacity>
-              </View>
+              </ScrollView>
             ) : (
               <ScrollView
                 style={styles.body}
@@ -365,8 +376,10 @@ export default function MessagesListScreen({ navigation }) {
                     refreshing={refreshing}
                     onRefresh={() => {
                       setRefreshing(true);
-                      fetchMessagesData();
+                      fetchMessagesData(true);
                     }}
+                    tintColor="#c98b00"
+                    colors={["#c98b00"]}
                   />
                 }
               >

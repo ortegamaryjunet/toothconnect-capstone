@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -208,6 +209,7 @@ export default function DentalTreatmentPlanScreen({ navigation }) {
 
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [toothModal, setToothModal] = useState(false);
   const [selectedTooth, setSelectedTooth] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -232,6 +234,12 @@ export default function DentalTreatmentPlanScreen({ navigation }) {
     } finally {
       setLoadingPlans(false);
     }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.allSettled([fetchPlans(), getUnreadCount().then(setUnreadCount)]);
+    setRefreshing(false);
   }
 
   function openToothModal(tooth) {
@@ -302,6 +310,7 @@ export default function DentalTreatmentPlanScreen({ navigation }) {
           <ScrollView
             contentContainerStyle={s.scrollContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#c98b00" colors={["#c98b00"]} />}
           >
             <View style={s.sectionCard}>
               <View style={s.sectionHeader}>

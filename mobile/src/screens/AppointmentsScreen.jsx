@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   Alert,
   Modal,
   Pressable,
@@ -110,6 +111,7 @@ export default function AppointmentsScreen({ navigation, route }) {
   const cancellationRequestInFlight = useRef(false);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
   const [activeAppointmentTab, setActiveAppointmentTab] = useState('upcoming');
@@ -196,6 +198,12 @@ export default function AppointmentsScreen({ navigation, route }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.allSettled([fetchAppointments(), fetchUnreadCount(), fetchCancellationPolicy()]);
+    setRefreshing(false);
   }
 
   async function fetchUnreadCount() {
@@ -715,6 +723,7 @@ export default function AppointmentsScreen({ navigation, route }) {
             style={styles.scrollArea}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#c98b00" colors={["#c98b00"]} />}
           >
             {/* Top row */}
             <View style={styles.topRow}>

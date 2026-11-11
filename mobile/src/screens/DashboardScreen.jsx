@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   Image,
 } from "react-native";
 import AppSidebar from '../components/AppSidebar';
@@ -69,6 +70,31 @@ export default function DashboardScreen({ navigation }) {
   const sidebarRef = useRef(null);
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    const today = new Date().toISOString().split("T")[0];
+    const tasks = [
+      api.get(`/appointments?status=scheduled&from=${today}`).then((res) => {
+        const now = new Date();
+        const next = (res.data.appointments || [])
+          .filter((appointment) => appointment.status === 'scheduled' && new Date(appointment.start_time) >= now)
+          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0] || null;
+        setUpcomingAppt(next);
+      }),
+      api.get("/patients/dentists").then((res) => setDentists(res.data.dentists || [])),
+      api.get("/patients/services").then((res) => setServicesData(res.data.services || [])),
+      api.get("/auth/branches").then((res) => {
+        const nextBranches = res.data.branches || [];
+        setBranches(nextBranches);
+        setClinicBranchId((currentId) => currentId && nextBranches.some((branch) => String(branch.id) === String(currentId)) ? currentId : nextBranches[0]?.id ?? null);
+      }),
+      getUnreadCount().then(setUnreadCount),
+    ];
+    await Promise.allSettled(tasks);
+    setRefreshing(false);
+  }, []);
 
   const [branches, setBranches] = useState([]);
   const [clinicBranchId, setClinicBranchId] = useState(null);
@@ -339,6 +365,7 @@ export default function DashboardScreen({ navigation }) {
             style={styles.scrollArea}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#c98b00" colors={["#c98b00"]} />}
           >
             <View style={styles.greetingSection}>
               <Text style={styles.greetingText}>{getGreeting()}, {greetingName}</Text>

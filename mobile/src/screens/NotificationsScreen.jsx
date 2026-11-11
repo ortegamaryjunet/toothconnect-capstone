@@ -127,6 +127,8 @@ export default function NotificationsScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => { setRefreshing(true); fetchAll(); }}
+            tintColor="#c98b00"
+            colors={["#c98b00"]}
           />
         }
       >

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { listAppointments } from '../api/appointments';
@@ -404,6 +404,7 @@ export default function PatientRecordsScreen({ navigation }) {
   const [expanded, setExpanded] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useFocusEffect(
@@ -436,6 +437,12 @@ export default function PatientRecordsScreen({ navigation }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.allSettled([fetchAppointments(), getUnreadCount().then(setUnreadCount)]);
+    setRefreshing(false);
   }
 
   function toggleSection(key) {
@@ -519,6 +526,7 @@ export default function PatientRecordsScreen({ navigation }) {
           <ScrollView
             contentContainerStyle={s.scrollContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#c98b00" colors={["#c98b00"]} />}
           >
 
             {/* Appointment Records */}

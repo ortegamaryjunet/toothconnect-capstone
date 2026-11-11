@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   Modal,
   FlatList,
   KeyboardAvoidingView,
@@ -202,6 +203,7 @@ export default function ProfileScreen({ navigation }) {
   const [civilStatusModalVisible, setCivilStatusModalVisible] =
     useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
   const screenWidth = Dimensions.get("window").width;
@@ -305,6 +307,22 @@ export default function ProfileScreen({ navigation }) {
     medications: form.medications.trim() || null,
     dental_history: form.dentalHistory.trim() || null,
   });
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const profile = await getMyPatientProfile();
+      const nextForm = profileToForm(profile);
+      setForm(nextForm);
+      originalFormRef.current = nextForm;
+      const count = await getUnreadCount();
+      setUnreadCount(count);
+    } catch {
+      // Keep the current profile visible if refresh fails.
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const normalizeFormForComparison = (value = {}) => ({
     fullName: String(value.fullName || "").trim(),
@@ -1110,6 +1128,7 @@ export default function ProfileScreen({ navigation }) {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             nestedScrollEnabled
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#c98b00" colors={["#c98b00"]} />}
           >
             <View style={styles.headerCard}>
               <View style={styles.topRow}>
