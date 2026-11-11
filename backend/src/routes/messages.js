@@ -314,7 +314,7 @@ router.post('/', async (req, res) => {
       [effectiveBranchId, userId, receiverId, content.trim()]
     );
 
-    await pool.query(
+    const [notificationResult] = await pool.query(
       `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
        VALUES (?, 'message', ?, ?, 'message', ?)`,
       [
@@ -330,6 +330,7 @@ router.post('/', async (req, res) => {
       body: content.trim().slice(0, 100),
       data: {
         type: 'message',
+        notification_id: notificationResult.insertId,
         message_id: result.insertId,
         sender_id: userId,
         branch_id: effectiveBranchId,

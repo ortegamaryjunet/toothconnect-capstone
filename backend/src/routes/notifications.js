@@ -59,7 +59,13 @@ router.patch('/:id/read', async (req, res) => {
       [id, userId]
     );
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Notification not found' });
+      const [rows] = await pool.query(
+        'SELECT id FROM notifications WHERE id = ? AND user_id = ? LIMIT 1',
+        [id, userId]
+      );
+      if (rows.length === 0) {
+        return res.status(404).json({ message: 'Notification not found' });
+      }
     }
     res.json({ message: 'Marked as read' });
   } catch (err) {

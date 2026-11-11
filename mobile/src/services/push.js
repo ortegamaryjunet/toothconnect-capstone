@@ -6,6 +6,15 @@ import api from '../api/axios';
 
 const ANDROID_PUSH_CHANNEL_ID = 'appointments-high';
 
+export async function setAppBadgeCount(count) {
+  const badgeCount = Math.max(0, Number(count) || 0);
+  try {
+    await Notifications.setBadgeCountAsync(badgeCount);
+  } catch (err) {
+    console.log('[push] Failed to update app badge:', err.message);
+  }
+}
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,

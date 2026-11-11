@@ -7,6 +7,7 @@ import { addNotificationListeners } from './src/services/push';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import logger from './src/utils/logger';
 import { handleNotificationNavigation } from './src/navigation/rootNavigation';
+import { markNotificationRead } from './src/api/notifications';
 
 // Forward fatal native errors to logger so they appear in crash logs
 const _originalHandler = global.ErrorUtils?.getGlobalHandler?.();
@@ -23,6 +24,12 @@ export default function App() {
       },
       onTapped: (response) => {
         logger.info('App', 'Notification tapped', response.notification.request.content.title);
+        const notificationId = response?.notification?.request?.content?.data?.notification_id;
+        if (notificationId) {
+          markNotificationRead(notificationId).catch((err) => {
+            logger.error('App', 'Failed to mark tapped notification read', err?.message);
+          });
+        }
         handleNotificationNavigation(response);
       },
     });

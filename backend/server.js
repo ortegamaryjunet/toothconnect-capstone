@@ -85,7 +85,6 @@ app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
-    // Dev convenience: allow any localhost origin (Live Server ports vary)
     if (process.env.NODE_ENV !== 'production') {
       try {
         const { hostname } = new URL(origin);
@@ -93,7 +92,6 @@ app.use(cors({
           return callback(null, true);
         }
       } catch (_) {
-        // ignore
       }
     }
 

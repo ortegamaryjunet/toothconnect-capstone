@@ -1374,12 +1374,12 @@ router.patch('/:id/cancel', async (req, res) => {
         : `Your ${detail.service_name || 'appointment'} on ${schedule} has been cancelled by the clinic.`;
 
       try {
-        await pool.query(
+        const [notificationResult] = await pool.query(
           `INSERT INTO notifications (user_id, type, title, body, related_type, related_id)
            VALUES (?, 'appointment_cancelled_by_staff', 'Appointment Cancelled', ?, 'appointment', ?)`,
           [appt.patient_id, notifBody, id]
         );
-        sendPushToUser(appt.patient_id, { title: 'Appointment Cancelled', body: notifBody, data: { type: 'appointment_cancelled_by_staff', appointment_id: id } }).catch(() => {});
+        sendPushToUser(appt.patient_id, { title: 'Appointment Cancelled', body: notifBody, data: { type: 'appointment_cancelled_by_staff', appointment_id: id, notification_id: notificationResult.insertId } }).catch(() => {});
       } catch (notificationErr) {
         console.error('Failed to create patient cancellation notification:', notificationErr);
       }
