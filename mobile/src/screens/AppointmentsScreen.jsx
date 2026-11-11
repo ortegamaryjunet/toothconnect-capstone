@@ -681,7 +681,7 @@ export default function AppointmentsScreen({ navigation, route }) {
     if (historyFilter === 'cancelled') return isCancelled;
     if (historyFilter === 'missed') return isMissed;
     return isCompleted || isCancelled || isMissed;
-  });
+  }).sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
 
   return (
     <SafeAreaView style={styles.container}>
