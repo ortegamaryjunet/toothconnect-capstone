@@ -119,33 +119,42 @@ export default function DashboardScreen({ navigation }) {
     };
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-    async function loadUpcomingAppt() {
-      setApptLoading(true);
+      async function loadUpcomingAppt() {
+        setApptLoading(true);
 
-      try {
-        const today = new Date().toISOString().split("T")[0];
-        const res = await api.get(`/appointments?status=scheduled&from=${today}`);
-        const appts = res.data.appointments || [];
+        try {
+          const today = new Date().toISOString().split("T")[0];
+          const res = await api.get(`/appointments?status=scheduled&from=${today}`);
+          const appts = res.data.appointments || [];
+          const now = new Date();
+          const nextAppointment = appts
+            .filter((appointment) =>
+              appointment.status === 'scheduled' &&
+              new Date(appointment.start_time) >= now
+            )
+            .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0] || null;
 
-        if (isMounted) {
-          setUpcomingAppt(appts.length > 0 ? appts[0] : null);
+          if (isActive) {
+            setUpcomingAppt(nextAppointment);
+          }
+        } catch (err) {
+          if (isActive) setUpcomingAppt(null);
+        } finally {
+          if (isActive) setApptLoading(false);
         }
-      } catch (err) {
-        if (isMounted) setUpcomingAppt(null);
-      } finally {
-        if (isMounted) setApptLoading(false);
       }
-    }
 
-    loadUpcomingAppt();
+      loadUpcomingAppt();
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   useEffect(() => {
     let isMounted = true;
