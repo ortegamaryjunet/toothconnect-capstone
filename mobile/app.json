@@ -16,7 +16,7 @@
       "icon": "./assets/adaptive-icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.capstone.toothconnect",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
